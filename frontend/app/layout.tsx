@@ -6,12 +6,31 @@ import { Toaster } from 'react-hot-toast';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
 import ConditionalLayout from '@/components/ConditionalLayout';
+import { GlobalSearch } from '@/components/GlobalSearch';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'ERP Platform',
-  description: 'Unified ERP Management Tool',
+  title: {
+    default: 'Kairux - Business in Flow',
+    template: '%s | Kairux',
+  },
+  description: 'Kairux - Modern AI-powered Cloud ERP system. Where business connects and flows seamlessly. Comprehensive management for CRM, accounting, inventory, HR, projects, and more.',
+  keywords: ['Kairux', 'ERP', 'Enterprise Resource Planning', 'Cloud ERP', 'AI ERP', 'CRM', 'Accounting', 'Inventory Management', 'HR', 'Payroll', 'Business Management', 'Business Intelligence'],
+  authors: [{ name: 'Kairux Team' }],
+  creator: 'Kairux',
+  openGraph: {
+    type: 'website',
+    locale: 'en_US',
+    title: 'Kairux - Business in Flow',
+    description: 'Modern AI-powered Cloud ERP system for seamless business management',
+    siteName: 'Kairux',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  manifest: '/manifest.json',
 };
 
 export const viewport = {
@@ -37,6 +56,7 @@ export default function RootLayout({
       <body className={inter.className}>
         <ErrorBoundary>
           <ThemeProvider>
+            <GlobalSearch />
             <KeyboardShortcuts />
             <div className="min-h-screen bg-background">
               <ConditionalLayout>{children}</ConditionalLayout>

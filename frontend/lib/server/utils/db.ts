@@ -1,8 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { Pool } from 'pg';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  pool: Pool | undefined;
 };
 
 // Normalize DATABASE_URL to use verify-full SSL mode (fixes deprecation warning)
@@ -18,9 +20,6 @@ function normalizeDatabaseUrl(url: string): string {
     const regex = new RegExp(`([?&])sslmode=${mode}(&|$)`, 'gi');
     if (regex.test(normalizedUrl)) {
       normalizedUrl = normalizedUrl.replace(regex, `$1sslmode=verify-full$2`);
-      if (process.env.NODE_ENV === 'development') {
-        console.log(`[DB] Normalized SSL mode from '${mode}' to 'verify-full' to maintain security`);
-      }
     }
   }
   
@@ -59,6 +58,7 @@ const getDatabaseUrl = (): string => {
 
 // Initialize Prisma Client with Prisma 7 adapter pattern
 let prismaInstance: PrismaClient | null = null;
+let poolInstance: Pool | null = null;
 
 const getPrismaClient = (): PrismaClient => {
   if (globalForPrisma.prisma) {
@@ -70,38 +70,31 @@ const getPrismaClient = (): PrismaClient => {
   }
 
   try {
-    console.log('[DB] Starting Prisma client initialization...');
     const connectionString = getDatabaseUrl();
-    console.log('[DB] Database URL obtained, length:', connectionString?.length || 0);
-    
-    // Prisma 7 requires using an adapter for database connections
-    console.log('[DB] Creating PrismaPg adapter...');
-    const adapter = new PrismaPg({ connectionString });
-    console.log('[DB] Adapter created successfully');
-    
-    console.log('[DB] Creating PrismaClient instance...');
+
+    // Create a Pool instance for PostgreSQL connection
+    if (!poolInstance) {
+      poolInstance = new Pool({ connectionString });
+
+      if (process.env.NODE_ENV !== 'production') {
+        globalForPrisma.pool = poolInstance;
+      }
+    }
+
+    // Prisma 7 requires using an adapter with a Pool instance
+    const adapter = new PrismaPg(poolInstance);
+
     prismaInstance = new PrismaClient({
       adapter,
       log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
     });
-    
-    console.log('[DB] Prisma client instance created');
 
     if (process.env.NODE_ENV !== 'production') {
       globalForPrisma.prisma = prismaInstance;
     }
 
-    console.log('[DB] Prisma client initialization completed successfully');
     return prismaInstance;
   } catch (error: any) {
-    console.error('[DB] Failed to initialize Prisma client:', error);
-    console.error('[DB] Error details:', {
-      message: error.message,
-      stack: error.stack,
-      name: error.name,
-      hasDatabaseUrl: !!process.env.DATABASE_URL,
-      hasNetlifyDatabaseUrl: !!process.env.NETLIFY_DATABASE_URL,
-    });
     throw new Error(
       `Prisma client initialization failed: ${error.message || 'Unknown error'}. ` +
       'Please check your DATABASE_URL environment variable.'
@@ -112,17 +105,12 @@ const getPrismaClient = (): PrismaClient => {
 // Export prisma with lazy initialization using Proxy
 export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {
-    try {
-      const client = getPrismaClient();
-      const value = (client as any)[prop];
-      if (typeof value === 'function') {
-        return value.bind(client);
-      }
-      return value;
-    } catch (error: any) {
-      console.error('[DB] Error accessing Prisma client:', error);
-      throw error;
+    const client = getPrismaClient();
+    const value = (client as any)[prop];
+    if (typeof value === 'function') {
+      return value.bind(client);
     }
+    return value;
   },
 });
 

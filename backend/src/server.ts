@@ -13,6 +13,18 @@ import { performanceMonitor } from './middleware/performance';
 import { requestLogger } from './middleware/requestLogger';
 import logger from './utils/logger';
 
+// Global error handlers
+process.on('uncaughtException', (error) => {
+  logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Unhandled Rejection at:', { promise, reason });
+  process.exit(1);
+});
+
+
 // Routes
 import healthRoutes from './routes/healthRoutes';
 import authRoutes from './routes/authRoutes';
@@ -20,6 +32,7 @@ import erpRoutes from './routes/erpRoutes';
 import payrollRoutes from './routes/payrollRoutes';
 import reportsRoutes from './routes/reportsRoutes';
 import adminRoutes from './routes/adminRoutes';
+import searchRoutes from './routes/searchRoutes';
 
 
 // Validate environment variables on startup
@@ -97,6 +110,7 @@ app.use('/api/erp', erpRoutes);
 app.use('/api/payroll', payrollRoutes);
 app.use('/api/reports', reportsRoutes);
 app.use('/api/admin', adminRoutes);
+app.use('/api/search', searchRoutes);
 
 
 // Error handling middleware (must be last)

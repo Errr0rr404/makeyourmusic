@@ -23,7 +23,7 @@ export default function Navbar() {
     }
   }, [isAuthenticated, fetchUser]);
   
-  const storeName = 'ERP Platform';
+  const storeName = 'Kairux';
 
   return (
     <nav 
@@ -45,6 +45,7 @@ export default function Navbar() {
               <span className="font-bold text-xl bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 {storeName}
               </span>
+              <span className="text-xs text-muted-foreground hidden sm:inline">Business in Flow</span>
             </Link>
           </div>
 

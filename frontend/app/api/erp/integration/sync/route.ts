@@ -26,7 +26,6 @@ export const POST = createRouteHandler(async (req: NextRequest) => {
       success: true,
       message: 'Integration completed successfully',
       results: result.results,
-      summary: result.summary,
     });
   } catch (error: any) {
     console.error('Integration error:', error);

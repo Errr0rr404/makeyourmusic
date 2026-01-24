@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
       prisma.payment.aggregate({
         _sum: { amount: true },
         where: { status: 'SUCCEEDED' },
-      }).then(r => Number(r._sum.amount || 0))
+      }).then((r: any) => Number(r._sum.amount || 0))
         .catch(() => 0),
       
       // Total Expenses (from accounting transactions - expense accounts)
@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
             accountType: 'EXPENSE',
           },
         },
-      }).then(r => Number(r._sum.debit || 0))
+      }).then((r: any) => Number(r._sum.debit || 0))
         .catch(() => 0),
       
       // Active Projects

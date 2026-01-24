@@ -7,6 +7,8 @@ import {
   updateProfile,
   refresh,
   logout,
+  forgotPassword,
+  resetPassword,
 } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimiter';
@@ -39,5 +41,7 @@ router.post('/refresh', refresh);
 router.post('/logout', logout);
 router.get('/me', authenticate, getMe);
 router.put('/me', authenticate, updateProfile);
+router.post('/forgot-password', authLimiter, [emailValidation], validateRequest, forgotPassword);
+router.post('/reset-password', authLimiter, [body('token').notEmpty(), passwordValidation], validateRequest, resetPassword);
 
 export default router;

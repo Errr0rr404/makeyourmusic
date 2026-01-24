@@ -1,12 +1,11 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   // Optimize for production
   compress: true,
   poweredByHeader: false, // Remove X-Powered-By header for security
   // Enable React strict mode
   reactStrictMode: true,
-  
+
   // Security headers
   async headers() {
     return [
@@ -45,12 +44,12 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-  
+
   // Experimental features for better performance
   experimental: {
     optimizeCss: true,
   },
-  
+
   // Image configuration with optimization
   images: {
     formats: ['image/avif', 'image/webp'],
@@ -70,7 +69,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  
+
   // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {

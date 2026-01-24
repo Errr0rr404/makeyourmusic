@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DollarSign, FileText, Receipt, BarChart3, Plus } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
 import Link from 'next/link';
-import api from '@/lib/api';
 
 export default function AccountingPage() {
   const router = useRouter();
@@ -38,15 +37,14 @@ export default function AccountingPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      fetchStats();
+      void fetchStats();
     }
   }, [isAuthenticated]);
 
   const fetchStats = async () => {
     try {
-      // Fetch financial reports for stats
-      await api.get('/erp/accounting/reports?type=balance_sheet');
-      // In a real implementation, calculate from actual data
+      // TODO: Implement API endpoint for fetching accounting stats
+      // For now, using mock data to demonstrate the UI
       setStats({
         totalAssets: 100000,
         totalLiabilities: 40000,

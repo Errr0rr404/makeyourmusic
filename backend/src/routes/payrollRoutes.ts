@@ -1,17 +1,11 @@
 import express from 'express';
 import * as payrollController from '../controllers/payrollController';
 import { authenticate } from '../middleware/auth';
-import { requireFeature } from '../utils/storeConfig';
 
 const router = express.Router();
 
-// All routes require authentication and employee management feature
+// All routes require authentication
 router.use(authenticate);
-router.use(requireFeature('posEmployeeManagementEnabled'));
-
-// Payroll settings
-router.get('/settings', payrollController.getSettings);
-router.put('/settings', payrollController.updateSettings);
 
 // Pay periods
 router.post('/pay-periods', payrollController.createPayPeriod);

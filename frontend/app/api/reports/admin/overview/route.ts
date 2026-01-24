@@ -32,7 +32,6 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const endDate = new Date();
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30);
 

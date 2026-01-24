@@ -35,12 +35,6 @@ function normalizeDatabaseUrl(url: string): string {
     const regex = new RegExp(`([?&])sslmode=${mode}(&|$)`, 'gi');
     if (regex.test(normalizedUrl)) {
       normalizedUrl = normalizedUrl.replace(regex, `$1sslmode=verify-full$2`);
-      // Use logger instead of console.log
-      if (process.env.NODE_ENV === 'development') {
-        // Import logger only when needed to avoid circular dependencies
-        const logger = require('./logger').default;
-        logger.info(`[DB] Normalized SSL mode from '${mode}' to 'verify-full' to maintain security`);
-      }
     }
   }
   
@@ -83,11 +77,6 @@ const getPrismaClient = (): PrismaClient => {
   const prisma = new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-    // Connection pooling optimization
-    // Prisma automatically manages connection pooling, but we can optimize:
-    // - Connection pool size is managed by the database URL parameters
-    // - Add ?connection_limit=10&pool_timeout=20 to DATABASE_URL for fine-tuning
-    // Example: postgresql://user:pass@host:5432/db?connection_limit=10&pool_timeout=20
   });
 
   // Suppress Prisma error logs for schema/column mismatches during tests
@@ -119,11 +108,3 @@ const getPrismaClient = (): PrismaClient => {
 export const prisma = getPrismaClient();
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
-// Setup query performance monitoring
-if (process.env.NODE_ENV === 'production') {
-  import('./queryMonitoring').then(({ setupQueryMonitoring }) => {
-    setupQueryMonitoring();
-  });
-}
-

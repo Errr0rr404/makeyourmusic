@@ -3,7 +3,7 @@
 
 // Generator for frontend (custom output location) - TypeScript
 generator client {
-  provider      = "prisma-client"
+  provider      = "prisma-client-js"
   output        = "../frontend/generated/prisma"
   binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
 }
@@ -17,7 +17,7 @@ generator clientBackend {
 
 datasource db {
   provider = "postgresql"
-  // url moved to prisma.config.ts per Prisma 7 requirements
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -92,7 +92,7 @@ model Payroll {
   createdAt     DateTime      @default(now()) @map("created_at")
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
-  payPeriod PayPeriod   @relation(fields: [payPeriodId], references: [id], onDelete: Cascade)
+  payPeriod PayPeriod     @relation(fields: [payPeriodId], references: [id], onDelete: Cascade)
   items     PayrollItem[]
 
   @@index([payPeriodId])
@@ -115,7 +115,7 @@ model PayrollItem {
   description String?         @db.Text
   amount      Decimal         @db.Decimal(10, 2)
 
-  payroll   Payroll    @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
 
   @@index([payrollId])
   @@index([itemType])
@@ -210,7 +210,7 @@ model JournalEntryLine {
 model Invoice {
   id            String        @id @default(cuid())
   invoiceNumber String        @unique
-  customerId    String?       @map("customer_id")
+  customerId    String        @map("customer_id")
   issueDate     DateTime      @map("issue_date")
   dueDate       DateTime      @map("due_date")
   total         Decimal       @db.Decimal(15, 2)
@@ -218,7 +218,8 @@ model Invoice {
   createdAt     DateTime      @default(now()) @map("created_at")
   createdBy     String        @map("created_by")
 
-  items InvoiceItem[]
+  customer Customer      @relation(fields: [customerId], references: [id])
+  items    InvoiceItem[]
 
   @@index([customerId])
   @@index([status])
@@ -249,6 +250,19 @@ model InvoiceItem {
 }
 
 // CRM Module
+model Customer {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  phone     String?
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  invoices Invoice[]
+
+  @@map("customers")
+}
+
 model Lead {
   id        String     @id @default(cuid())
   name      String
@@ -258,6 +272,8 @@ model Lead {
   status    LeadStatus @default(NEW)
   createdAt DateTime   @default(now()) @map("created_at")
   createdBy String?    @map("created_by")
+
+  customFieldValues CustomFieldValue[] @relation("LeadToCustomFieldValue")
 
   @@index([status])
   @@map("leads")
@@ -282,6 +298,70 @@ model Opportunity {
 
   @@index([stage])
   @@map("opportunities")
+}
+
+// Inventory Module
+model Product {
+  id          String   @id @default(cuid())
+  name        String
+  description String?  @db.Text
+  sku         String   @unique
+  price       Decimal  @db.Decimal(10, 2)
+  stock       Int
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@map("products")
+}
+
+// HR Module
+model Employee {
+  id         String   @id @default(cuid())
+  firstName  String   @map("first_name")
+  lastName   String   @map("last_name")
+  email      String   @unique
+  phone      String?
+  jobTitle   String   @map("job_title")
+  department String
+  hireDate   DateTime @map("hire_date")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  @@map("employees")
+}
+
+// Extensibility
+model CustomField {
+  id        String    @id @default(cuid())
+  name      String
+  type      FieldType
+  module    String // e.g., "Lead", "Customer"
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  values CustomFieldValue[] @relation("CustomFieldToValue")
+
+  @@unique([name, module])
+  @@map("custom_fields")
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+}
+
+model CustomFieldValue {
+  id        String   @id @default(cuid())
+  fieldId   String   @map("field_id")
+  entityId  String   @map("entity_id") // ID of the lead, customer, etc.
+  value     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  field CustomField @relation("CustomFieldToValue", fields: [fieldId], references: [id], onDelete: Cascade)
+  lead  Lead?       @relation("LeadToCustomFieldValue", fields: [entityId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, entityId])
+  @@map("custom_field_values")
 }
 
 model Project {

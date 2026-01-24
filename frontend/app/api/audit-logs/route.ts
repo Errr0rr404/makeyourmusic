@@ -9,7 +9,7 @@ import { createRouteHandler } from '@/lib/server/utils/routeHandler';
  */
 
 export const GET = createRouteHandler(async (req: NextRequest) => {
-  const user = requireAuth(req, ['ADMIN', 'MASTERMIND']);
+  requireAuth(req, ['ADMIN', 'MASTERMIND']);
 
   const { searchParams } = new URL(req.url);
   const page = parseInt(searchParams.get('page') || '1');

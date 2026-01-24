@@ -1,5 +1,14 @@
 #!/bin/bash
 
+# Kairux - Main Startup Script
+# Business in Flow - Modern AI-Powered Cloud ERP System
+# Usage: ./start.sh [options]
+# Options:
+#   --install     Install dependencies first
+#   --clean       Clean cache and logs before starting
+#   --seed        Seed database with sample data
+#   --help        Show this help message
+
 # Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -7,9 +16,95 @@ RED='\033[0;31m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
+# Parse command line arguments
+DO_INSTALL=false
+DO_CLEAN=false
+DO_SEED=false
+
+for arg in "$@"; do
+    case $arg in
+        --install)
+            DO_INSTALL=true
+            ;;
+        --clean)
+            DO_CLEAN=true
+            ;;
+        --seed)
+            DO_SEED=true
+            ;;
+        --help|-h)
+            echo "Kairux - Business in Flow"
+            echo "Modern AI-Powered Cloud ERP System"
+            echo ""
+            echo "Usage: ./start.sh [options]"
+            echo ""
+            echo "Options:"
+            echo "  --install     Install/update dependencies before starting"
+            echo "  --clean       Clean cache and logs before starting"
+            echo "  --seed        Seed database with comprehensive ERP data"
+            echo "  --help        Show this help message"
+            echo ""
+            echo "Examples:"
+            echo "  ./start.sh                    # Normal startup"
+            echo "  ./start.sh --install          # Install deps and start"
+            echo "  ./start.sh --clean            # Clean cache and start"
+            echo "  ./start.sh --install --clean  # Full clean install and start"
+            exit 0
+            ;;
+    esac
+done
+
 echo -e "${BLUE}════════════════════════════════════════${NC}"
-echo -e "${BLUE}   🚀 Starting E-Commerce Application${NC}"
+echo -e "${BLUE}   🚀 Starting Kairux Application${NC}"
+echo -e "${BLUE}   Business in Flow${NC}"
 echo -e "${BLUE}════════════════════════════════════════${NC}\n"
+
+# Install dependencies if requested
+if [ "$DO_INSTALL" = true ]; then
+    echo -e "${YELLOW}📦 Installing dependencies...${NC}"
+
+    # Check Node.js version
+    if ! command -v node &> /dev/null; then
+        echo -e "${RED}❌ Node.js is not installed. Please install Node.js 20+ first.${NC}"
+        exit 1
+    fi
+
+    NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+    if [ "$NODE_VERSION" -lt 20 ]; then
+        echo -e "${RED}❌ Node.js 20+ is required. Current version: $(node -v)${NC}"
+        exit 1
+    fi
+
+    echo -e "${GREEN}✅ Node.js version: $(node -v)${NC}"
+
+    # Install frontend dependencies
+    echo -e "${YELLOW}📦 Installing frontend dependencies...${NC}"
+    cd frontend
+    npm install
+    if [ $? -ne 0 ]; then
+        echo -e "${RED}❌ Frontend installation failed${NC}"
+        exit 1
+    fi
+    cd ..
+    echo -e "${GREEN}✅ Dependencies installed${NC}\n"
+fi
+
+# Clean cache if requested
+if [ "$DO_CLEAN" = true ]; then
+    echo -e "${YELLOW}🧹 Cleaning cache and logs...${NC}"
+
+    # Clean Next.js cache
+    [ -d "frontend/.next" ] && rm -rf frontend/.next && echo -e "${GREEN}✓ Removed frontend/.next${NC}"
+
+    # Clean log files
+    rm -f *.log frontend/*.log backend/*.log 2>/dev/null && echo -e "${GREEN}✓ Cleaned log files${NC}"
+
+    # Clean temp files
+    find . -name ".DS_Store" -delete 2>/dev/null
+    find . -name "*.tmp" -delete 2>/dev/null
+
+    echo -e "${GREEN}✅ Cleanup complete${NC}\n"
+fi
 
 # Function to kill process on a port
 kill_port() {
@@ -182,7 +277,7 @@ else
 fi
 
 # Generate Prisma client
-if [ ! -d "frontend/generated/prisma" ]; then
+if [ ! -d "frontend/generated/prisma" ] || [ ! -d "frontend/node_modules/.prisma/client" ]; then
     echo -e "${YELLOW}⚠ Prisma client not generated. Generating...${NC}"
     npx prisma generate --schema=prisma/schema.prisma 2>&1 | grep -v "Loaded Prisma" | grep -v "Prisma schema loaded" | grep -v "^$" | tail -5
     if [ ${PIPESTATUS[0]} -ne 0 ]; then
@@ -195,46 +290,45 @@ else
 fi
 
 
-# Setup users (admin, manager, mastermind) - using upsert so no duplicates
+# Setup admin user
 echo ""
-echo -e "${YELLOW}📋 Step 5: Setting up users...${NC}"
+echo -e "${YELLOW}📋 Step 5: Setting up admin user...${NC}"
 
 cd backend
-
-# Create mastermind user
-echo -e "${BLUE}Creating mastermind user (if not exists)...${NC}"
-CREATE_MASTERMIND_OUTPUT=$(npm run create-mastermind 2>&1)
-echo "$CREATE_MASTERMIND_OUTPUT" | grep -E "(✅|Mastermind user|created successfully|Login Credentials)" | head -5
-if echo "$CREATE_MASTERMIND_OUTPUT" | grep -q "created successfully\|upsert"; then
-    echo -e "${GREEN}✓ Mastermind user ready${NC}"
-else
-    echo -e "${YELLOW}⚠ Mastermind user creation completed (may already exist)${NC}"
-fi
 
 # Create admin user
 echo -e "${BLUE}Creating admin user (if not exists)...${NC}"
 CREATE_ADMIN_OUTPUT=$(npm run create-admin 2>&1)
-echo "$CREATE_ADMIN_OUTPUT" | grep -E "(✅|Admin user|created successfully|Login Credentials)" | head -5
 if echo "$CREATE_ADMIN_OUTPUT" | grep -q "created successfully\|upsert"; then
-    echo -e "${GREEN}✓ Admin user ready${NC}"
+    echo -e "${GREEN}✓ Admin user created/verified${NC}"
 else
-    echo -e "${YELLOW}⚠ Admin user creation completed (may already exist)${NC}"
-fi
-
-# Create manager user
-echo -e "${BLUE}Creating manager user (if not exists)...${NC}"
-CREATE_MANAGER_OUTPUT=$(npm run create-manager 2>&1)
-echo "$CREATE_MANAGER_OUTPUT" | grep -E "(✅|Manager user|created successfully|Login Credentials)" | head -5
-if echo "$CREATE_MANAGER_OUTPUT" | grep -q "created successfully\|upsert"; then
-    echo -e "${GREEN}✓ Manager user ready${NC}"
-else
-    echo -e "${YELLOW}⚠ Manager user creation completed (may already exist)${NC}"
+    # Show the output for debugging
+    echo "$CREATE_ADMIN_OUTPUT" | grep -E "(✅|Admin user|created successfully|Login Credentials|Error)" | head -5
+    echo -e "${YELLOW}⚠ Admin user creation completed${NC}"
 fi
 
 cd ..
 
-# Ask if user wants dummy data (only on first run)
-if [ ! -f ".dummy-data-created" ]; then
+# Seed database if requested
+if [ "$DO_SEED" = true ]; then
+    echo ""
+    echo -e "${YELLOW}🌱 Seeding database with comprehensive ERP data...${NC}"
+    cd backend
+    if [ -f "prisma/seed-comprehensive-erp.ts" ]; then
+        npx ts-node prisma/seed-comprehensive-erp.ts
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ Database seeded successfully${NC}"
+        else
+            echo -e "${YELLOW}⚠ Database seeding completed with warnings${NC}"
+        fi
+    else
+        echo -e "${YELLOW}⚠ Seed file not found, skipping...${NC}"
+    fi
+    cd ..
+fi
+
+# Ask if user wants dummy data (only on first run and if not seeding)
+if [ "$DO_SEED" = false ] && [ ! -f ".dummy-data-created" ]; then
     echo ""
     read -p "$(echo -e ${YELLOW}Do you want to create dummy products for testing? [y/N]: ${NC})" -n 1 -r
     echo ""
@@ -249,7 +343,9 @@ if [ ! -f ".dummy-data-created" ]; then
         echo -e "${BLUE}ℹ Skipping dummy data creation${NC}"
     fi
 else
-    echo -e "${BLUE}ℹ Dummy data already created (skip with: rm .dummy-data-created)${NC}"
+    if [ "$DO_SEED" = false ]; then
+        echo -e "${BLUE}ℹ Dummy data already created (reset with: rm .dummy-data-created)${NC}"
+    fi
 fi
 
 # Clean up old log files
@@ -295,26 +391,42 @@ echo -e "${GREEN}   🎉 Application is running!${NC}"
 echo -e "${GREEN}════════════════════════════════════════${NC}"
 echo ""
 echo -e "${BLUE}📍 Access your application:${NC}"
-echo -e "   Application: ${GREEN}http://localhost:3000${NC}"
+echo -e "   Frontend: ${GREEN}http://localhost:3000${NC}"
 echo -e "   Health Check: ${GREEN}http://localhost:3000/api/health${NC}"
 echo ""
-echo -e "${BLUE}🔑 Default Login Credentials:${NC}"
-echo -e "   Mastermind: ${YELLOW}mastermind@mastermind.com${NC} / ${YELLOW}Mastermind123!!${NC}"
-echo -e "   Admin: ${YELLOW}admin@gmail.com${NC} / ${YELLOW}Admin123!!${NC}"
-echo -e "   Manager (POS): ${YELLOW}manager@gmail.com${NC} / ${YELLOW}Manager123!!${NC}"
+echo -e "${BLUE}🔑 Admin Login Credentials:${NC}"
+echo -e "   Email: ${YELLOW}admin@gmail.com${NC}"
+echo -e "   Password: ${YELLOW}Admin123!!${NC}"
+echo -e "   Role: ${GREEN}ADMIN${NC} (Full system access)"
 echo ""
-echo -e "${BLUE}📊 View logs:${NC}"
-echo -e "   Application: ${YELLOW}tail -f frontend.log${NC}"
+echo -e "${BLUE}👥 User Roles:${NC}"
+echo -e "   • ${GREEN}ADMIN${NC} - Full administrative access to all modules"
+echo -e "   • ${GREEN}USER${NC} - Standard user access (create via /register)"
 echo ""
-echo -e "${YELLOW}💡 Press Ctrl+C to stop the server${NC}"
+echo -e "${BLUE}📚 Documentation:${NC}"
+echo -e "   See ${GREEN}README.md${NC} for complete setup and usage guide"
 echo ""
-echo -e "${BLUE}ℹ️  Note: API routes are now part of the Next.js app${NC}"
-echo -e "${BLUE}   No separate backend server needed!${NC}"
+echo -e "${BLUE}📊 Monitor Application:${NC}"
+echo -e "   View logs: ${YELLOW}tail -f frontend.log${NC}"
+echo -e "   Stop server: ${YELLOW}Ctrl+C${NC}"
 echo ""
-echo -e "${BLUE}🏪 To use POS system:${NC}"
-echo -e "   1. Login as MASTERMIND and enable POS in /mastermind/config${NC}"
-echo -e "   2. Login as MANAGER and open a session at /pos/sessions${NC}"
-echo -e "   3. Start processing transactions at /pos${NC}"
+echo -e "${BLUE}ℹ️  Architecture:${NC}"
+echo -e "   • Next.js 16 with App Router"
+echo -e "   • API routes integrated in frontend (no separate backend server)"
+echo -e "   • PostgreSQL database with Prisma ORM"
+echo ""
+echo -e "${BLUE}🎯 Getting Started:${NC}"
+echo -e "   1. Login as admin using credentials above"
+echo -e "   2. Navigate to ${GREEN}/erp${NC} to access the dashboard"
+echo -e "   3. Explore modules: Accounting, CRM, Inventory, Payroll, etc."
+echo ""
+echo -e "${BLUE}🛠️  Utility Commands:${NC}"
+echo -e "   Restart: ${YELLOW}./start.sh${NC}"
+echo -e "   Install deps: ${YELLOW}./start.sh --install${NC}"
+echo -e "   Clean cache: ${YELLOW}./start.sh --clean${NC}"
+echo -e "   Seed database: ${YELLOW}./start.sh --seed${NC}"
+echo -e "   Clean project: ${YELLOW}./scripts/cleanup.sh${NC}"
+echo -e "   Backup database: ${YELLOW}./scripts/backup-database.sh${NC}"
 echo ""
 
 # Wait for process (this keeps the script running)

@@ -24,31 +24,6 @@ export function useERPModules(userRole: string | undefined) {
     setState({ enabledModules: filtered, loading: false });
   }, [userRole]);
 
-  return state;
-}
-          case 'projects':
-            return storeConfig.projectsEnabled !== false;
-          case 'hr':
-            return storeConfig.hrEnabled !== false;
-          case 'documents':
-            return storeConfig.documentManagementEnabled !== false;
-          case 'workflows':
-            return storeConfig.workflowsEnabled !== false;
-          case 'ai-insights':
-            return storeConfig.aiInsightsEnabled !== false;
-          case 'analytics':
-            return storeConfig.businessIntelligenceEnabled !== false;
-          case 'inventory':
-            // Inventory is always available if user has access
-            return true;
-          default:
-            return true;
-        }
-      });
-    }
-
-    setState({ enabledModules: filtered, loading: false });
-  }, [userRole, config]);
 
   const enabledModules = state.enabledModules;
   const loading = state.loading;

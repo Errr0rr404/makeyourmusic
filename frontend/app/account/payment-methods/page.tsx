@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Plus, Edit, Trash2, CreditCard, ArrowLeft } from 'lucide-react';
+import { Trash2, CreditCard, ArrowLeft } from 'lucide-react';
 import ConfirmDialog from '@/components/ConfirmDialog';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';

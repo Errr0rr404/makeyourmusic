@@ -139,4 +139,6 @@ api.interceptors.response.use(
   }
 );
 
+// Export both named and default for flexibility
+export { api };
 export default api;

@@ -36,17 +36,17 @@ export default function HomePage() {
         <div className="max-w-4xl mx-auto text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 text-primary text-sm font-medium mb-8">
             <CheckCircle className="h-4 w-4" />
-            Enterprise Resource Planning System
+            Kairux - Business in Flow
           </div>
 
           <h1 className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight mb-6">
-            Streamline Your Business
-            <span className="block text-primary mt-2">With Integrated ERP</span>
+            Where Business Connects
+            <span className="block text-primary mt-2">and Flows Seamlessly</span>
           </h1>
 
           <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-12">
-            Manage your entire organization from one platform. CRM, Accounting, HR, Projects,
-            Inventory, and more - all seamlessly integrated.
+            AI-powered Cloud ERP that brings harmony to your operations. From CRM to Accounting,
+            HR to Inventory - everything flows together effortlessly.
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">

@@ -20,7 +20,7 @@ export async function POST(request: NextRequest) {
       return authResult;
     }
     const { user } = authResult;
-    if (!user || (user.role !== 'MANAGER' && user.role !== 'ADMIN')) {
+    if (!user || (user.role !== 'ADMIN')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
     

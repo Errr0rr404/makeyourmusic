@@ -1,84 +1,95 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Briefcase } from 'lucide-react';
-import { useAuthStore } from '@/lib/store/authStore';
-import Link from 'next/link';
+import { PlusCircle } from 'lucide-react';
+import api from '@/lib/api';
+import { Employee } from '@prisma/client';
+import { getColumns } from './components/columns';
+import { DataTable } from './components/data-table';
+import { EmployeeFormDialog } from './components/employee-form-dialog';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 
 export default function HRPage() {
-  const router = useRouter();
-  const { user, isAuthenticated } = useAuthStore();
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [isFormModalOpen, setFormModalOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
+
+  const fetchEmployees = async () => {
+    try {
+      const response = await api.get('/erp/hr/employees');
+      setEmployees(response.data);
+    } catch (error) {
+      console.error('Failed to fetch employees:', error);
+    }
+  };
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.push('/login');
-      return;
-    }
+    fetchEmployees();
+  }, []);
 
-    const hasAccess = ['ADMIN', 'MASTERMIND', 'HR_MANAGER'].includes(user?.role || '');
-    if (!hasAccess) {
-      router.push('/erp');
-      return;
+  const handleCreateClick = () => {
+    setSelectedEmployee(null);
+    setFormModalOpen(true);
+  };
+
+  const handleEditClick = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setFormModalOpen(true);
+  };
+
+  const handleDeleteClick = (employee: Employee) => {
+    setSelectedEmployee(employee);
+    setConfirmDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!selectedEmployee) return;
+    try {
+      await api.delete(`/erp/hr/employees/${selectedEmployee.id}`);
+      setEmployees(employees.filter((e) => e.id !== selectedEmployee.id));
+      setConfirmDialogOpen(false);
+      setSelectedEmployee(null);
+    } catch (error) {
+      console.error('Failed to delete employee:', error);
     }
-  }, [isAuthenticated, user, router]);
+  };
+
+  const handleSuccess = (updatedEmployee: Employee) => {
+    if (selectedEmployee) {
+      setEmployees(employees.map((e) => (e.id === updatedEmployee.id ? updatedEmployee : e)));
+    } else {
+      setEmployees([updatedEmployee, ...employees]);
+    }
+    setSelectedEmployee(null);
+  };
+
+  const columns = useMemo(() => getColumns({ onEdit: handleEditClick, onDelete: handleDeleteClick }), [employees]);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="border-b bg-card">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold flex items-center gap-2">
-                <Briefcase className="h-8 w-8 text-primary" />
-                Human Resources
-              </h1>
-              <p className="text-muted-foreground mt-1">Manage employees, payroll, and performance</p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" asChild>
-                <Link href="/pos/employees">Manage Employees</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/pos/payroll">Payroll</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/erp">Back to ERP</Link>
-              </Button>
-            </div>
-          </div>
-        </div>
+    <div className="container mx-auto py-10">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Human Resources</h1>
+        <Button onClick={handleCreateClick}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Add Employee
+        </Button>
       </div>
-
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Employee Management</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">Manage your team members</p>
-              <Button asChild>
-                <Link href="/pos/employees">View Employees</Link>
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Payroll</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground mb-4">Process payroll and manage pay periods</p>
-              <Button asChild>
-                <Link href="/pos/payroll">View Payroll</Link>
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <DataTable columns={columns} data={employees} />
+      <EmployeeFormDialog
+        isOpen={isFormModalOpen}
+        onClose={() => setFormModalOpen(false)}
+        onSuccess={handleSuccess}
+        employee={selectedEmployee}
+      />
+      <ConfirmDialog
+        isOpen={isConfirmDialogOpen}
+        onClose={() => setConfirmDialogOpen(false)}
+        onConfirm={handleConfirmDelete}
+        title="Are you sure?"
+        description={`This will permanently delete the employee "${selectedEmployee?.firstName} ${selectedEmployee?.lastName}".`}
+      />
     </div>
   );
 }

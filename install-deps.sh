@@ -1,8 +1,26 @@
 #!/bin/bash
 
+# Open ERP - Dependency Installation Script
+# Note: You can also use: ./start.sh --install
+
 echo "════════════════════════════════════════"
-echo "   ERP Platform - Dependency Install"
+echo "   🚀 Open ERP - Dependency Install"
 echo "════════════════════════════════════════"
+echo ""
+
+# Check Node.js version
+if ! command -v node &> /dev/null; then
+    echo "❌ Node.js is not installed. Please install Node.js 20+ first."
+    exit 1
+fi
+
+NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
+if [ "$NODE_VERSION" -lt 20 ]; then
+    echo "❌ Node.js 20+ is required. Current version: $(node -v)"
+    exit 1
+fi
+
+echo "✅ Node.js version: $(node -v)"
 echo ""
 
 # Install frontend dependencies
@@ -16,46 +34,30 @@ else
     exit 1
 fi
 
-# Install backend dependencies
-echo ""
-echo "📦 Installing backend dependencies..."
-cd ../backend
-npm install
-if [ $? -eq 0 ]; then
-    echo "✅ Backend dependencies installed"
-else
-    echo "❌ Backend installation failed"
-    exit 1
-fi
-
-# Generate Prisma client
-echo ""
-echo "🔧 Generating Prisma client..."
 cd ..
-npx prisma generate --schema=prisma/schema.prisma
-if [ $? -eq 0 ]; then
-    echo "✅ Prisma client generated"
-else
-    echo "❌ Prisma generation failed"
-    exit 1
-fi
 
 echo ""
 echo "════════════════════════════════════════"
-echo "   ✅ Installation Complete!"
+echo "✅ Installation Complete!"
 echo "════════════════════════════════════════"
 echo ""
 echo "Next steps:"
-echo "1. Configure your .env files:"
-echo "   - backend/.env"
-echo "   - frontend/.env.local"
+echo "  1. Configure your .env.local file in frontend/"
+echo "  2. Run: ./start.sh"
 echo ""
-echo "2. Run database migrations:"
-echo "   npx prisma migrate dev --schema=prisma/schema.prisma"
+echo "Or run everything at once:"
+echo "  ./start.sh --install"
+cd ..
+
 echo ""
-echo "3. Seed the database (optional):"
-echo "   cd backend && npm run seed:all"
+echo "════════════════════════════════════════"
+echo "✅ Installation Complete!"
+echo "════════════════════════════════════════"
 echo ""
-echo "4. Start the application:"
-echo "   ./start.sh"
+echo "Next steps:"
+echo "  1. Configure your .env.local file in frontend/"
+echo "  2. Run: ./start.sh"
+echo ""
+echo "Or run everything at once:"
+echo "  ./start.sh --install"
 echo ""

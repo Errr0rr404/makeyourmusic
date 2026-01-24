@@ -40,59 +40,78 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background to-primary/10 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, scale: 0.95 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.5, ease: 'easeOut' }}
-        className="w-full max-w-md"
-      >
-        <div className="text-center mb-8">
+    <div className="min-h-screen w-full lg:grid lg:grid-cols-2">
+      <div className="hidden bg-muted lg:flex items-center justify-center p-8">
+        <motion.div 
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center"
+        >
+          <Brain className="h-24 w-24 text-primary mx-auto mb-6" />
+          <h1 className="text-5xl font-bold tracking-tighter">Kairux</h1>
+          <p className="text-xl text-muted-foreground mt-4">
+            Business in Flow
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            Where business connects and flows seamlessly
+          </p>
+        </motion.div>
+      </div>
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-8">
           <motion.div
-            animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.1, 1] }}
-            transition={{ duration: 2, repeat: Infinity, repeatType: 'reverse' }}
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
           >
-            <Brain className="h-16 w-16 text-primary mx-auto" />
+            <Card>
+              <CardHeader className="text-center">
+                <CardTitle className="text-3xl font-bold">Welcome Back</CardTitle>
+                <CardDescription>Sign in to access your dashboard.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+                  {error && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="bg-destructive/10 text-destructive text-sm p-3 rounded-md text-center"
+                      role="alert"
+                    >
+                      {error}
+                    </motion.div>
+                  )}
+                  <div className="space-y-2">
+                    <FormField id="email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" icon={Mail} error={!!error} />
+                  </div>
+                  <div className="space-y-2">
+                    <FormField id="password" type="password" value={password} onChange={setPassword} placeholder="Enter your password" icon={Lock} error={!!error} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <div />
+                    <Link href="/forgot-password"
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Forgot password?
+                    </Link>
+                  </div>
+                  <Button type="submit" className="w-full h-12 text-lg" disabled={isLoading} size="lg">
+                    {isLoading ? 'Signing in...' : 'Sign In'}
+                    {!isLoading && <ArrowRight className="ml-2 h-5 w-5" />}
+                  </Button>
+                </form>
+                <div className="mt-6 text-center text-sm">
+                  Don't have an account?{' '}
+                  <Link href="/register" className="font-medium text-primary hover:underline">
+                    Sign up
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
           </motion.div>
-          <h1 className="text-4xl font-bold mt-4 tracking-tight">AI Cloud ERP</h1>
-          <p className="text-muted-foreground mt-2">The future of business management is here.</p>
         </div>
-        <Card className="shadow-2xl">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Welcome Back</CardTitle>
-            <CardDescription>Sign in to continue to your dashboard.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="bg-destructive/10 text-destructive text-sm p-3 rounded-md text-center"
-                  role="alert"
-                >
-                  {error}
-                </motion.div>
-              )}
-              <div className="space-y-2">
-                <FormField id="email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" icon={Mail} error={!!error} />
-              </div>
-              <div className="space-y-2">
-                <FormField id="password" type="password" value={password} onChange={setPassword} placeholder="Enter your password" icon={Lock} error={!!error} />
-              </div>
-              <Button type="submit" className="w-full h-12 text-lg" disabled={isLoading} size="lg">
-                {isLoading ? 'Signing in...' : 'Sign In'}
-                {!isLoading && <ArrowRight className="ml-2 h-5 w-5" />}
-              </Button>
-            </form>
-            <div className="mt-6 text-center text-sm">
-              <Link href="/register" className="text-primary hover:underline">
-                Don't have an account? Sign up
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+      </div>
     </div>
   );
 }

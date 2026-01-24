@@ -322,3 +322,42 @@ export const logout = async (req: Request, res: Response) => {
   res.clearCookie('refreshToken', { path: '/api/auth', domain: process.env.COOKIE_DOMAIN || undefined });
   res.json({ message: 'Logged out successfully' });
 };
+
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { email } = req.body;
+
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
+
+    if (user) {
+      // In a real application, you would generate a password reset token,
+      // save it to the database, and send an email to the user with a
+      // link to reset their password.
+      //
+      // For this example, we'll just return a success message.
+    }
+
+    res.json({ message: 'If a user with that email exists, a password reset link has been sent.' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { token, password } = req.body;
+
+    // In a real application, you would:
+    // 1. Find the user by the password reset token.
+    // 2. Verify that the token has not expired.
+    // 3. Hash the new password.
+    // 4. Update the user's password in the database.
+    // 5. Invalidate the password reset token.
+
+    res.json({ message: 'Password has been reset successfully.' });
+  } catch (error) {
+    next(error);
+  }
+};

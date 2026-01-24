@@ -1,121 +1,141 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, ArrowLeft } from 'lucide-react';
-import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import toast from 'react-hot-toast';
+import { Mail, ArrowLeft, Brain } from 'lucide-react';
 import api from '@/lib/api';
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [sent, setSent] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    
+    setError('');
+    setIsLoading(true);
+
+    if (!email) {
+      setError('Please enter your email address');
+      setIsLoading(false);
+      return;
+    }
+
     try {
-      await api.post('/password-reset/request', { email });
-      setSent(true);
-      toast.success('If an account exists with this email, a password reset link has been sent');
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to send reset link. Please try again.');
+      await api.post('/auth/forgot-password', { email });
+      toast.success('Password reset link sent to your email.');
+      setIsSubmitted(true);
+    } catch (err: unknown) {
+      const errorMessage = 'Failed to send password reset link. Please try again.';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      console.error('Forgot password error:', err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
-  if (sent) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+  return (
+    <div className="min-h-screen w-full lg:grid lg:grid-cols-2">
+      <div className="hidden bg-muted lg:flex items-center justify-center p-8">
+        <motion.div 
+          initial={{ opacity: 0, x: -50 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.8 }}
+          className="text-center"
         >
-          <Card className="max-w-md w-full">
-            <CardContent className="p-8 text-center">
-              <Mail className="h-16 w-16 mx-auto mb-4 text-green-500" aria-hidden="true" />
-              <h2 className="text-2xl font-bold mb-2">Check Your Email</h2>
-              <p className="text-muted-foreground mb-6" role="status" aria-live="polite">
-                We've sent a password reset link to {email}
-              </p>
-              <Link href="/login">
-                <Button className="min-h-[48px]">Back to Login</Button>
-              </Link>
-            </CardContent>
-          </Card>
+          <Brain className="h-24 w-24 text-primary mx-auto mb-6" />
+          <h1 className="text-5xl font-bold tracking-tighter">AI Cloud ERP</h1>
+          <p className="text-xl text-muted-foreground mt-4">
+            The intelligent, automated future of business management.
+          </p>
         </motion.div>
       </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-background flex items-center justify-center py-12 px-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Mail className="h-5 w-5" aria-hidden="true" />
-              Forgot Password
-            </CardTitle>
-            <CardDescription>
-              Enter your email address and we'll send you a link to reset your password
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-              <div className="space-y-2">
-                <label htmlFor="reset-email" className="text-sm font-medium">
-                  Email address <span className="text-destructive" aria-label="required">*</span>
-                </label>
-                <Input
-                  id="reset-email"
-                  type="email"
-                  placeholder="Email address"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  autoComplete="email"
-                  className="min-h-[48px] text-base"
-                  aria-required="true"
-                />
-              </div>
-              <Button 
-                type="submit" 
-                className="w-full min-h-[48px]" 
-                disabled={loading}
-                aria-busy={loading}
-              >
-                {loading ? (
-                  <>
-                    <span aria-live="polite" aria-atomic="true">Sending...</span>
-                    <span className="sr-only">Please wait</span>
-                  </>
+      <div className="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
+        <div className="w-full max-w-md space-y-8">
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+          >
+            <Card>
+              <CardHeader className="text-center">
+                <CardTitle className="text-3xl font-bold">Forgot Password</CardTitle>
+                <CardDescription>
+                  {isSubmitted 
+                    ? "Check your inbox for a password reset link."
+                    : "Enter your email to receive a password reset link."
+                  }
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isSubmitted ? (
+                  <div className="text-center">
+                    <p className="text-muted-foreground mb-6">
+                      If you don't see the email, please check your spam folder.
+                    </p>
+                    <Button asChild className="w-full">
+                      <Link href="/login">
+                        <ArrowLeft className="mr-2 h-4 w-4" />
+                        Back to Login
+                      </Link>
+                    </Button>
+                  </div>
                 ) : (
-                  'Send Reset Link'
+                  <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+                    {error && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-destructive/10 text-destructive text-sm p-3 rounded-md text-center"
+                        role="alert"
+                      >
+                        {error}
+                      </motion.div>
+                    )}
+                    <div className="space-y-2">
+                      <FormField id="email" type="email" value={email} onChange={setEmail} placeholder="you@example.com" icon={Mail} error={!!error} />
+                    </div>
+                    <Button type="submit" className="w-full h-12 text-lg" disabled={isLoading} size="lg">
+                      {isLoading ? 'Sending...' : 'Send Reset Link'}
+                    </Button>
+                  </form>
                 )}
-              </Button>
-            </form>
-            <div className="mt-4 text-center">
-              <Link href="/login">
-                <Button variant="ghost" size="sm" className="min-h-[44px]">
-                  <ArrowLeft className="h-4 w-4 mr-2" aria-hidden="true" />
-                  Back to Login
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      </motion.div>
+                {!isSubmitted && (
+                  <div className="mt-6 text-center text-sm">
+                    <Link href="/login" className="text-primary hover:underline flex items-center justify-center">
+                      <ArrowLeft className="mr-2 h-4 w-4" />
+                      Back to Login
+                    </Link>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </div>
     </div>
   );
 }
+
+const FormField = ({ id, type, value, onChange, placeholder, icon: Icon, error }: { id: string, type: string, value: string, onChange: (value: string) => void, placeholder: string, icon: React.ComponentType<any>, error: boolean }) => (
+  <div className="relative">
+    <Icon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+    <Input
+      id={id}
+      type={type}
+      required
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      placeholder={placeholder}
+      aria-invalid={error}
+      className="pl-10 h-12 text-base"
+    />
+  </div>
+);

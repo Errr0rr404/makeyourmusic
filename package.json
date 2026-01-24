@@ -1,40 +1,48 @@
 {
-  "name": "makeyourplatform",
+  "name": "kairux",
   "version": "1.0.0",
-  "description": "Full-stack e-commerce platform",
+  "description": "Kairux - Business in Flow. Modern AI-powered Cloud ERP System with Next.js",
   "private": true,
   "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "dev:backend": "cd backend && npm run dev",
     "dev:frontend": "cd frontend && npm run dev",
+    "build": "npm run build:backend && npm run build:frontend",
     "build:backend": "cd backend && npm run build",
     "build:frontend": "cd frontend && npm run build",
-    "prisma:generate": "cd backend && npm run prisma:generate",
-    "prisma:migrate": "cd backend && npm run prisma:migrate",
+    "start:backend": "cd backend && npm run start",
+    "start:frontend": "cd frontend && npm run start",
+    "prisma:generate": "prisma generate --schema=prisma/schema.prisma",
+    "prisma:migrate": "prisma migrate dev --schema=prisma/schema.prisma",
+    "prisma:migrate:deploy": "prisma migrate deploy --schema=prisma/schema.prisma",
     "prisma:seed": "cd backend && npm run prisma:seed",
-    "clean": "./scripts/cleanup.sh",
-    "clean:logs": "rm -f backend/logs/*.log && touch backend/logs/.gitkeep",
-    "clean:dist": "rm -rf backend/dist frontend/.next",
-    "clean:all": "npm run clean && rm -rf node_modules frontend/node_modules backend/node_modules"
+    "prisma:studio": "prisma studio --schema=prisma/schema.prisma",
+    "clean": "./scripts/cleanup.sh"
   },
   "keywords": [
-    "ecommerce",
-    "template",
+    "erp",
+    "enterprise-resource-planning",
     "nextjs",
     "express",
-    "stripe"
+    "typescript",
+    "prisma",
+    "postgresql",
+    "crm",
+    "inventory",
+    "payroll",
+    "accounting"
   ],
-  "author": "",
+  "author": "Your Name",
   "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
   "dependencies": {
-    "@prisma/client": "^7.2.0"
+    "@prisma/client": "^7.3.0"
   },
   "devDependencies": {
-    "@prisma/config": "^7.2.0",
-    "dotenv": "^17.2.3",
-    "prisma": "^7.2.0"
-  },
-  "directories": {
-    "doc": "docs"
+    "prisma": "^6.19.2"
   },
   "type": "commonjs"
 }
