@@ -1,0 +1,97 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Testing
+/coverage
+/playwright-report/
+/test-results/
+.playwright/
+
+# Production
+/build
+/dist
+.next/
+out/
+backend/dist/
+
+# Misc
+.DS_Store
+*.pem
+
+# Debug & Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+backend.log
+frontend.log
+backend/logs/*.log
+frontend/logs/*.log
+
+# TypeScript compiled files
+*.js.map
+*.d.ts.map
+backend/scripts/*.js
+backend/scripts/*.d.ts
+backend/scripts/*.js.map
+backend/scripts/*.d.ts.map
+
+# Local env files
+.env
+.env*.local
+.env.test
+.env.production
+backend/.env
+frontend/.env
+frontend/.env.local
+
+# Vercel
+.vercel
+
+# TypeScript
+*.tsbuildinfo
+next-env.d.ts
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Watchman
+.watchman-cookie-*
+
+# Monitor files
+monitor.pid
+monitor-output.log
+
+# Backup files
+*.bak
+*.backup
+*.config.backup.js
+prisma.config.*.js
+
+# Setup flags
+.dummy-data-created
+
+# Prisma generated client (generated at build time)
+frontend/generated/prisma/
+
+# Database backups (keep in backups/ directory, not root)
+backup_*.sql
+backup_*.sql.gz
+
+# Temporary test scripts (keep only essential scripts)
+fix-*.sh
+test-*.sh
+verify-*.sh
+setup-pos.sh
+setup-erp.sh
+
+# Cleanup plan (temporary file)
+CLEANUP_PLAN.md
+
