@@ -1,0 +1,323 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Generator for frontend (custom output location) - TypeScript
+generator client {
+  provider      = "prisma-client"
+  output        = "../frontend/generated/prisma"
+  binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
+}
+
+// Generator for backend (uses prisma-client-js for @prisma/client compatibility)
+// This generates to node_modules/.prisma/client which @prisma/client expects
+generator clientBackend {
+  provider = "prisma-client-js"
+  // No output specified - defaults to node_modules/.prisma/client
+}
+
+datasource db {
+  provider = "postgresql"
+  // url moved to prisma.config.ts per Prisma 7 requirements
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String   @map("password_hash")
+  name         String?
+  phone        String?
+  role         UserRole @default(USER)
+  avatar       String?
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+// Payroll System
+model PayPeriod {
+  id         String          @id @default(cuid())
+  name       String // e.g., "Week 1 - Jan 2024"
+  startDate  DateTime        @map("start_date")
+  endDate    DateTime        @map("end_date")
+  periodType PayPeriodType   @default(WEEKLY) @map("period_type")
+  status     PayPeriodStatus @default(DRAFT) @map("status")
+  createdAt  DateTime        @default(now()) @map("created_at")
+  updatedAt  DateTime        @map("updated_at")
+  createdBy  String?         @map("created_by") // User ID who created this period
+
+  payrolls Payroll[]
+
+  @@index([startDate])
+  @@index([endDate])
+  @@index([status])
+  @@map("pay_periods")
+}
+
+enum PayPeriodType {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+  CUSTOM
+}
+
+enum PayPeriodStatus {
+  DRAFT
+  PROCESSING
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+model Payroll {
+  id            String        @id @default(cuid())
+  payPeriodId   String        @map("pay_period_id")
+  employeeId    String        @map("employee_id")
+  regularHours  Decimal       @default(0) @map("regular_hours") @db.Decimal(10, 2)
+  overtimeHours Decimal       @default(0) @map("overtime_hours") @db.Decimal(10, 2)
+  totalHours    Decimal       @default(0) @map("total_hours") @db.Decimal(10, 2)
+  hourlyRate    Decimal       @map("hourly_rate") @db.Decimal(10, 2)
+  grossPay      Decimal       @default(0) @map("gross_pay") @db.Decimal(10, 2)
+  deductions    Decimal       @default(0) @db.Decimal(10, 2)
+  taxes         Decimal       @default(0) @db.Decimal(10, 2)
+  netPay        Decimal       @default(0) @map("net_pay") @db.Decimal(10, 2)
+  status        PayrollStatus @default(DRAFT)
+  notes         String?       @db.Text
+  paidAt        DateTime?     @map("paid_at")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  payPeriod PayPeriod   @relation(fields: [payPeriodId], references: [id], onDelete: Cascade)
+  items     PayrollItem[]
+
+  @@index([payPeriodId])
+  @@index([employeeId])
+  @@index([status])
+  @@map("payrolls")
+}
+
+enum PayrollStatus {
+  DRAFT
+  APPROVED
+  PAID
+  CANCELLED
+}
+
+model PayrollItem {
+  id          String          @id @default(cuid())
+  payrollId   String          @map("payroll_id")
+  itemType    PayrollItemType @map("item_type")
+  description String?         @db.Text
+  amount      Decimal         @db.Decimal(10, 2)
+
+  payroll   Payroll    @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+
+  @@index([payrollId])
+  @@index([itemType])
+  @@map("payroll_items")
+}
+
+enum PayrollItemType {
+  REGULAR_HOURS
+  OVERTIME_HOURS
+  BONUS
+  DEDUCTION
+}
+
+model Report {
+  id             String   @id @default(cuid())
+  reportType     String   @map("report_type")
+  title          String
+  dateRangeStart DateTime @map("date_range_start")
+  dateRangeEnd   DateTime @map("date_range_end")
+  data           Json
+  createdAt      DateTime @default(now()) @map("created_at")
+  createdBy      String?  @map("created_by")
+
+  @@index([reportType])
+  @@index([createdAt])
+  @@map("reports")
+}
+
+// ============================================
+// ERP MODULES
+// ============================================
+
+// Accounting & Finance Module
+model ChartOfAccount {
+  id            String      @id @default(cuid())
+  accountNumber String      @unique @map("account_number")
+  accountName   String      @map("account_name")
+  accountType   AccountType @map("account_type")
+  parentId      String?     @map("parent_id")
+  isActive      Boolean     @default(true) @map("is_active")
+  description   String?     @db.Text
+  createdAt     DateTime    @default(now()) @map("created_at")
+  updatedAt     DateTime    @map("updated_at")
+
+  parent         ChartOfAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
+  children       ChartOfAccount[]   @relation("AccountHierarchy")
+  journalEntries JournalEntryLine[]
+
+  @@index([accountType])
+  @@index([parentId])
+  @@map("chart_of_accounts")
+}
+
+enum AccountType {
+  ASSET
+  LIABILITY
+  EQUITY
+  REVENUE
+  EXPENSE
+}
+
+model JournalEntry {
+  id          String   @id @default(cuid())
+  entryDate   DateTime @map("entry_date")
+  description String
+  createdAt   DateTime @default(now()) @map("created_at")
+  createdBy   String   @map("created_by")
+
+  lines JournalEntryLine[]
+
+  @@index([entryDate])
+  @@map("journal_entries")
+}
+
+model JournalEntryLine {
+  id             String   @id @default(cuid())
+  journalEntryId String   @map("journal_entry_id")
+  accountId      String   @map("account_id")
+  debit          Decimal  @db.Decimal(15, 2)
+  credit         Decimal  @db.Decimal(15, 2)
+  description    String?  @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  journalEntry JournalEntry   @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
+  account      ChartOfAccount @relation(fields: [accountId], references: [id])
+
+  @@index([journalEntryId])
+  @@index([accountId])
+  @@map("journal_entry_lines")
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  invoiceNumber String        @unique
+  customerId    String?       @map("customer_id")
+  issueDate     DateTime      @map("issue_date")
+  dueDate       DateTime      @map("due_date")
+  total         Decimal       @db.Decimal(15, 2)
+  status        InvoiceStatus @default(DRAFT)
+  createdAt     DateTime      @default(now()) @map("created_at")
+  createdBy     String        @map("created_by")
+
+  items InvoiceItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@map("invoices")
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  PAID
+  OVERDUE
+  CANCELLED
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String   @map("invoice_id")
+  description String
+  quantity    Decimal  @db.Decimal(10, 2)
+  unitPrice   Decimal  @map("unit_price") @db.Decimal(15, 2)
+  total       Decimal  @db.Decimal(15, 2)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([invoiceId])
+  @@map("invoice_items")
+}
+
+// CRM Module
+model Lead {
+  id        String     @id @default(cuid())
+  name      String
+  email     String?
+  phone     String?
+  source    String?
+  status    LeadStatus @default(NEW)
+  createdAt DateTime   @default(now()) @map("created_at")
+  createdBy String?    @map("created_by")
+
+  @@index([status])
+  @@map("leads")
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  CLOSED_WON
+  CLOSED_LOST
+}
+
+model Opportunity {
+  id                String    @id @default(cuid())
+  name              String
+  stage             String
+  amount            Decimal   @db.Decimal(15, 2)
+  expectedCloseDate DateTime? @map("expected_close_date")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  createdBy         String?   @map("created_by")
+
+  @@index([stage])
+  @@map("opportunities")
+}
+
+model Project {
+  id        String        @id @default(cuid())
+  name      String
+  status    ProjectStatus @default(PLANNING)
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime      @default(now()) @map("created_at")
+  createdBy String?       @map("created_by")
+
+  tasks ProjectTask[]
+
+  @@index([status])
+  @@map("projects")
+}
+
+model ProjectTask {
+  id        String        @id @default(cuid())
+  projectId String        @map("project_id")
+  name      String
+  status    ProjectStatus @default(PLANNING)
+  dueDate   DateTime?     @map("due_date")
+  createdAt DateTime      @default(now()) @map("created_at")
+  createdBy String?       @map("created_by")
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@index([status])
+  @@map("project_tasks")
+}
+
+enum ProjectStatus {
+  PLANNING
+  IN_PROGRESS
+  COMPLETED
+  ON_HOLD
+}

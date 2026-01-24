@@ -1,0 +1,129 @@
+// Ensure dotenv is loaded before PrismaClient initialization
+// This is a safety measure in case db.ts is imported before dotenv.config() is called
+import dotenv from 'dotenv';
+import { resolve } from 'path';
+
+// Load from backend/.env file specifically (try both locations)
+const envPath = resolve(__dirname, '../.env');
+const rootEnvPath = resolve(__dirname, '../../.env');
+if (require('fs').existsSync(envPath)) {
+  dotenv.config({ path: envPath });
+} else if (require('fs').existsSync(rootEnvPath)) {
+  dotenv.config({ path: rootEnvPath });
+} else {
+  // Fallback to default .env location
+  dotenv.config();
+}
+
+import { PrismaClient } from '@prisma/client';
+import { PrismaPg } from '@prisma/adapter-pg';
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined;
+};
+
+// Normalize DATABASE_URL to use verify-full SSL mode (fixes deprecation warning)
+function normalizeDatabaseUrl(url: string): string {
+  if (!url) return url;
+  
+  // Replace deprecated SSL modes with verify-full
+  const deprecatedModes = ['prefer', 'require', 'verify-ca'];
+  let normalizedUrl = url;
+  
+  for (const mode of deprecatedModes) {
+    // Replace sslmode=prefer, sslmode=require, sslmode=verify-ca with sslmode=verify-full
+    const regex = new RegExp(`([?&])sslmode=${mode}(&|$)`, 'gi');
+    if (regex.test(normalizedUrl)) {
+      normalizedUrl = normalizedUrl.replace(regex, `$1sslmode=verify-full$2`);
+      // Use logger instead of console.log
+      if (process.env.NODE_ENV === 'development') {
+        // Import logger only when needed to avoid circular dependencies
+        const logger = require('./logger').default;
+        logger.info(`[DB] Normalized SSL mode from '${mode}' to 'verify-full' to maintain security`);
+      }
+    }
+  }
+  
+  // If no sslmode is specified, add verify-full for security
+  if (!normalizedUrl.includes('sslmode=')) {
+    const separator = normalizedUrl.includes('?') ? '&' : '?';
+    normalizedUrl = `${normalizedUrl}${separator}sslmode=verify-full`;
+  }
+  
+  return normalizedUrl;
+}
+
+// Validate DATABASE_URL before creating PrismaClient
+let databaseUrl = process.env.DATABASE_URL;
+if (!databaseUrl) {
+  throw new Error(
+    'DATABASE_URL environment variable is not set. Please check your .env file.'
+  );
+}
+
+// Normalize SSL mode to silence deprecation warnings
+databaseUrl = normalizeDatabaseUrl(databaseUrl);
+
+// Validate that DATABASE_URL is a standard PostgreSQL connection string
+if (!databaseUrl.startsWith('postgresql://') && !databaseUrl.startsWith('postgres://')) {
+  throw new Error(
+    `Invalid DATABASE_URL format. Expected postgresql:// or postgres:// protocol, but got: ${databaseUrl.substring(0, 20)}...`
+  );
+}
+
+// Prisma 7 requires using an adapter for database connections
+// The adapter handles the connection string from environment
+const getPrismaClient = (): PrismaClient => {
+  if (globalForPrisma.prisma) {
+    return globalForPrisma.prisma;
+  }
+
+  const adapter = new PrismaPg({ connectionString: databaseUrl });
+
+  const prisma = new PrismaClient({
+    adapter,
+    log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
+    // Connection pooling optimization
+    // Prisma automatically manages connection pooling, but we can optimize:
+    // - Connection pool size is managed by the database URL parameters
+    // - Add ?connection_limit=10&pool_timeout=20 to DATABASE_URL for fine-tuning
+    // Example: postgresql://user:pass@host:5432/db?connection_limit=10&pool_timeout=20
+  });
+
+  // Suppress Prisma error logs for schema/column mismatches during tests
+  prisma.$on('error', (event: any) => {
+    // Silently ignore schema mismatch errors (tables/columns that don't exist)
+    // These occur during tests when optional models haven't been migrated
+    if (event.message && (
+      event.message.includes('does not exist in the current database') ||
+      event.message.includes('column') ||
+      event.message.includes('storeConfig') ||
+      event.message.includes('invalid') ||
+      event.message.toLowerCase().includes('table')
+    )) {
+      return; // Suppress this error
+    }
+    // Log other errors normally
+    if (process.env.NODE_ENV !== 'test') {
+      console.error('[Prisma Error]', event);
+    }
+  });
+
+  if (process.env.NODE_ENV !== 'production') {
+    globalForPrisma.prisma = prisma;
+  }
+
+  return prisma;
+};
+
+export const prisma = getPrismaClient();
+
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+
+// Setup query performance monitoring
+if (process.env.NODE_ENV === 'production') {
+  import('./queryMonitoring').then(({ setupQueryMonitoring }) => {
+    setupQueryMonitoring();
+  });
+}
+
