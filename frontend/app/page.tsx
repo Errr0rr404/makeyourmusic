@@ -57,7 +57,7 @@ export default function HomePage() {
               </Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="text-lg px-8">
-              <Link href="/register">Get Started</Link>
+              <Link href="/about">About Us</Link>
             </Button>
           </div>
 

@@ -1,9 +1,10 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// Use relative path for API calls since API routes are now in the same Next.js app
-// No need for NEXT_PUBLIC_API_URL - API routes are served from the same domain
+// The backend is a separate service, so we need to use the full URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: `${API_URL}/api`,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -86,7 +87,7 @@ api.interceptors.response.use(
 
           try {
             // Attempt to refresh the token using the refresh token cookie
-            const response = await axios.post('/api/auth/refresh', {}, {
+            const response = await axios.post(`${API_URL}/api/auth/refresh`, {}, {
               withCredentials: true,
             });
 

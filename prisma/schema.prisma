@@ -12,7 +12,7 @@ generator client {
 // This generates to node_modules/.prisma/client which @prisma/client expects
 generator clientBackend {
   provider = "prisma-client-js"
-  // No output specified - defaults to node_modules/.prisma/client
+  output   = "../backend/node_modules/.prisma/client"
 }
 
 datasource db {

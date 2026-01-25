@@ -157,7 +157,7 @@ export default function ERPDashboard() {
                 <h2 className="text-2xl font-bold mb-4">Recent Users</h2>
                 <Card>
                   <CardContent className="p-4 space-y-4">
-                    {stats?.recentUsers.map(activity => (
+                    {stats?.recentUsers?.map(activity => (
                       <div key={activity.id} className="flex items-start gap-3">
                         <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0 mt-1">
                           <ActivityIcon type={activity.role} />
@@ -183,7 +183,7 @@ export default function ERPDashboard() {
               <Card>
                 <CardContent className="p-6 text-center">
                   <Brain className="h-16 w-16 text-primary mx-auto mb-4" />
-                  <h3 className="text-xl font-semibold mb-2">AI-Powered Insights</h3>
+                  <h3 className="text-xl font-semibold mb-2">AI Insights</h3>
                   <p className="text-muted-foreground mb-6">
                     Get intelligent recommendations and predictions for your business
                   </p>
@@ -228,4 +228,3 @@ export default function ERPDashboard() {
     </>
   );
 }
-

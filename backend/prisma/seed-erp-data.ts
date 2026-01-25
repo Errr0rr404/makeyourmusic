@@ -28,21 +28,10 @@ const daysAgo = (days: number) => {
   return date;
 };
 
-const monthsAgo = (months: number) => {
-  const date = new Date();
-  date.setMonth(date.getDate() - months);
-  return date;
-};
-
 export async function seedERPData() {
   console.log('🏢 Seeding ERP data for TechVision Consulting...');
 
-  // Skip if models don't exist
-  if (!prisma.lead || !prisma.chartOfAccount) {
-    console.log('⚠️  ERP models not found, skipping ERP seed data');
-    return;
-  }
-
+  // No check needed as we ensure schema is in sync
   try {
     // ============================================
     // CRM DATA
@@ -112,6 +101,8 @@ export async function seedERPData() {
 
     for (let i = 0; i < 120; i++) {
       const company = leadCompanies[i % leadCompanies.length];
+      if (!company) continue;
+      
       const status = leadStatuses[Math.floor(Math.random() * leadStatuses.length)];
 
       try {
@@ -156,16 +147,19 @@ export async function seedERPData() {
       const stage = stages[Math.floor(Math.random() * stages.length)];
       const value = [150000, 250000, 500000, 750000, 1000000, 1500000, 2000000][Math.floor(Math.random() * 7)];
       const probability = stage === 'CLOSED_WON' ? 100 : stage === 'CLOSED_LOST' ? 0 : [25, 50, 75, 90][Math.floor(Math.random() * 4)];
+      
+      const company = leadCompanies[i % leadCompanies.length];
+      if (!company) continue;
 
       try {
         await prisma.opportunity.create({
           data: {
-            name: `${opportunityNames[i % opportunityNames.length]} - ${leadCompanies[i % leadCompanies.length].name}`,
+            name: `${opportunityNames[i % opportunityNames.length]} - ${company.name}`,
             stage,
             value,
             probability,
             expectedCloseDate: new Date(2025, Math.floor(Math.random() * 12), Math.floor(Math.random() * 28) + 1),
-            description: `Opportunity for ${opportunityNames[i % opportunityNames.length].toLowerCase()} services`,
+            description: `Opportunity for ${(opportunityNames[i % opportunityNames.length] || 'services').toLowerCase()} services`,
             assignedTo: null,
             createdAt: daysAgo(Math.floor(Math.random() * 120)),
           },

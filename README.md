@@ -1,5 +1,9 @@
 # Kairux - Business in Flow
 
+<p align="center">
+  <img src="frontend/public/kairux-logo.svg" alt="Kairux Logo" width="320" height="85" />
+</p>
+
 > **Where business connects and flows seamlessly**
 
 A modern, AI-powered Cloud ERP system built with Next.js, TypeScript, and PostgreSQL. Kairux provides comprehensive business management with real-time collaboration, intelligent analytics, and enterprise-grade security.
@@ -213,6 +217,24 @@ open-erp/
    - Frontend: http://localhost:3000
    - Backend API: http://localhost:3001/api
    - API Health: http://localhost:3001/api/health
+
+## 🔑 Test Credentials
+
+Use these credentials to test different role-based features in the ERP system.
+
+| Role | Email | Password |
+|------|-------|----------|
+| **Admin** | `admin@company.com` | `Admin123!!` |
+| **CFO** | `cfo@company.com` | `Cfo123!!` |
+| **HR Manager** | `hr@company.com` | `HrManager123!!` |
+| **Sales Manager** | `sales@company.com` | `SalesManager123!!` |
+| **Operations Manager** | `ops@company.com` | `OpsManager123!!` |
+| **Project Manager** | `pm@company.com` | `ProjectManager123!!` |
+| **Analyst** | `analyst@company.com` | `Analyst123!!` |
+| **Mastermind (AI)** | `mastermind@kairux.ai` | `Mastermind123!!` |
+| **Manager** | `manager@company.com` | `Manager123!!` |
+| **Employee** | `user@company.com` | `User123!!` |
+| **Customer** | `customer@client.com` | `Customer123!!` |
 
 ## 📦 Available Scripts
 

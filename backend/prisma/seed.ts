@@ -40,7 +40,8 @@ async function main() {
     create: {
       email: 'admin@company.com',
       passwordHash: adminPassword,
-      name: 'Admin User',
+      firstName: 'System',
+      lastName: 'Administrator',
       role: 'ADMIN',
     },
   });
@@ -53,8 +54,9 @@ async function main() {
     create: {
       email: 'cfo@company.com',
       passwordHash: cfoPassword,
-      name: 'Chief Financial Officer',
-      role: 'ADMIN',
+      firstName: 'Chief',
+      lastName: 'Financial Officer',
+      role: 'CFO',
     },
   });
 
@@ -66,8 +68,9 @@ async function main() {
     create: {
       email: 'hr@company.com',
       passwordHash: hrPassword,
-      name: 'HR Manager',
-      role: 'ADMIN',
+      firstName: 'HR',
+      lastName: 'Manager',
+      role: 'HR_MANAGER',
     },
   });
 
@@ -79,8 +82,9 @@ async function main() {
     create: {
       email: 'sales@company.com',
       passwordHash: salesPassword,
-      name: 'Sales Manager',
-      role: 'ADMIN',
+      firstName: 'Sales',
+      lastName: 'Manager',
+      role: 'SALES_MANAGER',
     },
   });
 
@@ -92,8 +96,9 @@ async function main() {
     create: {
       email: 'ops@company.com',
       passwordHash: opsPassword,
-      name: 'Operations Manager',
-      role: 'ADMIN',
+      firstName: 'Operations',
+      lastName: 'Manager',
+      role: 'OPERATIONS_MANAGER',
     },
   });
 
@@ -105,8 +110,9 @@ async function main() {
     create: {
       email: 'pm@company.com',
       passwordHash: pmPassword,
-      name: 'Project Manager',
-      role: 'ADMIN',
+      firstName: 'Project',
+      lastName: 'Manager',
+      role: 'PROJECT_MANAGER',
     },
   });
 
@@ -118,7 +124,64 @@ async function main() {
     create: {
       email: 'analyst@company.com',
       passwordHash: analystPassword,
-      name: 'Business Analyst',
+      firstName: 'Business',
+      lastName: 'Analyst',
+      role: 'ANALYST',
+    },
+  });
+
+  // Create Customer user
+  const customerPassword = await hashPassword('Customer123!!');
+  await prisma.user.upsert({
+    where: { email: 'customer@client.com' },
+    update: {},
+    create: {
+      email: 'customer@client.com',
+      passwordHash: customerPassword,
+      firstName: 'John',
+      lastName: 'Customer',
+      role: 'CUSTOMER',
+    },
+  });
+
+  // Create Mastermind user
+  const mastermindPassword = await hashPassword('Mastermind123!!');
+  await prisma.user.upsert({
+    where: { email: 'mastermind@kairux.ai' },
+    update: {},
+    create: {
+      email: 'mastermind@kairux.ai',
+      passwordHash: mastermindPassword,
+      firstName: 'AI',
+      lastName: 'Mastermind',
+      role: 'MASTERMIND',
+    },
+  });
+
+  // Create Manager user
+  const managerPassword = await hashPassword('Manager123!!');
+  await prisma.user.upsert({
+    where: { email: 'manager@company.com' },
+    update: {},
+    create: {
+      email: 'manager@company.com',
+      passwordHash: managerPassword,
+      firstName: 'General',
+      lastName: 'Manager',
+      role: 'MANAGER',
+    },
+  });
+
+  // Create standard User
+  const userPassword = await hashPassword('User123!!');
+  await prisma.user.upsert({
+    where: { email: 'user@company.com' },
+    update: {},
+    create: {
+      email: 'user@company.com',
+      passwordHash: userPassword,
+      firstName: 'Regular',
+      lastName: 'Employee',
       role: 'USER',
     },
   });

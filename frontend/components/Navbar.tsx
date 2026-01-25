@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react';
 import { useAuthStore } from '@/lib/store/authStore';
 import { ThemeToggle } from './ThemeToggle';
 import { Button } from './ui/button';
-import { Menu, X, User, Home, LayoutDashboard, Settings, Search } from 'lucide-react';
+import { Menu, X, User, LayoutDashboard, Settings, Search } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import GlobalSearch from './GlobalSearch';
 
@@ -27,7 +27,7 @@ export default function Navbar() {
 
   return (
     <nav 
-      className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+      className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60"
       role="navigation"
       aria-label="Main navigation"
     >
@@ -39,13 +39,19 @@ export default function Navbar() {
               className="flex items-center space-x-2 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-md p-1"
               aria-label={`${storeName} home page`}
             >
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center" aria-hidden="true">
-                <Home className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="font-bold text-xl bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
+              <img
+                src="/kairux-logo.svg"
+                alt="Kairux Logo"
+                className="h-8 w-auto mr-2 hidden dark:block"
+                style={{ maxHeight: 32 }}
+                width={120}
+                height={32}
+                loading="eager"
+                aria-hidden="true"
+              />
+              <span className="font-bold text-xl bg-linear-to-r from-primary to-primary/60 bg-clip-text text-transparent">
                 {storeName}
               </span>
-              <span className="text-xs text-muted-foreground hidden sm:inline">Business in Flow</span>
             </Link>
           </div>
 
@@ -71,7 +77,6 @@ export default function Navbar() {
             ) : (
               <div className="hidden md:flex items-center space-x-2">
                 <Button asChild variant="ghost" size="sm"><Link href="/login">Login</Link></Button>
-                <Button asChild size="sm"><Link href="/register">Sign Up</Link></Button>
               </div>
             )}
 
@@ -109,7 +114,6 @@ export default function Navbar() {
               ) : (
                 <>
                   <Button asChild className="w-full justify-start" variant="ghost"><Link href="/login" onClick={() => setMobileMenuOpen(false)}>Login</Link></Button>
-                  <Button asChild className="w-full justify-start"><Link href="/register" onClick={() => setMobileMenuOpen(false)}>Sign Up</Link></Button>
                 </>
               )}
             </div>

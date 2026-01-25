@@ -26,6 +26,15 @@ export const metadata: Metadata = {
     title: 'Kairux - Business in Flow',
     description: 'Modern AI-powered Cloud ERP system for seamless business management',
     siteName: 'Kairux',
+    images: [
+      {
+        url: '/kairux-logo.svg',
+        width: 800,
+        height: 600,
+        alt: 'Kairux - Business in Flow',
+        type: 'image/svg+xml',
+      },
+    ],
   },
   robots: {
     index: true,
@@ -42,11 +51,6 @@ export const viewport = {
   viewportFit: 'cover' as const,
 };
 
-export const themeColor = [
-  { media: '(prefers-color-scheme: light)', color: '#ffffff' },
-  { media: '(prefers-color-scheme: dark)', color: '#0f172a' },
-];
-
 export default function RootLayout({
   children,
 }: {
@@ -54,6 +58,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
+      <head>
+        <title>Kairux - Business in Flow</title>
+        <link rel="icon" href="/kairux-icon.svg" type="image/svg+xml" />
+        <link rel="alternate icon" href="/favicon.ico" type="image/x-icon" />
+        <meta property="og:image" content="/kairux-logo.svg" />
+        <meta property="og:image:type" content="image/svg+xml" />
+        <meta property="og:image:alt" content="Kairux - Business in Flow" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content="/kairux-logo.svg" />
+      </head>
       <body className={inter.className}>
         <ErrorBoundary>
           <ThemeProvider>

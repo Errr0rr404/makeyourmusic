@@ -209,6 +209,17 @@ export async function seedComprehensiveERP() {
   }
   console.log(`✅ ProjectTasks: ${tasks.length}`)
 
+  // Customers
+  const customers = [
+    { id: 'customer-finserve', name: 'FinServe Inc', email: 'billing@finserve.com', phone: '+1 555-9000' },
+    { id: 'customer-acme', name: 'Acme Corporation', email: 'accounting@acme.com', phone: '+1 555-8000' },
+    { id: 'customer-techstart', name: 'TechStart IO', email: 'hello@techstart.io', phone: '+1 555-7000' },
+  ]
+  for (const customer of customers) {
+    await prisma.customer.upsert({ where: { id: customer.id }, update: customer, create: customer })
+  }
+  console.log(`✅ Customers: ${customers.length}`)
+
   // Invoices
   const invoices = [
     {

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="180" height="48" viewBox="0 0 180 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <g>
+    <path d="M32 12c6.627 0 12 5.373 12 12s-5.373 12-12 12-12-5.373-12-12 5.373-12 12-12z" fill="#38BDF8"/>
+    <path d="M32 36c-6.627 0-12-5.373-12-12 0-2.21.895-4.21 2.343-5.657C24.79 16.895 26.79 16 29 16c2.21 0 4.21.895 5.657 2.343C36.105 20.79 37 22.79 37 25c0 2.21-.895 4.21-2.343 5.657C33.21 32.105 31.21 33 29 33c-2.21 0-4.21-.895-5.657-2.343C21.895 29.21 21 27.21 21 25z" fill="#06B6D4"/>
+    <circle cx="32" cy="24" r="5" fill="#FBBF24"/>
+    <circle cx="32" cy="24" r="2" fill="#fff"/>
+  </g>
+  <text x="56" y="32" font-family="Inter, Arial, sans-serif" font-size="28" font-weight="bold" fill="#F1F5F9">Kairux</text>
+  <text x="56" y="44" font-family="Inter, Arial, sans-serif" font-size="12" fill="#38BDF8">Business in Flow</text>
+  <metadata>
+    <rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+      <rdf:Description rdf:about="https://kairux.ai/">
+        <dc:title xmlns:dc="http://purl.org/dc/elements/1.1/">Kairux - Business in Flow</dc:title>
+        <dc:description xmlns:dc="http://purl.org/dc/elements/1.1/">Modern AI-powered Cloud ERP system</dc:description>
+        <dc:creator xmlns:dc="http://purl.org/dc/elements/1.1/">Kairux Team</dc:creator>
+        <dc:source xmlns:dc="http://purl.org/dc/elements/1.1/">https://kairux.ai/</dc:source>
+      </rdf:Description>
+    </rdf:RDF>
+  </metadata>
+</svg>

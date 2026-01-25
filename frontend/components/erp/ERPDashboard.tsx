@@ -24,22 +24,8 @@ interface ChartData {
 const COLORS = ['#10b981', '#3b82f6', '#8b5cf6', '#f59e0b', '#ef4444', '#06b6d4'];
 
 export default function ERPDashboard() {
-  const [stats, setStats] = useState<DashboardStats>({
-    revenue: { total: 0, change: 0, trend: 'up' },
-    expenses: { total: 0, change: 0, trend: 'up' },
-    netIncome: { total: 0, change: 0, trend: 'up' },
-    customers: { total: 0, change: 0, trend: 'up' },
-    orders: { total: 0, change: 0, trend: 'up' },
-    inventory: { total: 0, change: 0, trend: 'up' },
-  });
-
-  const [chartData, setChartData] = useState<ChartData>({
-    revenueByMonth: [],
-    salesByCategory: [],
-    customerGrowth: [],
-    topProducts: [],
-  });
-
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [chartData, setChartData] = useState<ChartData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -50,6 +36,7 @@ export default function ERPDashboard() {
     try {
       // In production, fetch real data from API
       // For now, using sample data to demonstrate functionality
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate network delay
 
       setStats({
         revenue: { total: 125000, change: 12.5, trend: 'up' },
@@ -104,6 +91,14 @@ export default function ERPDashboard() {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-lg">Loading dashboard...</div>
+      </div>
+    );
+  }
+
+  if (!stats || !chartData) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <div className="text-lg text-red-500">Failed to load dashboard data.</div>
       </div>
     );
   }

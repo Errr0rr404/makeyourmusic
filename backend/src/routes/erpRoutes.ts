@@ -7,6 +7,7 @@ import productRoutes from './productRoutes';
 import employeeRoutes from './employeeRoutes';
 import analyticsRoutes from './analyticsRoutes';
 import customFieldRoutes from './customFieldRoutes';
+import approvalRoutes from './approvalRoutes'; // Import approval routes
 import * as leadConversionController from '../controllers/leadConversionController';
 
 const router = express.Router();
@@ -28,6 +29,9 @@ router.use('/inventory/products', productRoutes);
 
 // HR
 router.use('/hr/employees', employeeRoutes);
+
+// Approvals
+router.use('/approvals', approvalRoutes); // Mount approval routes
 
 // Extensibility
 router.use('/custom-fields', customFieldRoutes);
