@@ -111,6 +111,11 @@ export default function AnimatedBackground() {
       'rgba(236, 72, 153, 0.8)',  // Pink
     ];
 
+    const getRandomColor = (): string => {
+      const index = Math.floor(Math.random() * colors.length);
+      return colors[index] ?? colors[0]; // Fallback to first color if undefined
+    };
+
     for (let i = 0; i < particleCount; i++) {
       particles.push({
         x: Math.random() * canvas.width,
@@ -118,7 +123,7 @@ export default function AnimatedBackground() {
         vx: (Math.random() - 0.5) * 0.5,
         vy: (Math.random() - 0.5) * 0.5,
         size: Math.random() * 3 + 1,
-        color: colors[Math.floor(Math.random() * colors.length)],
+        color: getRandomColor(),
         life: Math.random() * 100,
         maxLife: 100 + Math.random() * 200,
       });
