@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Lead, LeadStatus, CustomField, CustomFieldValue } from '@prisma/client';
+import { Lead, LeadStatus, CustomField, CustomFieldValue } from '@/generated/prisma';
 import api from '@/lib/api';
 
 type CustomFieldWithValues = CustomField & { value?: string };

@@ -18,7 +18,7 @@ export class StripeGateway extends PaymentGateway {
       throw new Error('Stripe API key is required but not provided');
     }
     this.stripe = new Stripe(apiKey, {
-      apiVersion: '2025-12-15.clover',
+      apiVersion: '2025-08-27.basil',
     });
   }
 

@@ -39,7 +39,7 @@ export const uploadImageBuffer = async (
         public_id: filename ? `${folder}/${filename}` : undefined,
         overwrite: false,
       },
-      (error, result) => {
+      (error: any, result: any) => {
         if (error) {
           reject(error);
         } else if (result) {

@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as analyticsService from '../services/analyticsService';
 
-export const getDashboardAnalytics = async (req: Request, res: Response) => {
+export const getDashboardAnalytics = async (_req: Request, res: Response) => {
   try {
     const analytics = await analyticsService.getDashboardAnalytics();
     res.json(analytics);

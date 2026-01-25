@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import * as employeeService from '../services/employeeService';
 
-export const getEmployees = async (req: Request, res: Response) => {
+export const getEmployees = async (_req: Request, res: Response) => {
   try {
     const employees = await employeeService.getAllEmployees();
     res.json(employees);
@@ -19,11 +19,12 @@ export const createEmployee = async (req: Request, res: Response) => {
   }
 };
 
-export const updateEmployee = async (req: Request, res: Response) => {
+export const updateEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
-    const updatedEmployee = await employeeService.updateEmployee(req.params.id, req.body);
+    const updatedEmployee = await employeeService.updateEmployee(String(req.params.id), req.body);
     if (!updatedEmployee) {
-      return res.status(404).json({ message: 'Employee not found' });
+      res.status(404).json({ message: 'Employee not found' });
+      return;
     }
     res.json(updatedEmployee);
   } catch (error) {
@@ -31,11 +32,12 @@ export const updateEmployee = async (req: Request, res: Response) => {
   }
 };
 
-export const deleteEmployee = async (req: Request, res: Response) => {
+export const deleteEmployee = async (req: Request, res: Response): Promise<void> => {
   try {
-    const deleted = await employeeService.deleteEmployee(req.params.id);
+    const deleted = await employeeService.deleteEmployee(String(req.params.id));
     if (!deleted) {
-      return res.status(404).json({ message: 'Employee not found' });
+      res.status(404).json({ message: 'Employee not found' });
+      return;
     }
     res.status(204).send();
   } catch (error) {

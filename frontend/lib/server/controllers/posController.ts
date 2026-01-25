@@ -24,7 +24,19 @@ enum PaymentStatus {
 }
 
 // Type workaround for Prisma client with POS models
-const prismaClient = prisma as any;
+interface PrismaModel {
+  findUnique: (args: Record<string, unknown>) => Promise<Record<string, unknown> | null>;
+  findFirst: (args: Record<string, unknown>) => Promise<Record<string, unknown> | null>;
+  findMany: (args: Record<string, unknown>) => Promise<Record<string, unknown>[]>;
+  create: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  update: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  delete: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+  updateMany: (args: Record<string, unknown>) => Promise<{ count: number }>;
+  count: (args?: Record<string, unknown>) => Promise<number>;
+  aggregate: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
+}
+
+const prismaClient = prisma as unknown as Record<string, PrismaModel>;
 
 // Generate unique order number
 const generateOrderNumber = (): string => {
@@ -147,7 +159,7 @@ export const getActiveSession = async (req: NextRequest): Promise<NextResponse> 
     _sum: {
       cashAmount: true,
     },
-  });
+  }) as { _sum: { cashAmount: number | null } };
 
   const expectedCash = Number(session.openingBalance) + (Number(cashTransactions._sum.cashAmount) || 0);
 
@@ -195,9 +207,9 @@ export const getHeldOrders = async (req: NextRequest): Promise<NextResponse> => 
     return NextResponse.json({ heldOrders: [] });
   }
 
-  let heldOrders: any[] = [];
+  let heldOrders: unknown[] = [];
   try {
-    heldOrders = session.heldOrders ? JSON.parse(session.heldOrders) : [];
+    heldOrders = session.heldOrders ? JSON.parse(session.heldOrders as string) : [];
   } catch {
     heldOrders = [];
   }
@@ -225,7 +237,7 @@ export const searchProducts = async (req: NextRequest): Promise<NextResponse> =>
   const search = getStringQuery(req, 'search');
   const limit = getNumberQuery(req, 'limit', 50);
 
-  const where: any = {
+  const where: Record<string, unknown> = {
     active: true,
   };
 
@@ -394,7 +406,12 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
 
   // Validate and calculate totals
   let subtotal = 0;
-  const orderItems: any[] = [];
+  const orderItems: {
+    productId: string;
+    quantity: number;
+    priceAtPurchase: number;
+    variantId: string | null;
+  }[] = [];
 
   for (const item of items) {
     if (!item.productId || !item.quantity || item.quantity <= 0) {
@@ -458,26 +475,28 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
 
   // Create order and transaction in a transaction
   const result = await prisma.$transaction(async (tx) => {
+    const txSafe = tx as unknown as Record<string, PrismaModel>;
+    
     // Generate unique order number
     let orderNumber = generateOrderNumber();
-    let exists = await tx.order.findUnique({ where: { orderNumber } as any });
+    let exists = await txSafe.order.findUnique({ where: { orderNumber } });
     while (exists) {
       orderNumber = generateOrderNumber();
-      exists = await tx.order.findUnique({ where: { orderNumber } as any });
+      exists = await txSafe.order.findUnique({ where: { orderNumber } });
     }
 
     // Create order
-    const order = await tx.order.create({
+    const order = await txSafe.order.create({
       data: {
         userId: managerId, // Use manager as user for POS orders
-        orderNumber: orderNumber as any,
-        subtotal: subtotal as any,
-        discount: discountAmount as any,
-        shippingCost: 0 as any,
-        totalAmount: total as any,
+        orderNumber: orderNumber,
+        subtotal: subtotal,
+        discount: discountAmount,
+        shippingCost: 0,
+        totalAmount: total,
         status: OrderStatus.DELIVERED, // POS orders are immediately delivered
-        deliveryMethod: 'PICKUP' as any,
-        paymentTiming: 'PAY_NOW' as any,
+        deliveryMethod: 'PICKUP',
+        paymentTiming: 'PAY_NOW',
         billingAddress: {
           name: customerName || 'Walk-in Customer',
           line1: 'In-Store Purchase',
@@ -485,8 +504,8 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
           state: 'N/A',
           postal_code: 'N/A',
           country: 'N/A',
-        } as any,
-        source: 'POS' as any,
+        },
+        source: 'POS',
         posSessionId: session.id,
         orderItems: {
           create: orderItems,
@@ -496,48 +515,41 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
             status: OrderStatus.DELIVERED,
             note: 'POS transaction completed',
           },
-        } as any,
-      } as any,
-      include: {
-        orderItems: {
-          include: {
-            product: true,
-          },
         },
       },
-    });
+    }) as unknown as { id: string };
 
     // Create POS transaction
-    const posTransaction = await (tx as any).posTransaction.create({
+    const posTransaction = await txSafe.posTransaction.create({
       data: {
         sessionId: session.id,
         orderId: order.id,
         transactionType: 'SALE',
         paymentMethod: paymentMethod,
-        subtotal: subtotal as any,
-        tax: taxAmount as any,
-        discount: discountAmount as any,
-        total: total as any,
-        cashAmount: paymentMethod === 'CASH' || paymentMethod === 'MIXED' ? (parseFloat(String(cashAmount)) || 0) as any : 0,
-        cardAmount: paymentMethod === 'CARD' || paymentMethod === 'MIXED' ? (parseFloat(String(cardAmount)) || 0) as any : 0,
+        subtotal: subtotal,
+        tax: taxAmount,
+        discount: discountAmount,
+        total: total,
+        cashAmount: paymentMethod === 'CASH' || paymentMethod === 'MIXED' ? (parseFloat(String(cashAmount)) || 0) : 0,
+        cardAmount: paymentMethod === 'CARD' || paymentMethod === 'MIXED' ? (parseFloat(String(cardAmount)) || 0) : 0,
         customerEmail: customerEmail || null,
         customerName: customerName || null,
         notes: notes || null,
       },
-    });
+    }) as unknown as { id: string };
 
     // Update order with posTransactionId
-    await tx.order.update({
+    await txSafe.order.update({
       where: { id: order.id },
       data: {
         posTransactionId: posTransaction.id,
-      } as any,
+      },
     });
 
     // Update product stock
     await Promise.all(
       orderItems.map((item) =>
-        tx.product.update({
+        txSafe.product.update({
           where: { id: item.productId },
           data: {
             stock: {
@@ -551,19 +563,19 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
     // Create payment record
     // For MIXED payments, use STRIPE as the primary method but store breakdown in gatewayResponse
     const paymentMethodForRecord = paymentMethod === 'CASH' ? 'CASH' : 'STRIPE';
-    await (tx as any).payment.create({
+    await txSafe.payment.create({
       data: {
         orderId: order.id,
         paymentMethod: paymentMethodForRecord,
-        amount: total as any,
+        amount: total,
         currency: 'usd',
-        status: PaymentStatus.SUCCEEDED,
+        status: PaymentStatus.COMPLETED,
         gatewayResponse: {
           posTransaction: true,
           posPaymentMethod: paymentMethod,
           cashAmount: paymentMethod === 'CASH' || paymentMethod === 'MIXED' ? parseFloat(String(cashAmount)) : null,
           cardAmount: paymentMethod === 'CARD' || paymentMethod === 'MIXED' ? parseFloat(String(cardAmount)) : null,
-        } as any,
+        },
       },
     });
 
@@ -662,7 +674,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     },
   });
 
-  const todaySales = todayTransactions.reduce((sum: number, t: any) => sum + Number(t.total), 0);
+  const todaySales = todayTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total), 0);
   const todayCount = todayTransactions.length;
   const todayAvgOrder = todayCount > 0 ? todaySales / todayCount : 0;
 
@@ -677,7 +689,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     },
   });
 
-  const yesterdaySales = yesterdayTransactions.reduce((sum: number, t: any) => sum + Number(t.total), 0);
+  const yesterdaySales = yesterdayTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total), 0);
   const yesterdayCount = yesterdayTransactions.length;
   const yesterdayAvgOrder = yesterdayCount > 0 ? yesterdaySales / yesterdayCount : 0;
 
@@ -696,21 +708,21 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     },
   });
 
-  const last30DaysSales = last30DaysTransactions.reduce((sum: number, t: any) => sum + Number(t.total), 0);
-  const successfulTransactions = last30DaysTransactions.filter((t: any) => t.total > 0);
-  const successfulAmount = successfulTransactions.reduce((sum: number, t: any) => sum + Number(t.total), 0);
+  const last30DaysSales = last30DaysTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total), 0);
+  const successfulTransactions = last30DaysTransactions.filter((t: Record<string, unknown>) => Number(t.total) > 0);
+  const successfulAmount = successfulTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total), 0);
 
   // Payment methods breakdown
   const paymentMethods = {
     CASH: last30DaysTransactions
-      .filter((t: any) => t.paymentMethod === 'CASH')
-      .reduce((sum: number, t: any) => sum + Number(t.cashAmount || t.total || 0), 0),
+      .filter((t: Record<string, unknown>) => t.paymentMethod === 'CASH')
+      .reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.cashAmount || t.total || 0), 0),
     CARD: last30DaysTransactions
-      .filter((t: any) => t.paymentMethod === 'CARD')
-      .reduce((sum: number, t: any) => sum + Number(t.cardAmount || t.total || 0), 0),
+      .filter((t: Record<string, unknown>) => t.paymentMethod === 'CARD')
+      .reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.cardAmount || t.total || 0), 0),
     MIXED: last30DaysTransactions
-      .filter((t: any) => t.paymentMethod === 'MIXED')
-      .reduce((sum: number, t: any) => sum + Number(t.total || 0), 0),
+      .filter((t: Record<string, unknown>) => t.paymentMethod === 'MIXED')
+      .reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total || 0), 0),
   };
 
   // Top products (last 30 days)
@@ -729,7 +741,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
   });
 
   const relevantOrderIds = relevantTransactions
-    .map((t: any) => t.orderId)
+    .map((t: Record<string, unknown>) => t.orderId as string)
     .filter((id: string | null) => id !== null);
 
   const orderItems = relevantOrderIds.length > 0
@@ -744,10 +756,11 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     : [];
 
   const productMap = new Map<string, { quantity: number; revenue: number; name: string }>();
-  orderItems.forEach((item: any) => {
-    const productId = item.productId;
-    const quantity = item.quantity;
-    const price = Number(item.product.price);
+  (orderItems as Record<string, unknown>[]).forEach((item) => {
+    const productId = item.productId as string;
+    const quantity = item.quantity as number;
+    const product = item.product as { price: number; name: string };
+    const price = Number(product.price);
     const revenue = quantity * price;
 
     if (productMap.has(productId)) {
@@ -758,7 +771,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
       productMap.set(productId, {
         quantity,
         revenue,
-        name: item.product.name,
+        name: product.name,
       });
     }
   });
@@ -821,7 +834,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
       },
     });
     
-    const daySales = dayTransactions.reduce((sum: number, t: any) => sum + Number(t.total || 0), 0);
+    const daySales = dayTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total || 0), 0);
     last7Days.push({
       date: dayStart.toISOString().split('T')[0],
       sales: daySales,
@@ -850,7 +863,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
       },
     });
     
-    const hourSales = hourTransactions.reduce((sum: number, t: any) => sum + Number(t.total || 0), 0);
+    const hourSales = hourTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total || 0), 0);
     last24Hours.push({
       hour: hour,
       sales: hourSales,
@@ -876,7 +889,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
       },
     });
     
-    const monthSales = monthTransactions.reduce((sum: number, t: any) => sum + Number(t.total || 0), 0);
+    const monthSales = monthTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total || 0), 0);
     last12Months.push({
       month: monthStart.toISOString().slice(0, 7), // YYYY-MM format
       sales: monthSales,
@@ -907,14 +920,17 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     topProducts,
     lowStock: lowStockProducts,
     recentTransactions: recentTransactions
-      .filter((t: any) => t.order) // Filter out transactions without orders
-      .map((t: any) => ({
-        id: t.id,
-        orderNumber: t.order.orderNumber,
-        total: t.total,
-        paymentMethod: t.paymentMethod,
-        createdAt: t.createdAt,
-      })),
+      .filter((t: Record<string, unknown>) => t.order) // Filter out transactions without orders
+      .map((t: Record<string, unknown>) => {
+        const order = t.order as { orderNumber: string };
+        return {
+          id: t.id,
+          orderNumber: order.orderNumber,
+          total: t.total,
+          paymentMethod: t.paymentMethod,
+          createdAt: t.createdAt,
+        };
+      }),
     charts: {
       last7Days,
       last24Hours,
@@ -965,7 +981,7 @@ export const getTransactionHistory = async (req: NextRequest): Promise<NextRespo
   );
   const sessionId = getStringQuery(req, 'sessionId');
 
-  const where: any = {};
+  const where: Record<string, unknown> = {};
   if (sessionId) {
     where.sessionId = sessionId;
   } else {
@@ -974,7 +990,7 @@ export const getTransactionHistory = async (req: NextRequest): Promise<NextRespo
       where: { managerId },
       select: { id: true },
     });
-    where.sessionId = { in: sessions.map((s: any) => s.id) };
+    where.sessionId = { in: sessions.map((s: Record<string, unknown>) => s.id) };
   }
 
   const [transactions, total] = await Promise.all([
@@ -1067,11 +1083,19 @@ export const getCustomers = async (req: NextRequest): Promise<NextResponse> => {
   });
 
   // Group by customer email
-  const customerMap = new Map<string, any>();
+  const customerMap = new Map<string, {
+    id: string;
+    name: string;
+    email: string | null;
+    phone: string | null;
+    createdAt: unknown;
+    _count: { orders: number };
+    orders: unknown[];
+  }>();
   
-  transactions.forEach((t: any) => {
-    const email = t.customerEmail || `guest-${t.id}`;
-    const name = t.customerName || 'Guest Customer';
+  transactions.forEach((t: Record<string, unknown>) => {
+    const email = (t.customerEmail as string) || `guest-${t.id}`;
+    const name = (t.customerName as string) || 'Guest Customer';
     
     if (!customerMap.has(email)) {
       customerMap.set(email, {
@@ -1086,11 +1110,12 @@ export const getCustomers = async (req: NextRequest): Promise<NextResponse> => {
     }
     
     const customer = customerMap.get(email)!;
+    const order = t.order as { id: string; orderNumber: string };
     customer._count.orders += 1;
     customer.orders.push({
-      id: t.order.id,
-      orderNumber: t.order.orderNumber,
-      totalAmount: t.total.toString(),
+      id: order.id,
+      orderNumber: order.orderNumber,
+      totalAmount: (t.total as number).toString(),
       createdAt: t.createdAt,
       status: 'COMPLETED',
     });

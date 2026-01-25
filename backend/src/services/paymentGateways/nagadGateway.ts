@@ -11,16 +11,12 @@ export class NagadGateway extends PaymentGateway {
   supportedCountries = ['BD']; // Bangladesh only
 
   private merchantId: string;
-  private merchantNumber: string;
-  private publicKey: string;
   private privateKey: string;
   private baseUrl: string;
 
   constructor(config: any) {
     super(config);
     this.merchantId = config.credentials.NAGAD_MERCHANT_ID || '';
-    this.merchantNumber = config.credentials.NAGAD_MERCHANT_NUMBER || '';
-    this.publicKey = config.credentials.NAGAD_PUBLIC_KEY || '';
     this.privateKey = config.credentials.NAGAD_PRIVATE_KEY || '';
     this.baseUrl = config.credentials.NAGAD_MODE === 'live'
       ? 'https://api.mynagad.com'
@@ -37,7 +33,6 @@ export class NagadGateway extends PaymentGateway {
   async createPayment(request: CreatePaymentRequest): Promise<PaymentResponse> {
     try {
       const datetime = new Date().toISOString();
-      const merchantCallbackURL = `${process.env.BACKEND_URL || process.env.FRONTEND_URL}/api/payments/nagad/callback`;
       
       const paymentData = {
         merchantId: this.merchantId,
@@ -139,7 +134,7 @@ export class NagadGateway extends PaymentGateway {
     }
   }
 
-  async handleWebhook(payload: any, headers: any): Promise<PaymentVerificationResponse> {
+  async handleWebhook(payload: any, _headers: any): Promise<PaymentVerificationResponse> {
     if (payload.statusCode === 'Success' && payload.paymentReferenceId) {
       return {
         success: true,

@@ -22,11 +22,6 @@ interface InvoiceItem {
   productId?: string;
 }
 
-const generateEntryNumber = async (): Promise<string> => {
-  // Format: JE-YYYYMMDD-<random>
-  return `JE-${dateTag()}-${randomTag()}`;
-};
-
 const generateInvoiceNumber = async (invoiceType: 'SALES' | 'PURCHASE'): Promise<string> => {
   // Format: INV-YYYYMMDD-<random> or PO-YYYYMMDD-<random>
   const prefix = invoiceType === 'SALES' ? 'INV' : 'PO';
@@ -93,7 +88,6 @@ export const createChartOfAccount = async (req: NextRequest): Promise<NextRespon
       accountType,
       parentId: parentId || null,
       description,
-      level: parentId ? 2 : 1,
       updatedAt: new Date(),
     },
   });
@@ -113,16 +107,9 @@ export const getJournalEntries = async (req: NextRequest): Promise<NextResponse>
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20') || 20));
-  const statusParam = searchParams.get('status');
 
-  // Type-safe where clause for JournalEntry
-  type JournalEntryStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
-  const validStatuses: JournalEntryStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
-
-  const where: { status?: JournalEntryStatus } = {};
-  if (statusParam && validStatuses.includes(statusParam as JournalEntryStatus)) {
-    where.status = statusParam as JournalEntryStatus;
-  }
+  // JournalEntry doesn't have status field in ERP schema
+  const where = {};
 
   const [entries, total] = await Promise.all([
     prisma.journalEntry.findMany({
@@ -162,7 +149,7 @@ export const createJournalEntry = async (req: NextRequest): Promise<NextResponse
   }
 
   const body = await req.json();
-  const { entryDate, description, reference, lines } = body;
+  const { entryDate, description, lines } = body;
 
   if (!entryDate || !lines || !Array.isArray(lines) || lines.length < 2) {
     throw new AppError('Entry date and at least 2 lines are required', 400);
@@ -203,7 +190,7 @@ export const createJournalEntry = async (req: NextRequest): Promise<NextResponse
 
   // Validate all accounts exist
   const accountIds = (lines as JournalEntryLine[]).map((line) => line.accountId).filter(Boolean);
-  const uniqueAccountIds = [...new Set(accountIds)];
+  const uniqueAccountIds = Array.from(new Set(accountIds));
   const accounts = await prisma.chartOfAccount.findMany({
     where: { id: { in: uniqueAccountIds } },
   });
@@ -214,57 +201,18 @@ export const createJournalEntry = async (req: NextRequest): Promise<NextResponse
     throw new AppError(`Invalid account IDs: ${missingIds.join(', ')}`, 400);
   }
 
-  // Generate unique entry number
-  const entryNumber = await generateEntryNumber();
-  const existing = await prisma.journalEntry.findUnique({ where: { entryNumber } }).catch(() => null);
-  if (existing) {
-    const retryNumber = await generateEntryNumber();
-    const retryExisting = await prisma.journalEntry.findUnique({ where: { entryNumber: retryNumber } }).catch(() => null);
-    if (retryExisting) {
-      throw new AppError('Failed to generate unique entry number', 500);
-    }
-    const journalEntry = await prisma.journalEntry.create({
-      data: {
-        entryNumber: retryNumber,
-        entryDate: new Date(entryDate),
-        description,
-        reference,
-        status: 'DRAFT',
-        createdBy: user.userId,
-        updatedAt: new Date(),
-        lines: {
-          create: (lines as JournalEntryLine[]).map((line, index: number) => ({
-            accountId: line.accountId,
-            debit: line.debit || 0,
-            credit: line.credit || 0,
-            description: line.description,
-            lineNumber: index + 1,
-          })),
-        },
-      },
-      include: {
-        lines: { include: { account: true } },
-      },
-    });
-    return NextResponse.json(journalEntry);
-  }
-
+  // Create journal entry (schema: id, entryDate, description, createdAt, createdBy)
   const journalEntry = await prisma.journalEntry.create({
     data: {
-      entryNumber,
       entryDate: new Date(entryDate),
       description,
-      reference,
-      status: 'DRAFT',
       createdBy: user.userId,
-      updatedAt: new Date(),
       lines: {
-        create: (lines as JournalEntryLine[]).map((line, index: number) => ({
+        create: (lines as JournalEntryLine[]).map((line) => ({
           accountId: line.accountId,
           debit: line.debit || 0,
           credit: line.credit || 0,
-          description: line.description,
-          lineNumber: index + 1,
+          description: line.description || '',
         })),
       },
     },
@@ -297,9 +245,8 @@ export const postJournalEntry = async (req: NextRequest, context: { params: Prom
     throw new AppError('Journal entry not found', 404);
   }
 
-  if (journalEntry.status === 'POSTED') {
-    throw new AppError('Journal entry already posted', 400);
-  }
+  // JournalEntry in ERP schema doesn't have status field
+  // So we'll just proceed with validation
 
   // Validate journal entry has lines
   if (!journalEntry.lines || journalEntry.lines.length === 0) {
@@ -330,21 +277,16 @@ export const postJournalEntry = async (req: NextRequest, context: { params: Prom
     throw new AppError('Journal entry transactions are not balanced', 400);
   }
 
-  await prisma.$transaction([
-    prisma.accountingTransaction.createMany({
-      data: transactions,
-    }),
-    prisma.journalEntry.update({
-      where: { id },
-      data: {
-        status: 'POSTED',
-        postedAt: new Date(),
-        postedBy: user.userId,
-      },
-    }),
-  ]);
+  // Note: In ERP schema, JournalEntry doesn't have status/postedAt/postedBy fields
+  // and accountingTransaction model doesn't exist
+  // The journal entry lines already contain the transaction data
 
-  return NextResponse.json({ success: true, message: 'Journal entry posted successfully' });
+  return NextResponse.json({
+    success: true,
+    message: 'Journal entry validated and balanced',
+    totalDebit,
+    totalCredit
+  });
 };
 
 // Get invoices
@@ -359,17 +301,13 @@ export const getInvoices = async (req: NextRequest): Promise<NextResponse> => {
   const { searchParams } = new URL(req.url);
   const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20') || 20));
-  const typeParam = searchParams.get('type');
   const statusParam = searchParams.get('status');
 
-  type InvoiceType = 'SALES' | 'PURCHASE';
-  type InvoiceStatus = 'DRAFT' | 'SENT' | 'PARTIAL' | 'PAID' | 'OVERDUE' | 'CANCELLED';
+  // Valid invoice statuses in ERP schema: DRAFT, SENT, PAID, OVERDUE, CANCELLED
+  type InvoiceStatus = 'DRAFT' | 'SENT' | 'PAID' | 'OVERDUE' | 'CANCELLED';
 
-  const where: { invoiceType?: InvoiceType; status?: InvoiceStatus } = {};
-  if (typeParam && ['SALES', 'PURCHASE'].includes(typeParam)) {
-    where.invoiceType = typeParam as InvoiceType;
-  }
-  if (statusParam && ['DRAFT', 'SENT', 'PARTIAL', 'PAID', 'OVERDUE', 'CANCELLED'].includes(statusParam)) {
+  const where: { status?: InvoiceStatus } = {};
+  if (statusParam && ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED'].includes(statusParam)) {
     where.status = statusParam as InvoiceStatus;
   }
 
@@ -380,10 +318,9 @@ export const getInvoices = async (req: NextRequest): Promise<NextResponse> => {
       take: limit,
       orderBy: { issueDate: 'desc' },
       include: {
-        items: true,
-        payments: true,
-      },
-    }),
+          items: true,
+        },
+      }),
     prisma.invoice.count({ where }),
   ]);
 
@@ -408,7 +345,7 @@ export const createInvoice = async (req: NextRequest): Promise<NextResponse> => 
   }
 
   const body = await req.json();
-  const { invoiceType, customerId, vendorId, orderId, issueDate, dueDate, items, notes } = body;
+  const { invoiceType, customerId, vendorId, issueDate, dueDate, items } = body;
 
   if (!invoiceType || !issueDate || !dueDate || !items || !Array.isArray(items) || items.length === 0) {
     throw new AppError('Invoice type, dates, and items are required', 400);
@@ -447,7 +384,7 @@ export const createInvoice = async (req: NextRequest): Promise<NextResponse> => 
     }
   }
 
-  const subtotal = (items as InvoiceItem[]).reduce((sum: number, item) => {
+  (items as InvoiceItem[]).reduce((sum: number, item) => {
     const qty = Number(item.quantity || 0);
     const price = Number(item.unitPrice || 0);
     if (isNaN(qty) || isNaN(price) || qty < 0 || price < 0) {
@@ -456,55 +393,43 @@ export const createInvoice = async (req: NextRequest): Promise<NextResponse> => 
     return sum + (qty * price);
   }, 0);
   
-  const tax = (items as InvoiceItem[]).reduce((sum: number, item) => {
+  // Calculate total from items
+  const total = (items as InvoiceItem[]).reduce((sum: number, item) => {
     const qty = Number(item.quantity || 0);
     const price = Number(item.unitPrice || 0);
-    const rate = Number(item.taxRate || 0);
-    const itemTotal = qty * price;
-    return sum + (itemTotal * rate);
+    return sum + (qty * price);
   }, 0);
   
-  const discount = 0;
-  const total = subtotal + tax - discount;
-  
-  // Validate totals are valid numbers
-  if (isNaN(subtotal) || isNaN(tax) || isNaN(total) || total < 0) {
-    throw new AppError('Invalid invoice totals calculated', 400);
+  // Validate total is a valid number
+  if (isNaN(total) || total < 0) {
+    throw new AppError('Invalid invoice total calculated', 400);
   }
 
   // Generate unique invoice number
-  const invoiceNumber = await generateInvoiceNumber(invoiceType as 'SALES' | 'PURCHASE');
+  const invoiceNumber = await generateInvoiceNumber('SALES');
   const existing = await prisma.invoice.findUnique({ where: { invoiceNumber } }).catch(() => null);
   if (existing) {
-    const retryNumber = await generateInvoiceNumber(invoiceType as 'SALES' | 'PURCHASE');
+    const retryNumber = await generateInvoiceNumber('SALES');
     const retryExisting = await prisma.invoice.findUnique({ where: { invoiceNumber: retryNumber } }).catch(() => null);
     if (retryExisting) {
       throw new AppError('Failed to generate unique invoice number', 500);
     }
+    // Invoice schema only has: invoiceNumber, customerId, issueDate, dueDate, total, status, createdBy
     const invoice = await prisma.invoice.create({
       data: {
         invoiceNumber: retryNumber,
-        customerId: customerId || null,
-        vendorId: vendorId || null,
-        orderId: orderId || null,
+        customerId,
         issueDate: new Date(issueDate),
         dueDate: new Date(dueDate),
-        subtotal,
-        tax,
-        discount,
         total,
-        paidAmount: 0,
         status: 'DRAFT',
-        notes,
         createdBy: user.userId,
         items: {
-          create: (items as InvoiceItem[]).map((item, index: number) => ({
-            description: item.description,
+          create: (items as InvoiceItem[]).map((item) => ({
+            description: item.description || '',
             quantity: Number(item.quantity),
             unitPrice: Number(item.unitPrice),
-            taxRate: item.taxRate ? Number(item.taxRate) : null,
-            total: Number(item.quantity) * Number(item.unitPrice) * (1 + Number(item.taxRate || 0)),
-            lineNumber: index + 1,
+            total: Number(item.quantity) * Number(item.unitPrice),
           })),
         },
       },
@@ -515,27 +440,18 @@ export const createInvoice = async (req: NextRequest): Promise<NextResponse> => 
   const invoice = await prisma.invoice.create({
     data: {
       invoiceNumber,
-      customerId: customerId || null,
-      vendorId: vendorId || null,
-      orderId: orderId || null,
+      customerId,
       issueDate: new Date(issueDate),
       dueDate: new Date(dueDate),
-      subtotal,
-      tax,
-      discount,
       total,
-      paidAmount: 0,
       status: 'DRAFT',
-      notes,
       createdBy: user.userId,
       items: {
-        create: (items as InvoiceItem[]).map((item, index: number) => ({
-          description: item.description,
+        create: (items as InvoiceItem[]).map((item) => ({
+          description: item.description || '',
           quantity: Number(item.quantity),
           unitPrice: Number(item.unitPrice),
-          taxRate: item.taxRate ? Number(item.taxRate) : null,
-          total: Number(item.quantity) * Number(item.unitPrice) * (1 + Number(item.taxRate || 0)),
-          lineNumber: index + 1,
+          total: Number(item.quantity) * Number(item.unitPrice),
         })),
       },
     },
@@ -546,6 +462,8 @@ export const createInvoice = async (req: NextRequest): Promise<NextResponse> => 
 };
 
 // Record invoice payment
+// Note: Invoice model in ERP schema doesn't have paidAmount or payment tracking
+// This is a simplified version that just updates the status
 export const recordInvoicePayment = async (req: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
   const user = requireAccountingAccess(req);
 
@@ -557,11 +475,7 @@ export const recordInvoicePayment = async (req: NextRequest, context: { params: 
   const params = await context.params;
   const { id } = params;
   const body = await req.json();
-  const { paymentDate, amount, paymentMethod, reference, notes } = body;
-
-  if (!paymentDate || !amount || !paymentMethod) {
-    throw new AppError('Payment date, amount, and method are required', 400);
-  }
+  const { status } = body;
 
   const invoice = await prisma.invoice.findUnique({
     where: { id },
@@ -571,52 +485,15 @@ export const recordInvoicePayment = async (req: NextRequest, context: { params: 
     throw new AppError('Invoice not found', 404);
   }
 
-  // Prevent overpayment
-  const currentPaid = Number(invoice.paidAmount);
-  const invoiceTotal = Number(invoice.total);
-  const paymentAmount = Number(amount);
-
-  if (currentPaid >= invoiceTotal) {
-    throw new AppError('Invoice is already fully paid', 400);
-  }
-
-  const newPaidAmount = currentPaid + paymentAmount;
-  
-  // Validate payment amount
-  if (paymentAmount <= 0) {
-    throw new AppError('Payment amount must be greater than zero', 400);
-  }
-  
-  // Prevent paying more than the total
-  if (newPaidAmount > invoiceTotal) {
-    const maxPayment = invoiceTotal - currentPaid;
-    throw new AppError(`Payment amount exceeds invoice balance. Maximum payment: ${maxPayment.toFixed(2)}`, 400);
-  }
-
-  const status = newPaidAmount >= invoiceTotal ? 'PAID' : newPaidAmount > 0 ? 'PARTIAL' : invoice.status;
-
-  await prisma.$transaction([
-    prisma.invoicePayment.create({
-      data: {
-        invoiceId: id,
-        paymentDate: new Date(paymentDate),
-        amount: Number(amount),
-        paymentMethod,
-        reference,
-        notes,
-        createdBy: user.userId,
-      },
-    }),
-    prisma.invoice.update({
+  // Update invoice status (DRAFT, SENT, PAID, OVERDUE, CANCELLED)
+  if (status && ['DRAFT', 'SENT', 'PAID', 'OVERDUE', 'CANCELLED'].includes(status)) {
+    await prisma.invoice.update({
       where: { id },
-      data: {
-        paidAmount: newPaidAmount,
-        status,
-      },
-    }),
-  ]);
+      data: { status },
+    });
+  }
 
-  return NextResponse.json({ success: true, message: 'Payment recorded successfully' });
+  return NextResponse.json({ success: true, message: 'Invoice updated successfully' });
 };
 
 // Get financial reports
@@ -655,7 +532,7 @@ export const getFinancialReports = async (req: NextRequest): Promise<NextRespons
     throw new AppError('End date must be after start date', 400);
   }
 
-  let reportData: any = {};
+  let reportData: unknown = {};
 
   // Generate reports based on type
   switch (reportType) {
@@ -690,10 +567,12 @@ async function generateBalanceSheet(asOfDate: Date) {
     orderBy: { accountNumber: 'asc' },
   });
 
-  // Get transactions up to the date
-  const transactions = await prisma.accountingTransaction.findMany({
+  // Get journal entry lines (which contain accounting transactions)
+  const lines = await prisma.journalEntryLine.findMany({
     where: {
-      transactionDate: { lte: asOfDate },
+      journalEntry: {
+        entryDate: { lte: asOfDate },
+      },
     },
     include: {
       account: true,
@@ -703,17 +582,17 @@ async function generateBalanceSheet(asOfDate: Date) {
   // Calculate balances by account
   const balances = new Map<string, { debit: number; credit: number }>();
 
-  for (const txn of transactions) {
-    const current = balances.get(txn.accountId) || { debit: 0, credit: 0 };
-    current.debit += Number(txn.debit);
-    current.credit += Number(txn.credit);
-    balances.set(txn.accountId, current);
+  for (const line of lines) {
+    const current = balances.get(line.accountId) || { debit: 0, credit: 0 };
+    current.debit += Number(line.debit);
+    current.credit += Number(line.credit);
+    balances.set(line.accountId, current);
   }
 
   // Categorize by account type
-  const assets: any[] = [];
-  const liabilities: any[] = [];
-  const equity: any[] = [];
+  const assets: unknown[] = [];
+  const liabilities: unknown[] = [];
+  const equity: unknown[] = [];
 
   let totalAssets = 0;
   let totalLiabilities = 0;
@@ -767,9 +646,11 @@ async function generateIncomeStatement(startDate: Date, endDate: Date) {
     orderBy: { accountNumber: 'asc' },
   });
 
-  const transactions = await prisma.accountingTransaction.findMany({
+  const lines = await prisma.journalEntryLine.findMany({
     where: {
-      transactionDate: { gte: startDate, lte: endDate },
+      journalEntry: {
+        entryDate: { gte: startDate, lte: endDate },
+      },
     },
     include: {
       account: true,
@@ -778,15 +659,15 @@ async function generateIncomeStatement(startDate: Date, endDate: Date) {
 
   const balances = new Map<string, { debit: number; credit: number }>();
 
-  for (const txn of transactions) {
-    const current = balances.get(txn.accountId) || { debit: 0, credit: 0 };
-    current.debit += Number(txn.debit);
-    current.credit += Number(txn.credit);
-    balances.set(txn.accountId, current);
+  for (const line of lines) {
+    const current = balances.get(line.accountId) || { debit: 0, credit: 0 };
+    current.debit += Number(line.debit);
+    current.credit += Number(line.credit);
+    balances.set(line.accountId, current);
   }
 
-  const revenue: any[] = [];
-  const expenses: any[] = [];
+  const revenue: unknown[] = [];
+  const expenses: unknown[] = [];
   let totalRevenue = 0;
   let totalExpenses = 0;
 
@@ -826,9 +707,11 @@ async function generateIncomeStatement(startDate: Date, endDate: Date) {
 // Helper function: Generate Cash Flow Statement
 async function generateCashFlowStatement(startDate: Date, endDate: Date) {
   // Simplified cash flow - would need more detailed categorization in production
-  const transactions = await prisma.accountingTransaction.findMany({
+  const lines = await prisma.journalEntryLine.findMany({
     where: {
-      transactionDate: { gte: startDate, lte: endDate },
+      journalEntry: {
+        entryDate: { gte: startDate, lte: endDate },
+      },
     },
     include: {
       account: true,
@@ -840,16 +723,16 @@ async function generateCashFlowStatement(startDate: Date, endDate: Date) {
   let financing = 0;
 
   // Categorize transactions (simplified logic)
-  for (const txn of transactions) {
-    const amount = Number(txn.debit) - Number(txn.credit);
+  for (const line of lines) {
+    const amount = Number(line.debit) - Number(line.credit);
 
     // This is simplified - in reality, you'd need more sophisticated categorization
-    if (txn.account.accountType === 'REVENUE' || txn.account.accountType === 'EXPENSE') {
+    if (line.account.accountType === 'REVENUE' || line.account.accountType === 'EXPENSE') {
       operating += amount;
-    } else if (txn.account.accountName.toLowerCase().includes('investment')) {
+    } else if (line.account.accountName.toLowerCase().includes('investment')) {
       investing += amount;
-    } else if (txn.account.accountName.toLowerCase().includes('loan') ||
-               txn.account.accountName.toLowerCase().includes('equity')) {
+    } else if (line.account.accountName.toLowerCase().includes('loan') ||
+               line.account.accountName.toLowerCase().includes('equity')) {
       financing += amount;
     }
   }
@@ -875,22 +758,24 @@ async function generateTrialBalance(asOfDate: Date) {
     orderBy: { accountNumber: 'asc' },
   });
 
-  const transactions = await prisma.accountingTransaction.findMany({
+  const lines = await prisma.journalEntryLine.findMany({
     where: {
-      transactionDate: { lte: asOfDate },
+      journalEntry: {
+        entryDate: { lte: asOfDate },
+      },
     },
   });
 
   const balances = new Map<string, { debit: number; credit: number }>();
 
-  for (const txn of transactions) {
-    const current = balances.get(txn.accountId) || { debit: 0, credit: 0 };
-    current.debit += Number(txn.debit);
-    current.credit += Number(txn.credit);
-    balances.set(txn.accountId, current);
+  for (const line of lines) {
+    const current = balances.get(line.accountId) || { debit: 0, credit: 0 };
+    current.debit += Number(line.debit);
+    current.credit += Number(line.credit);
+    balances.set(line.accountId, current);
   }
 
-  const accountBalances: any[] = [];
+  const accountBalances: unknown[] = [];
   let totalDebits = 0;
   let totalCredits = 0;
 
@@ -927,17 +812,17 @@ async function generateTrialBalance(asOfDate: Date) {
 async function generateAgedReceivables(asOfDate: Date) {
   const receivables = await prisma.invoice.findMany({
     where: {
-      status: { in: ['SENT', 'PARTIAL', 'OVERDUE'] },
+      status: { in: ['SENT', 'OVERDUE'] },
     },
     orderBy: { dueDate: 'asc' },
   });
 
   const aging = {
-    current: [] as any[],
-    days30: [] as any[],
-    days60: [] as any[],
-    days90: [] as any[],
-    over90: [] as any[],
+    current: [] as unknown[],
+    days30: [] as unknown[],
+    days60: [] as unknown[],
+    days90: [] as unknown[],
+    over90: [] as unknown[],
   };
 
   let totalCurrent = 0;
@@ -949,7 +834,8 @@ async function generateAgedReceivables(asOfDate: Date) {
   for (const invoice of receivables) {
     const dueDate = new Date(invoice.dueDate);
     const daysOverdue = Math.floor((asOfDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-    const balance = Number(invoice.total) - Number(invoice.paidAmount);
+    // Invoice doesn't have paidAmount field in ERP schema - using total as balance
+    const balance = Number(invoice.total);
 
     const invoiceData = {
       invoiceNumber: invoice.invoiceNumber,
@@ -992,17 +878,17 @@ async function generateAgedReceivables(asOfDate: Date) {
 async function generateAgedPayables(asOfDate: Date) {
   const payables = await prisma.invoice.findMany({
     where: {
-      status: { in: ['SENT', 'PARTIAL', 'OVERDUE'] },
+      status: { in: ['SENT', 'OVERDUE'] },
     },
     orderBy: { dueDate: 'asc' },
   });
 
   const aging = {
-    current: [] as any[],
-    days30: [] as any[],
-    days60: [] as any[],
-    days90: [] as any[],
-    over90: [] as any[],
+    current: [] as unknown[],
+    days30: [] as unknown[],
+    days60: [] as unknown[],
+    days90: [] as unknown[],
+    over90: [] as unknown[],
   };
 
   let totalCurrent = 0;
@@ -1014,11 +900,12 @@ async function generateAgedPayables(asOfDate: Date) {
   for (const invoice of payables) {
     const dueDate = new Date(invoice.dueDate);
     const daysOverdue = Math.floor((asOfDate.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-    const balance = Number(invoice.total) - Number(invoice.paidAmount);
+    // Invoice doesn't have paidAmount field in ERP schema - using total as balance
+    const balance = Number(invoice.total);
 
     const invoiceData = {
       invoiceNumber: invoice.invoiceNumber,
-      vendorId: invoice.vendorId,
+      customerId: invoice.customerId, // ERP schema uses customerId, not vendorId
       dueDate: invoice.dueDate,
       balance,
       daysOverdue,

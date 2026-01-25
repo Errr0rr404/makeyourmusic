@@ -58,10 +58,10 @@ export async function logAudit(entry: AuditEntry): Promise<void> {
  * Calculate changes between old and new objects
  */
 export function calculateChanges(
-  oldData: Record<string, any>,
-  newData: Record<string, any>
-): Record<string, { old: any; new: any }> {
-  const changes: Record<string, { old: any; new: any }> = {};
+  oldData: Record<string, unknown>,
+  newData: Record<string, unknown>
+): Record<string, { old: unknown; new: unknown }> {
+  const changes: Record<string, { old: unknown; new: unknown }> = {};
 
   // Check for changed or new fields
   for (const key in newData) {
@@ -89,7 +89,7 @@ export function calculateChanges(
  */
 export function auditMiddleware(module: string, entityType: string) {
   return {
-    async onCreate(entityId: string, data: any, userId: string, metadata?: Record<string, any>) {
+    async onCreate(entityId: string, data: unknown, userId: string, metadata?: Record<string, unknown>) {
       await logAudit({
         module,
         action: 'CREATE',
@@ -102,10 +102,10 @@ export function auditMiddleware(module: string, entityType: string) {
 
     async onUpdate(
       entityId: string,
-      oldData: any,
-      newData: any,
+      oldData: Record<string, unknown>,
+      newData: Record<string, unknown>,
       userId: string,
-      metadata?: Record<string, any>
+      metadata?: Record<string, unknown>
     ) {
       const changes = calculateChanges(oldData, newData);
       if (Object.keys(changes).length > 0) {
@@ -121,7 +121,7 @@ export function auditMiddleware(module: string, entityType: string) {
       }
     },
 
-    async onDelete(entityId: string, data: any, userId: string, metadata?: Record<string, any>) {
+    async onDelete(entityId: string, data: unknown, userId: string, metadata?: Record<string, unknown>) {
       await logAudit({
         module,
         action: 'DELETE',
@@ -132,7 +132,7 @@ export function auditMiddleware(module: string, entityType: string) {
       });
     },
 
-    async onView(entityId: string, userId: string, metadata?: Record<string, any>) {
+    async onView(entityId: string, userId: string, metadata?: Record<string, unknown>) {
       // Only log sensitive views
       if (metadata?.sensitive) {
         await logAudit({
@@ -146,7 +146,7 @@ export function auditMiddleware(module: string, entityType: string) {
       }
     },
 
-    async onExport(userId: string, filters: any, count: number, metadata?: Record<string, any>) {
+    async onExport(userId: string, filters: unknown, count: number, metadata?: Record<string, unknown>) {
       await logAudit({
         module,
         action: 'EXPORT',
@@ -196,7 +196,7 @@ export async function getAuditTrail(params: {
   startDate?: Date;
   endDate?: Date;
   limit?: number;
-}): Promise<any[]> {
+}): Promise<unknown[]> {
   // TODO: Implement when AuditLog model exists
   // For now, return empty array
   console.log('Getting audit trail with params:', params);
@@ -232,9 +232,10 @@ export async function generateComplianceReport(params: {
   startDate: Date;
   endDate: Date;
   modules?: string[];
-}): Promise<any> {
+}): Promise<unknown> {
   // TODO: Implement when AuditLog model exists
-  const { startDate, endDate, modules } = params;
+  const { startDate, endDate } = params;
+  void params.modules; // Suppress unused variable warning until implementation
 
   return {
     period: { startDate, endDate },

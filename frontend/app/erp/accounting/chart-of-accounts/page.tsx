@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Search, ArrowLeft, DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { Plus, Search, ArrowLeft, TrendingUp, TrendingDown } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
 import Link from 'next/link';
 import api from '@/lib/api';
@@ -76,7 +76,7 @@ export default function ChartOfAccountsPage() {
 
   // Calculate totals by type
   const totals = Object.keys(groupedAccounts).reduce((acc, type) => {
-    acc[type] = groupedAccounts[type].reduce((sum, account) => sum + account.balance, 0);
+    acc[type] = (groupedAccounts[type] || []).reduce((sum, account) => sum + account.balance, 0);
     return acc;
   }, {} as Record<string, number>);
 

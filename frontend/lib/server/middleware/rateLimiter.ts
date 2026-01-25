@@ -30,7 +30,6 @@ export const createRateLimiter = (options: RateLimitOptions) => {
     windowMs,
     max,
     message = 'Too many requests, please try again later.',
-    skipSuccessfulRequests = false,
   } = options;
 
   return async (req: NextRequest): Promise<NextResponse | null> => {

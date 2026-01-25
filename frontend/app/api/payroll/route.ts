@@ -1,16 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/utils/db';
 import { authenticate } from '@/lib/server/middleware/auth';
-
-// Helper function to check feature flag
-async function checkFeatureFlag(flagName: string): Promise<boolean> {
-  const config = await prisma.storeConfig.findFirst({
-    orderBy: { updatedAt: 'desc' },
-  });
-  if (!config) return false;
-  // Type-safe feature flag check
-  return (config as any)[flagName] === true;
-}
+import { checkFeatureFlag } from '@/lib/server/utils/featureFlags';
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,20 +36,9 @@ export async function GET(request: NextRequest) {
     const payrolls = await prisma.payroll.findMany({
       where,
       include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
         payPeriod: true,
         items: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: { id: 'asc' },
         },
       },
       orderBy: { createdAt: 'desc' },

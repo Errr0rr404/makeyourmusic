@@ -65,8 +65,8 @@ interface InternationalizationState {
 export const useInternationalization = create<InternationalizationState>()(
   persist(
     (set) => ({
-      currency: SUPPORTED_CURRENCIES[0],
-      language: SUPPORTED_LANGUAGES[0],
+      currency: SUPPORTED_CURRENCIES[0]!,
+      language: SUPPORTED_LANGUAGES[0]!,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       dateFormat: 'MM/DD/YYYY',
       timeFormat: '12h',
@@ -121,7 +121,7 @@ export function formatNumber(
   value: number,
   decimals: number = 2
 ): string {
-  const { numberFormat, language } = useInternationalization.getState();
+  const { language } = useInternationalization.getState();
 
   return new Intl.NumberFormat(language.code, {
     minimumFractionDigits: decimals,
@@ -130,10 +130,9 @@ export function formatNumber(
 }
 
 export function formatDate(
-  date: Date | string,
-  format?: string
+  date: Date | string
 ): string {
-  const { language, dateFormat } = useInternationalization.getState();
+  const { language } = useInternationalization.getState();
   const d = typeof date === 'string' ? new Date(date) : date;
 
   return new Intl.DateTimeFormat(language.code, {

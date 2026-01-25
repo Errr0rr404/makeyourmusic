@@ -1,10 +1,21 @@
-import { prisma } from '@/lib/server/utils/db';
+// Database interface for payroll service
+interface PayrollDb {
+  timeClock: { findMany: (args: unknown) => Promise<Array<{ punchTime: Date; punchType: string }>> };
+  payPeriod: { findUnique: (args: unknown) => Promise<Record<string, unknown> | null> };
+  posEmployee: { findUnique: (args: unknown) => Promise<Record<string, unknown> | null> };
+  payrollSettings: { findFirst: (args: unknown) => Promise<Record<string, unknown> | null> };
+  payroll: {
+    findFirst: (args: unknown) => Promise<Record<string, unknown> | null>;
+    create: (args: unknown) => Promise<Record<string, unknown>>;
+    update: (args: unknown) => Promise<Record<string, unknown>>;
+  };
+}
 
 /**
  * Calculate hours worked from time clock records
  */
 export async function calculateHours(
-  db: any,
+  db: Pick<PayrollDb, 'timeClock'>,
   employeeId: string,
   startDate: Date,
   endDate: Date,
@@ -132,7 +143,7 @@ export async function calculatePay(
  * Generate payroll for multiple employees
  */
 export async function generatePayrollForEmployees(
-  db: any,
+  db: PayrollDb,
   payPeriodId: string,
   employeeIds: string[],
   createdBy: string
@@ -245,11 +256,11 @@ export async function generatePayrollForEmployees(
           });
 
       results.push({ success: true, employeeId, payroll });
-    } catch (error: any) {
+    } catch (error: unknown) {
       results.push({
         success: false,
         employeeId,
-        error: error.message || 'Failed to generate payroll',
+        error: error instanceof Error ? error.message : 'Failed to generate payroll',
       });
     }
   }

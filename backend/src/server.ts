@@ -12,6 +12,7 @@ import { sanitizeBody } from './middleware/validation';
 import { performanceMonitor } from './middleware/performance';
 import { requestLogger } from './middleware/requestLogger';
 import logger from './utils/logger';
+import { initSocketServer } from './socket';
 
 // Global error handlers
 process.on('uncaughtException', (error) => {
@@ -121,7 +122,8 @@ export { app };
 
 // Only start server if not in test environment
 if (process.env.NODE_ENV !== 'test') {
-  const server = app.listen(PORT, '0.0.0.0', () => {
+  const server = initSocketServer(app);
+  server.listen(PORT, '0.0.0.0', () => {
     logger.info('Server started', {
       port: PORT,
       environment: process.env.NODE_ENV || 'development',

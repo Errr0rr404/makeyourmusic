@@ -203,6 +203,7 @@ export default function ReportsPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredTemplates.map((template, index) => {
               const typeInfo = getTypeInfo(template.type!);
+              if (!typeInfo) return null;
               const Icon = typeInfo.icon;
               return (
                 <Card key={index} className="hover:shadow-md transition-shadow">

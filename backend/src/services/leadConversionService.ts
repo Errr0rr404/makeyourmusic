@@ -1,9 +1,20 @@
-import { PrismaClient, LeadStatus } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
+
+// Define LeadStatus locally since @prisma/client doesn't export it properly
+const LeadStatus = {
+  NEW: 'NEW',
+  CONTACTED: 'CONTACTED',
+  QUALIFIED: 'QUALIFIED',
+  PROPOSAL: 'PROPOSAL',
+  NEGOTIATION: 'NEGOTIATION',
+  CONVERTED: 'CONVERTED',
+  LOST: 'LOST',
+} as const;
 
 const prisma = new PrismaClient();
 
 export const convertLeadToCustomer = async (leadId: string) => {
-  return prisma.$transaction(async (tx) => {
+  return prisma.$transaction(async (tx: Prisma.TransactionClient) => {
     const lead = await tx.lead.findUnique({
       where: { id: leadId },
     });
@@ -35,7 +46,7 @@ export const convertLeadToCustomer = async (leadId: string) => {
 
     await tx.lead.update({
       where: { id: leadId },
-      data: { status: LeadStatus.CLOSED_WON },
+      data: { status: LeadStatus.CONVERTED },
     });
 
     return customer;

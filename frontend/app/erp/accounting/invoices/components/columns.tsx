@@ -1,7 +1,7 @@
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
-import { Invoice, InvoiceStatus } from '@prisma/client';
+import { Invoice, InvoiceStatus } from '@/generated/prisma';
 import { MoreHorizontal, ArrowUpDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {

@@ -1,16 +1,28 @@
-import { PrismaClient, Product } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
-export const getAllProducts = async (): Promise<Product[]> => {
+export const getAllProducts = async () => {
   return prisma.product.findMany();
 };
 
-export const createProduct = async (data: Omit<Product, 'id' | 'createdAt' | 'updatedAt'>): Promise<Product> => {
+export const createProduct = async (data: {
+  name: string;
+  description?: string;
+  price: number;
+  sku?: string;
+  quantity?: number;
+}) => {
   return prisma.product.create({ data });
 };
 
-export const updateProduct = async (id: string, data: Partial<Product>): Promise<Product | null> => {
+export const updateProduct = async (id: string, data: Partial<{
+  name: string;
+  description: string;
+  price: number;
+  sku: string;
+  quantity: number;
+}>) => {
   const existingProduct = await prisma.product.findUnique({ where: { id } });
   if (!existingProduct) {
     return null;

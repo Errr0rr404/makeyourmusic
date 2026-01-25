@@ -4,7 +4,6 @@ import * as React from 'react';
 import { Check as CheckIcon } from 'lucide-react';
 
 export interface CheckboxProps {
-  id?: string;
   checked?: boolean;
   onCheckedChange?: (checked: boolean) => void;
   disabled?: boolean;
@@ -12,7 +11,7 @@ export interface CheckboxProps {
 }
 
 const Checkbox = React.forwardRef<HTMLButtonElement, CheckboxProps>(
-  ({ id, checked = false, onCheckedChange, disabled = false, className = '', ...props }, ref) => {
+  ({ checked = false, onCheckedChange, disabled = false, className = '', ...props }, ref) => {
     return (
       <button
         type="button"

@@ -6,7 +6,7 @@ import os from 'os';
  * Health check endpoint with comprehensive system status
  * GET /api/health
  */
-export const healthCheck = async (req: Request, res: Response) => {
+export const healthCheck = async (_req: Request, res: Response) => {
   const startTime = Date.now();
   const health: any = {
     status: 'ok',
@@ -59,7 +59,7 @@ export const healthCheck = async (req: Request, res: Response) => {
  * Readiness probe - check if application is ready to serve traffic
  * GET /api/ready
  */
-export const readinessCheck = async (req: Request, res: Response) => {
+export const readinessCheck = async (_req: Request, res: Response) => {
   try {
     // Check database connection
     await prisma.$queryRaw`SELECT 1`;
@@ -76,12 +76,12 @@ export const readinessCheck = async (req: Request, res: Response) => {
       });
     }
 
-    res.json({
+    return res.json({
       status: 'ready',
       timestamp: new Date().toISOString(),
     });
   } catch (error: any) {
-    res.status(503).json({
+    return res.status(503).json({
       status: 'not_ready',
       reason: error.message,
       timestamp: new Date().toISOString(),
@@ -93,7 +93,7 @@ export const readinessCheck = async (req: Request, res: Response) => {
  * Liveness probe - check if application is alive
  * GET /api/live
  */
-export const livenessCheck = (req: Request, res: Response) => {
+export const livenessCheck = (_req: Request, res: Response) => {
   res.json({
     status: 'alive',
     timestamp: new Date().toISOString(),

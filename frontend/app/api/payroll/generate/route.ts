@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/utils/db';
 import { authenticate } from '@/lib/server/middleware/auth';
 import { generatePayrollForEmployees } from '@/lib/server/services/payrollService';
-
-// Helper function to check feature flag
-async function checkFeatureFlag(flagName: string): Promise<boolean> {
-  const config = await prisma.storeConfig.findFirst({
-    orderBy: { updatedAt: 'desc' },
-  });
-  if (!config) return false;
-  // Type-safe feature flag check
-  return (config as any)[flagName] === true;
-}
+import { checkFeatureFlag } from '@/lib/server/utils/featureFlags';
 
 export async function POST(request: NextRequest) {
   try {
@@ -23,7 +14,7 @@ export async function POST(request: NextRequest) {
     if (!user || (user.role !== 'ADMIN')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     // Check if employee management is enabled
     const isEnabled = await checkFeatureFlag('posEmployeeManagementEnabled');
     if (!isEnabled) {
@@ -41,7 +32,8 @@ export async function POST(request: NextRequest) {
     }
 
     const results = await generatePayrollForEmployees(
-      prisma,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      prisma as any,
       payPeriodId,
       employeeIds || [],
       user.userId
@@ -51,13 +43,16 @@ export async function POST(request: NextRequest) {
       success: true,
       results,
       total: results.length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       successful: results.filter((r: any) => r.success).length,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       failed: results.filter((r: any) => !r.success).length,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     const isDevelopment = process.env.NODE_ENV === 'development';
+    const errorMessage = error instanceof Error ? error.message : 'Failed to generate payroll';
     return NextResponse.json(
-      { error: isDevelopment ? (error.message || 'Failed to generate payroll') : 'Failed to generate payroll' },
+      { error: isDevelopment ? errorMessage : 'Failed to generate payroll' },
       { status: 500 }
     );
   }

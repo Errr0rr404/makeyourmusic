@@ -47,7 +47,7 @@ export const isValidEmail = (email: string): boolean => {
 };
 
 // Validate request body fields
-export const validateRequestBody = (body: any, requiredFields: string[]): void => {
+export const validateRequestBody = (body: Record<string, unknown>, requiredFields: string[]): void => {
   for (const field of requiredFields) {
     if (body[field] === undefined || body[field] === null || body[field] === '') {
       throw new AppError(`${field} is required`, 400);

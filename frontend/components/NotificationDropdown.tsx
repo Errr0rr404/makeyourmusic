@@ -3,11 +3,20 @@
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, X, Check, CheckCheck } from 'lucide-react';
+import { Bell, X, CheckCheck } from 'lucide-react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { useNotificationStore } from '@/lib/store/notificationStore';
 import { useRouter } from 'next/navigation';
+
+interface Notification {
+  id: string;
+  read: boolean;
+  link?: string;
+  title: string;
+  message: string;
+  createdAt: string;
+}
 
 const formatTimeAgo = (date: string) => {
   const now = new Date();
@@ -73,7 +82,7 @@ export default function NotificationDropdown() {
     };
   }, [open]);
 
-  const handleNotificationClick = async (notification: any) => {
+  const handleNotificationClick = async (notification: Notification) => {
     if (!notification.read) {
       await markAsRead(notification.id);
     }
@@ -83,7 +92,6 @@ export default function NotificationDropdown() {
     }
   };
 
-  const unreadNotifications = notifications.filter((n) => !n.read).slice(0, 5);
   const recentNotifications = notifications.slice(0, 10);
 
   return (

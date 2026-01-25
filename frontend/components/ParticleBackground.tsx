@@ -2,6 +2,20 @@
 
 import { useEffect, useRef } from 'react';
 
+interface Particle {
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  size: number;
+  opacity: number;
+  baseSize: number;
+  baseOpacity: number;
+  pulseOffset: number;
+  update: (time: number) => void;
+  draw: () => void;
+}
+
 interface ParticleBackgroundProps {
   enabled?: boolean;
   density?: number; // Number of particles (default: 50)
@@ -21,7 +35,7 @@ export default function ParticleBackground({
 }: ParticleBackgroundProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const animationFrameRef = useRef<number | undefined>(undefined);
-  const particlesRef = useRef<any[]>([]);
+  const particlesRef = useRef<Particle[]>([]);
   const timeRef = useRef(0);
 
   useEffect(() => {
@@ -41,7 +55,7 @@ export default function ParticleBackground({
     // Extract HSL values for glow effect
     const parseHSL = (hslString: string) => {
       const match = hslString.match(/(\d+(?:\.\d+)?)\s+(\d+(?:\.\d+)?)%\s+(\d+(?:\.\d+)?)%/);
-      if (match) {
+      if (match && match[1] && match[2] && match[3]) {
         return {
           h: parseFloat(match[1]),
           s: parseFloat(match[2]),
@@ -53,7 +67,7 @@ export default function ParticleBackground({
     const hsl = parseHSL(color);
 
     // Particle class - must be defined before any functions that use it
-    class Particle {
+    class ParticleImpl implements Particle {
       x: number;
       y: number;
       vx: number;
@@ -171,11 +185,11 @@ export default function ParticleBackground({
 
     // Initialize particles only once
     if (particlesRef.current.length === 0) {
-      particlesRef.current = Array.from({ length: density }, () => new Particle());
+      particlesRef.current = Array.from({ length: density }, () => new ParticleImpl());
     }
 
     // Draw connections between nearby particles (for lines type)
-    const drawConnections = (time: number) => {
+    const drawConnections = () => {
       if (type !== 'lines') return;
       
       for (let i = 0; i < particlesRef.current.length; i++) {
@@ -211,7 +225,7 @@ export default function ParticleBackground({
       });
 
       // Draw connections for lines type
-      drawConnections(timestamp);
+      drawConnections();
 
       animationFrameRef.current = requestAnimationFrame(animate);
     };

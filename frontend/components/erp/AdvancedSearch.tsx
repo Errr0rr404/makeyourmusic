@@ -15,18 +15,20 @@ interface SearchField {
   options?: Array<{ value: string; label: string }>;
 }
 
+type Filters = Record<string, string | number | undefined>;
+
 interface AdvancedSearchProps {
   fields: SearchField[];
-  onSearch: (filters: Record<string, any>) => void;
+  onSearch: (filters: Filters) => void;
   onExport?: () => void;
   onReset?: () => void;
 }
 
 export default function AdvancedSearch({ fields, onSearch, onExport, onReset }: AdvancedSearchProps) {
-  const [filters, setFilters] = useState<Record<string, any>>({});
+  const [filters, setFilters] = useState<Filters>({});
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const handleFieldChange = (fieldName: string, value: any) => {
+  const handleFieldChange = (fieldName: string, value: string | number) => {
     setFilters((prev) => ({
       ...prev,
       [fieldName]: value,
@@ -40,7 +42,7 @@ export default function AdvancedSearch({ fields, onSearch, onExport, onReset }: 
         acc[key] = value;
       }
       return acc;
-    }, {} as Record<string, any>);
+    }, {} as Filters);
 
     onSearch(activeFilters);
   };
@@ -113,7 +115,7 @@ export default function AdvancedSearch({ fields, onSearch, onExport, onReset }: 
                 )}
                 {field.type === 'select' && field.options && (
                   <Select
-                    value={filters[field.name] || ''}
+                    value={String(filters[field.name] || '')}
                     onValueChange={(value) => handleFieldChange(field.name, value)}
                   >
                     <SelectTrigger>

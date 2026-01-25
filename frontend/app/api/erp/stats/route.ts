@@ -36,15 +36,17 @@ export async function GET(request: NextRequest) {
       totalCustomers,
       totalEmployees,
     ] = await Promise.all([
-      // Total Revenue (from payments and POS transactions)
-      prisma.payment.aggregate({
-        _sum: { amount: true },
-        where: { status: 'SUCCEEDED' },
-      }).then((r: any) => Number(r._sum.amount || 0))
+      // Total Revenue (from paid invoices)
+      prisma.invoice.aggregate({
+        _sum: { total: true },
+        where: {
+          status: 'PAID'
+        },
+      }).then((r: any) => Number(r._sum.total || 0))
         .catch(() => 0),
       
-      // Total Expenses (from accounting transactions - expense accounts)
-      prisma.accountingTransaction.aggregate({
+      // Total Expenses (from journal entry lines - expense accounts)
+      prisma.journalEntryLine.aggregate({
         _sum: { debit: true },
         where: {
           account: {
@@ -89,24 +91,15 @@ export async function GET(request: NextRequest) {
       // Overdue Invoices
       prisma.invoice.count({
         where: {
-          status: {
-            in: ['SENT', 'PARTIAL'],
-          },
-          dueDate: {
-            lt: new Date(),
-          },
+          status: 'OVERDUE',
         },
       }).catch(() => 0),
       
       // Total Customers
-      prisma.user.count({
-        where: { role: 'CUSTOMER' },
-      }).catch(() => 0),
-      
+      prisma.customer.count().catch(() => 0),
+
       // Total Employees
-      prisma.posEmployee.count({
-        where: { isActive: true },
-      }).catch(() => 0),
+      prisma.employee.count().catch(() => 0),
     ]);
 
     const netProfit = Math.max(0, totalRevenue - totalExpenses);

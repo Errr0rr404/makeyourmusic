@@ -130,11 +130,11 @@ const QUICK_ACTIONS: NavItem[] = [
 export default function ERPLayout({ children }: ERPLayoutProps) {
   const pathname = usePathname();
   const { user, logout } = useAuthStore();
-  const { enabledModules, loading: modulesLoading } = useERPModules(user?.role);
+  const { enabledModules } = useERPModules(user?.role);
   const [collapsed, setCollapsed] = useState(false);
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
   const [pendingApprovals, setPendingApprovals] = useState(0);
-  const [notifications, setNotifications] = useState(0);
+  const notifications = 0; // Placeholder
 
   // Load pending approvals count
   useEffect(() => {
@@ -415,7 +415,7 @@ export default function ERPLayout({ children }: ERPLayoutProps) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  {user?.name || user?.email}
+                  {user?.firstName || user?.email}
                 </TooltipContent>
               </Tooltip>
             ) : (
@@ -424,7 +424,7 @@ export default function ERPLayout({ children }: ERPLayoutProps) {
                   <User className="h-5 w-5 text-primary" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
+                  <p className="text-sm font-medium truncate">{user?.firstName || 'User'}</p>
                   <p className="text-xs text-muted-foreground truncate">{user?.role}</p>
                 </div>
                 <Button variant="ghost" size="icon" onClick={logout}>

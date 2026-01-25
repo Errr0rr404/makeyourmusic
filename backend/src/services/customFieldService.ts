@@ -1,12 +1,15 @@
-import { PrismaClient, CustomField, FieldType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
+
+// Define types locally since @prisma/client doesn't export them properly
+type FieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'SELECT';
 
 const prisma = new PrismaClient();
 
-export const getCustomFieldsForModule = async (module: string): Promise<CustomField[]> => {
+export const getCustomFieldsForModule = async (module: string) => {
   return prisma.customField.findMany({ where: { module } });
 };
 
-export const createCustomField = async (data: { name: string; type: FieldType; module: string }): Promise<CustomField> => {
+export const createCustomField = async (data: { name: string; type: FieldType; module: string }) => {
   return prisma.customField.create({ data });
 };
 

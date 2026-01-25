@@ -1,23 +1,32 @@
 import { Request } from 'express';
-import {
-  UserRole,
-  PayPeriodType,
-  PayPeriodStatus,
-  PayrollStatus,
-  PayrollItemType,
-  AccountType,
-  InvoiceStatus,
-  LeadStatus,
-  ProjectStatus,
-} from '@prisma/client';
+
+// Define UserRole locally since @prisma/client export isn't properly generated for backend
+export const UserRole = {
+  USER: 'USER',
+  ADMIN: 'ADMIN',
+  CUSTOMER: 'CUSTOMER',
+  MASTERMIND: 'MASTERMIND',
+  MANAGER: 'MANAGER',
+} as const;
+
+export type UserRole = (typeof UserRole)[keyof typeof UserRole];
+
+// Payment Status enum for payment gateways
+export enum PaymentStatus {
+  PENDING = 'PENDING',
+  PROCESSING = 'PROCESSING',
+  COMPLETED = 'COMPLETED',
+  SUCCEEDED = 'SUCCEEDED',
+  FAILED = 'FAILED',
+  REFUNDED = 'REFUNDED',
+  CANCELLED = 'CANCELLED',
+}
 
 export interface JWTPayload {
   userId: string;
   email: string;
   role: UserRole;
-  // jti ties refresh tokens to server-side store for rotation/revocation
   jti?: string;
-  // sessionId tracks the logical device/session across rotations
   sessionId?: string;
 }
 
@@ -29,16 +38,3 @@ export interface RequestWithUser extends Request {
     sessionId?: string;
   };
 }
-
-// Re-export Prisma enums
-export {
-  UserRole,
-  PayPeriodType,
-  PayPeriodStatus,
-  PayrollStatus,
-  PayrollItemType,
-  AccountType,
-  InvoiceStatus,
-  LeadStatus,
-  ProjectStatus,
-};

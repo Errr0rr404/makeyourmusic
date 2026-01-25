@@ -12,9 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
+import Image from 'next/image';
 
 interface Category {
   id: string;
@@ -43,6 +44,14 @@ interface ProductFormProps {
   onOpenChange: (open: boolean) => void;
   product?: Product | null;
   onSuccess: () => void;
+}
+
+interface ApiError {
+  response?: {
+    data?: {
+      error?: string;
+    };
+  };
 }
 
 export default function ProductForm({ open, onOpenChange, product, onSuccess }: ProductFormProps) {
@@ -159,8 +168,9 @@ export default function ProductForm({ open, onOpenChange, product, onSuccess }: 
       const uploadedUrls = await Promise.all(uploadPromises);
       setImageUrls((prev) => [...prev, ...uploadedUrls]);
       toast.success(`${uploadedUrls.length} image(s) uploaded successfully`);
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to upload images');
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.error || 'Failed to upload images');
     } finally {
       setUploadingImages(false);
       // Reset file input
@@ -202,8 +212,9 @@ export default function ProductForm({ open, onOpenChange, product, onSuccess }: 
       onSuccess();
       onOpenChange(false);
       resetForm();
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Failed to save product');
+    } catch (error: unknown) {
+      const apiError = error as ApiError;
+      toast.error(apiError.response?.data?.error || 'Failed to save product');
     } finally {
       setLoading(false);
     }
@@ -432,10 +443,12 @@ export default function ProductForm({ open, onOpenChange, product, onSuccess }: 
                   {imageUrls.map((url, index) => (
                     <div key={index} className="relative group">
                       <div className="aspect-square rounded-lg overflow-hidden border border-border">
-                        <img
+                        <Image
                           src={url}
                           alt={`Product image ${index + 1}`}
                           className="w-full h-full object-cover"
+                          width={150}
+                          height={150}
                         />
                       </div>
                       <button

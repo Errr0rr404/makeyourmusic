@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Employee } from '@prisma/client';
+import { Employee } from '@/generated/prisma';
 import api from '@/lib/api';
 
 interface EmployeeFormDialogProps {
@@ -44,7 +44,10 @@ export function EmployeeFormDialog({
       setPhone(employee.phone || '');
       setJobTitle(employee.jobTitle);
       setDepartment(employee.department);
-      setHireDate(new Date(employee.hireDate).toISOString().split('T')[0]);
+      const hireDateValue = employee.hireDate
+        ? new Date(employee.hireDate).toISOString().split('T')[0]
+        : '';
+      setHireDate(hireDateValue ?? '');
     } else {
       setFirstName('');
       setLastName('');
@@ -71,7 +74,15 @@ export function EmployeeFormDialog({
   const handleSubmit = async () => {
     if (!validate()) return;
 
-    const employeeData = { firstName, lastName, email, phone, jobTitle, department, hireDate: new Date(hireDate) };
+    const employeeData = {
+      firstName,
+      lastName,
+      email,
+      phone: phone || undefined,
+      jobTitle,
+      department,
+      hireDate: new Date(hireDate).toISOString(),
+    };
 
     try {
       let response;
@@ -89,56 +100,109 @@ export function EmployeeFormDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>{employee ? 'Edit Employee' : 'Create a New Employee'}</DialogTitle>
+          <DialogTitle>{employee ? 'Edit Employee' : 'Add Employee'}</DialogTitle>
         </DialogHeader>
         <div className="grid gap-4 py-4">
-          {/* Form fields... */}
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="firstName">First Name</Label>
-              <Input id="firstName" value={firstName} onChange={(e) => setFirstName(e.target.value)} />
-              {errors.firstName && <p className="text-red-500 text-xs">{errors.firstName}</p>}
-            </div>
-            <div>
-              <Label htmlFor="lastName">Last Name</Label>
-              <Input id="lastName" value={lastName} onChange={(e) => setLastName(e.target.value)} />
-              {errors.lastName && <p className="text-red-500 text-xs">{errors.lastName}</p>}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-              {errors.email && <p className="text-red-500 text-xs">{errors.email}</p>}
-            </div>
-            <div>
-              <Label htmlFor="phone">Phone</Label>
-              <Input id="phone" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="firstName" className="text-right">
+              First Name
+            </Label>
+            <div className="col-span-3">
+              <Input
+                id="firstName"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+              />
+              {errors.firstName && <p className="text-red-500 text-sm">{errors.firstName}</p>}
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="jobTitle">Job Title</Label>
-              <Input id="jobTitle" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} />
-              {errors.jobTitle && <p className="text-red-500 text-xs">{errors.jobTitle}</p>}
-            </div>
-            <div>
-              <Label htmlFor="department">Department</Label>
-              <Input id="department" value={department} onChange={(e) => setDepartment(e.target.value)} />
-              {errors.department && <p className="text-red-500 text-xs">{errors.department}</p>}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="lastName" className="text-right">
+              Last Name
+            </Label>
+            <div className="col-span-3">
+              <Input
+                id="lastName"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+              />
+              {errors.lastName && <p className="text-red-500 text-sm">{errors.lastName}</p>}
             </div>
           </div>
-          <div>
-            <Label htmlFor="hireDate">Hire Date</Label>
-            <Input id="hireDate" type="date" value={hireDate} onChange={(e) => setHireDate(e.target.value)} />
-            {errors.hireDate && <p className="text-red-500 text-xs">{errors.hireDate}</p>}
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="email" className="text-right">
+              Email
+            </Label>
+            <div className="col-span-3">
+              <Input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              {errors.email && <p className="text-red-500 text-sm">{errors.email}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="phone" className="text-right">
+              Phone
+            </Label>
+            <div className="col-span-3">
+              <Input
+                id="phone"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="jobTitle" className="text-right">
+              Job Title
+            </Label>
+            <div className="col-span-3">
+              <Input
+                id="jobTitle"
+                value={jobTitle}
+                onChange={(e) => setJobTitle(e.target.value)}
+              />
+              {errors.jobTitle && <p className="text-red-500 text-sm">{errors.jobTitle}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="department" className="text-right">
+              Department
+            </Label>
+            <div className="col-span-3">
+              <Input
+                id="department"
+                value={department}
+                onChange={(e) => setDepartment(e.target.value)}
+              />
+              {errors.department && <p className="text-red-500 text-sm">{errors.department}</p>}
+            </div>
+          </div>
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="hireDate" className="text-right">
+              Hire Date
+            </Label>
+            <div className="col-span-3">
+              <Input
+                id="hireDate"
+                type="date"
+                value={hireDate}
+                onChange={(e) => setHireDate(e.target.value)}
+              />
+              {errors.hireDate && <p className="text-red-500 text-sm">{errors.hireDate}</p>}
+            </div>
           </div>
         </div>
         <DialogFooter>
-          <Button onClick={onClose} variant="outline">Cancel</Button>
-          <Button onClick={handleSubmit}>{employee ? 'Save Changes' : 'Create'}</Button>
+          <Button variant="outline" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button onClick={handleSubmit}>Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

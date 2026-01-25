@@ -1,16 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/server/utils/db';
 import { authenticate } from '@/lib/server/middleware/auth';
+import { checkFeatureFlag } from '@/lib/server/utils/featureFlags';
 
-// Helper function to check feature flag
-async function checkFeatureFlag(flagName: string): Promise<boolean> {
-  const config = await prisma.storeConfig.findFirst({
-    orderBy: { updatedAt: 'desc' },
-  });
-  if (!config) return false;
-  // Type-safe feature flag check
-  return (config as any)[flagName] === true;
-}
+// Default payroll settings (stored in memory since payrollSettings model doesn't exist)
+// In production, you may want to add a PayrollSettings model to the schema
+const defaultSettings = {
+  id: 'default',
+  overtimeThreshold: 40,
+  overtimeMultiplier: 1.5,
+  defaultPayPeriodType: 'WEEKLY',
+  autoCalculateTaxes: false,
+  taxRate: 0.2,
+  updatedAt: new Date().toISOString(),
+};
+
+// In-memory settings store (resets on server restart)
+let currentSettings = { ...defaultSettings };
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,25 +37,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const settings = await prisma.payrollSettings.findFirst({
-      orderBy: { updatedAt: 'desc' },
-    });
-
-    if (!settings) {
-      // Create default settings
-      const defaultSettings = await prisma.payrollSettings.create({
-        data: {
-          overtimeThreshold: 40,
-          overtimeMultiplier: 1.5,
-          defaultPayPeriodType: 'WEEKLY',
-          autoCalculateTaxes: false,
-          updatedAt: new Date(),
-        },
-      });
-      return NextResponse.json(defaultSettings);
-    }
-
-    return NextResponse.json(settings);
+    return NextResponse.json(currentSettings);
   } catch (error: any) {
     console.error('Get payroll settings error:', error);
     const isDevelopment = process.env.NODE_ENV === 'development';
@@ -85,25 +72,14 @@ export async function PUT(request: NextRequest) {
 
     const body = await request.json();
 
-    const settings = await prisma.payrollSettings.findFirst({
-      orderBy: { updatedAt: 'desc' },
-    });
+    // Update in-memory settings
+    currentSettings = {
+      ...currentSettings,
+      ...body,
+      updatedAt: new Date().toISOString(),
+    };
 
-    const updated = settings
-      ? await prisma.payrollSettings.update({
-          where: { id: settings.id },
-          data: body,
-        })
-      : await prisma.payrollSettings.create({
-          data: {
-            ...body,
-            overtimeThreshold: body.overtimeThreshold || 40,
-            overtimeMultiplier: body.overtimeMultiplier || 1.5,
-            defaultPayPeriodType: body.defaultPayPeriodType || 'WEEKLY',
-          },
-        });
-
-    return NextResponse.json(updated);
+    return NextResponse.json(currentSettings);
   } catch (error: any) {
     console.error('Update payroll settings error:', error);
     const isDevelopment = process.env.NODE_ENV === 'development';

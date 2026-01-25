@@ -1,8 +1,6 @@
 // Advanced Security & Audit System
 // Enterprise-grade security monitoring, audit trails, and compliance
 
-import { create } from 'zustand';
-
 export interface AuditLog {
   id: string;
   timestamp: Date;
@@ -11,12 +9,12 @@ export interface AuditLog {
   action: string;
   resource: string;
   resourceId?: string;
-  changes?: Record<string, any>;
+  changes?: Record<string, unknown>;
   ip?: string;
   userAgent?: string;
   status: 'success' | 'failure' | 'warning';
   severity: 'low' | 'medium' | 'high' | 'critical';
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface SecurityAlert {
@@ -38,6 +36,15 @@ export interface AccessControl {
   reason?: string;
 }
 
+interface LogFilters {
+  userId?: string;
+  resource?: string;
+  action?: string;
+  severity?: string;
+  startDate?: Date;
+  endDate?: Date;
+}
+
 class SecurityService {
   private auditLogs: AuditLog[] = [];
   private securityAlerts: SecurityAlert[] = [];
@@ -47,7 +54,7 @@ class SecurityService {
     action: string,
     resource: string,
     resourceId?: string,
-    changes?: Record<string, any>
+    changes?: Record<string, unknown>
   ): void {
     const user = this.getCurrentUser();
 
@@ -76,14 +83,7 @@ class SecurityService {
   }
 
   // Get audit logs with filtering
-  getAuditLogs(filters?: {
-    userId?: string;
-    resource?: string;
-    action?: string;
-    severity?: string;
-    startDate?: Date;
-    endDate?: Date;
-  }): AuditLog[] {
+  getAuditLogs(filters?: LogFilters): AuditLog[] {
     let logs = [...this.auditLogs];
 
     if (filters) {
@@ -304,7 +304,7 @@ export const securityService = new SecurityService();
 
 // React Hook
 export function useSecurity() {
-  const logAction = (action: string, resource: string, resourceId?: string, changes?: Record<string, any>) => {
+  const logAction = (action: string, resource: string, resourceId?: string, changes?: Record<string, unknown>) => {
     securityService.logAction(action, resource, resourceId, changes);
   };
 
@@ -312,7 +312,7 @@ export function useSecurity() {
     return securityService.checkAccess(resource, action);
   };
 
-  const getAuditLogs = (filters?: any) => {
+  const getAuditLogs = (filters?: LogFilters) => {
     return securityService.getAuditLogs(filters);
   };
 

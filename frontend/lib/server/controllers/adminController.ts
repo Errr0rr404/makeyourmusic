@@ -55,7 +55,8 @@ export const adminLogin = async (req: NextRequest): Promise<NextResponse> => {
     user: {
       id: user.id,
       email: user.email,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       role: user.role,
     },
     accessToken,
@@ -83,92 +84,50 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
 
   const { user } = authResult;
   
-  // Check if user is admin or mastermind
-  if (!user || (user.role !== 'ADMIN' && user.role !== 'MASTERMIND')) {
+  // Check if user is admin (UserRole only has USER and ADMIN)
+  if (!user || user.role !== 'ADMIN') {
     throw new AppError('Admin access required', 403);
   }
 
   try {
-    const prismaClient = prisma as any;
-    
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-
+    // ERP-focused dashboard stats
     const [
       totalProducts,
-      totalOrders,
       totalUsers,
-      totalRevenue,
-      onlineRevenue,
-      posRevenue,
-      pendingMessages,
-      unreadNotifications,
-      posSessionsToday,
+      totalEmployees,
+      totalInvoices,
+      totalLeads,
+      totalProjects,
     ] = await Promise.all([
-      prisma.product.count(),
-      prisma.order.count(),
-      prisma.user.count({
-        where: {
-          role: { not: 'MASTERMIND' }, // Exclude mastermind users
-        },
-      }),
-      prisma.payment.aggregate({
-        _sum: {
-          amount: true,
-        },
-        where: {
-          status: 'SUCCEEDED',
-        },
-      }),
-      // Online revenue (exclude POS)
-      prisma.payment.aggregate({
-        _sum: {
-          amount: true,
-        },
-        where: {
-          status: 'SUCCEEDED',
-          order: {
-            source: 'ONLINE',
-          },
-        },
-      }),
-      // POS revenue
-      prismaClient.posTransaction?.aggregate({
-        _sum: {
-          total: true,
-        },
-        where: {
-          transactionType: 'SALE',
-        },
-      }).catch(() => ({ _sum: { total: null } })) || Promise.resolve({ _sum: { total: null } }),
-      // Safely handle optional models
-      (prismaClient.contactMessage?.count ? prismaClient.contactMessage.count({
-        where: { status: 'PENDING' },
-      }).catch(() => 0) : Promise.resolve(0)),
-      prisma.notification.count({
-        where: { read: false },
-      }).catch(() => 0),
-      // POS sessions today
-      (prismaClient.posSession?.count ? prismaClient.posSession.count({
-        where: {
-          openedAt: {
-            gte: todayStart,
-          },
-        },
-      }).catch(() => 0) : Promise.resolve(0)),
+      prisma.product.count().catch(() => 0),
+      prisma.user.count().catch(() => 0),
+      prisma.employee.count().catch(() => 0),
+      prisma.invoice.count().catch(() => 0),
+      prisma.lead.count().catch(() => 0),
+      prisma.project.count().catch(() => 0),
     ]);
+
+    // Calculate revenue from invoices
+    const invoiceRevenue = await prisma.invoice.aggregate({
+      _sum: { total: true },
+      where: { status: 'PAID' },
+    }).catch(() => ({ _sum: { total: null } }));
 
     return NextResponse.json({
       stats: {
         totalProducts: totalProducts ?? 0,
-        totalOrders: totalOrders ?? 0,
+        totalOrders: 0, // Not available in ERP schema
         totalUsers: totalUsers ?? 0,
-        totalRevenue: totalRevenue._sum?.amount ? Number(totalRevenue._sum.amount) : 0,
-        onlineRevenue: onlineRevenue._sum?.amount ? Number(onlineRevenue._sum.amount) : 0,
-        posRevenue: posRevenue._sum?.total ? Number(posRevenue._sum.total) : 0,
-        pendingMessages: pendingMessages ?? 0,
-        unreadNotifications: unreadNotifications ?? 0,
-        posSessionsToday: posSessionsToday ?? 0,
+        totalEmployees: totalEmployees ?? 0,
+        totalInvoices: totalInvoices ?? 0,
+        totalLeads: totalLeads ?? 0,
+        totalProjects: totalProjects ?? 0,
+        totalRevenue: invoiceRevenue._sum?.total ? Number(invoiceRevenue._sum.total) : 0,
+        onlineRevenue: 0,
+        posRevenue: 0,
+        pendingMessages: 0,
+        unreadNotifications: 0,
+        posSessionsToday: 0,
       },
     });
   } catch (error) {
@@ -187,24 +146,19 @@ export const getAdminUsers = async (req: NextRequest): Promise<NextResponse> => 
 
   const [users, total] = await Promise.all([
     prisma.user.findMany({
-      where: {
-        role: { not: 'MASTERMIND' },
-      },
       orderBy: { createdAt: 'desc' },
       skip,
       take: limit,
       select: {
         id: true,
         email: true,
-        name: true,
+        firstName: true,
+        lastName: true,
         role: true,
         createdAt: true,
-        _count: { select: { orders: true } },
       },
     }),
-    prisma.user.count({
-      where: { role: { not: 'MASTERMIND' } },
-    }),
+    prisma.user.count(),
   ]);
 
   const response = formatPaginationResponse(users, total, page, limit);

@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { body, validationResult } from 'express-validator';
 import validator from 'validator';
-import { AppError } from './errorHandler';
 
 // Password strength validation
 export const validatePassword = (password: string): { valid: boolean; message?: string } => {
@@ -47,10 +46,11 @@ export const sanitizeEmail = (email: string | null | undefined): string | null =
 export const validateRequest = (req: Request, res: Response, next: NextFunction) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
-    return res.status(400).json({
+    res.status(400).json({
       error: 'Validation failed',
       details: errors.array(),
     });
+    return;
   }
   next();
 };
@@ -80,7 +80,7 @@ const trimOnly = (str: string | null | undefined): string | null => {
 };
 
 // Sanitize request body
-export const sanitizeBody = (req: Request, res: Response, next: NextFunction) => {
+export const sanitizeBody = (req: Request, _res: Response, next: NextFunction): void => {
   if (req.body && typeof req.body === 'object') {
     const sanitize = (obj: any, parentKey?: string): any => {
       // Handle null/undefined

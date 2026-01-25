@@ -17,7 +17,7 @@ export const getDocuments = async (req: NextRequest): Promise<NextResponse> => {
   const category = searchParams.get('category');
   const folderId = searchParams.get('folderId');
 
-  const where: any = {
+  const where: Record<string, unknown> = {
     OR: [
       { isPublic: true },
       { accessLevel: 'INTERNAL' },
@@ -28,21 +28,27 @@ export const getDocuments = async (req: NextRequest): Promise<NextResponse> => {
   if (folderId) where.folderId = folderId;
 
   // Check if document model exists
-  if (!('document' in prisma)) {
+  const prismaAny = prisma as unknown as Record<string, { 
+    findMany: (args: Record<string, unknown>) => Promise<unknown[]>,
+    count: (args: Record<string, unknown>) => Promise<number>,
+    create: (args: Record<string, unknown>) => Promise<unknown>
+  } | undefined>;
+
+  if (!prismaAny.document) {
     return NextResponse.json({
       documents: [],
-      pagination: { page, limit, total: 0, totalPages: 0 },
+      pagination: { page, limit, total: 0, pages: 0 },
     });
   }
 
+  const documentModel = prismaAny.document;
   const [documents, total] = await Promise.all([
-    (prisma as any).document.findMany({
+    documentModel.findMany({
       where,
       skip: (page - 1) * limit,
       take: limit,
-      orderBy: { createdAt: 'desc' },
     }),
-    (prisma as any).document.count({ where }),
+    documentModel.count({ where }),
   ]);
 
   return NextResponse.json({
@@ -91,11 +97,16 @@ export const createDocument = async (req: NextRequest): Promise<NextResponse> =>
   }
 
   // Check if document model exists
-  if (!('document' in prisma)) {
+  const prismaAny = prisma as unknown as Record<string, { 
+    create: (args: Record<string, unknown>) => Promise<unknown>
+  } | undefined>;
+
+  if (!prismaAny.document) {
     throw new AppError('Document management is not available', 501);
   }
 
-  const document = await (prisma as any).document.create({
+  const documentModel = prismaAny.document;
+  const document = await documentModel.create({
     data: {
       name,
       fileName,

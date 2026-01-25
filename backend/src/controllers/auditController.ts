@@ -1,6 +1,5 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { RequestWithUser } from '../types';
-import { prisma } from '../utils/db';
 import { AppError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 
@@ -126,7 +125,7 @@ export const logAuditEntries = async (req: RequestWithUser, res: Response, next:
 
     res.status(201).json({ logged: loggedEntries.length });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -225,7 +224,7 @@ export const getAuditLogs = async (req: RequestWithUser, res: Response, next: Ne
       totalPages,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -273,7 +272,7 @@ export const getAuditStats = async (req: RequestWithUser, res: Response, next: N
       if (!userCounts[log.userId]) {
         userCounts[log.userId] = { userId: log.userId, userName: log.userName || log.userId, count: 0 };
       }
-      userCounts[log.userId].count++;
+      userCounts[log.userId]!.count++;
 
       // Failed actions
       if (!log.success) {
@@ -301,7 +300,7 @@ export const getAuditStats = async (req: RequestWithUser, res: Response, next: N
       criticalEvents,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -407,7 +406,7 @@ export const exportAuditLogs = async (req: RequestWithUser, res: Response, next:
       }
     }
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 

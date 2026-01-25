@@ -11,7 +11,7 @@ const storage = multer.memoryStorage();
 const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
 
 // File filter - only allow images with proper validation
-const fileFilter = (req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
   // Check MIME type
   if (!file.mimetype || !ALLOWED_MIME_TYPES.includes(file.mimetype.toLowerCase())) {
     return cb(new AppError('Only JPEG, PNG, GIF, and WebP images are allowed', 400));
@@ -68,7 +68,7 @@ export const uploadImage = async (req: Request, res: Response, next: NextFunctio
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -116,6 +116,6 @@ export const uploadImages = async (req: Request, res: Response, next: NextFuncti
       })),
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

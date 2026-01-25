@@ -4,7 +4,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,7 @@ export function AIAssistantChat({ onClose, defaultOpen = false }: AIAssistantCha
   const [isOpen, setIsOpen] = useState(defaultOpen);
   const [isMinimized, setIsMinimized] = useState(false);
   const [input, setInput] = useState('');
-  const { messages, loading, ask, insights, getInsights } = useAIAssistant();
+  const { messages, loading, ask } = useAIAssistant();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

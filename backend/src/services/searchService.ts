@@ -35,14 +35,14 @@ export const searchAcrossModules = async (query: string): Promise<SearchResult[]
     }),
   ]);
 
-  const leadResults: SearchResult[] = leads.map(lead => ({
+  const leadResults: SearchResult[] = leads.map((lead: any) => ({
     id: lead.id,
     type: 'Lead',
     title: lead.name,
     url: `/erp/crm/leads`, // In a real app, you might go to a lead detail page
   }));
 
-  const invoiceResults: SearchResult[] = invoices.map(invoice => ({
+  const invoiceResults: SearchResult[] = invoices.map((invoice: any) => ({
     id: invoice.id,
     type: 'Invoice',
     title: `Invoice #${invoice.invoiceNumber}`,

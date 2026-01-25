@@ -33,7 +33,8 @@ interface Notification {
   user?: {
     id: string;
     email: string;
-    name: string | null;
+    firstName: string | null;
+    lastName: string | null;
   };
 }
 
@@ -240,7 +241,7 @@ export default function AdminNotificationsPage() {
                           </div>
                           {notification.user && (
                             <span>
-                              To: {notification.user.name || notification.user.email}
+                              To: {notification.user.firstName} {notification.user.lastName}
                             </span>
                           )}
                           {!notification.userId && <span>System notification</span>}

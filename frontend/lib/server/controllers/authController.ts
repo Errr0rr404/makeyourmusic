@@ -9,7 +9,7 @@ import { authenticate } from '../middleware/auth';
 
 export const register = async (req: NextRequest): Promise<NextResponse> => {
   const body = await req.json();
-  const { email, password, name } = body;
+  const { email, password, firstName, lastName } = body;
 
   if (!email || !password) {
     throw new AppError('Email and password are required', 400);
@@ -42,13 +42,15 @@ export const register = async (req: NextRequest): Promise<NextResponse> => {
     data: {
       email: sanitizedEmail,
       passwordHash,
-      name: name?.trim() || null,
-      role: UserRole.CUSTOMER,
+      firstName: firstName?.trim() || null,
+      lastName: lastName?.trim() || null,
+      role: UserRole.USER,
     },
     select: {
       id: true,
       email: true,
-      name: true,
+      firstName: true,
+      lastName: true,
       role: true,
       createdAt: true,
     },
@@ -110,10 +112,10 @@ export const login = async (req: NextRequest): Promise<NextResponse> => {
       });
       
       // Error logging only - no debug logs in production
-    } catch (dbError: any) {
+    } catch (dbError: unknown) {
       console.error('Database error during login:', dbError);
       throw new AppError(
-        `Database connection error: ${dbError.message || 'Unable to connect to database'}`,
+        `Database connection error: ${dbError instanceof Error ? dbError.message : 'Unable to connect to database'}`,
         500
       );
     }
@@ -148,7 +150,8 @@ export const login = async (req: NextRequest): Promise<NextResponse> => {
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        firstName: user.firstName,
+        lastName: user.lastName,
         role: user.role,
       },
       accessToken,
@@ -164,15 +167,16 @@ export const login = async (req: NextRequest): Promise<NextResponse> => {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Re-throw AppError as-is
     if (error instanceof AppError) {
       throw error;
     }
     // Wrap other errors
     console.error('Login error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Login failed. Please try again.';
     throw new AppError(
-      error.message || 'Login failed. Please try again.',
+      errorMessage,
       500
     );
   }
@@ -194,7 +198,8 @@ export const getMe = async (req: NextRequest): Promise<NextResponse> => {
     select: {
       id: true,
       email: true,
-      name: true,
+      firstName: true,
+      lastName: true,
       phone: true,
       role: true,
       createdAt: true,
@@ -220,7 +225,7 @@ export const updateProfile = async (req: NextRequest): Promise<NextResponse> => 
   }
 
   const body = await req.json();
-  const { name, email, phone } = body;
+  const { firstName, lastName, email, phone } = body;
 
   // Check if user exists
   const existingUser = await prisma.user.findUnique({
@@ -250,13 +255,18 @@ export const updateProfile = async (req: NextRequest): Promise<NextResponse> => 
 
   // Update user profile
   const updateData: {
-    name?: string | null;
+    firstName?: string | null;
+    lastName?: string | null;
     email?: string;
     phone?: string | null;
   } = {};
   
-  if (name !== undefined) {
-    updateData.name = name?.trim() || null;
+  if (firstName !== undefined) {
+    updateData.firstName = firstName?.trim() || null;
+  }
+
+  if (lastName !== undefined) {
+    updateData.lastName = lastName?.trim() || null;
   }
   
   if (sanitizedEmail) {
@@ -273,7 +283,8 @@ export const updateProfile = async (req: NextRequest): Promise<NextResponse> => 
     select: {
       id: true,
       email: true,
-      name: true,
+      firstName: true,
+      lastName: true,
       phone: true,
       role: true,
       createdAt: true,
@@ -314,7 +325,7 @@ export const refresh = async (req: NextRequest): Promise<NextResponse> => {
   return NextResponse.json({ accessToken });
 };
 
-export const logout = async (req: NextRequest): Promise<NextResponse> => {
+export const logout = async (): Promise<NextResponse> => {
   const response = NextResponse.json({ message: 'Logged out successfully' });
   response.cookies.delete('refreshToken');
   return response;

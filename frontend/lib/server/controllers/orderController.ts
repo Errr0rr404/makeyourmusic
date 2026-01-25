@@ -10,7 +10,7 @@ export async function getAdminOrders(req: NextRequest) {
     const status = searchParams.get('status');
     const skip = (page - 1) * limit;
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
     if (status) {
       where.status = status;
     }

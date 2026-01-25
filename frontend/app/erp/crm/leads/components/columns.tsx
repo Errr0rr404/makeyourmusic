@@ -1,7 +1,7 @@
 'use client';
 
 import { ColumnDef } from '@tanstack/react-table';
-import { Lead, LeadStatus } from '@prisma/client';
+import { Lead, LeadStatus } from '@/generated/prisma';
 import { MoreHorizontal, ArrowUpDown, ChevronsRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {

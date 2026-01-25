@@ -97,8 +97,9 @@ export const uploadImageBase64 = async (
       width: result.width || 0,
       height: result.height || 0,
     };
-  } catch (error: any) {
-    throw new Error(`Cloudinary upload failed: ${error.message}`);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Cloudinary upload failed: ${errorMessage}`);
   }
 };
 
@@ -127,8 +128,8 @@ export const deleteImage = async (publicId: string): Promise<void> => {
   
   try {
     await cloudinary.uploader.destroy(sanitizedPublicId);
-  } catch (error: any) {
-    throw new Error(`Failed to delete image: ${error.message}`);
+  } catch (error: unknown) {
+    throw new Error(`Failed to delete image: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 };
 

@@ -4,7 +4,8 @@ import api from '../api';
 export interface User {
   id: string;
   email: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   phone: string | null;
   role: 'USER' | 'ADMIN';
 }
@@ -18,7 +19,7 @@ interface AuthState {
 
 interface AuthActions {
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, name?: string) => Promise<void>;
+  register: (email: string, password: string, firstName?: string, lastName?: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setToken: (token: string) => void;
@@ -66,17 +67,18 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       
       localStorage.setItem('accessToken', accessToken);
       set({ user, accessToken, isAuthenticated: true, isLoading: false });
-    } catch (error: any) {
+    } catch (error: unknown) {
       set({ isLoading: false });
-      const errorMessage = error.response?.data?.error || error.message || 'Login failed';
+      const axiosError = error as { response?: { data?: { error?: string } }; message?: string };
+      const errorMessage = axiosError.response?.data?.error || axiosError.message || 'Login failed';
       throw new Error(errorMessage);
     }
   },
 
-  register: async (email, password, name) => {
+  register: async (email, password, firstName, lastName) => {
     set({ isLoading: true });
     try {
-      const response = await api.post('/auth/register', { email, password, name });
+      const response = await api.post('/auth/register', { email, password, firstName, lastName });
       const { user, accessToken } = response.data;
       
       if (!accessToken || !user) {
@@ -85,9 +87,10 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
       
       localStorage.setItem('accessToken', accessToken);
       set({ user, accessToken, isAuthenticated: true, isLoading: false });
-    } catch (error: any) {
+    } catch (error: unknown) {
       set({ isLoading: false });
-      const errorMessage = error.response?.data?.error || error.message || 'Registration failed';
+      const axiosError = error as { response?: { data?: { error?: string } }; message?: string };
+      const errorMessage = axiosError.response?.data?.error || axiosError.message || 'Registration failed';
       throw new Error(errorMessage);
     }
   },
@@ -112,8 +115,9 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     try {
       const response = await api.get('/auth/me');
       set({ user: response.data.user, isAuthenticated: true, isLoading: false });
-    } catch (error: any) {
-      if (error.response?.status === 401) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 401) {
         try {
           const refreshResponse = await api.post('/auth/refresh', {}, { withCredentials: true });
           if (refreshResponse.data.accessToken) {
@@ -123,7 +127,7 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
             set({ user: retryResponse.data.user, accessToken: newToken, isAuthenticated: true, isLoading: false });
             return;
           }
-        } catch (refreshError) {
+        } catch {
           // Refresh failed, proceed to logout
         }
       }

@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { PaymentGateway, CreatePaymentRequest, PaymentResponse, PaymentVerificationRequest, PaymentVerificationResponse } from './base';
 import { PaymentStatus } from '../../types';
 import { PaymentMethod } from '../../types/payment';
@@ -65,7 +64,7 @@ export class RocketGateway extends PaymentGateway {
     }
   }
 
-  async handleWebhook(payload: any, headers: any): Promise<PaymentVerificationResponse> {
+  async handleWebhook(payload: any, _headers: any): Promise<PaymentVerificationResponse> {
     // Rocket webhook handling would go here
     return {
       success: false,

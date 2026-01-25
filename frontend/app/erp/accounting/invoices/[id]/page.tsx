@@ -3,11 +3,33 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import api from '@/lib/api';
-import { Invoice, InvoiceItem } from '@prisma/client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
-type InvoiceWithItems = Invoice & { items: InvoiceItem[] };
+// Local type definitions matching Prisma schema
+interface InvoiceItem {
+  id: string;
+  description: string;
+  quantity: number;
+  unitPrice: number;
+  total: number;
+}
+
+interface Invoice {
+  id: string;
+  invoiceNumber: string;
+  issueDate: string;
+  dueDate: string;
+  status: string;
+  total: number;
+  paidAmount: number;
+  notes?: string | null;
+  customerId?: string | null;
+  customer?: { name: string } | null;
+  items: InvoiceItem[];
+}
+
+type InvoiceWithItems = Invoice;
 
 export default function InvoiceDetailsPage() {
   const params = useParams();
@@ -67,7 +89,7 @@ export default function InvoiceDetailsPage() {
             {invoice.items.map((item) => (
               <div key={item.id} className="grid grid-cols-4 p-4 border-b">
                 <div>{item.description}</div>
-                <div className="text-center">{item.quantity}</div>
+                <div className="text-center">{Number(item.quantity)}</div>
                 <div className="text-right">{formatCurrency(Number(item.unitPrice))}</div>
                 <div className="text-right">{formatCurrency(Number(item.total))}</div>
               </div>

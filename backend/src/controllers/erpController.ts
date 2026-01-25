@@ -5,7 +5,7 @@ import { AppError } from '../middleware/errorHandler';
 import logger from '../utils/logger';
 
 // List chart of accounts (read-only)
-export const listChartOfAccounts = async (req: Request, res: Response, next: NextFunction) => {
+export const listChartOfAccounts = async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const prismaClient = prisma as any;
     if (!prismaClient.chartOfAccount) {
@@ -16,7 +16,7 @@ export const listChartOfAccounts = async (req: Request, res: Response, next: Nex
     res.json(accounts);
   } catch (error: any) {
     logger.error('Error listing chart of accounts', { error: error.message });
-    next(error);
+    return next(error);
   }
 };
 
@@ -44,23 +44,24 @@ export const createChartOfAccount = async (req: RequestWithUser, res: Response, 
 
     res.status(201).json(created);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
 // List invoices
-export const listInvoices = async (req: Request, res: Response, next: NextFunction) => {
+export const listInvoices = async (_req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
     const prismaClient = prisma as any;
     if (!prismaClient.invoice) {
-      return res.json([]);
+      res.json([]);
+      return;
     }
 
     const invoices = await prismaClient.invoice.findMany({ orderBy: { issueDate: 'desc' } });
     res.json(invoices);
   } catch (error: any) {
     logger.error('Error listing invoices', { error: error.message });
-    next(error);
+    return next(error);
   }
 };
 
@@ -88,6 +89,6 @@ export const createInvoice = async (req: RequestWithUser, res: Response, next: N
 
     res.status(201).json(created);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

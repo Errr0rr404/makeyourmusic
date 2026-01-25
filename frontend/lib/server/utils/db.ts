@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@/generated/prisma';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
 
@@ -94,9 +94,10 @@ const getPrismaClient = (): PrismaClient => {
     }
 
     return prismaInstance;
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     throw new Error(
-      `Prisma client initialization failed: ${error.message || 'Unknown error'}. ` +
+      `Prisma client initialization failed: ${errorMessage}. ` +
       'Please check your DATABASE_URL environment variable.'
     );
   }
@@ -106,9 +107,9 @@ const getPrismaClient = (): PrismaClient => {
 export const prisma = new Proxy({} as PrismaClient, {
   get(_target, prop) {
     const client = getPrismaClient();
-    const value = (client as any)[prop];
+    const value = (client as unknown as Record<string | symbol, unknown>)[prop];
     if (typeof value === 'function') {
-      return value.bind(client);
+      return (value as (...args: unknown[]) => unknown).bind(client);
     }
     return value;
   },

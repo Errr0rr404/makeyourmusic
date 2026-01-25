@@ -61,9 +61,9 @@ export function decrypt(encryptedText: string): string {
     if (parts.length !== 3) return encryptedText; // Not encrypted
     
     const key = getKey(ENCRYPTION_KEY || FALLBACK_KEY);
-    const iv = Buffer.from(parts[0], 'hex');
-    const authTag = Buffer.from(parts[1], 'hex');
-    const encrypted = parts[2];
+    const iv = Buffer.from(parts[0]!, 'hex');
+    const authTag = Buffer.from(parts[1]!, 'hex');
+    const encrypted = parts[2]!;
     
     const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);

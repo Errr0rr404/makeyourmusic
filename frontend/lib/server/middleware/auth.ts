@@ -33,7 +33,7 @@ export const authenticate = (req: NextRequest): { user: NextApiRequestWithUser['
         role: decoded.role as 'CUSTOMER' | 'ADMIN' | 'MASTERMIND' | 'MANAGER' | 'CFO' | 'HR_MANAGER' | 'SALES_MANAGER' | 'OPERATIONS_MANAGER' | 'PROJECT_MANAGER' | 'ANALYST',
       },
     };
-  } catch (error) {
+  } catch {
     return NextResponse.json({ error: 'Authentication required' }, { status: 401 });
   }
 };

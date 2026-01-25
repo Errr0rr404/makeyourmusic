@@ -13,8 +13,10 @@ export const getRelatedProducts = async (req: NextRequest, context: { params: { 
   }
 
   try {
-    const prismaClient = prisma as any;
-    let relatedProducts: any[] = [];
+    const prismaClient = prisma as unknown as Record<string, {
+      findMany: (args: unknown) => Promise<unknown[]>;
+    }>;
+    let relatedProducts: Record<string, unknown>[] = [];
 
     // First, try to get products from product_relations
     try {
@@ -34,10 +36,10 @@ export const getRelatedProducts = async (req: NextRequest, context: { params: { 
           },
         },
         take: limit,
-      }) || [];
+      }) as Array<{ related: Record<string, unknown> }> || [];
 
-      relatedProducts = relations.map((r: any) => r.related).filter(Boolean);
-    } catch (error) {
+      relatedProducts = relations.map(r => r.related).filter(Boolean);
+    } catch {
       // ProductRelation model might not exist, continue with fallback
       relatedProducts = [];
     }
@@ -69,8 +71,8 @@ export const getRelatedProducts = async (req: NextRequest, context: { params: { 
         });
 
         // Filter out duplicates
-        const existingIds = new Set(relatedProducts.map((p: any) => p.id));
-        const newProducts = categoryProducts.filter((p) => !existingIds.has(p.id));
+        const existingIds = new Set(relatedProducts.map(p => p.id));
+        const newProducts = (categoryProducts as unknown as Record<string, unknown>[]).filter((p) => !existingIds.has(p.id));
         relatedProducts = [...relatedProducts, ...newProducts];
       }
     }
@@ -79,7 +81,7 @@ export const getRelatedProducts = async (req: NextRequest, context: { params: { 
     if (relatedProducts.length < limit) {
       const featuredProducts = await prisma.product.findMany({
         where: {
-          id: { notIn: [productId, ...relatedProducts.map((p: any) => p.id)] },
+          id: { notIn: [productId, ...relatedProducts.map(p => p.id as string)] },
           active: true,
           featured: true,
         },
@@ -99,7 +101,7 @@ export const getRelatedProducts = async (req: NextRequest, context: { params: { 
     }
 
     return NextResponse.json({ products: relatedProducts.slice(0, limit) });
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error fetching related products:', error);
     // Return empty array on error rather than failing
     return NextResponse.json({ products: [] });

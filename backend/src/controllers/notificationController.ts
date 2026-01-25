@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { RequestWithUser } from '../types';
 import { prisma } from '../utils/db';
 import { AppError } from '../middleware/errorHandler';
@@ -61,7 +61,7 @@ export const getNotifications = async (req: RequestWithUser, res: Response, next
       pagination: response.pagination,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -100,7 +100,7 @@ export const getNotification = async (req: RequestWithUser, res: Response, next:
     if ((error as any).code === 'P2025') {
       return next(new AppError('Notification not found', 404));
     }
-    next(error);
+    return next(error);
   }
 };
 
@@ -135,7 +135,7 @@ export const markAsRead = async (req: RequestWithUser, res: Response, next: Next
     if ((error as any).code === 'P2025') {
       return next(new AppError('Notification not found', 404));
     }
-    next(error);
+    return next(error);
   }
 };
 
@@ -156,7 +156,7 @@ export const markAllAsRead = async (req: RequestWithUser, res: Response, next: N
 
     res.json({ message: 'All notifications marked as read' });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -204,7 +204,7 @@ export const getAllNotifications = async (req: RequestWithUser, res: Response, n
       },
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -247,7 +247,7 @@ export const createNotification = async (req: RequestWithUser, res: Response, ne
 
     res.status(201).json(notification);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -281,6 +281,6 @@ export const deleteNotification = async (req: RequestWithUser, res: Response, ne
     if ((error as any).code === 'P2025') {
       return next(new AppError('Notification not found', 404));
     }
-    next(error);
+    return next(error);
   }
 };

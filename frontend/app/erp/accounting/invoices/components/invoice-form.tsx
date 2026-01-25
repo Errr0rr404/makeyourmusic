@@ -18,7 +18,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2 } from 'lucide-react';
 import api from '@/lib/api';
-import { Invoice, InvoiceStatus } from '@prisma/client';
+import { Invoice, InvoiceStatus } from '@/generated/prisma';
 
 const invoiceSchema = z.object({
   invoiceNumber: z.string().min(1, 'Invoice number is required'),

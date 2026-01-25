@@ -2,16 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/utils/db';
 import { authenticate } from '@/lib/server/middleware/auth';
 import { generateReport } from '@/lib/server/services/reportsService';
-
-// Helper function to check feature flag
-async function checkFeatureFlag(flagName: string): Promise<boolean> {
-  const config = await prisma.storeConfig.findFirst({
-    orderBy: { updatedAt: 'desc' },
-  });
-  if (!config) return false;
-  // Type-safe feature flag check
-  return (config as any)[flagName] === true;
-}
+import { checkFeatureFlag } from '@/lib/server/utils/featureFlags';
 
 export async function POST(request: NextRequest) {
   try {

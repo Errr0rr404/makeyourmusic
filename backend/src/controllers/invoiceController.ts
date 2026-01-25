@@ -1,56 +1,56 @@
 import { Request, Response } from 'express';
 import * as invoiceService from '../services/invoiceService';
 
-export const getInvoices = async (req: Request, res: Response) => {
+export const getInvoices = async (_req: Request, res: Response) => {
   try {
     const invoices = await invoiceService.getAllInvoices();
-    res.json(invoices);
+    return res.json(invoices);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching invoices', error });
+    return res.status(500).json({ message: 'Error fetching invoices', error });
   }
 };
 
 export const getInvoiceById = async (req: Request, res: Response) => {
   try {
-    const invoice = await invoiceService.getInvoiceById(req.params.id);
+    const invoice = await invoiceService.getInvoiceById(String(req.params.id));
     if (!invoice) {
       return res.status(404).json({ message: 'Invoice not found' });
     }
-    res.json(invoice);
+    return res.json(invoice);
   } catch (error) {
-    res.status(500).json({ message: 'Error fetching invoice', error });
+    return res.status(500).json({ message: 'Error fetching invoice', error });
   }
 };
 
 export const createInvoice = async (req: Request, res: Response) => {
   try {
     const newInvoice = await invoiceService.createInvoice(req.body);
-    res.status(201).json(newInvoice);
+    return res.status(201).json(newInvoice);
   } catch (error) {
-    res.status(500).json({ message: 'Error creating invoice', error });
+    return res.status(500).json({ message: 'Error creating invoice', error });
   }
 };
 
 export const updateInvoice = async (req: Request, res: Response) => {
   try {
-    const updatedInvoice = await invoiceService.updateInvoice(req.params.id, req.body);
+    const updatedInvoice = await invoiceService.updateInvoice(String(req.params.id), req.body);
     if (!updatedInvoice) {
       return res.status(404).json({ message: 'Invoice not found' });
     }
-    res.json(updatedInvoice);
+    return res.json(updatedInvoice);
   } catch (error) {
-    res.status(500).json({ message: 'Error updating invoice', error });
+    return res.status(500).json({ message: 'Error updating invoice', error });
   }
 };
 
 export const deleteInvoice = async (req: Request, res: Response) => {
   try {
-    const deleted = await invoiceService.deleteInvoice(req.params.id);
+    const deleted = await invoiceService.deleteInvoice(String(req.params.id));
     if (!deleted) {
       return res.status(404).json({ message: 'Invoice not found' });
     }
-    res.status(204).send();
+    return res.status(204).send();
   } catch (error) {
-    res.status(500).json({ message: 'Error deleting invoice', error });
+    return res.status(500).json({ message: 'Error deleting invoice', error });
   }
 };

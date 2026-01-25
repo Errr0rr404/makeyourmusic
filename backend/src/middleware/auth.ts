@@ -7,13 +7,15 @@ export const authenticate = (req: RequestWithUser, res: Response, next: NextFunc
     const authHeader = req.headers.authorization;
     
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return res.status(401).json({ error: 'Authentication required' });
+      res.status(401).json({ error: 'Authentication required' });
+      return;
     }
 
     const token = authHeader.substring(7);
     
     if (!token || token.length === 0) {
-      return res.status(401).json({ error: 'Authentication required' });
+      res.status(401).json({ error: 'Authentication required' });
+      return;
     }
 
     const decoded = verifyAccessToken(token);
@@ -27,17 +29,34 @@ export const authenticate = (req: RequestWithUser, res: Response, next: NextFunc
 
     next();
   } catch (error) {
-    return res.status(401).json({ error: 'Authentication required' });
+    res.status(401).json({ error: 'Authentication required' });
   }
 };
 
 export const requireAdmin = (req: RequestWithUser, res: Response, next: NextFunction) => {
   if (!req.user) {
-    return res.status(401).json({ error: 'Authentication required' });
+    res.status(401).json({ error: 'Authentication required' });
+    return;
   }
 
   if (req.user.role !== 'ADMIN') {
-    return res.status(403).json({ error: 'Admin access required' });
+    res.status(403).json({ error: 'Admin access required' });
+    return;
+  }
+
+  next();
+};
+
+// Require ADMIN role (only USER and ADMIN exist in schema)
+export const requireAdminOrMastermind = (req: RequestWithUser, res: Response, next: NextFunction) => {
+  if (!req.user) {
+    res.status(401).json({ error: 'Authentication required' });
+    return;
+  }
+
+  if (req.user.role !== 'ADMIN') {
+    res.status(403).json({ error: 'Admin access required' });
+    return;
   }
 
   next();

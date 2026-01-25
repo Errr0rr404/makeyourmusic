@@ -1,5 +1,24 @@
-import { PrismaClient, InvoiceStatus, LeadStatus } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { startOfMonth, subMonths } from 'date-fns';
+
+// Define enums locally since @prisma/client doesn't export them properly
+const InvoiceStatus = {
+  DRAFT: 'DRAFT',
+  PENDING: 'PENDING',
+  PAID: 'PAID',
+  OVERDUE: 'OVERDUE',
+  CANCELLED: 'CANCELLED',
+} as const;
+
+const LeadStatus = {
+  NEW: 'NEW',
+  CONTACTED: 'CONTACTED',
+  QUALIFIED: 'QUALIFIED',
+  PROPOSAL: 'PROPOSAL',
+  NEGOTIATION: 'NEGOTIATION',
+  CONVERTED: 'CONVERTED',
+  LOST: 'LOST',
+} as const;
 
 const prisma = new PrismaClient();
 
@@ -80,6 +99,6 @@ export const getDashboardAnalytics = async () => {
     newLeadsThisMonth,
     leadConversionRate,
     salesByMonth,
-    topProducts: topProducts.map(p => ({ name: p.description, quantity: p._sum.quantity })),
+    topProducts: topProducts.map((p: { description: string | null; _sum: { quantity: number | null } }) => ({ name: p.description, quantity: p._sum.quantity })),
   };
 };

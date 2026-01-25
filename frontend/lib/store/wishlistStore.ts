@@ -21,11 +21,11 @@ export const useWishlistStore = create<WishlistStore>((set, get) => ({
       const response = await api.get('/wishlist');
       if (response.data?.items) {
         set({
-          wishlist: response.data.items.map((item: any) => item.product.id),
+          wishlist: response.data.items.map((item: { product: { id: string } }) => item.product.id),
           loading: false,
         });
       }
-    } catch (error) {
+    } catch {
       set({ loading: false });
     }
   },
@@ -43,7 +43,7 @@ export const useWishlistStore = create<WishlistStore>((set, get) => ({
     try {
       await api.post(`/wishlist/${productId}`);
       // State already updated, no need to refresh
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Revert optimistic update on error
       set({ wishlist: currentWishlist });
       throw error;
@@ -61,7 +61,7 @@ export const useWishlistStore = create<WishlistStore>((set, get) => ({
     try {
       await api.delete(`/wishlist/${productId}`);
       // State already updated, no need to refresh
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Revert optimistic update on error
       set({ wishlist: currentWishlist });
       throw error;
@@ -87,7 +87,7 @@ export const useWishlistStore = create<WishlistStore>((set, get) => ({
           wishlist: state.wishlist.filter((id) => id !== productId),
         }));
       }
-    } catch (error) {
+    } catch {
       // Ignore errors
     }
   },

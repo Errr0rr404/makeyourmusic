@@ -10,7 +10,8 @@ import { api } from '@/lib/api';
 
 interface UserProfile {
   id: string;
-  name: string | null;
+  firstName: string | null;
+  lastName: string | null;
   email: string;
   phone: string | null;
   role: string;
@@ -22,7 +23,8 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     phone: '',
     currentPassword: '',
     newPassword: '',
@@ -39,7 +41,8 @@ export default function AccountPage() {
       setUser(response.data.user);
       setFormData({
         ...formData,
-        name: response.data.user.name || '',
+        firstName: response.data.user.firstName || '',
+        lastName: response.data.user.lastName || '',
         phone: response.data.user.phone || '',
       });
     } catch (error: any) {
@@ -56,7 +59,8 @@ export default function AccountPage() {
 
     try {
       await api.patch('/auth/profile', {
-        name: formData.name,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
         phone: formData.phone,
       });
       toast.success('Profile updated successfully');
@@ -133,15 +137,27 @@ export default function AccountPage() {
             <p className="text-sm text-gray-500 mt-1">Email cannot be changed</p>
           </div>
 
-          <div>
-            <Label htmlFor="name">Full Name</Label>
-            <Input
-              id="name"
-              type="text"
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="Enter your full name"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="firstName">First Name</Label>
+              <Input
+                id="firstName"
+                type="text"
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                placeholder="Enter your first name"
+              />
+            </div>
+            <div>
+              <Label htmlFor="lastName">Last Name</Label>
+              <Input
+                id="lastName"
+                type="text"
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                placeholder="Enter your last name"
+              />
+            </div>
           </div>
 
           <div>

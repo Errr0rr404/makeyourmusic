@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/utils/db';
 import { authenticate } from '@/lib/server/middleware/auth';
-
-// Helper function to check feature flag
-async function checkFeatureFlag(flagName: string): Promise<boolean> {
-  const config = await prisma.storeConfig.findFirst({
-    orderBy: { updatedAt: 'desc' },
-  });
-  if (!config) return false;
-  // Type-safe feature flag check
-  return (config as any)[flagName] === true;
-}
+import { checkFeatureFlag } from '@/lib/server/utils/featureFlags';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const authResult = authenticate(request);
     if (authResult instanceof NextResponse) {
       return authResult;
@@ -36,22 +28,11 @@ export async function GET(
     }
 
     const payroll = await prisma.payroll.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
         payPeriod: true,
         items: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: { id: 'asc' },
         },
       },
     });
@@ -72,9 +53,10 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const authResult = authenticate(request);
     if (authResult instanceof NextResponse) {
       return authResult;
@@ -94,10 +76,10 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const { status, notes, bonuses, deductions } = body;
+    const { status, notes, deductions } = body;
 
     const payroll = await prisma.payroll.findUnique({
-      where: { id: params.id },
+      where: { id },
     });
 
     if (!payroll) {
@@ -110,41 +92,24 @@ export async function PUT(
 
     if (status === 'PAID') {
       updateData.paidAt = new Date();
-      updateData.paidBy = user.userId;
     }
 
-    if (bonuses !== undefined || deductions !== undefined) {
-      const newBonuses = bonuses !== undefined ? bonuses : Number(payroll.bonuses);
-      const newDeductions =
-        deductions !== undefined ? deductions : Number(payroll.deductions);
-
-      const grossPay = Number(payroll.grossPay) + (newBonuses - Number(payroll.bonuses));
-      const netPay = grossPay - newDeductions - Number(payroll.taxes);
-
-      updateData.bonuses = newBonuses;
-      updateData.deductions = newDeductions;
-      updateData.grossPay = grossPay;
-      updateData.netPay = Math.max(0, netPay);
+    // Update deductions if provided (bonuses should be handled via PayrollItems)
+    if (deductions !== undefined) {
+      updateData.deductions = deductions;
+      // Recalculate net pay
+      const grossPay = Number(payroll.grossPay);
+      const taxes = Number(payroll.taxes);
+      updateData.netPay = Math.max(0, grossPay - deductions - taxes);
     }
 
     const updated = await prisma.payroll.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
-        employee: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                email: true,
-              },
-            },
-          },
-        },
         payPeriod: true,
         items: {
-          orderBy: { createdAt: 'asc' },
+          orderBy: { id: 'asc' },
         },
       },
     });

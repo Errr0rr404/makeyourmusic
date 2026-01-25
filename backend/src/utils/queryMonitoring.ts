@@ -1,4 +1,3 @@
-import { prisma } from './db';
 import logger from './logger';
 
 /**
@@ -16,7 +15,6 @@ interface QueryMetrics {
 
 // Store recent slow queries (last 100)
 const slowQueries: QueryMetrics[] = [];
-const MAX_SLOW_QUERIES = 100;
 
 /**
  * Middleware for monitoring Prisma queries

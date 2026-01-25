@@ -45,7 +45,6 @@ export default function ApprovalsPage() {
       {/* Approval Center */}
       <ApprovalCenter
         userId={user.id}
-        userRole={user.role}
       />
     </div>
   );

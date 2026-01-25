@@ -1,5 +1,4 @@
-import { UserRole } from '@/generated/prisma/enums';
-import type { PaymentMethod } from './payment';
+import { UserRole } from '@/generated/prisma';
 
 export interface JWTPayload {
   userId: string;

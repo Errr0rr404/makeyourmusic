@@ -75,3 +75,7 @@ export default function ConfirmDialog({
     </Dialog>
   );
 }
+
+// Export as named export as well
+export { ConfirmDialog };
+

@@ -47,7 +47,7 @@ export async function executeFinancialTransaction<T>(
 
     // Execute operation in SERIALIZABLE isolation (highest level)
     result = await prisma.$transaction(
-      async (tx) => {
+      async (tx: any) => {
         return await operation(tx as typeof prisma);
       },
       {
@@ -105,6 +105,7 @@ export function validateDoubleEntry(
 
   for (let i = 0; i < entries.length; i++) {
     const entry = entries[i];
+    if (!entry) continue;
     const debit = Number(entry.debit || 0);
     const credit = Number(entry.credit || 0);
     const description = entry.description || `Line ${i + 1}`;

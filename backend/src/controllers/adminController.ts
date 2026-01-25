@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { RequestWithUser } from '../types';
 import { prisma } from '../utils/db';
 import { AppError } from '../middleware/errorHandler';
-import { getStringParam, getStringQuery, getNumberQuery } from '../utils/request';
+import { getStringQuery, getNumberQuery } from '../utils/request';
 import { getPaginationParams, formatPaginationResponse } from '../utils/pagination';
 import bcrypt from 'bcryptjs';
 import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
@@ -60,10 +60,9 @@ export const adminLogin = async (req: Request, res: Response, next: NextFunction
 };
 
 // Dashboard statistics
-export const getDashboardStats = async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const getDashboardStats = async (_req: RequestWithUser, res: Response, next: NextFunction) => {
   try {
-    const prismaClient = prisma as any;
-    
+
     const [
       totalUsers,
       recentUsers,

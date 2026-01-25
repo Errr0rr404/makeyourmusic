@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { RequestWithUser } from '../types';
 import { prisma } from '../utils/db';
 import { AppError } from '../middleware/errorHandler';
@@ -32,7 +32,7 @@ export const generateReport = async (req: RequestWithUser, res: Response, next: 
 
     res.status(201).json(report);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -62,7 +62,7 @@ export const getReports = async (req: RequestWithUser, res: Response, next: Next
 
     res.json(formatPaginationResponse(reports, total, pageNum, limitNum));
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -84,6 +84,6 @@ export const getReport = async (req: RequestWithUser, res: Response, next: NextF
 
     res.json(report);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

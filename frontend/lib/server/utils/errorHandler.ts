@@ -38,7 +38,7 @@ export const handleApiError = (error: unknown, req: NextRequest): NextResponse =
   const errorName = error instanceof Error ? error.name : 'Unknown';
 
   // Enhanced error logging for debugging
-  const errorLog: Record<string, any> = {
+  const errorLog: Record<string, unknown> = {
     requestId,
     name: errorName,
     message: errorMessage,
@@ -52,7 +52,7 @@ export const handleApiError = (error: unknown, req: NextRequest): NextResponse =
     try {
       errorLog.errorKeys = Object.keys(error);
       errorLog.errorString = JSON.stringify(error, Object.getOwnPropertyNames(error));
-    } catch (e) {
+    } catch {
       // If JSON.stringify fails, just log the error message
       errorLog.errorString = String(error);
     }

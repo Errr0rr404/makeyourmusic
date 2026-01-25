@@ -138,7 +138,7 @@ export class BitcoinGateway extends PaymentGateway {
     }
   }
 
-  async handleWebhook(payload: any, headers: any): Promise<PaymentVerificationResponse> {
+  async handleWebhook(payload: any, _headers: any): Promise<PaymentVerificationResponse> {
     try {
       // TODO: Implement webhook handling for Coinbase Commerce or other services
       // Example for Coinbase Commerce:

@@ -35,14 +35,15 @@
   "author": "Your Name",
   "license": "MIT",
   "engines": {
-    "node": ">=20.0.0",
+    "node": ">=22.0.0",
     "npm": ">=10.0.0"
   },
   "dependencies": {
-    "@prisma/client": "^7.3.0"
+    "@prisma/client": "^6.19.2"
   },
   "devDependencies": {
-    "prisma": "^6.19.2"
+    "concurrently": "^9.1.2",
+    "prisma": "^6.8.2"
   },
   "type": "commonjs"
 }

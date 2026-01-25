@@ -1,4 +1,3 @@
-import axios from 'axios';
 import { PaymentGateway, CreatePaymentRequest, PaymentResponse, PaymentVerificationRequest, PaymentVerificationResponse } from './base';
 import { PaymentStatus } from '../../types';
 import { PaymentMethod } from '../../types/payment';
@@ -9,16 +8,10 @@ export class AmazonPayGateway extends PaymentGateway {
   icon = '📦';
   supportedCountries: string[] = []; // Global support (where Amazon Pay is available)
 
-  private merchantId: string;
-  private accessKey: string;
-  private secretKey: string;
   private baseUrl: string;
 
   constructor(config: any) {
     super(config);
-    this.merchantId = config.credentials.AMAZON_PAY_MERCHANT_ID || '';
-    this.accessKey = config.credentials.AMAZON_PAY_ACCESS_KEY || '';
-    this.secretKey = config.credentials.AMAZON_PAY_SECRET_KEY || '';
     this.baseUrl = config.credentials.AMAZON_PAY_MODE === 'live'
       ? 'https://pay-api.amazon.com'
       : 'https://pay-api.amazon.com/sandbox';
@@ -62,7 +55,7 @@ export class AmazonPayGateway extends PaymentGateway {
     }
   }
 
-  async handleWebhook(payload: any, headers: any): Promise<PaymentVerificationResponse> {
+  async handleWebhook(payload: any, _headers: any): Promise<PaymentVerificationResponse> {
     // Amazon Pay webhook handling would go here
     return {
       success: false,

@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Invoice } from '@prisma/client';
+import { Invoice } from '@/generated/prisma';
 import api from '@/lib/api';
 
 interface CreateInvoiceDialogProps {

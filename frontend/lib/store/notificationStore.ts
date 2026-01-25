@@ -36,8 +36,9 @@ export const useNotificationStore = create<NotificationStore>((set, get) => ({
           unreadCount: response.data.unreadCount || 0,
         });
       }
-    } catch (error: any) {
-      if (error.response?.status !== 401) {
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status !== 401) {
         console.error('Failed to fetch notifications:', error);
       }
     } finally {

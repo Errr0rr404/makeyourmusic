@@ -43,9 +43,10 @@ export const useCartStore = create<CartStore>((set, get) => ({
         total: typeof total === 'string' ? total : parseFloat(total).toFixed(2),
         isLoading: false,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If unauthorized, clear cart
-      if (error.response?.status === 401) {
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 401) {
         set({ items: [], total: '0.00', isLoading: false });
       } else {
         console.error('Failed to fetch cart:', error);
@@ -64,13 +65,12 @@ export const useCartStore = create<CartStore>((set, get) => ({
     
     // Optimistic UI update - update state immediately
     const currentItems = get().items;
-    const existingItem = currentItems.find(item => item.product.id === productId);
-    
+
     try {
       await api.post('/cart', { productId, quantity });
       // Refresh cart to get accurate data from server
       await get().fetchCart();
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Revert optimistic update on error
       set({ items: currentItems });
       console.error('Failed to add to cart:', error);
@@ -89,7 +89,7 @@ export const useCartStore = create<CartStore>((set, get) => ({
     try {
       await api.put(`/cart/${itemId}`, { quantity });
       await get().fetchCart();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Failed to update cart:', error);
       throw error;
     }
@@ -103,9 +103,10 @@ export const useCartStore = create<CartStore>((set, get) => ({
     try {
       await api.delete(`/cart/${itemId}`);
       await get().fetchCart();
-    } catch (error: any) {
+    } catch (error: unknown) {
       // If item not found, still refresh cart to sync state
-      if (error.response?.status === 404) {
+      const axiosError = error as { response?: { status?: number } };
+      if (axiosError.response?.status === 404) {
         await get().fetchCart();
         return;
       }

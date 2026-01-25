@@ -1,0 +1,2 @@
+    DATABASE_URL="postgresql://postgres:mysecretpassword@localhost:5432/open_erp_db?schema=public"
+    

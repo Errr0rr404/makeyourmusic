@@ -48,7 +48,7 @@ export class ManualCreditCardGateway extends PaymentGateway {
     }
   }
 
-  async handleWebhook(payload: any, headers: any): Promise<PaymentVerificationResponse> {
+  async handleWebhook(payload: any, _headers: any): Promise<PaymentVerificationResponse> {
     // Manual credit card doesn't have webhooks - admins process manually
     return {
       success: false,

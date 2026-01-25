@@ -7,6 +7,7 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import KeyboardShortcuts from '@/components/KeyboardShortcuts';
 import ConditionalLayout from '@/components/ConditionalLayout';
 import { GlobalSearch } from '@/components/GlobalSearch';
+import { SocketProvider } from '@/components/SocketProvider';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -56,24 +57,26 @@ export default function RootLayout({
       <body className={inter.className}>
         <ErrorBoundary>
           <ThemeProvider>
-            <GlobalSearch />
-            <KeyboardShortcuts />
-            <div className="min-h-screen bg-background">
-              <ConditionalLayout>{children}</ConditionalLayout>
-            </div>
-            <Toaster
-              position="top-right"
-              containerStyle={{
-                top: '4rem', // Below navbar on mobile
-              }}
-              toastOptions={{
-                duration: 4000,
-                style: {
-                  minWidth: '280px',
-                  maxWidth: '90vw',
-                },
-              }}
-            />
+            <SocketProvider>
+              <GlobalSearch />
+              <KeyboardShortcuts />
+              <div className="min-h-screen bg-background">
+                <ConditionalLayout>{children}</ConditionalLayout>
+              </div>
+              <Toaster
+                position="top-right"
+                containerStyle={{
+                  top: '4rem', // Below navbar on mobile
+                }}
+                toastOptions={{
+                  duration: 4000,
+                  style: {
+                    minWidth: '280px',
+                    maxWidth: '90vw',
+                  },
+                }}
+              />
+            </SocketProvider>
           </ThemeProvider>
         </ErrorBoundary>
       </body>

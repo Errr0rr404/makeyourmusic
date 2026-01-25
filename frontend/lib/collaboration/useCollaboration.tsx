@@ -17,14 +17,14 @@ interface CollaborationUser {
 interface CollaborationEvent {
   type: 'edit' | 'comment' | 'cursor' | 'presence';
   userId: string;
-  data: any;
+  data: unknown;
   timestamp: Date;
 }
 
 class CollaborationService {
   private socket: Socket | null = null;
   private activeUsers: Map<string, CollaborationUser> = new Map();
-  private callbacks: Map<string, Function[]> = new Map();
+  private callbacks: Map<string, ((data?: unknown) => void)[]> = new Map();
 
   connect(userId: string, userName: string) {
     if (this.socket?.connected) return;
@@ -70,17 +70,17 @@ class CollaborationService {
   }
 
   // Broadcast document edits
-  broadcastEdit(documentId: string, changes: any) {
+  broadcastEdit(documentId: string, changes: unknown) {
     this.socket?.emit('document:edit', { documentId, changes });
   }
 
   // Broadcast comments
-  addComment(documentId: string, comment: any) {
+  addComment(documentId: string, comment: unknown) {
     this.socket?.emit('comment:add', { documentId, comment });
   }
 
   // Broadcast cursor position
-  updateCursor(documentId: string, position: any) {
+  updateCursor(documentId: string, position: unknown) {
     this.socket?.emit('cursor:update', { documentId, position });
   }
 
@@ -95,7 +95,7 @@ class CollaborationService {
   }
 
   // Event subscription
-  on(event: string, callback: Function) {
+  on(event: string, callback: (data?: unknown) => void) {
     if (!this.callbacks.has(event)) {
       this.callbacks.set(event, []);
     }
@@ -104,7 +104,7 @@ class CollaborationService {
     return () => this.off(event, callback);
   }
 
-  off(event: string, callback: Function) {
+  off(event: string, callback: (data?: unknown) => void) {
     const callbacks = this.callbacks.get(event);
     if (callbacks) {
       const index = callbacks.indexOf(callback);
@@ -112,7 +112,7 @@ class CollaborationService {
     }
   }
 
-  private emit(event: string, data: any) {
+  private emit(event: string, data: unknown) {
     const callbacks = this.callbacks.get(event);
     if (callbacks) {
       callbacks.forEach(cb => cb(data));
@@ -145,7 +145,7 @@ export function useCollaboration(documentId?: string) {
   }, [documentId]);
 
   useEffect(() => {
-    const unsubscribeJoin = collaborationService.on('user:joined', (user: CollaborationUser) => {
+    const unsubscribeJoin = collaborationService.on('user:joined', () => {
       setActiveUsers(collaborationService.getActiveUsers());
     });
 
@@ -159,19 +159,19 @@ export function useCollaboration(documentId?: string) {
     };
   }, []);
 
-  const broadcastEdit = useCallback((changes: any) => {
+  const broadcastEdit = useCallback((changes: unknown) => {
     if (documentId) {
       collaborationService.broadcastEdit(documentId, changes);
     }
   }, [documentId]);
 
-  const addComment = useCallback((comment: any) => {
+  const addComment = useCallback((comment: unknown) => {
     if (documentId) {
       collaborationService.addComment(documentId, comment);
     }
   }, [documentId]);
 
-  const updateCursor = useCallback((position: any) => {
+  const updateCursor = useCallback((position: unknown) => {
     if (documentId) {
       collaborationService.updateCursor(documentId, position);
     }

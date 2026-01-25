@@ -9,13 +9,13 @@ export interface ExportColumn {
   key: string;
   label: string;
   width?: number;
-  format?: (value: any) => string;
+  format?: (value: unknown) => string;
 }
 
 export interface ExportOptions {
   filename: string;
   columns: ExportColumn[];
-  data: any[];
+  data: Record<string, unknown>[];
   title?: string;
   includeTimestamp?: boolean;
 }
@@ -28,7 +28,7 @@ export async function exportToExcel(options: ExportOptions): Promise<void> {
 
   // Prepare data for export
   const exportData = data.map((row) => {
-    const exportRow: any = {};
+    const exportRow: Record<string, unknown> = {};
     columns.forEach((col) => {
       const value = row[col.key];
       exportRow[col.label] = col.format ? col.format(value) : value;
@@ -179,32 +179,32 @@ export async function exportToPDF(options: ExportOptions): Promise<void> {
  * Format helpers
  */
 export const formatters = {
-  currency: (value: any) => {
+  currency: (value: unknown) => {
     const num = Number(value);
     return isNaN(num) ? '-' : `$${num.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   },
-  date: (value: any) => {
+  date: (value: unknown) => {
     if (!value) return '-';
-    const date = new Date(value);
+    const date = new Date(value as string | number | Date);
     return isNaN(date.getTime()) ? '-' : date.toLocaleDateString();
   },
-  datetime: (value: any) => {
+  datetime: (value: unknown) => {
     if (!value) return '-';
-    const date = new Date(value);
+    const date = new Date(value as string | number | Date);
     return isNaN(date.getTime()) ? '-' : date.toLocaleString();
   },
-  percentage: (value: any) => {
+  percentage: (value: unknown) => {
     const num = Number(value);
     return isNaN(num) ? '-' : `${num.toFixed(2)}%`;
   },
-  number: (value: any) => {
+  number: (value: unknown) => {
     const num = Number(value);
     return isNaN(num) ? '-' : num.toLocaleString();
   },
-  boolean: (value: any) => {
+  boolean: (value: unknown) => {
     return value ? 'Yes' : 'No';
   },
-  truncate: (maxLength: number) => (value: any) => {
+  truncate: (maxLength: number) => (value: unknown) => {
     const str = String(value || '');
     return str.length > maxLength ? `${str.substring(0, maxLength)}...` : str;
   },

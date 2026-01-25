@@ -6,8 +6,6 @@ import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  TrendingUp,
-  TrendingDown,
   DollarSign,
   Users,
   ShoppingCart,
@@ -15,7 +13,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
 } from 'lucide-react';
-import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { LucideProps } from 'lucide-react';
 
 interface LiveMetric {
   label: string;
@@ -23,7 +22,7 @@ interface LiveMetric {
   change: number;
   changeLabel: string;
   trend: 'up' | 'down' | 'neutral';
-  icon: any;
+  icon: React.ComponentType<LucideProps>;
   color: string;
 }
 
@@ -31,6 +30,14 @@ interface ChartDataPoint {
   name: string;
   value: number;
   [key: string]: any;
+}
+
+interface Event {
+  id: number;
+  icon: string;
+  text: string;
+  color: string;
+  time: Date;
 }
 
 export function LiveAnalyticsDashboard() {
@@ -85,9 +92,11 @@ export function LiveAnalyticsDashboard() {
       // Revenue trend data (last 24 hours)
       const hours = Array.from({ length: 24 }, (_, i) => {
         const hour = (new Date().getHours() - 23 + i + 24) % 24;
+        const revenue = Math.floor(Math.random() * 5000 + 2000);
         return {
           name: `${hour}:00`,
-          revenue: Math.floor(Math.random() * 5000 + 2000),
+          value: revenue,
+          revenue,
           orders: Math.floor(Math.random() * 50 + 20),
         };
       });
@@ -95,12 +104,16 @@ export function LiveAnalyticsDashboard() {
 
       // Activity data (last 7 days)
       const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-      const activity = days.map(day => ({
-        name: day,
-        users: Math.floor(Math.random() * 2000 + 1000),
-        sessions: Math.floor(Math.random() * 5000 + 2000),
-        revenue: Math.floor(Math.random() * 50000 + 30000),
-      }));
+      const activity = days.map(day => {
+        const users = Math.floor(Math.random() * 2000 + 1000);
+        return {
+          name: day,
+          value: users,
+          users,
+          sessions: Math.floor(Math.random() * 5000 + 2000),
+          revenue: Math.floor(Math.random() * 50000 + 30000),
+        };
+      });
       setActivityData(activity);
 
       setLastUpdate(new Date());
@@ -229,7 +242,7 @@ function LiveMetricCard({ metric, delay }: { metric: LiveMetric; delay: number }
 }
 
 function EventsStream() {
-  const [events, setEvents] = useState<any[]>([]);
+  const [events, setEvents] = useState<Event[]>([]);
 
   useEffect(() => {
     const eventTypes = [
@@ -242,13 +255,14 @@ function EventsStream() {
 
     const addEvent = () => {
       const event = eventTypes[Math.floor(Math.random() * eventTypes.length)];
-      const newEvent = {
-        id: Date.now(),
-        ...event,
-        time: new Date(),
-      };
-
-      setEvents(prev => [newEvent, ...prev].slice(0, 5));
+      if (event) {
+        const newEvent: Event = {
+          id: Date.now(),
+          ...event,
+          time: new Date(),
+        };
+        setEvents(prev => [newEvent, ...prev].slice(0, 5));
+      }
     };
 
     const interval = setInterval(addEvent, 3000);
@@ -259,7 +273,7 @@ function EventsStream() {
 
   return (
     <div className="space-y-2">
-      {events.map((event, i) => (
+      {events.map((event) => (
         <motion.div
           key={event.id}
           initial={{ opacity: 0, x: -20 }}

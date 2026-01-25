@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import api from '@/lib/api';
-import { Product } from '@prisma/client';
+import { Product } from '@/generated/prisma';
 import { getColumns } from './components/columns';
 import { DataTable } from './components/data-table';
 import { ProductFormDialog } from './components/product-form-dialog';
@@ -84,8 +84,8 @@ export default function InventoryPage() {
         product={selectedProduct}
       />
       <ConfirmDialog
-        isOpen={isConfirmDialogOpen}
-        onClose={() => setConfirmDialogOpen(false)}
+        open={isConfirmDialogOpen}
+        onOpenChange={setConfirmDialogOpen}
         onConfirm={handleConfirmDelete}
         title="Are you sure?"
         description={`This will permanently delete the product "${selectedProduct?.name}".`}

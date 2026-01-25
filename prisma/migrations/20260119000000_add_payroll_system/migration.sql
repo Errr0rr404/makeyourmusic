@@ -1,3 +1,21 @@
+-- CreateTable
+CREATE TABLE "pos_employees" (
+    "id" TEXT NOT NULL,
+    "employee_id" TEXT,
+    "first_name" TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
+    "email" TEXT,
+    "phone" TEXT,
+    "role" TEXT NOT NULL,
+    "pin" TEXT,
+    "hourly_rate" DECIMAL(10,2),
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "pos_employees_pkey" PRIMARY KEY ("id")
+);
+
 -- CreateEnum
 CREATE TYPE "PayPeriodType" AS ENUM ('WEEKLY', 'BIWEEKLY', 'MONTHLY', 'CUSTOM');
 

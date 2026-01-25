@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import api from '@/lib/api';
-import { Invoice } from '@prisma/client';
+import { Invoice } from '@/generated/prisma';
 import { columns } from './components/columns';
 import { DataTable } from './components/data-table';
 

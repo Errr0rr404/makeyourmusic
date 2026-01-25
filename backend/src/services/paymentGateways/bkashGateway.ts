@@ -158,7 +158,7 @@ export class BkashGateway extends PaymentGateway {
     }
   }
 
-  async handleWebhook(payload: any, headers: any): Promise<PaymentVerificationResponse> {
+  async handleWebhook(payload: any, _headers: any): Promise<PaymentVerificationResponse> {
     // bKash sends payment status in callback
     if (payload.status === 'success' && payload.paymentID) {
       return this.verifyPayment({

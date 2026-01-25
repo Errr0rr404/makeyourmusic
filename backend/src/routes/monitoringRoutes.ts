@@ -1,11 +1,11 @@
 import express from 'express';
 import { authenticate, requireAdminOrMastermind } from '../middleware/auth';
-import { getMonitoringMetrics, getSystemAlerts } from '../controllers/monitoringController';
+import { getSystemMetrics, getSystemHealth } from '../controllers/monitoringController';
 
 const router = express.Router();
 
-// Monitoring endpoints (Admin/Mastermind only)
-router.get('/monitoring', authenticate, requireAdminOrMastermind, getMonitoringMetrics);
-router.get('/monitoring/alerts', authenticate, requireAdminOrMastermind, getSystemAlerts);
+// Monitoring endpoints (Admin/Manager only)
+router.get('/monitoring', authenticate, requireAdminOrMastermind, getSystemMetrics);
+router.get('/monitoring/health', authenticate, requireAdminOrMastermind, getSystemHealth);
 
 export default router;

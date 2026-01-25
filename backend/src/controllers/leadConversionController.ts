@@ -10,8 +10,8 @@ export const convertLead = async (req: Request, res: Response) => {
 
   try {
     const customer = await leadConversionService.convertLeadToCustomer(leadId);
-    res.status(201).json(customer);
+    return res.status(201).json(customer);
   } catch (error) {
-    res.status(500).json({ message: 'Error converting lead', error: (error as Error).message });
+    return res.status(500).json({ message: 'Error converting lead', error: (error as Error).message });
   }
 };

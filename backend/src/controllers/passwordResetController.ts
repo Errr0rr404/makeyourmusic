@@ -60,11 +60,11 @@ export const requestPasswordReset = async (
       });
     }
 
-    res.json({
+    return res.json({
       message: 'If an account exists with this email, a password reset link has been sent',
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -109,8 +109,8 @@ export const resetPassword = async (
     // Delete used token
     resetTokens.delete(token);
 
-    res.json({ message: 'Password reset successfully' });
+    return res.json({ message: 'Password reset successfully' });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

@@ -1,4 +1,4 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response, NextFunction } from 'express';
 import { RequestWithUser } from '../types';
 import { prisma } from '../utils/db';
 import { AppError } from '../middleware/errorHandler';
@@ -32,7 +32,7 @@ export const createPayPeriod = async (req: RequestWithUser, res: Response, next:
 
     res.status(201).json(payPeriod);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -62,7 +62,7 @@ export const getPayPeriods = async (req: RequestWithUser, res: Response, next: N
 
     res.json(formatPaginationResponse(payPeriods, total, pageNum, limitNum));
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -110,7 +110,7 @@ export const generatePayrolls = async (req: RequestWithUser, res: Response, next
       failed: results.filter((r: any) => !r.success).length,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -139,7 +139,7 @@ export const getPayrolls = async (req: RequestWithUser, res: Response, next: Nex
 
     res.json(payrolls);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -169,7 +169,7 @@ export const getPayroll = async (req: RequestWithUser, res: Response, next: Next
 
     res.json(payroll);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -213,7 +213,7 @@ export const updatePayroll = async (req: RequestWithUser, res: Response, next: N
 
     res.json(updated);
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };
 
@@ -236,6 +236,6 @@ export const previewPayroll = async (req: RequestWithUser, res: Response, next: 
       endDate,
     });
   } catch (error) {
-    next(error);
+    return next(error);
   }
 };

@@ -32,8 +32,9 @@ export function encrypt(text: string): string {
     
     // Combine IV, auth tag, and encrypted data
     return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
-  } catch (error: any) {
-    console.error('Encryption error', { error: error.message });
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error('Encryption error', { error: errorMessage });
     throw new Error('Failed to encrypt data');
   }
 }
@@ -61,8 +62,8 @@ export function decrypt(encryptedText: string): string {
     decrypted += decipher.final('utf8');
     
     return decrypted;
-  } catch (error: any) {
-    console.error('Decryption error', { error: error.message });
+  } catch (error: unknown) {
+    console.error('Decryption error', { error: error instanceof Error ? error.message : 'Unknown error' });
     // Return original if decryption fails (backward compatibility)
     return encryptedText;
   }

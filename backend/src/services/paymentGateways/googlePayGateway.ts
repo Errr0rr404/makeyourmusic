@@ -19,7 +19,7 @@ export class GooglePayGateway extends PaymentGateway {
       throw new Error('Stripe API key is required for Google Pay but not provided');
     }
     this.stripe = new Stripe(apiKey, {
-      apiVersion: '2025-12-15.clover',
+      apiVersion: '2025-08-27.basil',
     });
   }
 
@@ -82,7 +82,7 @@ export class GooglePayGateway extends PaymentGateway {
     }
   }
 
-  async handleWebhook(payload: any, headers: any): Promise<PaymentVerificationResponse> {
+  async handleWebhook(_payload: any, _headers: any): Promise<PaymentVerificationResponse> {
     // Handled by Stripe webhook
     return {
       success: false,

@@ -13,7 +13,7 @@ export interface Column<T> {
   label: string;
   sortable?: boolean;
   filterable?: boolean;
-  render?: (value: any, row: T) => React.ReactNode;
+  render?: (value: T[keyof T], row: T) => React.ReactNode;
   width?: string;
 }
 
@@ -29,7 +29,7 @@ export interface DataTableProps<T> {
   loading?: boolean;
 }
 
-export default function DataTable<T extends Record<string, any>>({
+export default function DataTable<T extends { id: string | number }>({
   data,
   columns,
   onRowClick,
@@ -41,7 +41,7 @@ export default function DataTable<T extends Record<string, any>>({
   loading = false,
 }: DataTableProps<T>) {
   const [currentPage, setCurrentPage] = useState(1);
-  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortColumn, setSortColumn] = useState<keyof T | null>(null);
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRows, setSelectedRows] = useState<Set<number>>(new Set());
@@ -79,7 +79,7 @@ export default function DataTable<T extends Record<string, any>>({
   const paginatedData = sortedData.slice(startIndex, endIndex);
 
   // Handle sorting
-  const handleSort = (columnKey: string) => {
+  const handleSort = (columnKey: keyof T) => {
     if (sortColumn === columnKey) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -109,7 +109,9 @@ export default function DataTable<T extends Record<string, any>>({
 
   // Handle export
   const handleExport = () => {
-    const selected = Array.from(selectedRows).map(i => data[i]);
+    const selected = Array.from(selectedRows)
+      .map(i => data[i])
+      .filter((item): item is T => item !== undefined);
     if (onExport) {
       onExport(selected.length > 0 ? selected : data);
     }
@@ -176,7 +178,7 @@ export default function DataTable<T extends Record<string, any>>({
                   key={String(column.key)}
                   style={{ width: column.width }}
                   className={column.sortable ? 'cursor-pointer select-none' : ''}
-                  onClick={() => column.sortable && handleSort(String(column.key))}
+                  onClick={() => column.sortable && handleSort(column.key as keyof T)}
                 >
                   <div className="flex items-center gap-2">
                     {column.label}
@@ -207,7 +209,7 @@ export default function DataTable<T extends Record<string, any>>({
                 const actualIndex = startIndex + rowIndex;
                 return (
                   <TableRow
-                    key={actualIndex}
+                    key={row.id}
                     className={onRowClick ? 'cursor-pointer hover:bg-muted/50' : ''}
                     onClick={() => onRowClick && onRowClick(row)}
                   >

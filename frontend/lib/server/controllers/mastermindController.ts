@@ -6,7 +6,7 @@ import { AppError } from '../utils/errorHandler';
 import { UserRole } from '../types';
 import { sanitizeEmail } from '../utils/validation';
 
-// Mastermind login (separate from admin and regular user login)
+// Admin login (super admin / mastermind equivalent)
 export const mastermindLogin = async (req: NextRequest): Promise<NextResponse> => {
   const body = await req.json();
   const { email, password } = body;
@@ -25,14 +25,14 @@ export const mastermindLogin = async (req: NextRequest): Promise<NextResponse> =
   });
 
   // Prevent timing attacks by always performing bcrypt comparison
-  // Use a dummy hash if user doesn't exist or is not mastermind
+  // Use a dummy hash if user doesn't exist or is not admin
   const dummyHash = '$2a$12$dummy.hash.to.prevent.timing.attacks.here';
-  const hashToCompare = (user && user.role === UserRole.MASTERMIND) ? user.passwordHash : dummyHash;
-  
+  const hashToCompare = (user && user.role === UserRole.ADMIN) ? user.passwordHash : dummyHash;
+
   const isValidPassword = await bcrypt.compare(password, hashToCompare);
 
-  // Don't reveal if user exists or is mastermind (prevent user enumeration)
-  if (!user || user.role !== UserRole.MASTERMIND || !isValidPassword) {
+  // Don't reveal if user exists or is admin (prevent user enumeration)
+  if (!user || user.role !== UserRole.ADMIN || !isValidPassword) {
     throw new AppError('Invalid credentials', 401);
   }
 
@@ -52,7 +52,8 @@ export const mastermindLogin = async (req: NextRequest): Promise<NextResponse> =
     user: {
       id: user.id,
       email: user.email,
-      name: user.name,
+      firstName: user.firstName,
+      lastName: user.lastName,
       role: user.role,
     },
     accessToken,

@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { handleApiError } from './errorHandler';
-
 export type RouteHandler = (
   req: NextRequest,
   context?: { params?: Promise<Record<string, string>> | Record<string, string> }
 ) => Promise<NextResponse> | NextResponse;
-
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const createRouteHandler = <T extends ((req: NextRequest, context?: any) => any)>(handler: T): T => {
   return (async (req: NextRequest, context?: { params?: Promise<Record<string, string>> | Record<string, string> }) => {
     try {

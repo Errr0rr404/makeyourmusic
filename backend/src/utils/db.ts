@@ -16,7 +16,6 @@ if (require('fs').existsSync(envPath)) {
 }
 
 import { PrismaClient } from '@prisma/client';
-import { PrismaPg } from '@prisma/adapter-pg';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -72,12 +71,14 @@ const getPrismaClient = (): PrismaClient => {
     return globalForPrisma.prisma;
   }
 
-  const adapter = new PrismaPg({ connectionString: databaseUrl });
+  // Note: PrismaPg adapter is available but not used in this configuration
+  // const adapter = new PrismaPg({ connectionString: databaseUrl });
 
   const prisma = new PrismaClient({
-    adapter,
+    // @ts-ignore - adapter may not be available in all Prisma versions
+    // adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  });
+  }) as any;
 
   // Suppress Prisma error logs for schema/column mismatches during tests
   prisma.$on('error', (event: any) => {

@@ -21,9 +21,19 @@ type SearchResult = {
   url: string;
 };
 
-export function GlobalSearch() {
+interface GlobalSearchProps {
+  open?: boolean;
+  setOpen?: (open: boolean) => void;
+}
+
+export function GlobalSearch({ open: externalOpen, setOpen: externalSetOpen }: GlobalSearchProps = {}) {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  // Use external state if provided, otherwise use internal state
+  const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setIsOpen = externalSetOpen || setInternalOpen;
+
   const [query, setQuery] = useState('');
   const [debouncedQuery] = useDebounce(query, 300);
   const [results, setResults] = useState<SearchResult[]>([]);
@@ -32,12 +42,12 @@ export function GlobalSearch() {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
-        setIsOpen((open) => !open);
+        setIsOpen(!isOpen);
       }
     };
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
-  }, []);
+  }, [isOpen, setIsOpen]);
 
   useEffect(() => {
     if (debouncedQuery) {
@@ -87,3 +97,6 @@ export function GlobalSearch() {
     </CommandDialog>
   );
 }
+
+export default GlobalSearch;
+

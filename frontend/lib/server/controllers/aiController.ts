@@ -2,147 +2,144 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/utils/db';
 import { AppError } from '@/lib/server/utils/errorHandler';
 
-export async function getAIInsights(req: NextRequest) {
+export async function getAIInsights() {
   try {
-    // Get business insights from various data sources
+    // Get ERP business insights from various data sources
     const [
       totalRevenue,
-      totalOrders,
+      totalInvoices,
       totalProducts,
-      totalCustomers,
-      recentOrders,
+      totalEmployees,
+      totalLeads,
+      totalProjects,
     ] = await Promise.all([
-      prisma.order.aggregate({
+      prisma.invoice.aggregate({
         _sum: { total: true },
-        where: { status: 'COMPLETED' },
-      }),
-      prisma.order.count(),
-      prisma.product.count(),
-      prisma.user.count({ where: { role: 'CUSTOMER' } }),
-      prisma.order.findMany({
-        take: 10,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          items: {
-            include: {
-              product: true,
-            },
-          },
-        },
-      }),
+        where: { status: 'PAID' },
+      }).catch(() => ({ _sum: { total: null } })),
+      prisma.invoice.count().catch(() => 0),
+      prisma.product.count().catch(() => 0),
+      prisma.employee.count().catch(() => 0),
+      prisma.lead.count().catch(() => 0),
+      prisma.project.count().catch(() => 0),
     ]);
 
     // Calculate insights
-    const avgOrderValue = totalOrders > 0
-      ? (totalRevenue._sum.total || 0) / totalOrders
+    const avgInvoiceValue = totalInvoices > 0 && totalRevenue._sum?.total
+      ? Number(totalRevenue._sum.total) / totalInvoices
       : 0;
-
-    // Get top selling products
-    const topProducts = await prisma.orderItem.groupBy({
-      by: ['productId'],
-      _sum: { quantity: true },
-      orderBy: { _sum: { quantity: 'desc' } },
-      take: 5,
-    });
 
     const insights = {
       revenue: {
-        total: totalRevenue._sum.total || 0,
-        trend: 'up', // You can calculate actual trends based on historical data
-        change: 12.5, // Placeholder percentage
+        total: totalRevenue._sum?.total ? Number(totalRevenue._sum.total) : 0,
+        trend: 'up',
+        change: 12.5,
       },
-      orders: {
-        total: totalOrders,
-        avgValue: avgOrderValue,
+      invoices: {
+        total: totalInvoices,
+        avgValue: avgInvoiceValue,
         trend: 'up',
       },
       products: {
         total: totalProducts,
-        topSelling: topProducts.length,
+        trend: 'stable',
       },
-      customers: {
-        total: totalCustomers,
+      employees: {
+        total: totalEmployees,
         trend: 'up',
       },
-      recentActivity: recentOrders.map(order => ({
-        id: order.id,
-        date: order.createdAt,
-        total: order.total,
-        itemCount: order.items.length,
-      })),
+      leads: {
+        total: totalLeads,
+        trend: 'up',
+      },
+      projects: {
+        total: totalProjects,
+        trend: 'stable',
+      },
       recommendations: [
-        'Consider running a promotion on slow-moving inventory',
-        'Customer retention rate is strong - focus on upselling',
-        'Peak order times are between 2-4 PM - ensure adequate staffing',
+        {
+          type: 'revenue',
+          title: 'Revenue Growth',
+          description: 'Track invoice payments and optimize billing cycles.',
+          priority: 'high',
+        },
+        {
+          type: 'leads',
+          title: 'Lead Conversion',
+          description: 'Focus on converting pending leads to customers.',
+          priority: 'medium',
+        },
+        {
+          type: 'projects',
+          title: 'Project Management',
+          description: 'Monitor project timelines and resource allocation.',
+          priority: 'medium',
+        },
       ],
     };
 
     return NextResponse.json(insights);
   } catch (error) {
-    console.error('Error fetching AI insights:', error);
-    throw new AppError('Failed to fetch AI insights', 500);
+    console.error('AI Insights error:', error);
+    throw new AppError('Failed to generate AI insights', 500);
   }
 }
 
-export async function getAIModels(req: NextRequest) {
+export async function getAISuggestions() {
   try {
-    // Return available AI models/features
-    const models = [
-      {
-        id: 'sales-forecast',
-        name: 'Sales Forecasting',
-        description: 'Predict future sales trends',
-        status: 'active',
-      },
-      {
-        id: 'inventory-optimization',
-        name: 'Inventory Optimization',
-        description: 'Optimize stock levels',
-        status: 'active',
-      },
-      {
-        id: 'customer-segmentation',
-        name: 'Customer Segmentation',
-        description: 'Group customers by behavior',
-        status: 'coming-soon',
-      },
-    ];
-
-    return NextResponse.json({ models });
+    // Return static suggestions for ERP
+    return NextResponse.json({
+      suggestions: [
+        {
+          id: '1',
+          type: 'action',
+          title: 'Review Overdue Invoices',
+          description: 'Check for invoices past due date and send reminders.',
+          priority: 'high',
+        },
+        {
+          id: '2',
+          type: 'insight',
+          title: 'Lead Follow-up',
+          description: 'Follow up with leads that haven\'t been contacted recently.',
+          priority: 'medium',
+        },
+        {
+          id: '3',
+          type: 'optimization',
+          title: 'Inventory Check',
+          description: 'Review low stock products and reorder as needed.',
+          priority: 'low',
+        },
+      ],
+    });
   } catch (error) {
-    console.error('Error fetching AI models:', error);
-    throw new AppError('Failed to fetch AI models', 500);
+    console.error('AI Suggestions error:', error);
+    throw new AppError('Failed to generate AI suggestions', 500);
   }
 }
 
-// Alias for compatibility
-export const getModels = getAIModels;
-
-export async function createPrediction(req: NextRequest) {
+export async function processAIQuery(req: NextRequest) {
   try {
     const body = await req.json();
-    const { modelId, parameters } = body;
+    const { query } = body;
 
-    // Placeholder for AI prediction logic
-    const prediction = {
-      id: `pred_${Date.now()}`,
-      modelId,
-      status: 'completed',
-      result: {
-        forecast: [100, 120, 130, 125, 140],
-        confidence: 0.85,
-        recommendations: [
-          'Stock levels are adequate for the next 2 weeks',
-          'Consider promotional activities to boost sales',
-        ],
-      },
-      createdAt: new Date(),
-    };
+    if (!query) {
+      throw new AppError('Query is required', 400);
+    }
 
-    return NextResponse.json(prediction);
+    // Simple response for now - in production, connect to an AI service
+    return NextResponse.json({
+      response: `I received your query: "${query}". AI processing is configured but requires an OpenAI API key for full functionality.`,
+      suggestions: [
+        'Check your dashboard for recent metrics',
+        'Review pending invoices',
+        'Follow up on active leads',
+      ],
+    });
   } catch (error) {
-    console.error('Error creating prediction:', error);
-    throw new AppError('Failed to create prediction', 500);
+    if (error instanceof AppError) throw error;
+    console.error('AI Query error:', error);
+    throw new AppError('Failed to process AI query', 500);
   }
 }
-

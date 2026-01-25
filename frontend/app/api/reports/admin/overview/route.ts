@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/utils/db';
 import { authenticate } from '@/lib/server/middleware/auth';
+import { checkFeatureFlag } from '@/lib/server/utils/featureFlags';
+import { Payroll, PayPeriod, Employee, User } from '@prisma/client';
 
-// Helper function to check feature flag
-async function checkFeatureFlag(flagName: string): Promise<boolean> {
-  const config = await prisma.storeConfig.findFirst({
-    orderBy: { updatedAt: 'desc' },
-  });
-  if (!config) return false;
-  // Type-safe feature flag check
-  return (config as any)[flagName] === true;
-}
+type PayrollWithRelations = Payroll & {
+  payPeriod: PayPeriod;
+  employee: Employee & {
+    user: User;
+  };
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,23 +34,19 @@ export async function GET(request: NextRequest) {
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - 30);
 
-    const totalEmployees = await prisma.posEmployee.count({
-      where: { isActive: true },
-    });
+    const totalEmployees = await prisma.employee.count();
 
     const recentPayrolls = await prisma.payroll.findMany({
       where: {
         createdAt: { gte: startDate },
       },
       include: {
+        payPeriod: true,
         employee: {
           include: {
-            user: {
-              select: { name: true },
-            },
+            user: true,
           },
         },
-        payPeriod: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 10,
@@ -66,22 +61,22 @@ export async function GET(request: NextRequest) {
     const overview = {
       totalEmployees,
       totalPayrolls: allPayrolls.length,
-      totalGrossPay: allPayrolls.reduce((sum: number, p: any) => sum + Number(p.grossPay), 0),
-      totalNetPay: allPayrolls.reduce((sum: number, p: any) => sum + Number(p.netPay), 0),
-      totalHours: allPayrolls.reduce((sum: number, p: any) => sum + Number(p.totalHours), 0),
+      totalGrossPay: allPayrolls.reduce((sum, p) => sum + Number(p.grossPay), 0),
+      totalNetPay: allPayrolls.reduce((sum, p) => sum + Number(p.netPay), 0),
+      totalHours: allPayrolls.reduce((sum, p) => sum + Number(p.totalHours), 0),
       totalOvertimeHours: allPayrolls.reduce(
-        (sum: number, p: any) => sum + Number(p.overtimeHours),
+        (sum, p) => sum + Number(p.overtimeHours),
         0
       ),
-      byStatus: allPayrolls.reduce((acc: any, p: any) => {
+      byStatus: allPayrolls.reduce((acc, p) => {
         acc[p.status] = (acc[p.status] || 0) + 1;
         return acc;
-      }, {}),
-      recentPayrolls: recentPayrolls.map((p: any) => ({
+      }, {} as Record<string, number>),
+      recentPayrolls: (recentPayrolls as PayrollWithRelations[]).map((p) => ({
         id: p.id,
         employee: {
-          name: p.employee.user.name,
-          employeeId: p.employee.employeeId,
+          name: `${p.employee.user.firstName} ${p.employee.user.lastName}`,
+          employeeId: p.employee.id,
         },
         payPeriod: p.payPeriod.name,
         netPay: Number(p.netPay),

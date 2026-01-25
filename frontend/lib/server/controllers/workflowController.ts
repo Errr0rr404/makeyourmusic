@@ -17,7 +17,7 @@ export const getWorkflows = async (req: NextRequest): Promise<NextResponse> => {
   const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20') || 20));
   const status = searchParams.get('status');
 
-  const where: any = {};
+  const where: Record<string, unknown> = {};
   if (status) where.status = status;
 
   // Check if workflow model exists
@@ -29,7 +29,7 @@ export const getWorkflows = async (req: NextRequest): Promise<NextResponse> => {
   }
 
   const [workflows, total] = await Promise.all([
-    (prisma as any).workflow.findMany({
+    (prisma as unknown as { workflow: { findMany: (args: unknown) => Promise<unknown[]> } }).workflow.findMany({
       where,
       skip: (page - 1) * limit,
       take: limit,
@@ -41,7 +41,7 @@ export const getWorkflows = async (req: NextRequest): Promise<NextResponse> => {
         },
       },
     }),
-    (prisma as any).workflow.count({ where }),
+    (prisma as unknown as { workflow: { count: (args: unknown) => Promise<number> } }).workflow.count({ where }),
   ]);
 
   return NextResponse.json({
@@ -114,7 +114,7 @@ export const createWorkflow = async (req: NextRequest): Promise<NextResponse> =>
 
 // Execute workflow
 export const executeWorkflow = async (req: NextRequest, context: { params: Promise<{ id: string }> }): Promise<NextResponse> => {
-  const user = requireAdminAccess(req);
+  requireAdminAccess(req);
 
   const params = await context.params;
   const { id } = params;
@@ -135,7 +135,7 @@ export const executeWorkflow = async (req: NextRequest, context: { params: Promi
 
   // Validate input data matches trigger config if required
   if (workflow.triggerConfig && typeof workflow.triggerConfig === 'object') {
-    const requiredFields = (workflow.triggerConfig as any).requiredFields || [];
+    const requiredFields = (workflow.triggerConfig as Record<string, unknown>).requiredFields as string[] || [];
     for (const field of requiredFields) {
       if (!inputData || !(field in (inputData || {}))) {
         throw new AppError(`Missing required field: ${field}`, 400);

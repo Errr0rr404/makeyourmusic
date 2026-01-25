@@ -1,62 +1,35 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '../utils/db';
-import { AppError } from '../utils/errorHandler';
+import { NextResponse } from 'next/server';
 
-export const getCategories = async (req: NextRequest): Promise<NextResponse> => {
-  try {
-    const categories = await prisma.category.findMany({
-      where: {
-        parentId: null, // Only top-level categories
-      },
-      include: {
-        children: true,
-        _count: {
-          select: {
-            products: true,
-          },
-        },
-      },
-      orderBy: {
-        name: 'asc',
-      },
-    });
+// Category model doesn't exist in ERP schema
+// These are stub handlers
 
-    return NextResponse.json({ categories });
-  } catch (error) {
-    throw new AppError('Failed to fetch categories', 500);
-  }
+export const getCategories = async (): Promise<NextResponse> => {
+  return NextResponse.json({
+    categories: [],
+    message: 'Category management not available in ERP schema',
+  });
 };
 
-export const getCategory = async (req: NextRequest, params: { slug: string }): Promise<NextResponse> => {
-  try {
-    const { slug } = params;
-    
-    if (!slug) {
-      throw new AppError('Category slug is required', 400);
-    }
+export const getCategoryById = async (): Promise<NextResponse> => {
+  return NextResponse.json({
+    error: 'Category management not available in ERP schema',
+  }, { status: 404 });
+};
 
-    const category = await prisma.category.findUnique({
-      where: { slug },
-      include: {
-        parent: true,
-        children: true,
-        _count: {
-          select: {
-            products: true,
-          },
-        },
-      },
-    });
+export const createCategory = async (): Promise<NextResponse> => {
+  return NextResponse.json({
+    error: 'Category management not available in ERP schema',
+  }, { status: 404 });
+};
 
-    if (!category) {
-      throw new AppError('Category not found', 404);
-    }
+export const updateCategory = async (): Promise<NextResponse> => {
+  return NextResponse.json({
+    error: 'Category management not available in ERP schema',
+  }, { status: 404 });
+};
 
-    return NextResponse.json({ category });
-  } catch (error) {
-    if (error instanceof AppError) {
-      throw error;
-    }
-    throw new AppError('Failed to fetch category', 500);
-  }
+export const deleteCategory = async (): Promise<NextResponse> => {
+  return NextResponse.json({
+    error: 'Category management not available in ERP schema',
+  }, { status: 404 });
 };

@@ -17,7 +17,7 @@ export const getLeads = async (req: NextRequest): Promise<NextResponse> => {
   const status = searchParams.get('status');
   const assignedTo = searchParams.get('assignedTo');
 
-  const where: any = {};
+  const where: Record<string, unknown> = {};
   if (status) where.status = status;
   if (assignedTo) where.assignedTo = assignedTo;
 
@@ -54,7 +54,14 @@ export const createLead = async (req: NextRequest): Promise<NextResponse> => {
   }
 
   const body = await req.json();
-  const { firstName, lastName, email, phone, company, title, source, notes, assignedTo } = body;
+  const { firstName, lastName, name, email, phone, source } = body;
+
+  // Construct name from firstName/lastName if name not provided
+  const leadName = name || [firstName, lastName].filter(Boolean).join(' ');
+
+  if (!leadName) {
+    throw new AppError('Name is required (provide name or firstName/lastName)', 400);
+  }
 
   if (!email && !phone) {
     throw new AppError('Email or phone is required', 400);
@@ -62,18 +69,12 @@ export const createLead = async (req: NextRequest): Promise<NextResponse> => {
 
   const lead = await prisma.lead.create({
     data: {
-      firstName,
-      lastName,
+      name: leadName,
       email,
       phone,
-      company,
-      title,
       source: source || 'WEBSITE',
       status: 'NEW',
-      notes,
-      assignedTo: assignedTo || user.userId,
       createdBy: user.userId,
-      updatedAt: new Date(),
     },
   });
 
@@ -102,13 +103,22 @@ export const updateLead = async (req: NextRequest, context: { params: Promise<{ 
   }
 
   // Validate status if provided
-  if (body.status && !['NEW', 'CONTACTED', 'QUALIFIED', 'CONVERTED', 'LOST'].includes(body.status)) {
+  if (body.status && !['NEW', 'CONTACTED', 'QUALIFIED', 'CLOSED_WON', 'CLOSED_LOST'].includes(body.status)) {
     throw new AppError('Invalid status', 400);
   }
 
+  // Only allow updating valid Lead fields
+  const { name, email, phone, source, status } = body;
+  const updateData: Record<string, unknown> = {};
+  if (name !== undefined) updateData.name = name;
+  if (email !== undefined) updateData.email = email;
+  if (phone !== undefined) updateData.phone = phone;
+  if (source !== undefined) updateData.source = source;
+  if (status !== undefined) updateData.status = status;
+
   const lead = await prisma.lead.update({
     where: { id },
-    data: body,
+    data: updateData,
   });
 
   return NextResponse.json(lead);
@@ -128,7 +138,7 @@ export const getOpportunities = async (req: NextRequest): Promise<NextResponse> 
   const stage = searchParams.get('stage');
   const assignedTo = searchParams.get('assignedTo');
 
-  const where: any = {};
+  const where: Record<string, unknown> = {};
   if (stage) where.stage = stage;
   if (assignedTo) where.assignedTo = assignedTo;
 
@@ -165,7 +175,7 @@ export const createOpportunity = async (req: NextRequest): Promise<NextResponse>
   }
 
   const body = await req.json();
-  const { leadId, customerId, name, stage, probability, amount, expectedCloseDate, description, notes, assignedTo } = body;
+  const { leadId, name, stage, amount, expectedCloseDate } = body;
 
   if (!name || amount === undefined || amount === null) {
     throw new AppError('Name and amount are required', 400);
@@ -174,11 +184,6 @@ export const createOpportunity = async (req: NextRequest): Promise<NextResponse>
   const amountNum = Number(amount);
   if (isNaN(amountNum) || amountNum < 0) {
     throw new AppError('Amount must be a valid positive number', 400);
-  }
-
-  const probNum = probability !== undefined ? Number(probability) : 0;
-  if (isNaN(probNum) || probNum < 0 || probNum > 100) {
-    throw new AppError('Probability must be between 0 and 100', 400);
   }
 
   // Validate stage
@@ -201,17 +206,11 @@ export const createOpportunity = async (req: NextRequest): Promise<NextResponse>
   const opportunity = await prisma.opportunity.create({
     data: {
       leadId: leadId || null,
-      customerId: customerId || null,
       name,
       stage: finalStage,
-      probability: probNum,
       amount: amountNum,
       expectedCloseDate: expectedCloseDate ? new Date(expectedCloseDate) : null,
-      description,
-      notes,
-      assignedTo: assignedTo || user.userId,
       createdBy: user.userId,
-      updatedAt: new Date(),
     },
     include: {
       lead: true,
@@ -247,18 +246,24 @@ export const updateOpportunity = async (req: NextRequest, context: { params: Pro
     throw new AppError('Invalid stage', 400);
   }
 
+  // Only allow updating valid Opportunity fields
+  const { name, stage, amount, expectedCloseDate, leadId } = body;
+  const updateData: Record<string, unknown> = {};
+  if (name !== undefined) updateData.name = name;
+  if (stage !== undefined) updateData.stage = stage;
+  if (amount !== undefined) updateData.amount = Number(amount);
+  if (expectedCloseDate !== undefined) updateData.expectedCloseDate = expectedCloseDate ? new Date(expectedCloseDate) : null;
+  if (leadId !== undefined) updateData.leadId = leadId;
+
   const opportunity = await prisma.opportunity.update({
     where: { id },
-    data: {
-      ...body,
-      updatedBy: user.userId,
-    },
+    data: updateData,
   });
 
   return NextResponse.json(opportunity);
 };
 
-// Get campaigns
+// Get campaigns (Campaign model not yet implemented in schema)
 export const getCampaigns = async (req: NextRequest): Promise<NextResponse> => {
   const user = requireCRMAccess(req);
   const hasAccess = ['ADMIN', 'MASTERMIND', 'SALES_MANAGER', 'ANALYST'].includes(user.role);
@@ -266,38 +271,20 @@ export const getCampaigns = async (req: NextRequest): Promise<NextResponse> => {
     throw new AppError('Access denied', 403);
   }
 
-  const { searchParams } = new URL(req.url);
-  const page = Math.max(1, parseInt(searchParams.get('page') || '1') || 1);
-  const limit = Math.min(100, Math.max(1, parseInt(searchParams.get('limit') || '20') || 20));
-  const status = searchParams.get('status');
-  const type = searchParams.get('type');
-
-  const where: any = {};
-  if (status) where.status = status;
-  if (type) where.type = type;
-
-  const [campaigns, total] = await Promise.all([
-    prisma.campaign.findMany({
-      where,
-      skip: (page - 1) * limit,
-      take: limit,
-      orderBy: { startDate: 'desc' },
-    }),
-    prisma.campaign.count({ where }),
-  ]);
-
+  // Return empty result since Campaign model is not yet available
   return NextResponse.json({
-    campaigns,
+    campaigns: [],
     pagination: {
-      page,
-      limit,
-      total,
-      pages: Math.ceil(total / limit),
+      page: 1,
+      limit: 20,
+      total: 0,
+      pages: 0,
     },
+    message: 'Campaign feature coming soon',
   });
 };
 
-// Create campaign
+// Create campaign (Campaign model not yet implemented in schema)
 export const createCampaign = async (req: NextRequest): Promise<NextResponse> => {
   const user = requireCRMAccess(req);
   const hasAccess = ['ADMIN', 'MASTERMIND', 'SALES_MANAGER'].includes(user.role);
@@ -305,27 +292,5 @@ export const createCampaign = async (req: NextRequest): Promise<NextResponse> =>
     throw new AppError('Access denied', 403);
   }
 
-  const body = await req.json();
-  const { name, type, startDate, endDate, budget, description, targetAudience } = body;
-
-  if (!name || !type) {
-    throw new AppError('Name and type are required', 400);
-  }
-
-  const campaign = await prisma.campaign.create({
-    data: {
-      name,
-      type,
-      status: 'PLANNED',
-      startDate: startDate ? new Date(startDate) : null,
-      endDate: endDate ? new Date(endDate) : null,
-      budget: budget ? Number(budget) : null,
-      spent: 0,
-      description,
-      targetAudience: targetAudience || {},
-      createdBy: user.userId,
-    },
-  });
-
-  return NextResponse.json(campaign);
+  throw new AppError('Campaign feature is not yet available', 501);
 };

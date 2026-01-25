@@ -1,22 +1,22 @@
-import { prisma } from '@/lib/server/utils/db';
+import { PrismaClient, Prisma } from '@/generated/prisma';
 
 /**
  * Generate payroll summary report
  */
 async function generatePayrollSummaryReport(
-  db: any,
+  db: PrismaClient,
   startDate: Date,
   endDate: Date,
-  filters: any
+  filters: { status?: string }
 ) {
-  const where: any = {
+  const where: Prisma.PayrollWhereInput = {
     createdAt: {
       gte: startDate,
       lte: endDate,
     },
   };
 
-  if (filters?.status) where.status = filters.status;
+  if (filters?.status) where.status = filters.status as string;
 
   const payrolls = await db.payroll.findMany({
     where,
@@ -26,7 +26,8 @@ async function generatePayrollSummaryReport(
           user: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
             },
           },
@@ -36,25 +37,52 @@ async function generatePayrollSummaryReport(
     },
   });
 
+  interface PayrollRecord {
+    id: string;
+    employeeId: string;
+    grossPay: string | number;
+    deductions: string | number;
+    taxes: string | number;
+    netPay: string | number;
+    totalHours: string | number;
+    overtimeHours: string | number;
+    regularHours: string | number;
+    regularPay: string | number;
+    overtimePay: string | number;
+    status: string;
+    createdAt: Date;
+    employee: {
+      id: string;
+      employeeId: string;
+      user: { id: string; firstName: string | null; lastName: string | null; email: string };
+    };
+    payPeriod: {
+      id: string;
+      name: string;
+      startDate: Date;
+      endDate: Date;
+    };
+  }
+
   return {
     totalPayrolls: payrolls.length,
-    totalEmployees: new Set(payrolls.map((p: any) => p.employeeId)).size,
-    totalGrossPay: payrolls.reduce((sum: number, p: any) => sum + Number(p.grossPay), 0),
-    totalDeductions: payrolls.reduce((sum: number, p: any) => sum + Number(p.deductions), 0),
-    totalTaxes: payrolls.reduce((sum: number, p: any) => sum + Number(p.taxes), 0),
-    totalNetPay: payrolls.reduce((sum: number, p: any) => sum + Number(p.netPay), 0),
-    totalHours: payrolls.reduce((sum: number, p: any) => sum + Number(p.totalHours), 0),
-    totalOvertimeHours: payrolls.reduce((sum: number, p: any) => sum + Number(p.overtimeHours), 0),
-    byStatus: payrolls.reduce((acc: any, p: any) => {
+    totalEmployees: new Set(payrolls.map((p: PayrollRecord) => p.employeeId)).size,
+    totalGrossPay: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.grossPay), 0),
+    totalDeductions: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.deductions), 0),
+    totalTaxes: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.taxes), 0),
+    totalNetPay: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.netPay), 0),
+    totalHours: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.totalHours), 0),
+    totalOvertimeHours: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.overtimeHours), 0),
+    byStatus: payrolls.reduce((acc: Record<string, number>, p: PayrollRecord) => {
       acc[p.status] = (acc[p.status] || 0) + 1;
       return acc;
     }, {}),
-    payrolls: payrolls.map((p: any) => ({
+    payrolls: payrolls.map((p: PayrollRecord) => ({
       id: p.id,
       employee: {
         id: p.employee.id,
         employeeId: p.employee.employeeId,
-        name: p.employee.user.name,
+        name: `${p.employee.user.firstName} ${p.employee.user.lastName}`,
       },
       payPeriod: {
         id: p.payPeriod.id,
@@ -85,19 +113,19 @@ async function generatePayrollSummaryReport(
  * Generate employee hours report
  */
 async function generateEmployeeHoursReport(
-  db: any,
+  db: Pick<ReportsDb, 'timeClock'>,
   startDate: Date,
   endDate: Date,
-  filters: any
+  filters: Record<string, unknown> | null
 ) {
-  const where: any = {
+  const where: Record<string, unknown> = {
     punchTime: {
       gte: startDate,
       lte: endDate,
     },
   };
 
-  if (filters?.employeeId) where.employeeId = filters.employeeId;
+  if (filters?.employeeId) where.employeeId = filters.employeeId as string;
 
   const timeClocks = await db.timeClock.findMany({
     where,
@@ -107,7 +135,8 @@ async function generateEmployeeHoursReport(
           user: {
             select: {
               id: true,
-              name: true,
+              firstName: true,
+              lastName: true,
               email: true,
             },
           },
@@ -119,15 +148,35 @@ async function generateEmployeeHoursReport(
     },
   });
 
-  const employeeHours: any = {};
-  for (const clock of timeClocks) {
+  interface TimeClockRecord {
+    employeeId: string;
+    punchType: string;
+    punchTime: Date;
+    employee: {
+      id: string;
+      employeeId: string;
+      user: { id: string; firstName: string | null; lastName: string | null; email: string };
+    };
+  }
+
+  interface EmployeeHoursData {
+    employee: {
+      id: string;
+      employeeId: string;
+      name: string;
+    };
+    punches: Array<{ type: string; time: Date }>;
+  }
+
+  const employeeHours: Record<string, EmployeeHoursData> = {};
+  for (const clock of timeClocks as TimeClockRecord[]) {
     const empId = clock.employeeId;
     if (!employeeHours[empId]) {
       employeeHours[empId] = {
         employee: {
           id: clock.employee.id,
           employeeId: clock.employee.employeeId,
-          name: clock.employee.user.name,
+          name: `${clock.employee.user.firstName} ${clock.employee.user.lastName}`,
         },
         punches: [],
       };
@@ -138,7 +187,7 @@ async function generateEmployeeHoursReport(
     });
   }
 
-  const reportData = Object.values(employeeHours).map((emp: any) => {
+  const reportData = Object.values(employeeHours).map((emp: EmployeeHoursData) => {
     let clockIn: Date | null = null;
     let breakStart: Date | null = null;
     let totalMinutes = 0;
@@ -191,16 +240,16 @@ async function generateEmployeeHoursReport(
  * Generate report based on type
  */
 export async function generateReport(
-  db: any,
+  db: ReportsDb,
   reportType: string,
   title: string,
   description: string | null,
   startDate: Date,
   endDate: Date,
-  filters: any,
+  filters: Record<string, unknown> | null,
   createdBy: string
 ) {
-  let reportData: any = {};
+  let reportData: Record<string, unknown> = {};
 
   switch (reportType) {
     case 'PAYROLL_SUMMARY':

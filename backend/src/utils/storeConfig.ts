@@ -70,7 +70,7 @@ export const getFeatureFlags = async (featureNames: string[]): Promise<Record<st
  * Middleware to check if a feature is enabled
  */
 export const requireFeature = (featureName: string) => {
-  return async (req: any, res: any, next: any) => {
+  return async (_req: any, res: any, next: any) => {
     try {
       const isEnabled = await isFeatureEnabled(featureName);
       if (!isEnabled) {

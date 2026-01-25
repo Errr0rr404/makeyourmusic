@@ -1,8 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { RequestWithUser } from '../types';
-import { prisma } from '../utils/db';
+import { prisma as _prisma } from '../utils/db';
 import { AppError } from '../middleware/errorHandler';
-import logger from '../utils/logger';
 import { logAuditEvent } from './auditController';
 
 type ApprovalStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'ESCALATED' | 'DELEGATED' | 'CANCELLED' | 'EXPIRED';
@@ -320,7 +319,7 @@ export const getAllPendingApprovals = async (req: RequestWithUser, res: Response
       throw new AppError('Unauthorized', 403);
     }
 
-    const { type, priority, requesterId, departmentId } = req.query;
+    const { type, priority, requesterId, departmentId: _departmentId } = req.query;
 
     let pending = approvalRequests.filter((r) => r.status === 'PENDING');
 

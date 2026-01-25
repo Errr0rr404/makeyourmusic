@@ -9,7 +9,7 @@ export interface AIMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   timestamp: Date;
-  context?: any;
+  context?: Record<string, unknown>;
   suggestions?: AISuggestion[];
 }
 
@@ -28,14 +28,14 @@ export interface AIInsight {
   description: string;
   impact: 'positive' | 'negative' | 'neutral';
   confidence: number; // 0-100
-  data?: any;
+  data?: Record<string, unknown>;
 }
 
 class AIAssistantService {
   private conversationHistory: AIMessage[] = [];
 
   // Ask AI a question
-  async ask(question: string, context?: any): Promise<AIMessage> {
+  async ask(question: string, context?: Record<string, unknown>): Promise<AIMessage> {
     try {
       const response = await api.post('/ai/chat', {
         message: question,
@@ -61,7 +61,7 @@ class AIAssistantService {
       this.conversationHistory.push(assistantMessage);
 
       return assistantMessage;
-    } catch (error) {
+    } catch {
       throw new Error('Failed to get AI response');
     }
   }
@@ -73,40 +73,40 @@ class AIAssistantService {
         params: { module, timeRange },
       });
       return response.data.insights;
-    } catch (error) {
+    } catch {
       return this.getMockInsights(module);
     }
   }
 
   // Predict future trends
-  async predictTrends(module: string, metric: string): Promise<any> {
+  async predictTrends(module: string, metric: string): Promise<unknown> {
     try {
       const response = await api.post('/ai/predict', {
         module,
         metric,
       });
       return response.data;
-    } catch (error) {
+    } catch {
       return this.getMockPrediction(module, metric);
     }
   }
 
   // Get recommendations
-  async getRecommendations(context: any): Promise<AISuggestion[]> {
+  async getRecommendations(context: Record<string, unknown>): Promise<AISuggestion[]> {
     try {
       const response = await api.post('/ai/recommendations', context);
       return response.data.recommendations;
-    } catch (error) {
+    } catch {
       return this.getMockRecommendations();
     }
   }
 
   // Analyze document/data
-  async analyze(data: any, type: string): Promise<any> {
+  async analyze(data: unknown, type: string): Promise<unknown> {
     try {
       const response = await api.post('/ai/analyze', { data, type });
       return response.data.analysis;
-    } catch (error) {
+    } catch {
       return { success: false, error: 'Analysis failed' };
     }
   }
@@ -143,21 +143,24 @@ class AIAssistantService {
     ];
   }
 
-  private getMockPrediction(module: string, metric: string): any {
+  private getMockPrediction(module: string, metric: string): unknown {
     const months = ['Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul'];
     const values = [45000, 52000, 48000, 61000, 58000, 67000];
 
     return {
       metric,
-      prediction: months.map((month, i) => ({
-        period: month,
-        predicted: values[i],
-        confidence: 85 - (i * 2),
-        range: {
-          low: values[i] * 0.9,
-          high: values[i] * 1.1,
-        },
-      })),
+      prediction: months.map((month, i) => {
+        const value = values[i] ?? 0;
+        return {
+          period: month,
+          predicted: value,
+          confidence: 85 - (i * 2),
+          range: {
+            low: value * 0.9,
+            high: value * 1.1,
+          },
+        };
+      }),
       insights: [
         'Expected 15% growth over next 6 months',
         'Seasonal peak predicted in May',
@@ -202,7 +205,7 @@ export function useAIAssistant() {
   const [loading, setLoading] = useState(false);
   const [insights, setInsights] = useState<AIInsight[]>([]);
 
-  const ask = useCallback(async (question: string, context?: any) => {
+  const ask = useCallback(async (question: string, context?: Record<string, unknown>) => {
     setLoading(true);
     try {
       const response = await aiAssistant.ask(question, context);
@@ -233,7 +236,7 @@ export function useAIAssistant() {
     }
   }, []);
 
-  const getRecommendations = useCallback(async (context: any) => {
+  const getRecommendations = useCallback(async (context: Record<string, unknown>) => {
     setLoading(true);
     try {
       return await aiAssistant.getRecommendations(context);

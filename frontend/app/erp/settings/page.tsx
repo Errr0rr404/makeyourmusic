@@ -15,7 +15,8 @@ import toast from 'react-hot-toast';
 import api from '@/lib/api';
 
 const profileSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
+  firstName: z.string().min(2, 'First name must be at least 2 characters'),
+  lastName: z.string().min(2, 'Last name must be at least 2 characters'),
   email: z.string().email('Invalid email address'),
 });
 
@@ -36,7 +37,8 @@ export default function SettingsPage() {
   const profileForm = useForm<z.infer<typeof profileSchema>>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: user?.name || '',
+      firstName: user?.firstName || '',
+      lastName: user?.lastName || '',
       email: user?.email || '',
     },
   });
@@ -53,7 +55,8 @@ export default function SettingsPage() {
   useEffect(() => {
     if (user) {
       profileForm.reset({
-        name: user.name || '',
+        firstName: user.firstName || '',
+        lastName: user.lastName || '',
         email: user.email || '',
       });
     }
@@ -118,8 +121,8 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="flex flex-col items-center gap-4">
               <Avatar className="w-32 h-32">
-                <AvatarImage src={preview || user?.avatar || ''} alt={user?.name || 'User'} />
-                <AvatarFallback>{user?.name?.charAt(0)}</AvatarFallback>
+                <AvatarImage src={preview || ''} alt={user?.firstName || 'User'} />
+                <AvatarFallback>{user?.firstName?.charAt(0)}</AvatarFallback>
               </Avatar>
               <Input type="file" accept="image/*" onChange={handleAvatarChange} />
               <Button onClick={onAvatarUpload} disabled={!avatarFile}>Upload</Button>
@@ -136,12 +139,25 @@ export default function SettingsPage() {
                 <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
                   <FormField
                     control={profileForm.control}
-                    name="name"
+                    name="firstName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Name</FormLabel>
+                        <FormLabel>First Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="Your name" {...field} />
+                          <Input placeholder="Your first name" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={profileForm.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Last Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Your last name" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

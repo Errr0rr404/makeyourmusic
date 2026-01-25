@@ -1,9 +1,20 @@
-import OpenAI from 'openai';
+// OpenAI is optional - install with: npm install openai
+let OpenAI: any;
+try {
+  OpenAI = require('openai').default;
+} catch {
+  // OpenAI not installed, will use mock responses
+  OpenAI = null;
+}
+
 import { prisma } from '../utils/db';
 import logger from '../utils/logger';
 
 // Initialize OpenAI client
 const getOpenAIClient = () => {
+  if (!OpenAI) {
+    throw new Error('OpenAI package not installed. Run: npm install openai');
+  }
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) {
     throw new Error('OPENAI_API_KEY is not configured');
@@ -18,40 +29,27 @@ const getOpenAIClient = () => {
 export const getProductKnowledge = async (): Promise<string> => {
   try {
     const products = await prisma.product.findMany({
-      where: { active: true },
-      include: {
-        category: {
-          select: {
-            name: true,
-            slug: true,
-          },
-        },
-      },
       take: 100, // Limit to prevent token overflow
       orderBy: { createdAt: 'desc' },
     });
 
     if (products.length === 0) {
-      return 'No products available in the store.';
+      return 'No products available in the system.';
     }
 
     // Use functional approach for better performance and readability
     const knowledge = products
-      .map((product) => {
+      .map((product: any) => {
         const priceNum = Number(product.price);
         const lines = [
           `- Product ID: ${product.id}`,
           `  Name: ${product.name}`,
-          `  Slug: ${product.slug}`,
+          `  SKU: ${product.sku}`,
           `  Price: $${isNaN(priceNum) ? String(product.price) : priceNum}`,
-          `  Category: ${product.category?.name || 'Uncategorized'}`,
           `  Description: ${product.description?.substring(0, 200) || 'No description'}`,
           `  Stock: ${product.stock}`,
         ];
-        if (product.tags && product.tags.length > 0) {
-          lines.push(`  Tags: ${product.tags.join(', ')}`);
-        }
-        lines.push(`  Link: /products/${product.slug}`, '');
+        lines.push('');
         return lines.join('\n');
       })
       .join('\n');
@@ -64,16 +62,14 @@ export const getProductKnowledge = async (): Promise<string> => {
   }
 };
 
-// Product search result type
+// Product search result type (ERP schema compatible)
 interface ProductSearchResult {
   id: string;
   name: string;
-  slug: string;
+  sku: string;
   price: number | string;
   description: string;
-  imageUrl: string;
-  category: string;
-  link: string;
+  stock: number;
 }
 
 /**
@@ -85,41 +81,25 @@ export const searchProductsForAI = async (query: string, limit: number = 5): Pro
     
     const products = await prisma.product.findMany({
       where: {
-        active: true,
         OR: [
           { name: { contains: searchTerm, mode: 'insensitive' as const } },
           { description: { contains: searchTerm, mode: 'insensitive' as const } },
-          { tags: { has: searchTerm } },
-          {
-            category: {
-              name: { contains: searchTerm, mode: 'insensitive' as const },
-            },
-          },
+          { sku: { contains: searchTerm, mode: 'insensitive' as const } },
         ],
-      },
-      include: {
-        category: {
-          select: {
-            name: true,
-            slug: true,
-          },
-        },
       },
       take: limit,
       orderBy: { createdAt: 'desc' },
     });
 
-    return products.map((product) => {
+    return products.map((product: any) => {
       const priceNum = Number(product.price);
       return {
         id: product.id,
         name: product.name,
-        slug: product.slug,
+        sku: product.sku,
         price: isNaN(priceNum) ? String(product.price) : priceNum,
         description: product.description?.substring(0, 150) || '',
-        imageUrl: product.imageUrls?.[0] || '',
-        category: product.category?.name || 'Uncategorized',
-        link: `/products/${product.slug}`,
+        stock: product.stock,
       };
     });
   } catch (error) {
@@ -137,23 +117,21 @@ const getAdminKnowledge = async (): Promise<string> => {
     const [
       products,
       users,
-      orders,
-      stats
     ] = await Promise.all([
       prisma.product.findMany({
         take: 50,
-        include: {
-          category: {
-            select: {
-              name: true,
-              slug: true,
-            },
-          },
+        select: {
+          id: true,
+          name: true,
+          sku: true,
+          price: true,
+          stock: true,
+          description: true,
+          createdAt: true,
         },
         orderBy: { createdAt: 'desc' },
       }),
       prisma.user.findMany({
-        where: { role: { not: 'MASTERMIND' } },
         take: 20,
         select: {
           id: true,
@@ -161,61 +139,26 @@ const getAdminKnowledge = async (): Promise<string> => {
           name: true,
           role: true,
           createdAt: true,
-          _count: {
-            select: {
-              orders: true,
-            },
-          },
         },
         orderBy: { createdAt: 'desc' },
-      }),
-      prisma.order.findMany({
-        take: 20,
-        include: {
-          user: {
-            select: {
-              email: true,
-              name: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'desc' },
-      }),
-      prisma.payment.aggregate({
-        _sum: {
-          amount: true,
-        },
-        where: {
-          status: 'SUCCEEDED',
-        },
       }),
     ]);
 
     const totalProducts = await prisma.product.count();
-    const totalOrders = await prisma.order.count();
-    const totalUsers = await prisma.user.count({ where: { role: { not: 'MASTERMIND' } } });
-    const totalRevenue = stats._sum.amount || 0;
+    const totalUsers = await prisma.user.count();
 
-    // Type definitions for clarity
-    type ProductInfo = { id: string; name: string; slug: string; price: number | string; stock: number; active: boolean; featured?: boolean };
-    type UserInfo = { id: string; email: string; role: string; _count?: { orders: number } };
-    type OrderInfo = { orderNumber: string; status: string; totalAmount: number | string; user?: { email?: string } };
-
-    const knowledge = `STORE STATISTICS:\n- Total Products: ${totalProducts}\n- Total Orders: ${totalOrders}\n- Total Users: ${totalUsers}\n- Total Revenue: $${Number(totalRevenue).toFixed(2)}\n\nRECENT PRODUCTS (Sample):\n${products.slice(0, 10).map((p) => {
+    const knowledge = `ERP STATISTICS:\n- Total Products: ${totalProducts}\n- Total Users: ${totalUsers}\n\nRECENT PRODUCTS:\n${products.slice(0, 10).map((p: any) => {
       const priceNum = Number(p.price);
-      const stockNum = Number(p.stock);
-      return `- ${p.name} (ID: ${p.id}, Slug: ${p.slug}, Price: $${isNaN(priceNum) ? String(p.price) : priceNum}, Stock: ${isNaN(stockNum) ? String(p.stock) : stockNum}, Active: ${p.active}, Featured: ${p.featured || false})`;
-    }).join('\n')}\n\nRECENT USERS (Sample):\n${users.slice(0, 10).map((u) => {
-      return `- ${u.email} (ID: ${u.id}, Role: ${u.role}, Orders: ${u._count?.orders || 0})`;
-    }).join('\n')}\n\nRECENT ORDERS (Sample):\n${orders.slice(0, 10).map((o) => {
-      return `- Order #${o.orderNumber} (Status: ${o.status}, Total: $${o.totalAmount}, Customer: ${o.user?.email || 'N/A'})`;
+      return `- ${p.name} (SKU: ${p.sku}, Price: $${isNaN(priceNum) ? String(p.price) : priceNum.toFixed(2)}, Stock: ${p.stock})`;
+    }).join('\n')}\n\nRECENT USERS:\n${users.slice(0, 10).map((u: any) => {
+      return `- ${u.email || u.name} (Role: ${u.role})`;
     }).join('\n')}`;
 
     return knowledge;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     logger.error('Error fetching admin knowledge', { error: errorMessage });
-    return 'Unable to fetch store information at the moment.';
+    return 'Unable to fetch ERP information at the moment.';
   }
 };
 

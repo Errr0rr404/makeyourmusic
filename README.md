@@ -2,7 +2,12 @@
 
 > **Where business connects and flows seamlessly**
 
-A modern, AI-powered Cloud ERP system built with cutting-edge technologies. Kairux provides comprehensive business management capabilities including accounting, inventory, CRM, HR, payroll, projects, and intelligent analytics.
+A modern, AI-powered Cloud ERP system built with Next.js, TypeScript, and PostgreSQL. Kairux provides comprehensive business management with real-time collaboration, intelligent analytics, and enterprise-grade security.
+
+[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
+[![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)](https://www.prisma.io/)
 
 ## 💫 What is Kairux?
 
@@ -39,15 +44,18 @@ Together, Kairux embodies seamless integration and continuous movement of data, 
 - **Runtime**: Node.js 20+
 - **Framework**: Express.js 5.x
 - **Language**: TypeScript 5.x
-- **ORM**: Prisma 7.x with PostgreSQL adapter
+- **ORM**: Prisma 6.x with PostgreSQL adapter
 - **Database**: PostgreSQL (Neon, Railway, or local)
 - **Authentication**: JWT with bcryptjs
 - **Validation**: Zod schemas with express-validator
 - **Security**: Helmet, CORS, rate limiting, cookie-parser
 - **Logging**: Winston for structured logging
+- **Real-time**: Socket.io
+- **Payments**: Stripe integration
+- **File Uploads**: Cloudinary
 
 ### Frontend
-- **Framework**: Next.js 16.x (App Router)
+- **Framework**: Next.js 15.x (App Router)
 - **Language**: TypeScript 5.x
 - **UI Library**: React 19.x
 - **Styling**: Tailwind CSS 4.x
@@ -241,7 +249,7 @@ open-erp/
 - **Logging**: Structured logging with Winston
 
 ### Frontend Architecture
-- **App Router**: Next.js 16 app directory structure
+- **App Router**: Next.js 15 app directory structure
 - **Server Components**: Default for better performance
 - **Client Components**: Interactive UI with 'use client'
 - **API Routes**: Server-side API handlers

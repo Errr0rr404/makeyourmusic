@@ -10,8 +10,8 @@ export const globalSearch = async (req: Request, res: Response) => {
 
   try {
     const results = await searchService.searchAcrossModules(q);
-    res.json(results);
+    return res.json(results);
   } catch (error) {
-    res.status(500).json({ message: 'Error performing search', error });
+    return res.status(500).json({ message: 'Error performing search', error });
   }
 };

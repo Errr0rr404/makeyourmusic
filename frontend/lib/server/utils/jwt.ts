@@ -44,7 +44,7 @@ export const verifyAccessToken = (token: string): JWTPayload => {
     return jwt.verify(token, secret, {
       algorithms: [JWT_ALGORITHM],
     }) as JWTPayload;
-  } catch (error) {
+  } catch {
     throw new Error('Invalid or expired token');
   }
 };
@@ -55,7 +55,7 @@ export const verifyRefreshToken = (token: string): JWTPayload => {
     return jwt.verify(token, secret, {
       algorithms: [JWT_ALGORITHM],
     }) as JWTPayload;
-  } catch (error) {
+  } catch {
     throw new Error('Invalid or expired refresh token');
   }
 };

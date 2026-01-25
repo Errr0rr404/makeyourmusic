@@ -185,7 +185,7 @@ export class PayPalGateway extends PaymentGateway {
     }
   }
 
-  async handleWebhook(payload: any, headers: any): Promise<PaymentVerificationResponse> {
+  async handleWebhook(payload: any, _headers: any): Promise<PaymentVerificationResponse> {
     // PayPal webhook verification would go here
     // For now, return verification based on event type
     const eventType = payload.event_type;

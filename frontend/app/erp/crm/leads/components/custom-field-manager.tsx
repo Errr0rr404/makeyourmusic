@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { CustomField, FieldType } from '@prisma/client';
+import { CustomField, FieldType } from '@/generated/prisma';
 import api from '@/lib/api';
 import toast from 'react-hot-toast';
 

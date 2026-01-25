@@ -19,8 +19,8 @@ const parseDurationMs = (value: string | undefined, fallbackMs: number): number 
   if (!value) return fallbackMs;
   const match = /^([0-9]+)([smhd])$/.exec(value.trim());
   if (!match) return fallbackMs;
-  const amount = parseInt(match[1], 10);
-  const unit = match[2];
+  const amount = parseInt(match[1]!, 10);
+  const unit = match[2]! as string;
   switch (unit) {
     case 's':
       return amount * 1000;
@@ -347,7 +347,7 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
 
 export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { token, password } = req.body;
+    const { token: _token, password: _password } = req.body;
 
     // In a real application, you would:
     // 1. Find the user by the password reset token.

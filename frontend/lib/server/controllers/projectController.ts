@@ -18,7 +18,7 @@ export const getProjects = async (req: NextRequest): Promise<NextResponse> => {
   const status = searchParams.get('status');
   const managerId = searchParams.get('managerId');
 
-  const where: any = {};
+  const where: Record<string, unknown> = {};
   if (status) where.status = status;
   if (managerId) where.managerId = managerId;
 
@@ -56,7 +56,7 @@ export const createProject = async (req: NextRequest): Promise<NextResponse> => 
   }
 
   const body = await req.json();
-  const { name, description, code, status, priority, startDate, endDate, budget, managerId, customerId, notes } = body;
+  const { name, description, status, priority, startDate, endDate, budget, managerId, customerId, notes } = body;
 
   if (!name || typeof name !== 'string' || name.trim().length === 0) {
     throw new AppError('Project name is required', 400);
@@ -152,7 +152,7 @@ export const createProjectTask = async (req: NextRequest, context: { params: Pro
   const params = await context.params;
   const { id } = params;
   const body = await req.json();
-  const { name, description, status, priority, assignedTo, startDate, dueDate, estimatedHours, parentTaskId, dependencies, notes } = body;
+  const { name, description, status, priority, startDate, dueDate, estimatedHours, parentTaskId, dependencies, notes } = body;
 
   if (!name) {
     throw new AppError('Task name is required', 400);

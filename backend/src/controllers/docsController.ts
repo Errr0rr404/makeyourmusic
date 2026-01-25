@@ -6,7 +6,7 @@ import { Request, Response } from 'express';
  *
  * Returns comprehensive API documentation
  */
-export const getApiDocs = (req: Request, res: Response) => {
+export const getApiDocs = (_req: Request, res: Response) => {
   const docs = {
     version: '1.0.0',
     title: 'AI Cloud ERP API Documentation',

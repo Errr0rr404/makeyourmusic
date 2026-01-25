@@ -65,7 +65,7 @@ export const errorHandler = (
   err: Error | AppError,
   req: Request,
   res: Response,
-  next: NextFunction
+  _next: NextFunction
 ) => {
   // Extract request metadata
   const requestId = (req as any).id || 'unknown';

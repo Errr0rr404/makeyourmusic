@@ -19,10 +19,8 @@ import {
   Filter,
   RefreshCw,
   ArrowUpRight,
-  ArrowDownRight,
   MessageSquare,
   Forward,
-  AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { approvalWorkflow, type PendingApproval, type ApprovalRequest, type ApprovalPriority, type ApprovalType, type ApprovalStats } from '@/lib/erp/approvalWorkflow';
@@ -30,11 +28,10 @@ import toast from 'react-hot-toast';
 
 interface ApprovalCenterProps {
   userId: string;
-  userRole: string;
   onApprovalAction?: () => void;
 }
 
-export default function ApprovalCenter({ userId, userRole, onApprovalAction }: ApprovalCenterProps) {
+export default function ApprovalCenter({ userId, onApprovalAction }: ApprovalCenterProps) {
   const [pendingApprovals, setPendingApprovals] = useState<PendingApproval[]>([]);
   const [myRequests, setMyRequests] = useState<ApprovalRequest[]>([]);
   const [stats, setStats] = useState<ApprovalStats | null>(null);
