@@ -170,10 +170,17 @@ export default function AIInsightsPage() {
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-2">
-                    {insights.recommendations.map((rec: string, index: number) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="text-primary">•</span>
-                        <span>{rec}</span>
+                    {insights.recommendations.map((rec: any, index: number) => (
+                      <li key={index} className="flex flex-col gap-1 border-b pb-2 last:border-b-0 last:pb-0">
+                        {typeof rec === 'string' ? (
+                          <span className="flex items-start gap-2"><span className="text-primary">•</span><span>{rec}</span></span>
+                        ) : (
+                          <>
+                            <span className="font-semibold text-primary">{rec.title || rec.type || 'Recommendation'}</span>
+                            {rec.description && <span className="text-muted-foreground">{rec.description}</span>}
+                            {rec.priority && <span className="text-xs text-yellow-600">Priority: {rec.priority}</span>}
+                          </>
+                        )}
                       </li>
                     ))}
                   </ul>
