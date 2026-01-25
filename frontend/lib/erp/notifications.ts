@@ -104,7 +104,9 @@ class NotificationService {
       this.disconnect();
     }
 
-    const url = `${process.env.NEXT_PUBLIC_API_URL}/erp/notifications/stream?token=${token}`;
+    // Use NEXT_PUBLIC_API_URL or fallback to relative path
+    const apiUrl = process.env.NEXT_PUBLIC_API_URL || '/api';
+    const url = `${apiUrl}/erp/notifications/stream?token=${token}`;
     this.eventSource = new EventSource(url);
 
     this.eventSource.onopen = () => {

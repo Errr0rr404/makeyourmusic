@@ -1,8 +1,11 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// Use relative path for API calls to support all environments
+// Use environment variable for API URL, fallback to relative path for same-domain
+// Set NEXT_PUBLIC_API_URL in Netlify to point to your Railway backend
+const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
+
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: API_URL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -85,7 +88,7 @@ api.interceptors.response.use(
 
           try {
             // Attempt to refresh the token using the refresh token cookie
-            const response = await axios.post(`/api/auth/refresh`, {}, {
+            const response = await axios.post(`${API_URL}/auth/refresh`, {}, {
               withCredentials: true,
             });
 

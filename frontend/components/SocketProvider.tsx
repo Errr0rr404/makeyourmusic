@@ -13,7 +13,12 @@ export const SocketProvider = ({ children }: { children: React.ReactNode }) => {
   const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
-    const newSocket = io(process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:3001');
+    // Use NEXT_PUBLIC_SOCKET_URL or derive from API URL
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 
+      (process.env.NEXT_PUBLIC_API_URL 
+        ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '')
+        : 'http://localhost:3001');
+    const newSocket = io(socketUrl);
     setSocket(newSocket);
 
     return () => {

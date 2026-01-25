@@ -29,7 +29,12 @@ class CollaborationService {
   connect(userId: string, firstName: string, lastName?: string) {
     if (this.socket?.connected) return;
 
-    this.socket = io(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001', {
+    // Use NEXT_PUBLIC_WS_URL or derive from API URL
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 
+      (process.env.NEXT_PUBLIC_API_URL 
+        ? process.env.NEXT_PUBLIC_API_URL.replace('/api', '').replace('https://', 'wss://').replace('http://', 'ws://')
+        : 'ws://localhost:3001');
+    this.socket = io(wsUrl, {
       auth: { userId, firstName, lastName },
       transports: ['websocket', 'polling'],
     });
