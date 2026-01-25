@@ -9,6 +9,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "type-check": "tsc --noEmit",
+    "check-all": "npm run type-check && npm run lint",
     "regenerate-prisma": "prisma generate --schema=../prisma/schema.prisma"
   },
   "dependencies": {

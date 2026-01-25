@@ -104,7 +104,7 @@ export default function AnimatedBackground() {
     // Initialize particles
     const particles: Particle[] = [];
     const particleCount = 80;
-    const colors = [
+    const colors: string[] = [
       'rgba(59, 130, 246, 0.8)',   // Blue
       'rgba(34, 211, 238, 0.8)',  // Cyan
       'rgba(139, 92, 246, 0.8)',  // Purple
@@ -113,7 +113,7 @@ export default function AnimatedBackground() {
 
     const getRandomColor = (): string => {
       const index = Math.floor(Math.random() * colors.length);
-      return colors[index] ?? colors[0]; // Fallback to first color if undefined
+      return colors[index] as string; // Safe assertion since index is always valid
     };
 
     for (let i = 0; i < particleCount; i++) {
