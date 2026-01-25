@@ -22,14 +22,29 @@ interface Wave {
   speed: number;
 }
 
+interface ShapeConfig {
+  size: number;
+  colorIndex: number;
+  initialX: number;
+  initialY: number;
+  targetX1: number;
+  targetY1: number;
+  targetX2: number;
+  targetY2: number;
+  animDuration: number;
+  animDelay: number;
+  isCircle: boolean;
+}
+
 export default function AnimatedBackground() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const animationFrameRef = useRef<number>();
+  const animationFrameRef = useRef<number | undefined>(undefined);
   const [dimensions, setDimensions] = useState({ width: 1920, height: 1080 });
   const [mounted, setMounted] = useState(false);
   const mouseRef = useRef({ x: 0, y: 0 });
   const particlesRef = useRef<Particle[]>([]);
   const wavesRef = useRef<Wave[]>([]);
+  const shapesConfigRef = useRef<ShapeConfig[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -48,6 +63,25 @@ export default function AnimatedBackground() {
     };
     
     window.addEventListener('mousemove', handleMouseMove);
+    
+    // Pre-calculate shape configurations to avoid hydration issues
+    if (shapesConfigRef.current.length === 0) {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      shapesConfigRef.current = Array.from({ length: 8 }, (_, i): ShapeConfig => ({
+        size: 60 + Math.random() * 40,
+        colorIndex: i % 3,
+        initialX: Math.random() * width,
+        initialY: Math.random() * height,
+        targetX1: Math.random() * width,
+        targetY1: Math.random() * height,
+        targetX2: Math.random() * width,
+        targetY2: Math.random() * height,
+        animDuration: 20 + Math.random() * 15,
+        animDelay: Math.random() * 5,
+        isCircle: i % 2 === 0,
+      }));
+    }
     
     return () => {
       window.removeEventListener('resize', updateDimensions);
@@ -106,15 +140,13 @@ export default function AnimatedBackground() {
     wavesRef.current = waves;
 
     let time = 0;
-    let waveTimer = 0;
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       time += 0.01;
-      waveTimer += 0.02;
 
       // Update and draw waves
-      wavesRef.current.forEach((wave, index) => {
+      wavesRef.current.forEach((wave) => {
         wave.radius += wave.speed;
         wave.opacity -= 0.002;
         
@@ -334,50 +366,53 @@ export default function AnimatedBackground() {
       </div>
 
       {/* Geometric shapes floating */}
-      {mounted && (
+      {mounted && shapesConfigRef.current.length > 0 && (
         <div className="absolute inset-0">
-          {[...Array(8)].map((_, i) => (
-            <motion.div
-              key={i}
-              className="absolute"
-              style={{
-                width: 60 + Math.random() * 40,
-                height: 60 + Math.random() * 40,
-                background: `linear-gradient(135deg, ${
-                  ['rgba(59, 130, 246, 0.1)', 'rgba(34, 211, 238, 0.1)', 'rgba(139, 92, 246, 0.1)'][i % 3]
-                }, transparent)`,
-                borderRadius: i % 2 === 0 ? '50%' : '20%',
-                border: `1px solid ${['rgba(59, 130, 246, 0.3)', 'rgba(34, 211, 238, 0.3)', 'rgba(139, 92, 246, 0.3)'][i % 3]}`,
-                backdropFilter: 'blur(10px)',
-              }}
-              initial={{
-                x: Math.random() * dimensions.width,
-                y: Math.random() * dimensions.height,
-                rotate: 0,
-                scale: 0.8,
-              }}
-              animate={{
-                x: [
-                  Math.random() * dimensions.width,
-                  Math.random() * dimensions.width,
-                  Math.random() * dimensions.width,
-                ],
-                y: [
-                  Math.random() * dimensions.height,
-                  Math.random() * dimensions.height,
-                  Math.random() * dimensions.height,
-                ],
-                rotate: [0, 180, 360],
-                scale: [0.8, 1.2, 0.8],
-              }}
-              transition={{
-                duration: 20 + Math.random() * 15,
-                repeat: Infinity,
-                ease: 'easeInOut',
-                delay: Math.random() * 5,
-              }}
-            />
-          ))}
+          {shapesConfigRef.current.map((config, i) => {
+            const colorOptions = ['rgba(59, 130, 246, 0.1)', 'rgba(34, 211, 238, 0.1)', 'rgba(139, 92, 246, 0.1)'] as const;
+            const borderColors = ['rgba(59, 130, 246, 0.3)', 'rgba(34, 211, 238, 0.3)', 'rgba(139, 92, 246, 0.3)'] as const;
+            
+            return (
+              <motion.div
+                key={i}
+                className="absolute"
+                style={{
+                  width: config.size,
+                  height: config.size,
+                  background: `linear-gradient(135deg, ${colorOptions[config.colorIndex]}, transparent)`,
+                  borderRadius: config.isCircle ? '50%' : '20%',
+                  border: `1px solid ${borderColors[config.colorIndex]}`,
+                  backdropFilter: 'blur(10px)',
+                }}
+                initial={{
+                  x: config.initialX,
+                  y: config.initialY,
+                  rotate: 0,
+                  scale: 0.8,
+                }}
+                animate={{
+                  x: [
+                    config.initialX,
+                    config.targetX1,
+                    config.targetX2,
+                  ],
+                  y: [
+                    config.initialY,
+                    config.targetY1,
+                    config.targetY2,
+                  ],
+                  rotate: [0, 180, 360],
+                  scale: [0.8, 1.2, 0.8],
+                }}
+                transition={{
+                  duration: config.animDuration,
+                  repeat: Infinity,
+                  ease: 'easeInOut',
+                  delay: config.animDelay,
+                }}
+              />
+            );
+          })}
         </div>
       )}
     </div>
