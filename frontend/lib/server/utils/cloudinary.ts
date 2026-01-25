@@ -17,6 +17,7 @@ export interface UploadResult {
 
 /**
  * Upload image buffer to Cloudinary
+ * All uploads are stored in the 'kairux' folder
  */
 export const uploadImageBuffer = async (
   buffer: Buffer,
@@ -27,16 +28,19 @@ export const uploadImageBuffer = async (
     throw new Error('Cloudinary credentials are not configured');
   }
 
+  // Prepend 'kairux' to all folder paths
+  const cloudinaryFolder = folder ? `kairux/${folder}` : 'kairux';
+
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
-        folder,
+        folder: cloudinaryFolder,
         resource_type: 'image',
         transformation: [
           { width: 1200, height: 1200, crop: 'limit' }, // Limit max dimensions
           { quality: 'auto', fetch_format: 'auto' }, // Optimize for web
         ],
-        public_id: filename ? `${folder}/${filename}` : undefined,
+        public_id: filename ? `${cloudinaryFolder}/${filename}` : undefined,
         overwrite: false,
       },
       (error, result) => {
@@ -65,6 +69,7 @@ export const uploadImageBuffer = async (
 
 /**
  * Upload image from base64 string
+ * All uploads are stored in the 'kairux' folder
  */
 export const uploadImageBase64 = async (
   base64String: string,
@@ -81,9 +86,12 @@ export const uploadImageBase64 = async (
     throw new Error('Image upload service is not configured');
   }
 
+  // Prepend 'kairux' to all folder paths
+  const cloudinaryFolder = folder ? `kairux/${folder}` : 'kairux';
+
   try {
     const result = await cloudinary.uploader.upload(base64String, {
-      folder,
+      folder: cloudinaryFolder,
       resource_type: 'image',
       transformation: [
         { width: 1200, height: 1200, crop: 'limit' },

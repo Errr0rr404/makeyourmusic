@@ -47,15 +47,15 @@ export const requireAdmin = (req: RequestWithUser, res: Response, next: NextFunc
   next();
 };
 
-// Require ADMIN role (only USER and ADMIN exist in schema)
+// Require ADMIN or MASTERMIND role
 export const requireAdminOrMastermind = (req: RequestWithUser, res: Response, next: NextFunction) => {
   if (!req.user) {
     res.status(401).json({ error: 'Authentication required' });
     return;
   }
 
-  if (req.user.role !== 'ADMIN') {
-    res.status(403).json({ error: 'Admin access required' });
+  if (req.user.role !== 'ADMIN' && req.user.role !== 'MASTERMIND') {
+    res.status(403).json({ error: 'Admin or Mastermind access required' });
     return;
   }
 

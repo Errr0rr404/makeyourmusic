@@ -1,12 +1,19 @@
 import { Request } from 'express';
 
 // Define UserRole locally since @prisma/client export isn't properly generated for backend
+// Must match Prisma schema enum
 export const UserRole = {
   USER: 'USER',
   ADMIN: 'ADMIN',
   CUSTOMER: 'CUSTOMER',
   MASTERMIND: 'MASTERMIND',
   MANAGER: 'MANAGER',
+  CFO: 'CFO',
+  HR_MANAGER: 'HR_MANAGER',
+  SALES_MANAGER: 'SALES_MANAGER',
+  OPERATIONS_MANAGER: 'OPERATIONS_MANAGER',
+  PROJECT_MANAGER: 'PROJECT_MANAGER',
+  ANALYST: 'ANALYST',
 } as const;
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];

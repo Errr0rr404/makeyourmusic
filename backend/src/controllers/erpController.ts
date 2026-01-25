@@ -77,12 +77,35 @@ export const createInvoice = async (req: RequestWithUser, res: Response, next: N
       throw new AppError('Invoice model not available', 500);
     }
 
+    // Validate and convert dates
+    const issueDateObj = new Date(issueDate);
+    if (isNaN(issueDateObj.getTime())) {
+      throw new AppError('Invalid issue date format', 400);
+    }
+
+    let dueDateObj: Date | null = null;
+    if (dueDate) {
+      dueDateObj = new Date(dueDate);
+      if (isNaN(dueDateObj.getTime())) {
+        throw new AppError('Invalid due date format', 400);
+      }
+      if (dueDateObj < issueDateObj) {
+        throw new AppError('Due date must be after issue date', 400);
+      }
+    }
+
+    // Convert total to number - ensure it's a valid number
+    const totalNumber = typeof total === 'string' ? parseFloat(total) : Number(total);
+    if (isNaN(totalNumber) || totalNumber < 0) {
+      throw new AppError('Invalid total value', 400);
+    }
+
     const created = await prismaClient.invoice.create({
       data: {
         invoiceNumber: String(invoiceNumber),
-        issueDate: new Date(issueDate),
-        dueDate: dueDate ? new Date(dueDate) : null,
-        total: prismaClient.$queryRaw`to_number(${total}::text, '999999999.99')`,
+        issueDate: issueDateObj,
+        dueDate: dueDateObj,
+        total: totalNumber,
         createdBy: createdBy || req.user?.userId || 'system',
       },
     });

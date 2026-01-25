@@ -79,8 +79,11 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       throw new AppError(passwordValidation.message || 'Password does not meet requirements', 400);
     }
 
+    // Normalize email to lowercase (consistent with login)
+    const normalizedEmail = email.trim().toLowerCase();
+
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -92,7 +95,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
 
     const user = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         passwordHash,
         firstName: firstName || null, lastName: lastName || null,
         role: UserRole.USER,
@@ -109,7 +112,7 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
     const { accessToken, refreshToken, refreshJti, sessionId } = generateTokenPair({
       userId: user.id,
       email: user.email,
-      role: user.role,
+      role: user.role as UserRole,
     });
 
     persistSession(refreshJti, user.id, sessionId, req);
@@ -133,8 +136,11 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       throw new AppError('Email and password are required', 400);
     }
 
+    // Normalize email to lowercase (consistent with register)
+    const normalizedEmail = email.trim().toLowerCase();
+
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     const dummyHash = '$2a$12$dummy.hash.to.prevent.timing.attacks.here';
@@ -148,7 +154,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
     const { accessToken, refreshToken, refreshJti, sessionId } = generateTokenPair({
       userId: user.id,
       email: user.email,
-      role: user.role,
+      role: user.role as UserRole,
     });
 
     persistSession(refreshJti, user.id, sessionId, req);
@@ -159,7 +165,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
         id: user.id,
         email: user.email,
         firstName: user.firstName, lastName: user.lastName,
-        role: user.role,
+        role: user.role as UserRole,
       },
       accessToken,
       sessionId,
@@ -220,8 +226,10 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
 
     // If email is being changed, check if new email is available
     if (email && email !== existingUser.email) {
+      // Normalize email to lowercase
+      const normalizedEmail = email.trim().toLowerCase();
       const emailTaken = await prisma.user.findUnique({
-        where: { email },
+        where: { email: normalizedEmail },
       });
 
       if (emailTaken) {
@@ -233,9 +241,9 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-                ...(firstName !== undefined && { firstName: firstName.trim() || null }),
-            ...(lastName !== undefined && { lastName: lastName.trim() || null }),
-        ...(email !== undefined && email !== existingUser.email && { email: email.trim() }),
+        ...(firstName !== undefined && { firstName: firstName.trim() || null }),
+        ...(lastName !== undefined && { lastName: lastName.trim() || null }),
+        ...(email !== undefined && email !== existingUser.email && { email: email.trim().toLowerCase() }),
         ...(phone !== undefined && { phone: phone?.trim() || null }),
       },
       select: {
@@ -288,7 +296,7 @@ export const refresh = async (req: Request, res: Response, next: NextFunction) =
     const { accessToken, refreshToken: newRefreshToken, refreshJti, sessionId } = generateTokenPair({
       userId: user.id,
       email: user.email,
-      role: user.role,
+      role: user.role as UserRole,
       sessionId: decoded.sessionId,
     });
 
@@ -328,8 +336,15 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
   try {
     const { email } = req.body;
 
+    if (!email) {
+      throw new AppError('Email is required', 400);
+    }
+
+    // Normalize email to lowercase (consistent with other auth functions)
+    const normalizedEmail = email.trim().toLowerCase();
+
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (user) {

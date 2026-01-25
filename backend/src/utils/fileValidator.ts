@@ -58,6 +58,7 @@ export const sanitizeFilename = (filename: string): string => {
 
 /**
  * Validate and sanitize folder path to prevent path traversal
+ * Note: All folders will be prefixed with 'kairux' in Cloudinary
  * @param folder Folder path
  * @returns Sanitized folder path or 'products' as default
  */
@@ -67,7 +68,8 @@ export const sanitizeFolder = (folder: string): string => {
   }
 
   // Remove path separators and parent directory references
-  let sanitized = folder.trim().replace(/[/\\\.\.]/g, '');
+  // Also remove 'kairux' prefix if user tries to add it (we'll add it automatically)
+  let sanitized = folder.trim().replace(/[/\\\.\.]/g, '').replace(/^kairux[\/\\]?/i, '');
   
   // Remove non-alphanumeric characters except hyphens and underscores
   sanitized = sanitized.replace(/[^a-zA-Z0-9_-]/g, '');
