@@ -62,7 +62,7 @@ class SecurityService {
       id: crypto.randomUUID(),
       timestamp: new Date(),
       userId: user?.id || 'anonymous',
-      userName: user?.name || 'Anonymous',
+      userName: user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : 'Anonymous',
       action,
       resource,
       resourceId,
@@ -278,7 +278,7 @@ class SecurityService {
   }
 
   // Helper methods
-  private getCurrentUser(): { id: string; name: string; role: string } | null {
+  private getCurrentUser(): { id: string; firstName: string; lastName?: string; role: string } | null {
     const userStr = localStorage.getItem('user');
     return userStr ? JSON.parse(userStr) : null;
   }

@@ -48,7 +48,7 @@ export const adminLogin = async (req: Request, res: Response, next: NextFunction
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        firstName: user.firstName, lastName: user.lastName,
         role: user.role,
       },
       accessToken,
@@ -74,7 +74,7 @@ export const getDashboardStats = async (_req: RequestWithUser, res: Response, ne
         select: {
           id: true,
           email: true,
-          name: true,
+          firstName: true, lastName: true,
           role: true,
           createdAt: true,
         },
@@ -108,7 +108,9 @@ export const getAllUsers = async (req: RequestWithUser, res: Response, next: Nex
       const searchTerm = search.trim();
       where.OR = [
         { email: { contains: searchTerm, mode: 'insensitive' } },
-        { name: { contains: searchTerm, mode: 'insensitive' } },
+        { firstName: { contains: searchTerm, mode: 'insensitive' } },
+        { lastName: { contains: searchTerm, mode: 'insensitive' } },
+        { last_name: { contains: searchTerm, mode: 'insensitive' } },
       ];
     }
 
@@ -120,7 +122,7 @@ export const getAllUsers = async (req: RequestWithUser, res: Response, next: Nex
         select: {
           id: true,
           email: true,
-          name: true,
+          firstName: true, lastName: true,
           role: true,
           createdAt: true,
         },

@@ -35,9 +35,8 @@ export const createRateLimiter = (options: RateLimitOptions) => {
   return async (req: NextRequest): Promise<NextResponse | null> => {
     // Get client identifier (IP address)
     const forwarded = req.headers.get('x-forwarded-for');
-    const ip = forwarded ? forwarded.split(',')[0].trim() : 
-               req.headers.get('x-real-ip') || 
-               'unknown';
+    const ip = (forwarded ? (forwarded.split(',')[0] || 'unknown') : 
+               (req.headers.get('x-real-ip') || 'unknown')).trim();
 
     const key = `${ip}:${req.nextUrl.pathname}`;
     const now = Date.now();

@@ -137,7 +137,7 @@ const UserMenu = ({ user, logout, mobile }: { user: any, logout: () => void, mob
     <Button asChild variant="ghost" size="sm" className={mobile ? "w-full justify-start" : ""}>
       <Link href="/account">
         <User className="h-4 w-4 mr-2" />
-        {user?.name || user?.email?.split('@')[0]}
+        {(user?.firstName ? `${user.firstName} ${user.lastName || ''}`.trim() : user?.email?.split('@')[0])}
       </Link>
     </Button>
     <Button variant="ghost" size="sm" onClick={logout} className={mobile ? "w-full justify-start" : ""}>

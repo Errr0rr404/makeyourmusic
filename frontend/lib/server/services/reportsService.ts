@@ -1,5 +1,40 @@
 import { PrismaClient, Prisma } from '@/generated/prisma';
 
+type PayrollWithRelations = Prisma.PayrollGetPayload<{
+  include: {
+    employee: {
+      include: {
+        user: {
+          select: {
+            id: true;
+            firstName: true;
+            lastName: true;
+            email: true;
+          };
+        };
+      };
+    };
+    payPeriod: true;
+  };
+}>;
+
+type TimeClockWithRelations = Prisma.TimeClockGetPayload<{
+  include: {
+    employee: {
+      include: {
+        user: {
+          select: {
+            id: true;
+            firstName: true;
+            lastName: true;
+            email: true;
+          };
+        };
+      };
+    };
+  };
+}>;
+
 /**
  * Generate payroll summary report
  */
@@ -16,9 +51,9 @@ async function generatePayrollSummaryReport(
     },
   };
 
-  if (filters?.status) where.status = filters.status as string;
+  if (filters?.status) where.status = filters.status as any;
 
-  const payrolls = await db.payroll.findMany({
+  const payrolls = (await db.payroll.findMany({
     where,
     include: {
       employee: {
@@ -35,54 +70,27 @@ async function generatePayrollSummaryReport(
       },
       payPeriod: true,
     },
-  });
-
-  interface PayrollRecord {
-    id: string;
-    employeeId: string;
-    grossPay: string | number;
-    deductions: string | number;
-    taxes: string | number;
-    netPay: string | number;
-    totalHours: string | number;
-    overtimeHours: string | number;
-    regularHours: string | number;
-    regularPay: string | number;
-    overtimePay: string | number;
-    status: string;
-    createdAt: Date;
-    employee: {
-      id: string;
-      employeeId: string;
-      user: { id: string; firstName: string | null; lastName: string | null; email: string };
-    };
-    payPeriod: {
-      id: string;
-      name: string;
-      startDate: Date;
-      endDate: Date;
-    };
-  }
+  })) as PayrollWithRelations[];
 
   return {
     totalPayrolls: payrolls.length,
-    totalEmployees: new Set(payrolls.map((p: PayrollRecord) => p.employeeId)).size,
-    totalGrossPay: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.grossPay), 0),
-    totalDeductions: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.deductions), 0),
-    totalTaxes: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.taxes), 0),
-    totalNetPay: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.netPay), 0),
-    totalHours: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.totalHours), 0),
-    totalOvertimeHours: payrolls.reduce((sum: number, p: PayrollRecord) => sum + Number(p.overtimeHours), 0),
-    byStatus: payrolls.reduce((acc: Record<string, number>, p: PayrollRecord) => {
+    totalEmployees: new Set(payrolls.map((p) => p.employeeId)).size,
+    totalGrossPay: payrolls.reduce((sum, p) => sum + Number(p.grossPay), 0),
+    totalDeductions: payrolls.reduce((sum, p) => sum + Number(p.deductions), 0),
+    totalTaxes: payrolls.reduce((sum, p) => sum + Number(p.taxes), 0),
+    totalNetPay: payrolls.reduce((sum, p) => sum + Number(p.netPay), 0),
+    totalHours: payrolls.reduce((sum, p) => sum + Number(p.totalHours), 0),
+    totalOvertimeHours: payrolls.reduce((sum, p) => sum + Number(p.overtimeHours), 0),
+    byStatus: payrolls.reduce((acc: Record<string, number>, p) => {
       acc[p.status] = (acc[p.status] || 0) + 1;
       return acc;
     }, {}),
-    payrolls: payrolls.map((p: PayrollRecord) => ({
+    payrolls: payrolls.map((p) => ({
       id: p.id,
       employee: {
         id: p.employee.id,
         employeeId: p.employee.employeeId,
-        name: `${p.employee.user.firstName} ${p.employee.user.lastName}`,
+        name: `${p.employee.user?.firstName || ''} ${p.employee.user?.lastName || ''}`.trim(),
       },
       payPeriod: {
         id: p.payPeriod.id,
@@ -113,12 +121,12 @@ async function generatePayrollSummaryReport(
  * Generate employee hours report
  */
 async function generateEmployeeHoursReport(
-  db: Pick<ReportsDb, 'timeClock'>,
+  db: PrismaClient,
   startDate: Date,
   endDate: Date,
   filters: Record<string, unknown> | null
 ) {
-  const where: Record<string, unknown> = {
+  const where: Prisma.TimeClockWhereInput = {
     punchTime: {
       gte: startDate,
       lte: endDate,
@@ -127,7 +135,7 @@ async function generateEmployeeHoursReport(
 
   if (filters?.employeeId) where.employeeId = filters.employeeId as string;
 
-  const timeClocks = await db.timeClock.findMany({
+  const timeClocks = (await db.timeClock.findMany({
     where,
     include: {
       employee: {
@@ -146,18 +154,7 @@ async function generateEmployeeHoursReport(
     orderBy: {
       punchTime: 'asc',
     },
-  });
-
-  interface TimeClockRecord {
-    employeeId: string;
-    punchType: string;
-    punchTime: Date;
-    employee: {
-      id: string;
-      employeeId: string;
-      user: { id: string; firstName: string | null; lastName: string | null; email: string };
-    };
-  }
+  })) as TimeClockWithRelations[];
 
   interface EmployeeHoursData {
     employee: {
@@ -169,14 +166,14 @@ async function generateEmployeeHoursReport(
   }
 
   const employeeHours: Record<string, EmployeeHoursData> = {};
-  for (const clock of timeClocks as TimeClockRecord[]) {
+  for (const clock of timeClocks) {
     const empId = clock.employeeId;
     if (!employeeHours[empId]) {
       employeeHours[empId] = {
         employee: {
           id: clock.employee.id,
           employeeId: clock.employee.employeeId,
-          name: `${clock.employee.user.firstName} ${clock.employee.user.lastName}`,
+          name: `${clock.employee.user?.firstName || ''} ${clock.employee.user?.lastName || ''}`.trim(),
         },
         punches: [],
       };
@@ -187,7 +184,7 @@ async function generateEmployeeHoursReport(
     });
   }
 
-  const reportData = Object.values(employeeHours).map((emp: EmployeeHoursData) => {
+  const reportData = Object.values(employeeHours).map((emp) => {
     let clockIn: Date | null = null;
     let breakStart: Date | null = null;
     let totalMinutes = 0;
@@ -224,7 +221,7 @@ async function generateEmployeeHoursReport(
     return {
       ...emp,
       totalHours: Math.round(totalHours * 100) / 100,
-      breakHours: Math.round(breakMinutes / 60 * 100) / 100,
+      breakHours: Math.round((breakMinutes / 60) * 100) / 100,
     };
   });
 
@@ -240,20 +237,20 @@ async function generateEmployeeHoursReport(
  * Generate report based on type
  */
 export async function generateReport(
-  db: ReportsDb,
+  db: PrismaClient,
   reportType: string,
   title: string,
   description: string | null,
   startDate: Date,
   endDate: Date,
-  filters: Record<string, unknown> | null,
+  filters: any,
   createdBy: string
 ) {
-  let reportData: Record<string, unknown> = {};
+  let reportData: Record<string, any> = {};
 
   switch (reportType) {
     case 'PAYROLL_SUMMARY':
-      reportData = await generatePayrollSummaryReport(db, startDate, endDate, filters);
+      reportData = await generatePayrollSummaryReport(db, startDate, endDate, filters || {});
       break;
     case 'EMPLOYEE_HOURS':
       reportData = await generateEmployeeHoursReport(db, startDate, endDate, filters);

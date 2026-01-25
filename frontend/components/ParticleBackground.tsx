@@ -192,10 +192,15 @@ export default function ParticleBackground({
     const drawConnections = () => {
       if (type !== 'lines') return;
       
-      for (let i = 0; i < particlesRef.current.length; i++) {
-        for (let j = i + 1; j < particlesRef.current.length; j++) {
-          const dx = particlesRef.current[i].x - particlesRef.current[j].x;
-          const dy = particlesRef.current[i].y - particlesRef.current[j].y;
+      const particles = particlesRef.current;
+      for (let i = 0; i < particles.length; i++) {
+        const p1 = particles[i];
+        if (!p1) continue;
+        for (let j = i + 1; j < particles.length; j++) {
+          const p2 = particles[j];
+          if (!p2) continue;
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
           
           if (distance < 120) {
@@ -204,8 +209,8 @@ export default function ParticleBackground({
             ctx.strokeStyle = `hsla(${hsl.h}, ${hsl.s}%, ${hsl.l}%, ${connectionOpacity})`;
             ctx.lineWidth = 0.5;
             ctx.beginPath();
-            ctx.moveTo(particlesRef.current[i].x, particlesRef.current[i].y);
-            ctx.lineTo(particlesRef.current[j].x, particlesRef.current[j].y);
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
             ctx.stroke();
             ctx.restore();
           }

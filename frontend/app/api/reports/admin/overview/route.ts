@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/server/utils/db';
 import { authenticate } from '@/lib/server/middleware/auth';
 import { checkFeatureFlag } from '@/lib/server/utils/featureFlags';
-import { Payroll, PayPeriod, Employee, User } from '@prisma/client';
+import { Payroll, PayPeriod, Employee, User } from '@/generated/prisma';
 
 type PayrollWithRelations = Payroll & {
   payPeriod: PayPeriod;
@@ -42,11 +42,7 @@ export async function GET(request: NextRequest) {
       },
       include: {
         payPeriod: true,
-        employee: {
-          include: {
-            user: true,
-          },
-        },
+        employee: true,
       },
       orderBy: { createdAt: 'desc' },
       take: 10,
@@ -72,10 +68,10 @@ export async function GET(request: NextRequest) {
         acc[p.status] = (acc[p.status] || 0) + 1;
         return acc;
       }, {} as Record<string, number>),
-      recentPayrolls: (recentPayrolls as PayrollWithRelations[]).map((p) => ({
+      recentPayrolls: (recentPayrolls as (Payroll & { employee: Employee, payPeriod: PayPeriod })[]).map((p) => ({
         id: p.id,
         employee: {
-          name: `${p.employee.user.firstName} ${p.employee.user.lastName}`,
+          name: `${p.employee.firstName} ${p.employee.lastName}`,
           employeeId: p.employee.id,
         },
         payPeriod: p.payPeriod.name,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 import { Lock, ArrowLeft, Brain } from 'lucide-react';
 import api from '@/lib/api';
 
-export default function ResetPasswordPage() {
+function ResetPasswordForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token');
@@ -59,6 +59,56 @@ export default function ResetPasswordPage() {
   };
 
   return (
+    <Card>
+      <CardHeader className="text-center">
+        <CardTitle className="text-3xl font-bold">Reset Password</CardTitle>
+        <CardDescription>
+          {isSuccess ? "Your password has been changed." : "Enter your new password below."}
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isSuccess ? (
+          <div className="text-center">
+            <p className="text-muted-foreground mb-6">
+              You can now log in with your new password.
+            </p>
+            <Button asChild className="w-full">
+              <Link href="/login">
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Login
+              </Link>
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-6" noValidate>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="bg-destructive/10 text-destructive text-sm p-3 rounded-md text-center"
+                role="alert"
+              >
+                {error}
+              </motion.div>
+            )}
+            <div className="space-y-2">
+              <FormField id="password" type="password" value={password} onChange={setPassword} placeholder="New Password" icon={Lock} error={!!error} />
+            </div>
+            <div className="space-y-2">
+              <FormField id="confirmPassword" type="password" value={confirmPassword} onChange={setConfirmPassword} placeholder="Confirm New Password" icon={Lock} error={!!error} />
+            </div>
+            <Button type="submit" className="w-full h-12 text-lg" disabled={isLoading} size="lg">
+              {isLoading ? 'Resetting...' : 'Reset Password'}
+            </Button>
+          </form>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function ResetPasswordPage() {
+  return (
     <div className="min-h-screen w-full lg:grid lg:grid-cols-2">
       <div className="hidden bg-muted lg:flex items-center justify-center p-8">
         <motion.div 
@@ -81,51 +131,18 @@ export default function ResetPasswordPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8 }}
           >
-            <Card>
-              <CardHeader className="text-center">
-                <CardTitle className="text-3xl font-bold">Reset Password</CardTitle>
-                <CardDescription>
-                  {isSuccess ? "Your password has been changed." : "Enter your new password below."}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isSuccess ? (
-                  <div className="text-center">
-                    <p className="text-muted-foreground mb-6">
-                      You can now log in with your new password.
-                    </p>
-                    <Button asChild className="w-full">
-                      <Link href="/login">
-                        <ArrowLeft className="mr-2 h-4 w-4" />
-                        Back to Login
-                      </Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmit} className="space-y-6" noValidate>
-                    {error && (
-                      <motion.div
-                        initial={{ opacity: 0, y: -10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="bg-destructive/10 text-destructive text-sm p-3 rounded-md text-center"
-                        role="alert"
-                      >
-                        {error}
-                      </motion.div>
-                    )}
-                    <div className="space-y-2">
-                      <FormField id="password" type="password" value={password} onChange={setPassword} placeholder="New Password" icon={Lock} error={!!error} />
-                    </div>
-                    <div className="space-y-2">
-                      <FormField id="confirmPassword" type="password" value={confirmPassword} onChange={setConfirmPassword} placeholder="Confirm New Password" icon={Lock} error={!!error} />
-                    </div>
-                    <Button type="submit" className="w-full h-12 text-lg" disabled={isLoading} size="lg">
-                      {isLoading ? 'Resetting...' : 'Reset Password'}
-                    </Button>
-                  </form>
-                )}
-              </CardContent>
-            </Card>
+            <Suspense fallback={
+              <Card>
+                <CardHeader className="text-center">
+                  <CardTitle className="text-3xl font-bold">Loading...</CardTitle>
+                </CardHeader>
+                <CardContent className="h-40 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                </CardContent>
+              </Card>
+            }>
+              <ResetPasswordForm />
+            </Suspense>
           </motion.div>
         </div>
       </div>

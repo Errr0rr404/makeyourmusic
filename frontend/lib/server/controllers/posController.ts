@@ -23,25 +23,10 @@ enum PaymentStatus {
   REFUNDED = 'REFUNDED'
 }
 
-// Type workaround for Prisma client with POS models
-interface PrismaModel {
-  findUnique: (args: Record<string, unknown>) => Promise<Record<string, unknown> | null>;
-  findFirst: (args: Record<string, unknown>) => Promise<Record<string, unknown> | null>;
-  findMany: (args: Record<string, unknown>) => Promise<Record<string, unknown>[]>;
-  create: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
-  update: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
-  delete: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
-  updateMany: (args: Record<string, unknown>) => Promise<{ count: number }>;
-  count: (args?: Record<string, unknown>) => Promise<number>;
-  aggregate: (args: Record<string, unknown>) => Promise<Record<string, unknown>>;
-}
-
-const prismaClient = prisma as unknown as Record<string, PrismaModel>;
-
-// Generate unique order number
-const generateOrderNumber = (): string => {
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const random = Math.random().toString(36).substring(2, 8).toUpperCase();
+// Generate a random order number
+const generateOrderNumber = () => {
+  const timestamp = Date.now().toString().slice(-6);
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
   return `POS-${timestamp}-${random}`;
 };
 
@@ -64,16 +49,11 @@ export const createSession = async (req: NextRequest): Promise<NextResponse> => 
 
   const managerId = user.userId;
 
-  // Check if POS models exist (defensive programming)
-  if (!prismaClient.posSession) {
-    throw new AppError('POS system is not available', 503);
-  }
-
   const body = await req.json();
   const { openingBalance = 0 } = body;
 
   // Check if there's an active session
-  const activeSession = await prismaClient.posSession.findFirst({
+  const activeSession = await prisma.posSession.findFirst({
     where: {
       managerId,
       status: 'ACTIVE',
@@ -90,7 +70,7 @@ export const createSession = async (req: NextRequest): Promise<NextResponse> => 
     throw new AppError('Opening balance must be a valid non-negative number', 400);
   }
 
-  const session = await prismaClient.posSession.create({
+  const session = await prisma.posSession.create({
     data: {
       managerId,
       status: 'ACTIVE',
@@ -120,12 +100,7 @@ export const getActiveSession = async (req: NextRequest): Promise<NextResponse> 
 
   const managerId = user.userId;
 
-  // Check if POS models exist (defensive programming)
-  if (!prismaClient.posSession || !prismaClient.posTransaction) {
-    return NextResponse.json({ session: null });
-  }
-
-  const session = await prismaClient.posSession.findFirst({
+  const session = await prisma.posSession.findFirst({
     where: {
       managerId,
       status: 'ACTIVE',
@@ -150,7 +125,7 @@ export const getActiveSession = async (req: NextRequest): Promise<NextResponse> 
   }
 
   // Calculate expected cash (opening balance + cash transactions)
-  const cashTransactions = await prismaClient.posTransaction.aggregate({
+  const cashTransactions = await prisma.posTransaction.aggregate({
     where: {
       sessionId: session.id,
       paymentMethod: { in: ['CASH', 'MIXED'] },
@@ -159,7 +134,7 @@ export const getActiveSession = async (req: NextRequest): Promise<NextResponse> 
     _sum: {
       cashAmount: true,
     },
-  }) as { _sum: { cashAmount: number | null } };
+  });
 
   const expectedCash = Number(session.openingBalance) + (Number(cashTransactions._sum.cashAmount) || 0);
 
@@ -190,13 +165,8 @@ export const getHeldOrders = async (req: NextRequest): Promise<NextResponse> => 
 
   const managerId = user.userId;
 
-  // Check if POS models exist (defensive programming)
-  if (!prismaClient.posSession) {
-    return NextResponse.json({ heldOrders: [] });
-  }
-
   // Get active session
-  const session = await prismaClient.posSession.findFirst({
+  const session = await prisma.posSession.findFirst({
     where: {
       managerId,
       status: 'ACTIVE',
@@ -237,7 +207,7 @@ export const searchProducts = async (req: NextRequest): Promise<NextResponse> =>
   const search = getStringQuery(req, 'search');
   const limit = getNumberQuery(req, 'limit', 50);
 
-  const where: Record<string, unknown> = {
+  const where: any = {
     active: true,
   };
 
@@ -294,21 +264,6 @@ export const getSessionHistory = async (req: NextRequest): Promise<NextResponse>
 
   const managerId = user.userId;
 
-  // Check if POS models exist (defensive programming)
-  if (!prismaClient.posSession) {
-    return NextResponse.json({
-      data: [],
-      pagination: {
-        page: 1,
-        limit: 20,
-        total: 0,
-        totalPages: 0,
-        hasNext: false,
-        hasPrev: false,
-      },
-    });
-  }
-
   const { page, limit, skip } = getPaginationParams(
     getNumberQuery(req, 'page', 1),
     getNumberQuery(req, 'limit', 20),
@@ -317,7 +272,7 @@ export const getSessionHistory = async (req: NextRequest): Promise<NextResponse>
   );
 
   const [sessions, total] = await Promise.all([
-    prismaClient.posSession.findMany({
+    prisma.posSession.findMany({
       where: {
         managerId,
       },
@@ -334,7 +289,7 @@ export const getSessionHistory = async (req: NextRequest): Promise<NextResponse>
       skip,
       take: limit,
     }),
-    prismaClient.posSession.count({
+    prisma.posSession.count({
       where: {
         managerId,
       },
@@ -364,11 +319,6 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
 
   const managerId = user.userId;
 
-  // Check if POS models exist (defensive programming)
-  if (!prismaClient.posSession || !prismaClient.posTransaction) {
-    throw new AppError('POS system is not available', 503);
-  }
-
   const body = await req.json();
   const {
     items,
@@ -393,7 +343,7 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
   }
 
   // Get active session
-  const session = await prismaClient.posSession.findFirst({
+  const session = await prisma.posSession.findFirst({
     where: {
       managerId,
       status: 'ACTIVE',
@@ -409,7 +359,8 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
   const orderItems: {
     productId: string;
     quantity: number;
-    priceAtPurchase: number;
+    price: any;
+    priceAtPurchase: any;
     variantId: string | null;
   }[] = [];
 
@@ -437,6 +388,7 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
     orderItems.push({
       productId: product.id,
       quantity: item.quantity,
+      price: product.price,
       priceAtPurchase: product.price,
       variantId: item.variantId || null,
     });
@@ -475,18 +427,16 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
 
   // Create order and transaction in a transaction
   const result = await prisma.$transaction(async (tx) => {
-    const txSafe = tx as unknown as Record<string, PrismaModel>;
-    
     // Generate unique order number
     let orderNumber = generateOrderNumber();
-    let exists = await txSafe.order.findUnique({ where: { orderNumber } });
+    let exists = await tx.order.findUnique({ where: { orderNumber } });
     while (exists) {
       orderNumber = generateOrderNumber();
-      exists = await txSafe.order.findUnique({ where: { orderNumber } });
+      exists = await tx.order.findUnique({ where: { orderNumber } });
     }
 
     // Create order
-    const order = await txSafe.order.create({
+    const order = await tx.order.create({
       data: {
         userId: managerId, // Use manager as user for POS orders
         orderNumber: orderNumber,
@@ -507,7 +457,7 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
         },
         source: 'POS',
         posSessionId: session.id,
-        orderItems: {
+        items: {
           create: orderItems,
         },
         statusHistory: {
@@ -517,10 +467,10 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
           },
         },
       },
-    }) as unknown as { id: string };
+    });
 
     // Create POS transaction
-    const posTransaction = await txSafe.posTransaction.create({
+    const posTransaction = await tx.posTransaction.create({
       data: {
         sessionId: session.id,
         orderId: order.id,
@@ -536,10 +486,10 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
         customerName: customerName || null,
         notes: notes || null,
       },
-    }) as unknown as { id: string };
+    });
 
     // Update order with posTransactionId
-    await txSafe.order.update({
+    await tx.order.update({
       where: { id: order.id },
       data: {
         posTransactionId: posTransaction.id,
@@ -549,7 +499,7 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
     // Update product stock
     await Promise.all(
       orderItems.map((item) =>
-        txSafe.product.update({
+        tx.product.update({
           where: { id: item.productId },
           data: {
             stock: {
@@ -559,25 +509,6 @@ export const processPayment = async (req: NextRequest): Promise<NextResponse> =>
         })
       )
     );
-
-    // Create payment record
-    // For MIXED payments, use STRIPE as the primary method but store breakdown in gatewayResponse
-    const paymentMethodForRecord = paymentMethod === 'CASH' ? 'CASH' : 'STRIPE';
-    await txSafe.payment.create({
-      data: {
-        orderId: order.id,
-        paymentMethod: paymentMethodForRecord,
-        amount: total,
-        currency: 'usd',
-        status: PaymentStatus.COMPLETED,
-        gatewayResponse: {
-          posTransaction: true,
-          posPaymentMethod: paymentMethod,
-          cashAmount: paymentMethod === 'CASH' || paymentMethod === 'MIXED' ? parseFloat(String(cashAmount)) : null,
-          cardAmount: paymentMethod === 'CARD' || paymentMethod === 'MIXED' ? parseFloat(String(cardAmount)) : null,
-        },
-      },
-    });
 
     return { order, posTransaction };
   });
@@ -612,7 +543,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
   const managerId = user.userId;
 
   // Check if POS models exist (defensive programming)
-  if (!prismaClient.posTransaction) {
+  if (!prisma.posTransaction) {
     return NextResponse.json({
       today: {
         sales: 0,
@@ -657,7 +588,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
   last30DaysStart.setDate(last30DaysStart.getDate() - 30);
 
   // Today's stats
-  const todayTransactions = await prismaClient.posTransaction.findMany({
+  const todayTransactions = await prisma.posTransaction.findMany({
     where: {
       session: {
         managerId,
@@ -668,18 +599,18 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     include: {
       order: {
         include: {
-          orderItems: true,
+          items: true,
         },
       },
     },
   });
 
-  const todaySales = todayTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total), 0);
+  const todaySales = todayTransactions.reduce((sum: number, t: any) => sum + Number(t.total), 0);
   const todayCount = todayTransactions.length;
   const todayAvgOrder = todayCount > 0 ? todaySales / todayCount : 0;
 
   // Yesterday's stats
-  const yesterdayTransactions = await prismaClient.posTransaction.findMany({
+  const yesterdayTransactions = await prisma.posTransaction.findMany({
     where: {
       session: {
         managerId,
@@ -689,7 +620,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     },
   });
 
-  const yesterdaySales = yesterdayTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total), 0);
+  const yesterdaySales = yesterdayTransactions.reduce((sum: number, t: any) => sum + Number(t.total), 0);
   const yesterdayCount = yesterdayTransactions.length;
   const yesterdayAvgOrder = yesterdayCount > 0 ? yesterdaySales / yesterdayCount : 0;
 
@@ -698,7 +629,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
   const transactionGrowth = yesterdayCount > 0 ? ((todayCount - yesterdayCount) / yesterdayCount) * 100 : 0;
 
   // Last 30 days stats
-  const last30DaysTransactions = await prismaClient.posTransaction.findMany({
+  const last30DaysTransactions = await prisma.posTransaction.findMany({
     where: {
       session: {
         managerId,
@@ -708,26 +639,26 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     },
   });
 
-  const last30DaysSales = last30DaysTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total), 0);
-  const successfulTransactions = last30DaysTransactions.filter((t: Record<string, unknown>) => Number(t.total) > 0);
-  const successfulAmount = successfulTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total), 0);
+  const last30DaysSales = last30DaysTransactions.reduce((sum: number, t: any) => sum + Number(t.total), 0);
+  const successfulTransactions = last30DaysTransactions.filter((t: any) => Number(t.total) > 0);
+  const successfulAmount = successfulTransactions.reduce((sum: number, t: any) => sum + Number(t.total), 0);
 
   // Payment methods breakdown
   const paymentMethods = {
     CASH: last30DaysTransactions
-      .filter((t: Record<string, unknown>) => t.paymentMethod === 'CASH')
-      .reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.cashAmount || t.total || 0), 0),
+      .filter((t: any) => t.paymentMethod === 'CASH')
+      .reduce((sum: number, t: any) => sum + Number(t.cashAmount || t.total || 0), 0),
     CARD: last30DaysTransactions
-      .filter((t: Record<string, unknown>) => t.paymentMethod === 'CARD')
-      .reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.cardAmount || t.total || 0), 0),
+      .filter((t: any) => t.paymentMethod === 'CARD')
+      .reduce((sum: number, t: any) => sum + Number(t.cardAmount || t.total || 0), 0),
     MIXED: last30DaysTransactions
-      .filter((t: Record<string, unknown>) => t.paymentMethod === 'MIXED')
-      .reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total || 0), 0),
+      .filter((t: any) => t.paymentMethod === 'MIXED')
+      .reduce((sum: number, t: any) => sum + Number(t.total || 0), 0),
   };
 
   // Top products (last 30 days)
   // First, get all POS transactions for this manager in the last 30 days
-  const relevantTransactions = await prismaClient.posTransaction.findMany({
+  const relevantTransactions = await prisma.posTransaction.findMany({
     where: {
       session: {
         managerId,
@@ -741,7 +672,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
   });
 
   const relevantOrderIds = relevantTransactions
-    .map((t: Record<string, unknown>) => t.orderId as string)
+    .map((t: any) => t.orderId as string)
     .filter((id: string | null) => id !== null);
 
   const orderItems = relevantOrderIds.length > 0
@@ -756,7 +687,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     : [];
 
   const productMap = new Map<string, { quantity: number; revenue: number; name: string }>();
-  (orderItems as Record<string, unknown>[]).forEach((item) => {
+  (orderItems as any[]).forEach((item) => {
     const productId = item.productId as string;
     const quantity = item.quantity as number;
     const product = item.product as { price: number; name: string };
@@ -799,7 +730,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
   });
 
   // Recent transactions
-  const recentTransactions = await prismaClient.posTransaction.findMany({
+  const recentTransactions = await prisma.posTransaction.findMany({
     where: {
       session: {
         managerId,
@@ -824,7 +755,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0);
     const dayEnd = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999);
     
-    const dayTransactions = await prismaClient.posTransaction.findMany({
+    const dayTransactions = await prisma.posTransaction.findMany({
       where: {
         session: {
           managerId,
@@ -834,7 +765,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
       },
     });
     
-    const daySales = dayTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total || 0), 0);
+    const daySales = dayTransactions.reduce((sum: number, t: any) => sum + Number(t.total || 0), 0);
     last7Days.push({
       date: dayStart.toISOString().split('T')[0],
       sales: daySales,
@@ -853,7 +784,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     const hourEnd = new Date(date);
     hourEnd.setHours(hourEnd.getHours() + 1, 0, 0, -1);
     
-    const hourTransactions = await prismaClient.posTransaction.findMany({
+    const hourTransactions = await prisma.posTransaction.findMany({
       where: {
         session: {
           managerId,
@@ -863,7 +794,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
       },
     });
     
-    const hourSales = hourTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total || 0), 0);
+    const hourSales = hourTransactions.reduce((sum: number, t: any) => sum + Number(t.total || 0), 0);
     last24Hours.push({
       hour: hour,
       sales: hourSales,
@@ -879,7 +810,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     const monthStart = new Date(date.getFullYear(), date.getMonth(), 1);
     const monthEnd = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
     
-    const monthTransactions = await prismaClient.posTransaction.findMany({
+    const monthTransactions = await prisma.posTransaction.findMany({
       where: {
         session: {
           managerId,
@@ -889,7 +820,7 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
       },
     });
     
-    const monthSales = monthTransactions.reduce((sum: number, t: Record<string, unknown>) => sum + Number(t.total || 0), 0);
+    const monthSales = monthTransactions.reduce((sum: number, t: any) => sum + Number(t.total || 0), 0);
     last12Months.push({
       month: monthStart.toISOString().slice(0, 7), // YYYY-MM format
       sales: monthSales,
@@ -920,8 +851,8 @@ export const getDashboardStats = async (req: NextRequest): Promise<NextResponse>
     topProducts,
     lowStock: lowStockProducts,
     recentTransactions: recentTransactions
-      .filter((t: Record<string, unknown>) => t.order) // Filter out transactions without orders
-      .map((t: Record<string, unknown>) => {
+      .filter((t: any) => t.order) // Filter out transactions without orders
+      .map((t: any) => {
         const order = t.order as { orderNumber: string };
         return {
           id: t.id,
@@ -959,7 +890,7 @@ export const getTransactionHistory = async (req: NextRequest): Promise<NextRespo
   const managerId = user.userId;
 
   // Check if POS models exist (defensive programming)
-  if (!prismaClient.posTransaction) {
+  if (!prisma.posTransaction) {
     return NextResponse.json({
       data: [],
       pagination: {
@@ -981,20 +912,20 @@ export const getTransactionHistory = async (req: NextRequest): Promise<NextRespo
   );
   const sessionId = getStringQuery(req, 'sessionId');
 
-  const where: Record<string, unknown> = {};
+  const where: any = {};
   if (sessionId) {
     where.sessionId = sessionId;
   } else {
     // Get all sessions for this manager
-    const sessions = await prismaClient.posSession.findMany({
+    const sessions = await prisma.posSession.findMany({
       where: { managerId },
       select: { id: true },
     });
-    where.sessionId = { in: sessions.map((s: Record<string, unknown>) => s.id) };
+    where.sessionId = { in: sessions.map((s: any) => s.id) };
   }
 
   const [transactions, total] = await Promise.all([
-    prismaClient.posTransaction.findMany({
+    prisma.posTransaction.findMany({
       where,
       include: {
         session: {
@@ -1007,7 +938,7 @@ export const getTransactionHistory = async (req: NextRequest): Promise<NextRespo
           select: {
             id: true,
             orderNumber: true,
-            orderItems: {
+            items: {
               include: {
                 product: {
                   select: {
@@ -1027,7 +958,7 @@ export const getTransactionHistory = async (req: NextRequest): Promise<NextRespo
       skip,
       take: limit,
     }),
-    prismaClient.posTransaction.count({ where }),
+    prisma.posTransaction.count({ where }),
   ]);
 
   const response = formatPaginationResponse(transactions, total, page, limit);
@@ -1054,12 +985,12 @@ export const getCustomers = async (req: NextRequest): Promise<NextResponse> => {
   const managerId = user.userId;
 
   // Check if POS models exist (defensive programming)
-  if (!prismaClient.posTransaction) {
+  if (!prisma.posTransaction) {
     return NextResponse.json({ customers: [] });
   }
 
   // Get all transactions with customer info
-  const transactions = await prismaClient.posTransaction.findMany({
+  const transactions = await prisma.posTransaction.findMany({
     where: {
       session: {
         managerId,
@@ -1073,7 +1004,7 @@ export const getCustomers = async (req: NextRequest): Promise<NextResponse> => {
     include: {
       order: {
         include: {
-          orderItems: true,
+          items: true,
         },
       },
     },
@@ -1093,7 +1024,7 @@ export const getCustomers = async (req: NextRequest): Promise<NextResponse> => {
     orders: unknown[];
   }>();
   
-  transactions.forEach((t: Record<string, unknown>) => {
+  transactions.forEach((t: any) => {
     const email = (t.customerEmail as string) || `guest-${t.id}`;
     const name = (t.customerName as string) || 'Guest Customer';
     

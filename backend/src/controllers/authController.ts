@@ -67,7 +67,7 @@ const persistSession = (
 
 export const register = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { email, password, name } = req.body;
+    const { email, password, firstName, lastName } = req.body;
 
     if (!email || !password) {
       throw new AppError('Email and password are required', 400);
@@ -94,13 +94,13 @@ export const register = async (req: Request, res: Response, next: NextFunction) 
       data: {
         email,
         passwordHash,
-        name: name || null,
+        firstName: firstName || null, lastName: lastName || null,
         role: UserRole.USER,
       },
       select: {
         id: true,
         email: true,
-        name: true,
+        firstName: true, lastName: true,
         role: true,
         createdAt: true,
       },
@@ -158,7 +158,7 @@ export const login = async (req: Request, res: Response, next: NextFunction) => 
       user: {
         id: user.id,
         email: user.email,
-        name: user.name,
+        firstName: user.firstName, lastName: user.lastName,
         role: user.role,
       },
       accessToken,
@@ -182,7 +182,7 @@ export const getMe = async (req: Request, res: Response, next: NextFunction) => 
       select: {
         id: true,
         email: true,
-        name: true,
+        firstName: true, lastName: true,
         phone: true,
         role: true,
         createdAt: true,
@@ -207,7 +207,7 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
       throw new AppError('User not authenticated', 401);
     }
 
-    const { name, email, phone } = req.body;
+    const { firstName, lastName, email, phone } = req.body;
 
     // Check if user exists
     const existingUser = await prisma.user.findUnique({
@@ -233,14 +233,15 @@ export const updateProfile = async (req: Request, res: Response, next: NextFunct
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: {
-        ...(name !== undefined && { name: name.trim() || null }),
+                ...(firstName !== undefined && { firstName: firstName.trim() || null }),
+            ...(lastName !== undefined && { lastName: lastName.trim() || null }),
         ...(email !== undefined && email !== existingUser.email && { email: email.trim() }),
         ...(phone !== undefined && { phone: phone?.trim() || null }),
       },
       select: {
         id: true,
         email: true,
-        name: true,
+        firstName: true, lastName: true,
         phone: true,
         role: true,
         createdAt: true,

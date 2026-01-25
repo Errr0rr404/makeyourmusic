@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 interface Notification {
   id: string;
   read: boolean;
-  link?: string;
+  link: string | null;
   title: string;
   message: string;
   createdAt: string;

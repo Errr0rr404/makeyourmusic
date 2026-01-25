@@ -32,6 +32,7 @@ model User {
   createdAt    DateTime  @default(now()) @map("created_at")
   updatedAt    DateTime  @updatedAt @map("updated_at")
   orders       Order[]
+  employee     Employee?
 
   @@map("users")
 }
@@ -39,6 +40,15 @@ model User {
 enum UserRole {
   USER
   ADMIN
+  CUSTOMER
+  MASTERMIND
+  MANAGER
+  CFO
+  HR_MANAGER
+  SALES_MANAGER
+  OPERATIONS_MANAGER
+  PROJECT_MANAGER
+  ANALYST
 }
 
 // Payroll System
@@ -84,6 +94,8 @@ model Payroll {
   overtimeHours Decimal       @default(0) @map("overtime_hours") @db.Decimal(10, 2)
   totalHours    Decimal       @default(0) @map("total_hours") @db.Decimal(10, 2)
   hourlyRate    Decimal       @map("hourly_rate") @db.Decimal(10, 2)
+  regularPay    Decimal       @default(0) @map("regular_pay") @db.Decimal(10, 2)
+  overtimePay   Decimal       @default(0) @map("overtime_pay") @db.Decimal(10, 2)
   grossPay      Decimal       @default(0) @map("gross_pay") @db.Decimal(10, 2)
   deductions    Decimal       @default(0) @db.Decimal(10, 2)
   taxes         Decimal       @default(0) @db.Decimal(10, 2)
@@ -95,6 +107,7 @@ model Payroll {
   updatedAt     DateTime      @updatedAt @map("updated_at")
 
   payPeriod PayPeriod     @relation(fields: [payPeriodId], references: [id], onDelete: Cascade)
+  employee  Employee      @relation(fields: [employeeId], references: [id])
   items     PayrollItem[]
 
   @@index([payPeriodId])
@@ -108,6 +121,17 @@ enum PayrollStatus {
   APPROVED
   PAID
   CANCELLED
+}
+
+model PayrollSettings {
+  id                 String   @id @default(cuid())
+  overtimeThreshold  Decimal  @default(40) @map("overtime_threshold") @db.Decimal(10, 2)
+  overtimeMultiplier Decimal  @default(1.5) @map("overtime_multiplier") @db.Decimal(10, 2)
+  autoCalculateTaxes Boolean  @default(false) @map("auto_calculate_taxes")
+  taxRateFederal     Decimal? @map("tax_rate_federal") @db.Decimal(10, 5)
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  @@map("payroll_settings")
 }
 
 model PayrollItem {
@@ -135,10 +159,14 @@ model Report {
   id             String   @id @default(cuid())
   reportType     String   @map("report_type")
   title          String
+  description    String?  @db.Text
   dateRangeStart DateTime @map("date_range_start")
   dateRangeEnd   DateTime @map("date_range_end")
+  filters        Json     @default("{}")
   data           Json
+  status         String   @default("PENDING")
   createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
   createdBy      String?  @map("created_by")
 
   @@index([reportType])
@@ -314,6 +342,11 @@ model Product {
   sku         String      @unique
   price       Decimal     @db.Decimal(10, 2)
   stock       Int
+  active      Boolean     @default(true)
+  featured    Boolean     @default(false)
+  imageUrls   String[]    @map("image_urls")
+  categoryId  String?     @map("category_id")
+  category    Category?   @relation(fields: [categoryId], references: [id])
   createdAt   DateTime    @default(now()) @map("created_at")
   updatedAt   DateTime    @updatedAt @map("updated_at")
   orderItems  OrderItem[]
@@ -321,20 +354,107 @@ model Product {
   @@map("products")
 }
 
-model Order {
-  id        String      @id @default(cuid())
-  userId    String      @map("user_id")
-  status    OrderStatus @default(PENDING)
-  total     Decimal     @db.Decimal(15, 2)
-  createdAt DateTime    @default(now()) @map("created_at")
-  updatedAt DateTime    @updatedAt @map("updated_at")
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String?   @unique
+  products  Product[]
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
 
-  user  User        @relation(fields: [userId], references: [id])
-  items OrderItem[]
+  @@map("categories")
+}
+
+model Order {
+  id               String         @id @default(cuid())
+  userId           String         @map("user_id")
+  orderNumber      String         @unique @map("order_number")
+  subtotal         Decimal        @db.Decimal(15, 2)
+  discount         Decimal        @default(0) @db.Decimal(15, 2)
+  shippingCost     Decimal        @default(0) @map("shipping_cost") @db.Decimal(15, 2)
+  totalAmount      Decimal        @map("total_amount") @db.Decimal(15, 2)
+  status           OrderStatus    @default(PENDING)
+  deliveryMethod   String         @default("SHIPPING") @map("delivery_method")
+  paymentTiming    String         @default("PAY_NOW") @map("payment_timing")
+  billingAddress   Json?          @map("billing_address")
+  source           String         @default("ONLINE")
+  posSessionId     String?        @map("pos_session_id")
+  posTransactionId String?        @unique @map("pos_transaction_id")
+  createdAt        DateTime       @default(now()) @map("created_at")
+  updatedAt        DateTime       @updatedAt @map("updated_at")
+
+  user           User                @relation(fields: [userId], references: [id])
+  items          OrderItem[]
+  posSession     PosSession?         @relation(fields: [posSessionId], references: [id])
+  statusHistory  OrderStatusHistory[]
+  posTransaction PosTransaction?     @relation("OrderToPosTransaction", fields: [posTransactionId], references: [id])
 
   @@index([userId])
   @@index([status])
+  @@index([posSessionId])
   @@map("orders")
+}
+
+model OrderStatusHistory {
+  id        String      @id @default(cuid())
+  orderId   String      @map("order_id")
+  status    OrderStatus
+  note      String?     @db.Text
+  createdAt DateTime    @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@map("order_status_history")
+}
+
+model PosSession {
+  id             String           @id @default(cuid())
+  managerId      String           @map("manager_id")
+  status         String           @default("ACTIVE") // ACTIVE, CLOSED
+  openingBalance Decimal          @default(0) @map("opening_balance") @db.Decimal(15, 2)
+  closingBalance Decimal?         @map("closing_balance") @db.Decimal(15, 2)
+  expectedCash   Decimal?         @map("expected_cash") @db.Decimal(15, 2)
+  actualCash     Decimal?         @map("actual_cash") @db.Decimal(15, 2)
+  difference     Decimal?         @db.Decimal(15, 2)
+  heldOrders     Json?            @map("held_orders")
+  notes          String?          @db.Text
+  openedAt       DateTime         @default(now()) @map("opened_at")
+  closedAt       DateTime?        @map("closed_at")
+  createdAt      DateTime         @default(now()) @map("created_at")
+  updatedAt      DateTime         @updatedAt @map("updated_at")
+
+  transactions PosTransaction[]
+  orders       Order[]
+
+  @@index([managerId])
+  @@index([status])
+  @@map("pos_sessions")
+}
+
+model PosTransaction {
+  id              String   @id @default(cuid())
+  sessionId       String   @map("session_id")
+  orderId         String?  @unique @map("order_id")
+  transactionType String   @map("transaction_type") // SALE, REFUND
+  paymentMethod   String   @map("payment_method") // CASH, CARD, MIXED
+  subtotal        Decimal  @db.Decimal(15, 2)
+  tax             Decimal  @default(0) @db.Decimal(15, 2)
+  discount        Decimal  @default(0) @db.Decimal(15, 2)
+  total           Decimal  @db.Decimal(15, 2)
+  cashAmount      Decimal  @default(0) @map("cash_amount") @db.Decimal(15, 2)
+  cardAmount      Decimal  @default(0) @map("card_amount") @db.Decimal(15, 2)
+  customerEmail   String?  @map("customer_email")
+  customerName    String?  @map("customer_name")
+  notes           String?  @db.Text
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  session PosSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  order   Order?     @relation("OrderToPosTransaction")
+
+  @@index([sessionId])
+  @@index([orderId])
+  @@map("pos_transactions")
 }
 
 enum OrderStatus {
@@ -343,14 +463,85 @@ enum OrderStatus {
   SHIPPED
   DELIVERED
   CANCELLED
+  RETURNED
+  REFUNDED
+}
+
+model PromoCode {
+  id            String    @id @default(cuid())
+  code          String    @unique
+  discountType  String    @map("discount_type") // PERCENTAGE or FIXED
+  discountValue Decimal   @map("discount_value") @db.Decimal(10, 2)
+  minPurchase   Decimal?  @map("min_purchase") @db.Decimal(10, 2)
+  maxDiscount   Decimal?  @map("max_discount") @db.Decimal(10, 2)
+  startDate     DateTime  @map("start_date")
+  endDate       DateTime  @map("end_date")
+  usageLimit    Int?      @map("usage_limit")
+  usageCount    Int       @default(0) @map("usage_count")
+  isActive      Boolean   @default(true) @map("is_active")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+
+  @@map("promo_codes")
+}
+
+model Workflow {
+  id            String              @id @default(cuid())
+  name          String
+  description   String?             @db.Text
+  triggerType   String              @map("trigger_type")
+  triggerConfig Json                @map("trigger_config")
+  steps         Json
+  status        String              @default("ACTIVE")
+  isActive      Boolean             @default(true) @map("is_active")
+  createdAt     DateTime            @default(now()) @map("created_at")
+  updatedAt     DateTime            @updatedAt @map("updated_at")
+  createdBy     String?             @map("created_by")
+  executions    WorkflowExecution[]
+
+  @@map("workflows")
+}
+
+model WorkflowExecution {
+  id          String    @id @default(cuid())
+  workflowId  String    @map("workflow_id")
+  status      String    @default("RUNNING")
+  inputData   Json      @map("input_data")
+  outputData  Json?     @map("output_data")
+  error       String?   @db.Text
+  startedAt   DateTime  @default(now()) @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  duration    Int? // in milliseconds
+
+  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  @@index([workflowId])
+  @@map("workflow_executions")
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  type      String
+  title     String
+  message   String   @db.Text
+  link      String?
+  isRead    Boolean  @default(false) @map("is_read")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([isRead])
+  @@map("notifications")
 }
 
 model OrderItem {
-  id        String  @id @default(cuid())
-  orderId   String  @map("order_id")
-  productId String  @map("product_id")
-  quantity  Int
-  price     Decimal @db.Decimal(10, 2)
+  id              String  @id @default(cuid())
+  orderId         String  @map("order_id")
+  productId       String  @map("product_id")
+  quantity        Int
+  price           Decimal @db.Decimal(10, 2)
+  priceAtPurchase Decimal @map("price_at_purchase") @db.Decimal(10, 2)
+  variantId       String? @map("variant_id")
 
   order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
   product Product @relation(fields: [productId], references: [id])
@@ -363,18 +554,38 @@ model OrderItem {
 
 // HR Module
 model Employee {
-  id         String   @id @default(cuid())
-  firstName  String   @map("first_name")
-  lastName   String   @map("last_name")
-  email      String   @unique
+  id         String      @id @default(cuid())
+  employeeId String      @unique @map("employee_id")
+  userId     String?     @unique @map("user_id")
+  firstName  String      @map("first_name")
+  lastName   String      @map("last_name")
+  email      String      @unique
   phone      String?
-  jobTitle   String   @map("job_title")
+  jobTitle   String      @map("job_title")
   department String
-  hireDate   DateTime @map("hire_date")
-  createdAt  DateTime @default(now()) @map("created_at")
-  updatedAt  DateTime @updatedAt @map("updated_at")
+  hourlyRate Decimal?    @map("hourly_rate") @db.Decimal(10, 2)
+  hireDate   DateTime    @map("hire_date")
+  createdAt  DateTime    @default(now()) @map("created_at")
+  updatedAt  DateTime    @updatedAt @map("updated_at")
+  payrolls   Payroll[]
+  timeClocks TimeClock[]
+  user       User?       @relation(fields: [userId], references: [id])
 
   @@map("employees")
+}
+
+model TimeClock {
+  id         String   @id @default(cuid())
+  employeeId String   @map("employee_id")
+  punchType  String   @map("punch_type") // CLOCK_IN, CLOCK_OUT, etc.
+  punchTime  DateTime @default(now()) @map("punch_time")
+  notes      String?  @db.Text
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@index([employeeId])
+  @@map("time_clocks")
 }
 
 // Extensibility
@@ -412,13 +623,21 @@ model CustomFieldValue {
 }
 
 model Project {
-  id        String        @id @default(cuid())
-  name      String
-  status    ProjectStatus @default(PLANNING)
-  startDate DateTime?
-  endDate   DateTime?
-  createdAt DateTime      @default(now()) @map("created_at")
-  createdBy String?       @map("created_by")
+  id          String        @id @default(cuid())
+  name        String
+  description String?       @db.Text
+  status      ProjectStatus @default(PLANNING)
+  priority    String        @default("MEDIUM")
+  startDate   DateTime?     @map("start_date")
+  endDate     DateTime?     @map("end_date")
+  budget      Decimal?      @db.Decimal(15, 2)
+  actualCost  Decimal       @default(0) @map("actual_cost") @db.Decimal(15, 2)
+  progress    Int           @default(0)
+  managerId   String?       @map("manager_id")
+  customerId  String?       @map("customer_id")
+  notes       String?       @db.Text
+  createdAt   DateTime      @default(now()) @map("created_at")
+  createdBy   String?       @map("created_by")
 
   tasks ProjectTask[]
 
@@ -427,18 +646,26 @@ model Project {
 }
 
 model ProjectTask {
-  id        String        @id @default(cuid())
-  projectId String        @map("project_id")
-  name      String
-  status    ProjectStatus @default(PLANNING)
-  dueDate   DateTime?     @map("due_date")
-  createdAt DateTime      @default(now()) @map("created_at")
-  createdBy String?       @map("created_by")
+  id             String        @id @default(cuid())
+  projectId      String        @map("project_id")
+  name           String
+  description    String?       @db.Text
+  status         String        @default("TODO")
+  priority       String        @default("MEDIUM")
+  startDate      DateTime?     @map("start_date")
+  dueDate        DateTime?     @map("due_date")
+  estimatedHours Decimal?      @map("estimated_hours") @db.Decimal(10, 2)
+  actualHours    Decimal       @default(0) @map("actual_hours") @db.Decimal(10, 2)
+  progress       Int           @default(0)
+  parentTaskId   String?       @map("parent_task_id")
+  dependencies   String[]      @default([])
+  notes          String?       @db.Text
+  createdAt      DateTime      @default(now()) @map("created_at")
+  createdBy      String?       @map("created_by")
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([projectId])
-  @@index([status])
   @@map("project_tasks")
 }
 

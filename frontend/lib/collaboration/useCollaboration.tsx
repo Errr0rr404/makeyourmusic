@@ -6,7 +6,7 @@ import { io, Socket } from 'socket.io-client';
 
 interface CollaborationUser {
   id: string;
-  name: string;
+  firstName: string; lastName?: string;
   email: string;
   avatar?: string;
   color: string;
@@ -26,11 +26,11 @@ class CollaborationService {
   private activeUsers: Map<string, CollaborationUser> = new Map();
   private callbacks: Map<string, ((data?: unknown) => void)[]> = new Map();
 
-  connect(userId: string, userName: string) {
+  connect(userId: string, firstName: string, lastName?: string) {
     if (this.socket?.connected) return;
 
     this.socket = io(process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:3001', {
-      auth: { userId, userName },
+      auth: { userId, firstName, lastName },
       transports: ['websocket', 'polling'],
     });
 
@@ -133,7 +133,7 @@ export function useCollaboration(documentId?: string) {
     const user = localStorage.getItem('user');
     if (user) {
       const userData = JSON.parse(user);
-      collaborationService.connect(userData.id, userData.name);
+      collaborationService.connect(userData.id, userData.firstName, userData.lastName);
       setIsConnected(true);
     }
 
@@ -201,9 +201,9 @@ export function ActiveUsers({ limit = 5 }: { limit?: number }) {
             key={user.id}
             className="w-8 h-8 rounded-full border-2 border-background flex items-center justify-center text-xs font-semibold text-white"
             style={{ backgroundColor: user.color }}
-            title={user.name}
+            title={`${user.firstName} ${user.lastName || ''}`.trim()}
           >
-            {user.name.charAt(0).toUpperCase()}
+            {user.firstName.charAt(0).toUpperCase()}
           </div>
         ))}
         {remaining > 0 && (

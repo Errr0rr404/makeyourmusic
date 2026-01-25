@@ -1,21 +1,10 @@
-// Database interface for payroll service
-interface PayrollDb {
-  timeClock: { findMany: (args: unknown) => Promise<Array<{ punchTime: Date; punchType: string }>> };
-  payPeriod: { findUnique: (args: unknown) => Promise<Record<string, unknown> | null> };
-  posEmployee: { findUnique: (args: unknown) => Promise<Record<string, unknown> | null> };
-  payrollSettings: { findFirst: (args: unknown) => Promise<Record<string, unknown> | null> };
-  payroll: {
-    findFirst: (args: unknown) => Promise<Record<string, unknown> | null>;
-    create: (args: unknown) => Promise<Record<string, unknown>>;
-    update: (args: unknown) => Promise<Record<string, unknown>>;
-  };
-}
+import { PrismaClient } from '@/generated/prisma';
 
 /**
  * Calculate hours worked from time clock records
  */
 export async function calculateHours(
-  db: Pick<PayrollDb, 'timeClock'>,
+  db: PrismaClient,
   employeeId: string,
   startDate: Date,
   endDate: Date,
@@ -143,7 +132,7 @@ export async function calculatePay(
  * Generate payroll for multiple employees
  */
 export async function generatePayrollForEmployees(
-  db: PayrollDb,
+  db: PrismaClient,
   payPeriodId: string,
   employeeIds: string[],
   createdBy: string
@@ -167,7 +156,7 @@ export async function generatePayrollForEmployees(
       }
 
       // Get employee
-      const employee = await db.posEmployee.findUnique({
+      const employee = await db.employee.findUnique({
         where: { id: employeeId },
         include: { user: true },
       });
@@ -191,13 +180,15 @@ export async function generatePayrollForEmployees(
       }
 
       // Get payroll settings
-      const settings = await db.payrollSettings.findFirst({
+      const settingsResult = await db.payrollSettings.findFirst({
         orderBy: { updatedAt: 'desc' },
-      }) || {
+      });
+      
+      const settings = settingsResult || {
         overtimeThreshold: 40,
         overtimeMultiplier: 1.5,
         autoCalculateTaxes: false,
-        taxRateFederal: null,
+        taxRateFederal: 0,
       };
 
       // Calculate hours
@@ -229,18 +220,14 @@ export async function generatePayrollForEmployees(
         employeeId,
         regularHours: hours.regularHours,
         overtimeHours: hours.overtimeHours,
-        breakHours: hours.breakHours,
         totalHours: hours.totalHours,
         hourlyRate: employee.hourlyRate,
-        overtimeMultiplier: settings.overtimeMultiplier,
         regularPay: pay.regularPay,
         overtimePay: pay.overtimePay,
-        bonuses: pay.bonuses,
         grossPay: pay.grossPay,
         deductions: pay.deductions,
         taxes: pay.taxes,
         netPay: pay.netPay,
-        createdBy,
       };
 
       const payroll = existingPayroll
