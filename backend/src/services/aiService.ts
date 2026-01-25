@@ -136,7 +136,8 @@ const getAdminKnowledge = async (): Promise<string> => {
         select: {
           id: true,
           email: true,
-          name: true,
+          firstName: true,
+          lastName: true,
           role: true,
           createdAt: true,
         },

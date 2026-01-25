@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, InvoiceStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -24,12 +24,12 @@ type InvoiceCreateData = {
   customerId: string;
   issueDate: Date;
   dueDate: Date;
-  status?: string;
+  status?: InvoiceStatus | string;
   items: InvoiceItemInput[];
 };
 
-export const createInvoice = async (data: InvoiceCreateData) => {
-  const { items, ...invoiceData } = data;
+export const createInvoice = async (data: InvoiceCreateData & { createdBy?: string }) => {
+  const { items, createdBy, status, ...invoiceData } = data;
 
   const total = items.reduce((acc, item) => {
     const qty = Number(item.quantity);
@@ -37,16 +37,25 @@ export const createInvoice = async (data: InvoiceCreateData) => {
     return acc + (qty * price);
   }, 0);
 
+  // Convert string status to enum if needed
+  const invoiceStatus = typeof status === 'string' && status in InvoiceStatus 
+    ? (status as InvoiceStatus) 
+    : (status as InvoiceStatus) || InvoiceStatus.DRAFT;
+
   return prisma.invoice.create({
     data: {
       ...invoiceData,
       total,
+      status: invoiceStatus,
+      createdBy: createdBy || 'system',
       items: {
         create: items.map(item => {
           const qty = Number(item.quantity);
           const price = Number(item.unitPrice);
           return {
-            ...item,
+            description: item.description,
+            quantity: qty,
+            unitPrice: price,
             total: qty * price,
           };
         }),
@@ -61,16 +70,28 @@ export const updateInvoice = async (id: string, data: Partial<{
   customerId: string;
   issueDate: Date;
   dueDate: Date;
-  status: string;
+  status: InvoiceStatus | string;
   total: number;
 }>) => {
   const existingInvoice = await prisma.invoice.findUnique({ where: { id } });
   if (!existingInvoice) {
     return null;
   }
+  
+  // Convert string status to enum if needed
+  const updateData: any = { ...data };
+  if (data.status && typeof data.status === 'string' && data.status in InvoiceStatus) {
+    updateData.status = data.status as InvoiceStatus;
+  }
+  
+  // Handle customerId separately if provided
+  if (data.customerId !== undefined) {
+    updateData.customerId = data.customerId;
+  }
+  
   return prisma.invoice.update({
     where: { id },
-    data,
+    data: updateData,
     include: { items: true },
   });
 };

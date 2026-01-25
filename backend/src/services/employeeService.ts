@@ -11,11 +11,25 @@ export const createEmployee = async (data: {
   lastName: string;
   email: string;
   hireDate: Date;
-  department?: string;
-  position?: string;
+  department: string;
+  jobTitle: string;
+  employeeId?: string;
+  position?: string; // Alias for jobTitle (will be converted)
   salary?: number;
 }) => {
-  return prisma.employee.create({ data });
+  // Generate employeeId if not provided
+  const employeeId = data.employeeId || `EMP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  
+  // Remove position and use jobTitle instead
+  const { position, ...employeeData } = data;
+  
+  return prisma.employee.create({ 
+    data: {
+      ...employeeData,
+      employeeId,
+      jobTitle: data.jobTitle || position || 'Employee',
+    } 
+  });
 };
 
 export const updateEmployee = async (id: string, data: Partial<{

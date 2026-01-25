@@ -1,7 +1,4 @@
-import { PrismaClient } from '@prisma/client';
-
-// Define types locally since @prisma/client doesn't export them properly
-type FieldType = 'TEXT' | 'NUMBER' | 'DATE' | 'BOOLEAN' | 'SELECT';
+import { PrismaClient, FieldType } from '@prisma/client';
 
 const prisma = new PrismaClient();
 

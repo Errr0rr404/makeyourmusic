@@ -1,15 +1,4 @@
-import { PrismaClient, Prisma } from '@prisma/client';
-
-// Define LeadStatus locally since @prisma/client doesn't export it properly
-const LeadStatus = {
-  NEW: 'NEW',
-  CONTACTED: 'CONTACTED',
-  QUALIFIED: 'QUALIFIED',
-  PROPOSAL: 'PROPOSAL',
-  NEGOTIATION: 'NEGOTIATION',
-  CONVERTED: 'CONVERTED',
-  LOST: 'LOST',
-} as const;
+import { PrismaClient, Prisma, LeadStatus } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -44,9 +33,10 @@ export const convertLeadToCustomer = async (leadId: string) => {
       },
     });
 
+    // Use CLOSED_WON instead of CONVERTED (which doesn't exist in enum)
     await tx.lead.update({
       where: { id: leadId },
-      data: { status: LeadStatus.CONVERTED },
+      data: { status: LeadStatus.CLOSED_WON },
     });
 
     return customer;

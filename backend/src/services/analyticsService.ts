@@ -99,6 +99,9 @@ export const getDashboardAnalytics = async () => {
     newLeadsThisMonth,
     leadConversionRate,
     salesByMonth,
-    topProducts: topProducts.map((p: { description: string | null; _sum: { quantity: number | null } }) => ({ name: p.description, quantity: p._sum.quantity })),
+    topProducts: topProducts.map((p) => ({ 
+      name: p.description, 
+      quantity: p._sum.quantity ? Number(p._sum.quantity) : 0 
+    })),
   };
 };
