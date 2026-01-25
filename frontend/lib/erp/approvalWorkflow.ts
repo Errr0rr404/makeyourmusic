@@ -138,20 +138,20 @@ export interface ApprovalStats {
 class ApprovalWorkflowService {
   // Create a new approval chain template
   async createChain(chain: Omit<ApprovalChain, 'id' | 'createdAt' | 'updatedAt'>): Promise<ApprovalChain> {
-    const response = await api.post('/erp/approvals/chains', chain);
+    const response = await api.post('/approvals/chains', chain);
     return response.data;
   }
 
   // Update an approval chain
   async updateChain(id: string, updates: Partial<ApprovalChain>): Promise<ApprovalChain> {
-    const response = await api.put(`/erp/approvals/chains/${id}`, updates);
+    const response = await api.put(`/approvals/chains/${id}`, updates);
     return response.data;
   }
 
   // Get all approval chains
   async getChains(type?: ApprovalType): Promise<ApprovalChain[]> {
     const params = type ? `?type=${type}` : '';
-    const response = await api.get(`/erp/approvals/chains${params}`);
+    const response = await api.get(`/approvals/chains${params}`);
     return response.data;
   }
 
@@ -171,7 +171,7 @@ class ApprovalWorkflowService {
     priority?: ApprovalPriority;
     dueDate?: Date;
   }): Promise<ApprovalRequest> {
-    const response = await api.post('/erp/approvals/requests', request);
+    const response = await api.post('/approvals/requests', request);
 
     await auditLogger.log({
       userId: response.data.requesterId,
@@ -191,7 +191,7 @@ class ApprovalWorkflowService {
 
   // Get pending approvals for current user
   async getMyPendingApprovals(): Promise<PendingApproval[]> {
-    const response = await api.get('/erp/approvals/my-pending');
+    const response = await api.get('/api/erp/approvals/my-pending');
     return response.data;
   }
 
@@ -208,13 +208,13 @@ class ApprovalWorkflowService {
     if (filter?.requesterId) params.set('requesterId', filter.requesterId);
     if (filter?.departmentId) params.set('departmentId', filter.departmentId);
 
-    const response = await api.get(`/erp/approvals/pending?${params.toString()}`);
+    const response = await api.get(`/approvals/pending?${params.toString()}`);
     return response.data;
   }
 
   // Approve a request
   async approve(requestId: string, comments?: string, userId?: string): Promise<ApprovalRequest> {
-    const response = await api.post(`/erp/approvals/requests/${requestId}/approve`, { comments });
+    const response = await api.post(`/approvals/requests/${requestId}/approve`, { comments });
 
     await auditLogger.logApproval(
       'WORKFLOWS',
@@ -231,7 +231,7 @@ class ApprovalWorkflowService {
 
   // Reject a request
   async reject(requestId: string, reason: string, userId?: string): Promise<ApprovalRequest> {
-    const response = await api.post(`/erp/approvals/requests/${requestId}/reject`, { reason });
+    const response = await api.post(`/approvals/requests/${requestId}/reject`, { reason });
 
     await auditLogger.logApproval(
       'WORKFLOWS',
@@ -248,7 +248,7 @@ class ApprovalWorkflowService {
 
   // Delegate approval to another user
   async delegate(requestId: string, delegateToUserId: string, reason: string): Promise<ApprovalRequest> {
-    const response = await api.post(`/erp/approvals/requests/${requestId}/delegate`, {
+    const response = await api.post(`/approvals/requests/${requestId}/delegate`, {
       delegateToUserId,
       reason,
     });
@@ -257,26 +257,26 @@ class ApprovalWorkflowService {
 
   // Escalate a request
   async escalate(requestId: string, reason: string): Promise<ApprovalRequest> {
-    const response = await api.post(`/erp/approvals/requests/${requestId}/escalate`, { reason });
+    const response = await api.post(`/approvals/requests/${requestId}/escalate`, { reason });
     return response.data;
   }
 
   // Cancel a request (by requester)
   async cancel(requestId: string, reason: string): Promise<ApprovalRequest> {
-    const response = await api.post(`/erp/approvals/requests/${requestId}/cancel`, { reason });
+    const response = await api.post(`/approvals/requests/${requestId}/cancel`, { reason });
     return response.data;
   }
 
   // Get request history
   async getRequestHistory(requestId: string): Promise<ApprovalHistoryEntry[]> {
-    const response = await api.get(`/erp/approvals/requests/${requestId}/history`);
+    const response = await api.get(`/approvals/requests/${requestId}/history`);
     return response.data;
   }
 
   // Get my submitted requests
   async getMyRequests(status?: ApprovalStatus): Promise<ApprovalRequest[]> {
     const params = status ? `?status=${status}` : '';
-    const response = await api.get(`/erp/approvals/my-requests${params}`);
+    const response = await api.get(`/approvals/my-requests${params}`);
     return response.data;
   }
 
@@ -286,7 +286,7 @@ class ApprovalWorkflowService {
     if (startDate) params.set('startDate', startDate.toISOString());
     if (endDate) params.set('endDate', endDate.toISOString());
 
-    const response = await api.get(`/erp/approvals/stats?${params.toString()}`);
+    const response = await api.get(`/approvals/stats?${params.toString()}`);
     return response.data;
   }
 
@@ -296,7 +296,7 @@ class ApprovalWorkflowService {
     action: 'approve' | 'reject',
     reason?: string
   ): Promise<{ success: string[]; failed: Array<{ id: string; error: string }> }> {
-    const response = await api.post('/erp/approvals/bulk', {
+    const response = await api.post('/approvals/bulk', {
       requestIds,
       action,
       reason,
@@ -311,7 +311,7 @@ class ApprovalWorkflowService {
     endDate: Date,
     reason?: string
   ): Promise<void> {
-    await api.post('/erp/approvals/out-of-office', {
+    await api.post('/approvals/out-of-office', {
       delegateToUserId,
       startDate,
       endDate,
@@ -321,7 +321,7 @@ class ApprovalWorkflowService {
 
   // Clear out of office
   async clearOutOfOffice(): Promise<void> {
-    await api.delete('/erp/approvals/out-of-office');
+    await api.delete('/approvals/out-of-office');
   }
 }
 

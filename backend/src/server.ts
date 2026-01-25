@@ -65,22 +65,7 @@ const allowedOrigins = process.env.FRONTEND_URL
 
 app.use(
   cors({
-    origin: (origin, callback) => {
-      if (process.env.NODE_ENV === 'production') {
-        if (!origin) {
-          return callback(new Error('CORS: Origin required in production'));
-        }
-        if (allowedOrigins.indexOf(origin) === -1) {
-          return callback(new Error('Not allowed by CORS'));
-        }
-        return callback(null, true);
-      } else {
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-          return callback(null, true);
-        }
-        return callback(new Error('Not allowed by CORS'));
-      }
-    },
+    origin: allowedOrigins,
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],

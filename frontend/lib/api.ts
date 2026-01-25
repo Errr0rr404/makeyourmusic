@@ -1,10 +1,8 @@
 import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 
-// The backend is a separate service, so we need to use the full URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-
+// Use relative path for API calls to support all environments
 const api = axios.create({
-  baseURL: `${API_URL}/api`,
+  baseURL: '/api',
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -87,7 +85,7 @@ api.interceptors.response.use(
 
           try {
             // Attempt to refresh the token using the refresh token cookie
-            const response = await axios.post(`${API_URL}/api/auth/refresh`, {}, {
+            const response = await axios.post(`/api/auth/refresh`, {}, {
               withCredentials: true,
             });
 

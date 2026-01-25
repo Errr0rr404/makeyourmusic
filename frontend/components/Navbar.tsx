@@ -24,6 +24,7 @@ export default function Navbar() {
   }, [isAuthenticated, fetchUser]);
   
   const storeName = 'Kairux';
+  const isDarkTheme = false; // Replace with actual theme detection logic
 
   return (
     <nav 
@@ -41,7 +42,17 @@ export default function Navbar() {
             >
               <img
                 src="/kairux-logo.svg"
-                alt="Kairux Logo"
+                alt="Kairux Logo Light"
+                className="h-8 w-auto mr-2 block dark:hidden"
+                style={{ maxHeight: 32 }}
+                width={120}
+                height={32}
+                loading="eager"
+                aria-hidden="true"
+              />
+              <img
+                src="/kairux-logo-dark.svg"
+                alt="Kairux Logo Dark"
                 className="h-8 w-auto mr-2 hidden dark:block"
                 style={{ maxHeight: 32 }}
                 width={120}
