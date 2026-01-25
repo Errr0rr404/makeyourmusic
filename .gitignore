@@ -34,10 +34,12 @@ frontend/logs/*.log
 # TypeScript compiled files
 *.js.map
 *.d.ts.map
-backend/scripts/*.js
 backend/scripts/*.d.ts
 backend/scripts/*.js.map
 backend/scripts/*.d.ts.map
+# Allow Prisma generation scripts to be committed
+!backend/generate-prisma.sh
+!backend/scripts/generate-prisma.js
 
 # Local env files
 .env
