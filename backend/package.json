@@ -4,7 +4,7 @@
    "description": "Kairux - Backend API and Scripts",
    "main": "dist/server.js",
    "scripts": {
-      "postinstall": "chmod +x generate-prisma.sh && ./generate-prisma.sh",
+      "postinstall": "bash generate-prisma.sh",
       "dev": "nodemon --exec ts-node src/server.ts",
       "build": "tsc",
       "start": "node dist/server.js",
