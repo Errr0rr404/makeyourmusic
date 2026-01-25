@@ -6,10 +6,17 @@ let io: Server;
 
 export const initSocketServer = (app: Application) => {
   const server = http.createServer(app);
+  
+  // Parse allowed origins (same as HTTP CORS)
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
+    : ['http://localhost:3000'];
+  
   io = new Server(server, {
     cors: {
-      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      origin: allowedOrigins,
       methods: ['GET', 'POST'],
+      credentials: true,
     },
   });
 
