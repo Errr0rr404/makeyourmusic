@@ -27,11 +27,11 @@ This guide will walk you through deploying Kairux backend to Railway.
 
 ### 3. Configure Build Settings
 
-Railway should auto-detect, but verify these settings:
+Railway should auto-detect using `railway.json`, but verify these settings:
 
 **Build Command:**
 ```bash
-cd backend && npm install && npm run build
+npm install && chmod +x build-railway.sh && ./build-railway.sh
 ```
 
 **Start Command:**
@@ -39,7 +39,12 @@ cd backend && npm install && npm run build
 cd backend && npm run start
 ```
 
-**Root Directory:** (leave empty or set to project root)
+**Root Directory:** (leave empty - uses project root)
+
+**Note:** The build script automatically:
+- Installs root dependencies (includes Prisma)
+- Installs backend dependencies (triggers Prisma client generation)
+- Builds the backend TypeScript code
 
 ### 4. Set Environment Variables
 
