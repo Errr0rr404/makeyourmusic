@@ -81,6 +81,11 @@ const trimOnly = (str: string | null | undefined): string | null => {
 
 // Sanitize request body
 export const sanitizeBody = (req: Request, _res: Response, next: NextFunction): void => {
+  // Skip sanitization for OPTIONS requests
+  if (req.method === 'OPTIONS') {
+    return next();
+  }
+  
   if (req.body && typeof req.body === 'object') {
     const sanitize = (obj: any, parentKey?: string): any => {
       // Handle null/undefined

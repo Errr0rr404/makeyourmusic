@@ -63,36 +63,53 @@ const allowedOrigins = process.env.FRONTEND_URL
   ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
   : ['http://localhost:3000'];
 
-// Log allowed origins for debugging (only in development)
-if (process.env.NODE_ENV !== 'production') {
-  logger.info('CORS allowed origins', { origins: allowedOrigins });
-}
+// Log allowed origins for debugging
+logger.info('CORS configuration', { 
+  allowedOrigins,
+  frontendUrl: process.env.FRONTEND_URL 
+});
 
+// CORS middleware - must be before body parsing and rate limiting
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow requests with no origin (like mobile apps or curl requests)
-      if (!origin) return callback(null, true);
-      
-      // Check if origin is in allowed list
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        logger.warn('CORS blocked origin', { origin, allowedOrigins });
-        callback(new Error('Not allowed by CORS'));
+      try {
+        // Allow requests with no origin (like mobile apps, curl, or same-origin requests)
+        if (!origin) {
+          return callback(null, true);
+        }
+        
+        // Check if origin is in allowed list
+        if (allowedOrigins.includes(origin)) {
+          callback(null, true);
+        } else {
+          // Log blocked origin for debugging
+          logger.warn('CORS blocked origin', { 
+            origin, 
+            allowedOrigins,
+            frontendUrl: process.env.FRONTEND_URL 
+          });
+          // Return false instead of throwing error to avoid 500
+          callback(null, false);
+        }
+      } catch (error) {
+        // Catch any errors in CORS callback to prevent 500
+        logger.error('CORS callback error', { error: error instanceof Error ? error.message : String(error) });
+        callback(null, false);
       }
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400, // Cache preflight requests for 24 hours
+    preflightContinue: false, // Let CORS handle preflight
   })
 );
 
 // Body parsing and sanitization
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(sanitizeBody); // Sanitize user inputs
+app.use(sanitizeBody); // Sanitize user inputs (skips OPTIONS internally)
 
 // Cookie parser
 app.use(cookieParser());

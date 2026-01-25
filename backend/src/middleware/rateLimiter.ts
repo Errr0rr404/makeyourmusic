@@ -18,6 +18,7 @@ export const apiLimiter = rateLimit({
   message: 'Too many requests from this IP, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: (req) => req.method === 'OPTIONS', // Skip rate limiting for OPTIONS requests
 });
 
 // Strict rate limiter for upload endpoints (prevent abuse)
