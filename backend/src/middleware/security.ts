@@ -11,7 +11,7 @@ export const securityHeaders = helmet({
       styleSrc: ["'self'", "'unsafe-inline'"], // 'unsafe-inline' needed for Tailwind
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", 'data:', 'https:', 'blob:'], // Allow blob: for image previews
-      connectSrc: ["'self'", 'https://api.stripe.com', 'https://*.stripe.com'], // Allow Stripe
+      connectSrc: ["'self'", 'https://api.stripe.com', 'https://*.stripe.com', 'https://*.up.railway.app', 'https://*.railway.app'], // Allow Stripe and Railway
       fontSrc: ["'self'", 'data:', 'https:'],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'"],

@@ -79,6 +79,9 @@ app.use(
           return callback(null, true);
         }
         
+        // Log all origins for debugging
+        logger.debug('CORS origin check', { origin, allowedOrigins });
+        
         // Check if origin is in allowed list
         if (allowedOrigins.includes(origin)) {
           callback(null, true);
@@ -101,8 +104,10 @@ app.use(
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
+    exposedHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400, // Cache preflight requests for 24 hours
     preflightContinue: false, // Let CORS handle preflight
+    optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
   })
 );
 
