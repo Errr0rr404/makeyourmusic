@@ -4,6 +4,11 @@ import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
 // Set NEXT_PUBLIC_API_URL in Netlify to point to your Railway backend
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
+// Log API URL in development for debugging
+if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
+  console.log('API Base URL:', API_URL);
+}
+
 const api = axios.create({
   baseURL: API_URL,
   withCredentials: true,
@@ -38,6 +43,10 @@ api.interceptors.request.use((config) => {
     const token = localStorage.getItem('accessToken');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+    }
+    // Log request in development
+    if (process.env.NODE_ENV === 'development') {
+      console.log('API Request:', config.method?.toUpperCase(), config.url);
     }
   }
   return config;
@@ -135,6 +144,15 @@ api.interceptors.response.use(
             });
         }
       }
+    }
+    
+    // Log network errors for debugging
+    if (!error.response && error.request) {
+      console.error('Network Error - No response from server:', {
+        url: error.config?.url,
+        baseURL: error.config?.baseURL,
+        message: error.message,
+      });
     }
     
     return Promise.reject(error);
