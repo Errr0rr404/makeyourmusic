@@ -74,3 +74,6 @@ next-env.d.ts
 *.bak
 *.backup
 .dummy-data-created
+
+# Local Netlify folder
+.netlify
