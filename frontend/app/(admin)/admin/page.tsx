@@ -27,7 +27,9 @@ export default function AdminPage() {
         setStats(statsRes.data.stats);
         setUsers(usersRes.data.users || []);
         setReports(reportsRes.data.reports || []);
-      } catch {}
+      } catch (err: any) {
+        console.error('Admin load error:', err);
+      }
       setLoading(false);
     }
     load();
@@ -49,14 +51,18 @@ export default function AdminPage() {
     try {
       await api.put(`/admin/users/${userId}/role`, { role });
       setUsers(users.map(u => u.id === userId ? { ...u, role } : u));
-    } catch {}
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to update role');
+    }
   };
 
   const handleResolveReport = async (reportId: string, status: string) => {
     try {
       await api.put(`/admin/reports/${reportId}`, { status });
       setReports(reports.map(r => r.id === reportId ? { ...r, status } : r));
-    } catch {}
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to update report');
+    }
   };
 
   return (

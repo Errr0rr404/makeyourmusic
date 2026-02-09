@@ -89,6 +89,14 @@ export function createApi(baseURL: string): AxiosInstance {
                 await storage.setItem(TOKEN_KEY, accessToken);
                 original.headers.Authorization = `Bearer ${accessToken}`;
                 processQueue(null, accessToken);
+                // Update authStore if available (avoid circular import)
+                try {
+                  const { useAuthStore } = require('./stores/authStore');
+                  const state = useAuthStore.getState();
+                  if (state && typeof state.setAccessToken === 'function') {
+                    state.setAccessToken(accessToken);
+                  }
+                } catch { /* store not available in this context */ }
                 return api(original);
               }
             } catch (refreshErr) {

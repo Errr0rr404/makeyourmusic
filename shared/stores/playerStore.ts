@@ -173,16 +173,16 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       return;
     }
 
-    const prevIndex = queueIndex > 0
-      ? queueIndex - 1
-      : repeat === 'all' ? queue.length - 1 : 0;
-
-    set({
-      currentTrack: queue[prevIndex],
-      queueIndex: prevIndex,
-      isPlaying: true,
-      progress: 0,
-    });
+    if (queueIndex > 0) {
+      const prevIndex = queueIndex - 1;
+      set({ currentTrack: queue[prevIndex], queueIndex: prevIndex, isPlaying: true, progress: 0 });
+    } else if (repeat === 'all') {
+      const prevIndex = queue.length - 1;
+      set({ currentTrack: queue[prevIndex], queueIndex: prevIndex, isPlaying: true, progress: 0 });
+    } else {
+      // At start with no repeat — just restart current track
+      set({ progress: 0 });
+    }
   },
 
   seek: (position) => set({ progress: position }),

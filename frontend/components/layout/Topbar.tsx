@@ -53,7 +53,7 @@ export function Topbar() {
       <div className="flex items-center gap-3 ml-4">
         {isAuthenticated ? (
           <>
-            <button className="relative p-2 rounded-full hover:bg-white/5 transition-colors">
+            <button className="relative p-2 rounded-full hover:bg-white/5 transition-colors" aria-label="Notifications">
               <Bell className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
             </button>
 
@@ -78,7 +78,7 @@ export function Topbar() {
                       <p className="text-xs text-[hsl(var(--muted-foreground))]">{user?.email}</p>
                     </div>
                     <Link
-                      href="/library"
+                      href="/profile"
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors"
                       onClick={() => setShowUserMenu(false)}
                     >
@@ -86,7 +86,7 @@ export function Topbar() {
                       Profile
                     </Link>
                     <Link
-                      href="/library"
+                      href="/settings"
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors"
                       onClick={() => setShowUserMenu(false)}
                     >

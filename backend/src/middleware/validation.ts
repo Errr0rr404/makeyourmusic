@@ -57,15 +57,10 @@ export const validateRequest = (req: Request, res: Response, next: NextFunction)
 
 // Fields that should not be HTML-escaped (display text stored in DB, rendered safely by React)
 const DISPLAY_TEXT_FIELDS = [
-  'storeName', 'tagline', 'description', 'footerText',
-  'heroTitle', 'heroSubtitle', 'heroButtonText', 'heroButton2Text',
-  'featuredProductsTitle', 'featuredProductsSubtitle',
-  'metaTitle', 'metaDescription', 'metaKeywords',
-  'address', 'maintenanceMessage',
-  // Store pickup address fields
-  'name', 'line1', 'line2', 'city', 'state', 'postalCode', 'country', 'phone', 'hours',
-  // Product fields that are display text
-  'title', 'subtitle', 'content', 'note', 'message',
+  // Music platform display text fields
+  'name', 'title', 'description', 'bio', 'content',
+  'displayName', 'aiPrompt', 'aiModel', 'mood',
+  'reason', 'notes', 'message',
 ];
 
 // Trim-only sanitization for display text (no HTML escaping)
@@ -136,7 +131,8 @@ export const sanitizeBody = (req: Request, _res: Response, next: NextFunction): 
   next();
 };
 
-// Common validation rules
+// ─── Common validation rules ──────────────────────────────
+
 export const emailValidation = body('email')
   .isEmail()
   .normalizeEmail()
@@ -161,3 +157,93 @@ export const nameValidation = body('name')
   .withMessage('Name must be between 1 and 100 characters')
   .matches(/^[a-zA-Z\s'-]+$/)
   .withMessage('Name contains invalid characters');
+
+// ─── Auth-specific rules ──────────────────────────────────
+
+export const registerRules = [
+  emailValidation,
+  passwordValidation,
+  body('username').trim().isLength({ min: 2, max: 30 }).withMessage('Username must be 2-30 characters')
+    .matches(/^[a-zA-Z0-9_]+$/).withMessage('Username can only contain letters, numbers, and underscores'),
+  body('displayName').optional().trim().isLength({ max: 100 }).withMessage('Display name max 100 characters'),
+];
+
+export const loginRules = [
+  body('email').isEmail().withMessage('Invalid email'),
+  body('password').notEmpty().withMessage('Password is required'),
+];
+
+export const profileUpdateRules = [
+  body('displayName').optional().trim().isLength({ max: 100 }).withMessage('Display name max 100 characters'),
+  body('bio').optional().trim().isLength({ max: 500 }).withMessage('Bio max 500 characters'),
+  body('avatar').optional().trim().isURL().withMessage('Avatar must be a valid URL'),
+];
+
+// ─── Track rules ──────────────────────────────────────────
+
+export const createTrackRules = [
+  body('title').trim().notEmpty().withMessage('Title is required').isLength({ max: 200 }).withMessage('Title max 200 characters'),
+  body('audioUrl').trim().isURL().withMessage('Audio URL must be a valid URL'),
+  body('agentId').isUUID().withMessage('Agent ID must be a valid UUID'),
+  body('coverArt').optional().trim().isURL().withMessage('Cover art must be a valid URL'),
+  body('duration').optional().isInt({ min: 1, max: 36000 }).withMessage('Duration must be 1-36000 seconds'),
+  body('genreId').optional().isUUID().withMessage('Genre ID must be a valid UUID'),
+  body('mood').optional().trim().isLength({ max: 50 }).withMessage('Mood max 50 characters'),
+  body('aiModel').optional().trim().isLength({ max: 100 }).withMessage('AI model max 100 characters'),
+  body('aiPrompt').optional().trim().isLength({ max: 2000 }).withMessage('AI prompt max 2000 characters'),
+  body('videoUrl').optional().trim().isURL().withMessage('Video URL must be a valid URL'),
+  body('tags').optional().isArray({ max: 20 }).withMessage('Max 20 tags'),
+  body('bpm').optional().isInt({ min: 20, max: 300 }).withMessage('BPM must be 20-300'),
+  body('key').optional().trim().isLength({ max: 10 }).withMessage('Key max 10 characters'),
+];
+
+// ─── Agent rules ──────────────────────────────────────────
+
+export const createAgentRules = [
+  body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 100 }).withMessage('Name max 100 characters'),
+  body('bio').optional().trim().isLength({ max: 500 }).withMessage('Bio max 500 characters'),
+  body('avatar').optional().trim().isURL().withMessage('Avatar must be a valid URL'),
+  body('coverImage').optional().trim().isURL().withMessage('Cover image must be a valid URL'),
+  body('genreIds').optional().isArray({ max: 10 }).withMessage('Max 10 genres'),
+];
+
+export const updateAgentRules = [
+  body('name').optional().trim().notEmpty().withMessage('Name cannot be empty').isLength({ max: 100 }).withMessage('Name max 100 characters'),
+  body('bio').optional().trim().isLength({ max: 500 }).withMessage('Bio max 500 characters'),
+  body('avatar').optional().trim().isURL().withMessage('Avatar must be a valid URL'),
+  body('coverImage').optional().trim().isURL().withMessage('Cover image must be a valid URL'),
+];
+
+// ─── Social rules ─────────────────────────────────────────
+
+export const createCommentRules = [
+  body('content').trim().notEmpty().withMessage('Comment is required').isLength({ max: 1000 }).withMessage('Comment max 1000 characters'),
+  body('parentId').optional().isUUID().withMessage('Parent ID must be a valid UUID'),
+];
+
+export const createPlaylistRules = [
+  body('title').trim().notEmpty().withMessage('Title is required').isLength({ max: 100 }).withMessage('Title max 100 characters'),
+  body('isPublic').optional().isBoolean().withMessage('isPublic must be a boolean'),
+  body('description').optional().trim().isLength({ max: 500 }).withMessage('Description max 500 characters'),
+];
+
+// ─── Admin rules ──────────────────────────────────────────
+
+export const updateRoleRules = [
+  body('role').isIn(['LISTENER', 'AGENT_OWNER', 'ADMIN']).withMessage('Invalid role'),
+];
+
+export const resolveReportRules = [
+  body('status').isIn(['RESOLVED', 'DISMISSED']).withMessage('Status must be RESOLVED or DISMISSED'),
+  body('notes').optional().trim().isLength({ max: 500 }).withMessage('Notes max 500 characters'),
+];
+
+// ─── Query parameter helpers ──────────────────────────────
+
+import { query } from 'express-validator';
+
+export const paginationRules = [
+  query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),
+  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be 1-100'),
+  query('search').optional().trim().isLength({ max: 200 }).withMessage('Search max 200 characters'),
+];

@@ -197,9 +197,11 @@ export function AudioPlayer() {
             <Link href={`/track/${currentTrack.slug}`} className="text-sm font-medium text-white truncate block hover:underline">
               {currentTrack.title}
             </Link>
-            <Link href={`/agent/${currentTrack.agent.slug}`} className="text-xs text-[hsl(var(--muted-foreground))] truncate block hover:underline">
-              {currentTrack.agent.name}
-            </Link>
+            {currentTrack.agent && (
+              <Link href={`/agent/${currentTrack.agent.slug}`} className="text-xs text-[hsl(var(--muted-foreground))] truncate block hover:underline">
+                {currentTrack.agent.name}
+              </Link>
+            )}
           </div>
         </div>
 

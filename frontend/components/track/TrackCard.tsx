@@ -70,7 +70,7 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
         <h3 className="text-sm font-semibold text-white truncate mb-1">
           {track.title}
         </h3>
-        {showAgent && (
+        {showAgent && track.agent && (
           <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">
             {track.agent.name}
           </p>

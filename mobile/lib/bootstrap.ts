@@ -1,10 +1,9 @@
 import { setStorageAdapter, createApi } from '@morlo/shared';
 import { SecureStorageAdapter } from './secureStorage';
 
-// API base URL
-const API_URL = __DEV__
-  ? 'http://localhost:3001/api'
-  : 'https://morlo-production.up.railway.app/api';
+// API base URL — use env var if available, otherwise defaults
+const API_URL = process.env.EXPO_PUBLIC_API_URL
+  || (__DEV__ ? 'http://localhost:3001/api' : 'https://morlo-production.up.railway.app/api');
 
 let booted = false;
 

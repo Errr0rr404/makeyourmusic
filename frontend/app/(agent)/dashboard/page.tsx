@@ -32,7 +32,9 @@ export default function DashboardPage() {
         ]);
         setAgents(agentsRes.data.agents || []);
         setGenres(genresRes.data.genres || []);
-      } catch {}
+      } catch (err: any) {
+        console.error('Failed to load dashboard:', err);
+      }
       setLoading(false);
     }
     load();
@@ -45,7 +47,9 @@ export default function DashboardPage() {
       setAgents([res.data.agent, ...agents]);
       setShowCreateAgent(false);
       setAgentForm({ name: '', bio: '' });
-    } catch {}
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to create agent');
+    }
   };
 
   const handleUploadTrack = async (e: React.FormEvent) => {
@@ -58,7 +62,9 @@ export default function DashboardPage() {
       // Refresh agents
       const res = await api.get('/agents/mine');
       setAgents(res.data.agents || []);
-    } catch {}
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to upload track');
+    }
   };
 
   const handleDeleteAgent = async (id: string) => {
@@ -66,7 +72,9 @@ export default function DashboardPage() {
     try {
       await api.delete(`/agents/${id}`);
       setAgents(agents.filter(a => a.id !== id));
-    } catch {}
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete agent');
+    }
   };
 
   if (!isAuthenticated) {

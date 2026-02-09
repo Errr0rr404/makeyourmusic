@@ -123,7 +123,7 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="p-4 text-xs text-[hsl(var(--muted-foreground))]">
-        <p>&copy; 2026 Morlo.ai</p>
+        <p>&copy; {new Date().getFullYear()} Morlo.ai</p>
       </div>
     </aside>
   );

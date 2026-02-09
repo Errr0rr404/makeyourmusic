@@ -295,6 +295,29 @@ export const removeFromPlaylist = async (req: RequestWithUser, res: Response) =>
   }
 };
 
+export const updatePlaylist = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
+
+    const id = req.params.id as string;
+    const playlist = await prisma.playlist.findUnique({ where: { id } });
+    if (!playlist) { res.status(404).json({ error: 'Playlist not found' }); return; }
+    if (playlist.userId !== req.user.userId) { res.status(403).json({ error: 'Not authorized' }); return; }
+
+    const { title, description, isPublic } = req.body;
+    const data: any = {};
+    if (title !== undefined) data.title = title;
+    if (description !== undefined) data.description = description;
+    if (isPublic !== undefined) data.isPublic = isPublic;
+
+    const updated = await prisma.playlist.update({ where: { id }, data });
+    res.json({ playlist: updated });
+  } catch (error) {
+    logger.error('Update playlist error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to update playlist' });
+  }
+};
+
 export const deletePlaylist = async (req: RequestWithUser, res: Response) => {
   try {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }

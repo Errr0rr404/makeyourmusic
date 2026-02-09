@@ -29,7 +29,7 @@ export default function DashboardScreen() {
   const fetchAgents = useCallback(async () => {
     try {
       const api = getApi();
-      const res = await api.get('/agents/my');
+      const res = await api.get('/agents/mine');
       setAgents(res.data.agents || []);
     } catch (err) {
       console.error('Dashboard error:', err);

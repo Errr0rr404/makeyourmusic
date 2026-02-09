@@ -18,6 +18,8 @@ export interface AuthActions {
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setAuth: (data: { user: User; accessToken: string }) => Promise<void>;
+  /** Update just the access token (e.g. after a silent refresh) */
+  setAccessToken: (token: string) => void;
   /** Called once on boot to hydrate token from storage */
   hydrate: () => Promise<void>;
 }
@@ -31,11 +33,19 @@ export const useAuthStore = create<AuthStore>((set) => ({
   isLoading: false,
 
   hydrate: async () => {
-    const storage = getStorage();
-    const token = await storage.getItem(TOKEN_KEY);
-    if (token) {
-      set({ accessToken: token, isAuthenticated: true });
+    try {
+      const storage = getStorage();
+      const token = await storage.getItem(TOKEN_KEY);
+      if (token) {
+        set({ accessToken: token, isAuthenticated: true });
+      }
+    } catch (err) {
+      console.error('Failed to hydrate auth:', err);
     }
+  },
+
+  setAccessToken: (token: string) => {
+    set({ accessToken: token });
   },
 
   setAuth: async (data) => {
@@ -93,11 +103,11 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({ isLoading: false });
       return;
     }
-    set({ isLoading: true });
+    set({ isLoading: true, accessToken: token });
     try {
       const api = getApi();
       const res = await api.get('/auth/me');
-      set({ user: res.data.user, isAuthenticated: true, isLoading: false });
+      set({ user: res.data.user, accessToken: token, isAuthenticated: true, isLoading: false });
     } catch {
       await storage.removeItem(TOKEN_KEY);
       set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });

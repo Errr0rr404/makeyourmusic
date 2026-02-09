@@ -62,10 +62,14 @@ export default function LibraryPage() {
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         <button onClick={() => setTab('liked')}
+          role="tab"
+          aria-selected={tab === 'liked'}
           className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === 'liked' ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
           <Heart className="w-4 h-4" /> Liked Songs
         </button>
         <button onClick={() => setTab('playlists')}
+          role="tab"
+          aria-selected={tab === 'playlists'}
           className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === 'playlists' ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
           <ListMusic className="w-4 h-4" /> Playlists
         </button>

@@ -28,7 +28,7 @@ export default function UploadScreen() {
     (async () => {
       try {
         const api = getApi();
-        const res = await api.get('/agents/my');
+        const res = await api.get('/agents/mine');
         const a = res.data.agents || [];
         setAgents(a);
         if (a.length > 0) setSelectedAgent(a[0].id);

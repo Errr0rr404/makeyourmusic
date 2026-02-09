@@ -7,6 +7,12 @@ import { TrackCard } from '@/components/track/TrackCard';
 import { AgentCard } from '@/components/agent/AgentCard';
 import { Search, AlertCircle } from 'lucide-react';
 
+interface GenreOption {
+  id: string;
+  name: string;
+  slug: string;
+}
+
 function SearchContent() {
   const searchParams = useSearchParams();
   const q = searchParams.get('q') || '';
@@ -15,10 +21,16 @@ function SearchContent() {
 
   const [tracks, setTracks] = useState<any[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
+  const [genres, setGenres] = useState<GenreOption[]>([]);
   const [tab, setTab] = useState<'tracks' | 'agents'>('tracks');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+
+  // Fetch genres once
+  useEffect(() => {
+    api.get('/genres').then((res) => setGenres(res.data.genres || [])).catch(() => {});
+  }, []);
 
   useEffect(() => {
     // Cancel any in-flight request
@@ -65,30 +77,56 @@ function SearchContent() {
       {/* Tabs */}
       <div className="flex gap-2 mb-6">
         <button onClick={() => setTab('tracks')}
+          role="tab"
+          aria-selected={tab === 'tracks'}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === 'tracks' ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
           Tracks{!loading ? ` (${tracks.length})` : ''}
         </button>
         <button onClick={() => setTab('agents')}
+          role="tab"
+          aria-selected={tab === 'agents'}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === 'agents' ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
           Agents{!loading ? ` (${agents.length})` : ''}
         </button>
       </div>
 
-      {/* Sort (for tracks) */}
+      {/* Sort & Genre Filter (for tracks) */}
       {tab === 'tracks' && (
-        <div className="flex gap-2 mb-6">
-          {[['newest', 'Newest'], ['popular', 'Most Played'], ['liked', 'Most Liked']].map(([val, label]) => {
-            const params = new URLSearchParams();
-            if (q) params.set('q', q);
-            if (val) params.set('sort', val);
-            if (genre) params.set('genre', genre);
-            return (
-              <a key={val} href={`/search?${params.toString()}`}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sort === val ? 'bg-[hsl(var(--accent))] text-white' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'}`}>
-                {label}
+        <div className="space-y-3 mb-6">
+          <div className="flex gap-2">
+            {[['newest', 'Newest'], ['popular', 'Most Played'], ['liked', 'Most Liked']].map(([val, label]) => {
+              const params = new URLSearchParams();
+              if (q) params.set('q', q);
+              if (val) params.set('sort', val);
+              if (genre) params.set('genre', genre);
+              return (
+                <a key={val} href={`/search?${params.toString()}`}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sort === val ? 'bg-[hsl(var(--accent))] text-white' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'}`}>
+                  {label}
+                </a>
+              );
+            })}
+          </div>
+          {genres.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              <a href={`/search?${new URLSearchParams({ ...(q ? { q } : {}), sort }).toString()}`}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!genre ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'}`}>
+                All Genres
               </a>
-            );
-          })}
+              {genres.map((g) => {
+                const params = new URLSearchParams();
+                if (q) params.set('q', q);
+                params.set('sort', sort);
+                params.set('genre', g.slug);
+                return (
+                  <a key={g.id} href={`/search?${params.toString()}`}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${genre === g.slug ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'}`}>
+                    {g.name}
+                  </a>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

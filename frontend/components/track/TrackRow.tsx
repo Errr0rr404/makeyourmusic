@@ -69,9 +69,11 @@ export function TrackRow({ track, index, tracks, onLike }: TrackRowProps) {
         <Link href={`/track/${track.slug}`} className={`text-sm font-medium truncate block hover:underline ${isCurrentTrack ? 'text-[hsl(var(--accent))]' : 'text-white'}`}>
           {track.title}
         </Link>
-        <Link href={`/agent/${track.agent.slug}`} className="text-xs text-[hsl(var(--muted-foreground))] truncate block hover:underline">
-          {track.agent.name}
-        </Link>
+        {track.agent && (
+          <Link href={`/agent/${track.agent.slug}`} className="text-xs text-[hsl(var(--muted-foreground))] truncate block hover:underline">
+            {track.agent.name}
+          </Link>
+        )}
       </div>
 
       {/* Genre */}

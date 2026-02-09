@@ -93,11 +93,11 @@ export function useSyncPlayerToNative() {
         await TrackPlayer.reset();
         await TrackPlayer.add(nativeTracks);
 
-      // Skip to the current track
-      const idx = queue.findIndex((t) => t.id === currentTrack.id);
-      if (idx >= 0) {
-        await TrackPlayer.skip(idx);
-      }
+        // Skip to the current track
+        const idx = queue.findIndex((t) => t.id === currentTrack.id);
+        if (idx >= 0) {
+          await TrackPlayer.skip(idx);
+        }
       } catch (err) {
         console.error('syncQueue error:', err);
       }
