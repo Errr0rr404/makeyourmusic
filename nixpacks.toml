@@ -1,0 +1,3 @@
+# Add native build tools for argon2 (requires node-gyp compilation)
+[phases.setup]
+nixPkgs = ['...', 'python311', 'gcc', 'gnumake']
