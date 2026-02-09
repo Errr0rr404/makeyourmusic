@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
+import Link from 'next/link';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { TrackRow } from '@/components/track/TrackRow';
-import { Bot, Users, Play, Heart, Music } from 'lucide-react';
+import { Bot, Users, Play, Heart, Music, AlertCircle } from 'lucide-react';
 
 function formatCount(n: number): string {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
@@ -17,25 +18,32 @@ export default function AgentPage({ params }: { params: Promise<{ slug: string }
   const [agent, setAgent] = useState<any>(null);
   const [tracks, setTracks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     async function load() {
       try {
-        const [agentRes, tracksRes] = await Promise.all([
-          api.get(`/agents/${slug}`),
-          api.get(`/tracks?agentId=${slug}&limit=50`).catch(() => api.get(`/tracks?agentId=__&limit=0`)),
-        ]);
-        setAgent(agentRes.data.agent);
-        // Load tracks by agent ID from agent response
-        const agentId = agentRes.data.agent.id;
-        const trRes = await api.get(`/tracks?agentId=${agentId}&limit=50`);
-        setTracks(trRes.data.tracks || []);
-      } catch {}
+        setError(null);
+        // Fetch agent by slug
+        const agentRes = await api.get(`/agents/${slug}`);
+        const fetchedAgent = agentRes.data.agent;
+        setAgent(fetchedAgent);
+
+        // Fetch tracks using the agent's actual ID
+        if (fetchedAgent?.id) {
+          const tracksRes = await api.get(`/tracks?agentId=${fetchedAgent.id}&limit=50`);
+          setTracks(tracksRes.data.tracks || []);
+        }
+      } catch (err: any) {
+        setError(err.response?.data?.error || 'Failed to load agent');
+      }
       setLoading(false);
     }
     load();
   }, [slug]);
+
+  const [actionError, setActionError] = useState<string | null>(null);
 
   const handleFollow = async () => {
     if (!agent || !isAuthenticated) return;
@@ -46,7 +54,10 @@ export default function AgentPage({ params }: { params: Promise<{ slug: string }
         isFollowing: res.data.following,
         followerCount: agent.followerCount + (res.data.following ? 1 : -1),
       });
-    } catch {}
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || 'Failed to follow agent');
+      setTimeout(() => setActionError(null), 4000);
+    }
   };
 
   if (loading) {
@@ -58,16 +69,31 @@ export default function AgentPage({ params }: { params: Promise<{ slug: string }
     );
   }
 
-  if (!agent) return <div className="text-center py-20 text-[hsl(var(--muted-foreground))]">Agent not found</div>;
+  if (error || !agent) {
+    return (
+      <div className="text-center py-20 animate-fade-in">
+        <AlertCircle className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
+        <p className="text-[hsl(var(--muted-foreground))] mb-4">{error || 'Agent not found'}</p>
+        <Link href="/" className="text-[hsl(var(--accent))] hover:underline">Back to Home</Link>
+      </div>
+    );
+  }
 
   return (
     <div className="animate-fade-in">
+      {/* Error Toast */}
+      {actionError && (
+        <div className="fixed top-4 right-4 z-50 bg-red-500/90 text-white px-4 py-2 rounded-lg shadow-lg text-sm animate-fade-in">
+          {actionError}
+        </div>
+      )}
+
       {/* Agent Header */}
       <div className="relative rounded-2xl overflow-hidden mb-8">
         {/* Cover */}
         <div className="h-48 bg-gradient-to-br from-purple-900/50 to-pink-900/30">
           {agent.coverImage && (
-            <img src={agent.coverImage} alt="" className="w-full h-full object-cover" />
+            <img src={agent.coverImage} alt={`${agent.name} cover`} className="w-full h-full object-cover" />
           )}
         </div>
 

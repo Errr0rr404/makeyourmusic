@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, Share } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, Share, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
 import { usePlayerStore, formatDuration } from '@morlo/shared';
@@ -15,16 +16,22 @@ import {
   Heart,
   Share2,
   ListMusic,
+  SlidersHorizontal,
 } from 'lucide-react-native';
+import TrackPlayer from 'react-native-track-player';
 import Slider from '../components/ui/Slider';
 import { SwipeableDismiss } from '../components/ui/SwipeableDismiss';
 import { hapticLight } from '../services/hapticService';
 import { createTrackShareLink } from '../lib/linking';
+import PlayerSettingsModal from '../components/player/PlayerSettings';
 
 export default function FullScreenPlayer() {
   const router = useRouter();
+  const [showSettings, setShowSettings] = useState(false);
+
   const {
     currentTrack,
+    queue,
     isPlaying,
     togglePlay,
     nextTrack,
@@ -36,7 +43,27 @@ export default function FullScreenPlayer() {
     toggleShuffle,
     toggleRepeat,
     setProgress,
+    playbackSpeed,
+    eqEnabled,
+    sleepTimerEnd,
   } = usePlayerStore();
+
+  // Sync playback speed to native player
+  useEffect(() => {
+    try {
+      TrackPlayer.setRate(playbackSpeed);
+    } catch {
+      // player may not be initialized
+    }
+  }, [playbackSpeed]);
+
+  // Sleep timer tick
+  const { sleepTimer, tickSleepTimer } = usePlayerStore();
+  useEffect(() => {
+    if (!sleepTimerEnd) return;
+    const interval = setInterval(() => tickSleepTimer(), 1000);
+    return () => clearInterval(interval);
+  }, [sleepTimerEnd]);
 
   if (!currentTrack) {
     router.back();
@@ -70,7 +97,16 @@ export default function FullScreenPlayer() {
     }
   };
 
+  const hasActiveSettings = eqEnabled || playbackSpeed !== 1 || sleepTimerEnd !== null;
   const RepeatIcon = repeat === 'one' ? Repeat1 : Repeat;
+
+  const formatTimerRemaining = () => {
+    if (!sleepTimerEnd) return null;
+    const remaining = Math.max(0, sleepTimerEnd - Date.now());
+    const mins = Math.floor(remaining / 60000);
+    const secs = Math.floor((remaining % 60000) / 1000);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
 
   return (
     <>
@@ -83,10 +119,44 @@ export default function FullScreenPlayer() {
             <TouchableOpacity onPress={() => router.back()} className="p-2">
               <ChevronDown size={28} color="#fafafa" />
             </TouchableOpacity>
-            <Text className="text-morlo-muted text-sm font-medium">Now Playing</Text>
-            <TouchableOpacity className="p-2">
-              <ListMusic size={22} color="#fafafa" />
-            </TouchableOpacity>
+            <View className="items-center">
+              <Text className="text-morlo-muted text-sm font-medium">Now Playing</Text>
+              {playbackSpeed !== 1 && (
+                <Text className="text-violet-400 text-[10px] font-semibold mt-0.5">
+                  {playbackSpeed}x speed
+                </Text>
+              )}
+            </View>
+            <View className="flex-row items-center gap-1">
+              <TouchableOpacity
+                className="p-2"
+                accessibilityLabel="Audio settings"
+                onPress={() => {
+                  setShowSettings(true);
+                  hapticLight();
+                }}
+              >
+                <SlidersHorizontal
+                  size={20}
+                  color={hasActiveSettings ? '#8b5cf6' : '#a1a1aa'}
+                />
+                {hasActiveSettings && (
+                  <View
+                    className="absolute top-1 right-1 w-2 h-2 rounded-full bg-violet-500"
+                  />
+                )}
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="p-2"
+                accessibilityLabel="Queue"
+                onPress={() => {
+                  const queueNames = queue.map((t, i) => `${i + 1}. ${t.title}`).join('\n');
+                  Alert.alert('Queue', queueNames || 'Queue is empty');
+                }}
+              >
+                <ListMusic size={20} color="#a1a1aa" />
+              </TouchableOpacity>
+            </View>
           </View>
 
           {/* Cover Art */}
@@ -115,8 +185,8 @@ export default function FullScreenPlayer() {
                   {currentTrack.title}
                 </Text>
                 <TouchableOpacity onPress={() => {
-                  router.back();
-                  setTimeout(() => router.push(`/agent/${currentTrack.agent.slug}`), 100);
+                  router.dismiss();
+                  router.push(`/agent/${currentTrack.agent.slug}`);
                 }}>
                   <Text className="text-morlo-accent text-base mt-1" numberOfLines={1}>
                     {currentTrack.agent.name}
@@ -127,6 +197,16 @@ export default function FullScreenPlayer() {
                 <Heart size={22} color="#a1a1aa" />
               </TouchableOpacity>
             </View>
+
+            {/* Sleep Timer Indicator */}
+            {sleepTimerEnd && (
+              <View className="flex-row items-center gap-1.5 mt-2 bg-violet-500/15 rounded-full self-start px-3 py-1">
+                <View className="w-1.5 h-1.5 rounded-full bg-violet-500" />
+                <Text className="text-violet-400 text-[11px] font-medium">
+                  Sleep in {formatTimerRemaining()}
+                </Text>
+              </View>
+            )}
 
             {/* Progress bar */}
             <View className="mt-5">
@@ -179,15 +259,33 @@ export default function FullScreenPlayer() {
             </View>
 
             {/* Bottom actions */}
-            <View className="flex-row items-center justify-center mt-6 mb-4">
-              <TouchableOpacity className="p-3 mx-4" onPress={handleShare}>
+            <View className="flex-row items-center justify-center mt-6 mb-4 gap-6">
+              <TouchableOpacity className="p-3" onPress={handleShare}>
                 <Share2 size={20} color="#a1a1aa" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="p-3"
+                onPress={() => {
+                  setShowSettings(true);
+                  hapticLight();
+                }}
+              >
+                <SlidersHorizontal
+                  size={20}
+                  color={hasActiveSettings ? '#8b5cf6' : '#a1a1aa'}
+                />
               </TouchableOpacity>
             </View>
           </View>
         </View>
       </SafeAreaView>
       </SwipeableDismiss>
+
+      {/* Settings Modal */}
+      <PlayerSettingsModal
+        visible={showSettings}
+        onClose={() => setShowSettings(false)}
+      />
     </>
   );
 }

@@ -80,6 +80,7 @@ export function useSyncPlayerToNative() {
     progress,
     repeat,
     shuffle,
+    playbackSpeed,
   } = usePlayerStore();
 
   // This function is designed to be called inside useEffect
@@ -92,11 +93,11 @@ export function useSyncPlayerToNative() {
         await TrackPlayer.reset();
         await TrackPlayer.add(nativeTracks);
 
-        // Skip to the current track
-        const idx = queue.findIndex((t) => t.id === currentTrack.id);
-        if (idx > 0) {
-          await TrackPlayer.skip(idx);
-        }
+      // Skip to the current track
+      const idx = queue.findIndex((t) => t.id === currentTrack.id);
+      if (idx >= 0) {
+        await TrackPlayer.skip(idx);
+      }
       } catch (err) {
         console.error('syncQueue error:', err);
       }
@@ -127,6 +128,15 @@ export function useSyncPlayerToNative() {
         }
       } catch (err) {
         console.error('syncRepeatMode error:', err);
+      }
+    },
+
+    syncPlaybackSpeed: async () => {
+      if (!isInitialized) return;
+      try {
+        await TrackPlayer.setRate(playbackSpeed);
+      } catch (err) {
+        console.error('syncPlaybackSpeed error:', err);
       }
     },
   };
@@ -165,12 +175,15 @@ export function setupNativePlayerListeners() {
       if (state === State.Playing) {
         store.setState({ isPlaying: true });
 
-        // Record play on the backend
+        // Record play on the backend using track ID
         const currentTrack = store.getState().currentTrack;
         if (currentTrack) {
           try {
             const api = getApi();
-            await api.post(`/tracks/${currentTrack.slug}/play`);
+            await api.post(`/tracks/${currentTrack.id}/play`, {
+              durationPlayed: 0,
+              completed: false,
+            });
           } catch {
             // silent fail
           }

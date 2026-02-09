@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Play, Pause, Video } from 'lucide-react';
 import { usePlayerStore, TrackItem } from '@/lib/store/playerStore';
@@ -18,6 +19,7 @@ interface TrackCardProps {
 export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const isCurrentTrack = currentTrack?.id === track.id;
+  const [imgError, setImgError] = useState(false);
 
   const handlePlay = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -34,8 +36,8 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
       <Link href={`/track/${track.slug}`} className="block">
         {/* Cover Art */}
         <div className="relative aspect-square rounded-lg overflow-hidden mb-3 bg-[hsl(var(--secondary))]">
-          {track.coverArt ? (
-            <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" />
+          {track.coverArt && !imgError ? (
+            <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" onError={() => setImgError(true)} />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-600/20 to-pink-600/20">
               <Play className="w-10 h-10 text-[hsl(var(--muted-foreground))]" />
@@ -53,6 +55,7 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
           {/* Play Button Overlay */}
           <button
             onClick={handlePlay}
+            aria-label={isCurrentTrack && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
             className="absolute bottom-2 right-2 w-10 h-10 rounded-full bg-[hsl(var(--accent))] shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all hover:scale-105"
           >
             {isCurrentTrack && isPlaying ? (

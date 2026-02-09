@@ -1,5 +1,5 @@
 import * as path from 'path';
-import bcrypt from 'bcryptjs';
+import argon2 from 'argon2';
 import dotenv from 'dotenv';
 
 // Load environment variables from backend/.env or frontend/.env.local
@@ -28,7 +28,7 @@ async function createMastermind() {
     const role = 'MASTERMIND'; // Mastermind is a separate role from admin
 
     // Hash password with 12 rounds (same as auth controller)
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await argon2.hash(password, { type: argon2.argon2id, memoryCost: 65536, timeCost: 3, parallelism: 4 });
 
     // Create or update mastermind user
     const mastermind = await prisma.user.upsert({

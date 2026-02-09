@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { TrackCard } from '@/components/track/TrackCard';
 import { AgentCard } from '@/components/agent/AgentCard';
-import { Search } from 'lucide-react';
+import { Search, AlertCircle } from 'lucide-react';
 
 function SearchContent() {
   const searchParams = useSearchParams();
@@ -16,22 +16,38 @@ function SearchContent() {
   const [tracks, setTracks] = useState<any[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
   const [tab, setTab] = useState<'tracks' | 'agents'>('tracks');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
+    // Cancel any in-flight request
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     async function search() {
       setLoading(true);
+      setError(null);
       try {
         const [tracksRes, agentsRes] = await Promise.all([
-          api.get('/tracks', { params: { search: q, sort, genre, limit: 30 } }),
-          api.get('/agents', { params: { search: q, limit: 20 } }),
+          api.get('/tracks', { params: { search: q, sort, genre, limit: 30 }, signal: controller.signal }),
+          api.get('/agents', { params: { search: q, limit: 20 }, signal: controller.signal }),
         ]);
-        setTracks(tracksRes.data.tracks || []);
-        setAgents(agentsRes.data.agents || []);
-      } catch {}
-      setLoading(false);
+        if (!controller.signal.aborted) {
+          setTracks(tracksRes.data.tracks || []);
+          setAgents(agentsRes.data.agents || []);
+        }
+      } catch (err: any) {
+        if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
+        setError(err.response?.data?.error || 'Search failed. Please try again.');
+      }
+      if (!controller.signal.aborted) {
+        setLoading(false);
+      }
     }
     search();
+    return () => controller.abort();
   }, [q, sort, genre]);
 
   return (
@@ -50,11 +66,11 @@ function SearchContent() {
       <div className="flex gap-2 mb-6">
         <button onClick={() => setTab('tracks')}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === 'tracks' ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
-          Tracks ({tracks.length})
+          Tracks{!loading ? ` (${tracks.length})` : ''}
         </button>
         <button onClick={() => setTab('agents')}
           className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === 'agents' ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
-          Agents ({agents.length})
+          Agents{!loading ? ` (${agents.length})` : ''}
         </button>
       </div>
 
@@ -76,7 +92,15 @@ function SearchContent() {
         </div>
       )}
 
-      {loading ? (
+      {error ? (
+        <div className="text-center py-20">
+          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
+          <p className="text-red-400 mb-4">{error}</p>
+          <button onClick={() => { setLoading(true); setError(null); }} className="text-[hsl(var(--accent))] hover:underline">
+            Retry
+          </button>
+        </div>
+      ) : loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="space-y-3">

@@ -2,7 +2,8 @@ User-agent: *
 Allow: /
 Disallow: /api/
 Disallow: /admin/
-Disallow: /account/
-Disallow: /checkout/
+Disallow: /dashboard/
+Disallow: /login
+Disallow: /register
 
-Sitemap: https://your-site.com/sitemap.xml
+Sitemap: https://morlo.ai/sitemap.xml

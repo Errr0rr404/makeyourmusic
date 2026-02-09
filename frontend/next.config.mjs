@@ -6,6 +6,17 @@ const nextConfig = {
   // Enable React strict mode
   reactStrictMode: true,
 
+  // Proxy /api requests to the backend server in development
+  async rewrites() {
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${backendUrl}/:path*`,
+      },
+    ];
+  },
+
   // Security headers
   async headers() {
     return [

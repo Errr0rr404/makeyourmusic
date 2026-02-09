@@ -2,6 +2,7 @@
 // This is a safety measure in case db.ts is imported before dotenv.config() is called
 import dotenv from 'dotenv';
 import { resolve } from 'path';
+import logger from './logger';
 
 // Load from backend/.env file specifically (try both locations)
 const envPath = resolve(__dirname, '../.env');
@@ -95,7 +96,7 @@ const getPrismaClient = (): PrismaClient => {
     }
     // Log other errors normally
     if (process.env.NODE_ENV !== 'test') {
-      console.error('[Prisma Error]', event);
+      logger.error('[Prisma Error]', { message: event.message, target: event.target });
     }
   });
 

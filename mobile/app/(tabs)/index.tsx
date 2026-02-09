@@ -18,22 +18,24 @@ export default function HomeScreen() {
   const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
+      setError(null);
       const api = getApi();
       const [trendingRes, latestRes, genresRes, agentsRes] = await Promise.all([
-        api.get('/tracks/trending?limit=10'),
-        api.get('/tracks?limit=10&sort=newest'),
-        api.get('/genres'),
-        api.get('/agents?limit=10'),
+        api.get('/tracks/trending?limit=10').catch(() => ({ data: { tracks: [] } })),
+        api.get('/tracks?limit=10&sort=newest').catch(() => ({ data: { tracks: [] } })),
+        api.get('/genres').catch(() => ({ data: { genres: [] } })),
+        api.get('/agents?limit=10').catch(() => ({ data: { agents: [] } })),
       ]);
-      setTrending(trendingRes.data.tracks || trendingRes.data);
+      setTrending(trendingRes.data.tracks || trendingRes.data || []);
       setLatest(latestRes.data.tracks || []);
       setGenres(genresRes.data.genres || genresRes.data || []);
       setAgents(agentsRes.data.agents || []);
-    } catch (err) {
-      console.error('Error fetching home data:', err);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load content');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -64,6 +66,16 @@ export default function HomeScreen() {
         <Text className="text-morlo-text text-2xl font-bold">Morlo</Text>
         <Text className="text-morlo-muted text-sm">AI-Generated Music</Text>
       </View>
+
+      {/* Error state */}
+      {error && (
+        <View className="mx-4 mb-4 p-4 bg-red-900/20 border border-red-500/30 rounded-xl">
+          <Text className="text-red-400 text-sm text-center">{error}</Text>
+          <TouchableOpacity onPress={fetchData} className="mt-2 items-center">
+            <Text className="text-morlo-accent font-medium text-sm">Tap to retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       {/* Trending */}
       {trending.length > 0 && (

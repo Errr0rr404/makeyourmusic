@@ -8,8 +8,8 @@ export { type StorageAdapter, WebStorageAdapter, setStorageAdapter, getStorage }
 export { createApi, getApi } from './api';
 
 // Stores
-export { usePlayerStore } from './stores/playerStore';
-export type { PlayerState, PlayerActions, PlayerStore } from './stores/playerStore';
+export { usePlayerStore, DEFAULT_EQ_BANDS, EQ_PRESETS, PLAYBACK_SPEEDS } from './stores/playerStore';
+export type { EQBand, EQPreset, PlaybackSpeed, PlayerState, PlayerActions, PlayerStore } from './stores/playerStore';
 export { useAuthStore } from './stores/authStore';
 export type { AuthState, AuthActions, AuthStore } from './stores/authStore';
 

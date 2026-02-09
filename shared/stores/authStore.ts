@@ -17,7 +17,7 @@ export interface AuthActions {
   register: (email: string, password: string, username: string, displayName?: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
-  setAuth: (data: { user: User; accessToken: string }) => void;
+  setAuth: (data: { user: User; accessToken: string }) => Promise<void>;
   /** Called once on boot to hydrate token from storage */
   hydrate: () => Promise<void>;
 }
@@ -34,7 +34,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     const storage = getStorage();
     const token = await storage.getItem(TOKEN_KEY);
     if (token) {
-      set({ accessToken: token });
+      set({ accessToken: token, isAuthenticated: true });
     }
   },
 

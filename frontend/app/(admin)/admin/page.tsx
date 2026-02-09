@@ -99,8 +99,8 @@ export default function AdminPage() {
             ))}
           </div>
         ) : tab === 'users' ? (
-          <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] overflow-hidden">
-            <table className="w-full text-sm">
+          <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] overflow-x-auto">
+            <table className="w-full text-sm min-w-[640px]">
               <thead>
                 <tr className="border-b border-[hsl(var(--border))]">
                   <th className="text-left p-3 text-[hsl(var(--muted-foreground))] font-medium">User</th>

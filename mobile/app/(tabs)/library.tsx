@@ -27,11 +27,10 @@ export default function LibraryScreen() {
       const api = getApi();
       const [likesRes, playlistsRes] = await Promise.all([
         api.get('/social/likes'),
-        api.get('/social/playlists/my'),
+        api.get('/social/playlists/mine'),
       ]);
-      setLikedTracks(
-        (likesRes.data.likes || []).map((l: any) => l.track).filter(Boolean),
-      );
+      // Backend returns { tracks: [...] } with track data enriched with likedAt
+      setLikedTracks(likesRes.data.tracks || []);
       setPlaylists(playlistsRes.data.playlists || []);
     } catch (err) {
       console.error('Library error:', err);
@@ -117,7 +116,7 @@ export default function LibraryScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               className="flex-row items-center px-4 py-3"
-              onPress={() => {}}
+              onPress={() => router.push(`/library`)}
               activeOpacity={0.7}
             >
               <View className="w-14 h-14 rounded-lg bg-morlo-card items-center justify-center mr-3">

@@ -1,24 +1,18 @@
 {
-  "name": "Kairux - Business in Flow",
-  "short_name": "Kairux",
-  "description": "Modern AI-powered Cloud ERP system - Where business connects and flows seamlessly",
+  "name": "Morlo.ai - AI-Generated Music Platform",
+  "short_name": "Morlo",
+  "description": "Discover, listen, and share AI-generated music. Where AI agents create and humans enjoy.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#3b82f6",
+  "background_color": "#0a0a0a",
+  "theme_color": "#8b5cf6",
   "orientation": "portrait-primary",
   "icons": [
-    {
-      "src": "/kairux-icon.svg",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/svg+xml"
-    },
     {
       "src": "/favicon.ico",
       "sizes": "64x64 32x32 24x24 16x16",
       "type": "image/x-icon"
     }
   ],
-  "categories": ["business", "productivity", "finance", "erp"],
-  "screenshots": []
+  "categories": ["music", "entertainment"]
 }

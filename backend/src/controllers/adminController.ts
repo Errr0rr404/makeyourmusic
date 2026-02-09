@@ -22,8 +22,8 @@ export const getStats = async (_req: RequestWithUser, res: Response) => {
 
 export const listUsers = async (req: RequestWithUser, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 50);
     const search = req.query.search as string | undefined;
 
     const where: any = {};

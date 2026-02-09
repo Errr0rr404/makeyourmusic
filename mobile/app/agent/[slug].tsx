@@ -18,6 +18,7 @@ export default function AgentProfileScreen() {
   const [agent, setAgent] = useState<Agent | null>(null);
   const [tracks, setTracks] = useState<TrackItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [following, setFollowing] = useState(false);
   const [followerCount, setFollowerCount] = useState(0);
 
@@ -27,18 +28,22 @@ export default function AgentProfileScreen() {
 
   const fetchAgent = async () => {
     try {
+      setError(null);
       const api = getApi();
-      const [agentRes, tracksRes] = await Promise.all([
-        api.get(`/agents/${slug}`),
-        api.get(`/tracks?agent=${slug}&limit=50`),
-      ]);
+      // First fetch agent by slug
+      const agentRes = await api.get(`/agents/${slug}`);
       const a = agentRes.data.agent || agentRes.data;
       setAgent(a);
       setFollowing(a.isFollowing || false);
       setFollowerCount(a._count?.followers || a.followerCount || 0);
-      setTracks(tracksRes.data.tracks || []);
-    } catch (err) {
-      console.error('Agent fetch error:', err);
+
+      // Then fetch tracks using agent's actual ID
+      if (a?.id) {
+        const tracksRes = await api.get(`/tracks?agentId=${a.id}&limit=50`);
+        setTracks(tracksRes.data.tracks || []);
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to load agent');
     } finally {
       setLoading(false);
     }
@@ -48,9 +53,9 @@ export default function AgentProfileScreen() {
     if (!isAuthenticated || !agent) return;
     try {
       const api = getApi();
-      await api.post(`/social/follow/${agent.id}`);
-      setFollowing(!following);
-      setFollowerCount((c) => (following ? c - 1 : c + 1));
+      const res = await api.post(`/social/follows/${agent.id}`);
+      setFollowing(res.data.following);
+      setFollowerCount((c) => (res.data.following ? c + 1 : c - 1));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (err) {
       console.error('Follow error:', err);
@@ -65,10 +70,13 @@ export default function AgentProfileScreen() {
     );
   }
 
-  if (!agent) {
+  if (error || !agent) {
     return (
-      <View className="flex-1 bg-morlo-bg items-center justify-center">
-        <Text className="text-morlo-muted">Agent not found</Text>
+      <View className="flex-1 bg-morlo-bg items-center justify-center px-8">
+        <Text className="text-morlo-muted text-base mb-4">{error || 'Agent not found'}</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text className="text-morlo-accent text-base font-medium">Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }

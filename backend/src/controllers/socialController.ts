@@ -41,8 +41,8 @@ export const getLikedTracks = async (req: RequestWithUser, res: Response) => {
   try {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
 
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 50);
 
     const [likes, total] = await Promise.all([
       prisma.like.findMany({
@@ -133,8 +133,13 @@ export const createComment = async (req: RequestWithUser, res: Response) => {
       res.status(400).json({ error: 'Comment content is required' }); return;
     }
 
+    const trimmed = content.trim();
+    if (trimmed.length > 2000) {
+      res.status(400).json({ error: 'Comment must be 2000 characters or less' }); return;
+    }
+
     const comment = await prisma.comment.create({
-      data: { content: content.trim(), userId: req.user.userId, trackId, parentId },
+      data: { content: trimmed, userId: req.user.userId, trackId, parentId },
       include: { user: { select: { id: true, username: true, displayName: true, avatar: true } } },
     });
 

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Home, Search, Radio, Library, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
+import { usePlayerStore } from '@/lib/store/playerStore';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
@@ -16,14 +17,21 @@ const navItems = [
 export function MobileNav() {
   const pathname = usePathname();
   const { user } = useAuthStore();
+  const currentTrack = usePlayerStore((s) => s.currentTrack);
   const isAgentOwner = user?.role === 'AGENT_OWNER' || user?.role === 'ADMIN';
+  const hasPlayer = !!currentTrack;
 
   const items = isAgentOwner
     ? [...navItems, { href: '/dashboard', label: 'Studio', icon: LayoutDashboard }]
     : navItems;
 
   return (
-    <nav className="fixed bottom-[var(--player-height)] left-0 right-0 bg-[hsl(var(--card))]/95 backdrop-blur-xl border-t border-[hsl(var(--border))] z-40 md:hidden">
+    <nav
+      className={cn(
+        'fixed left-0 right-0 bg-[hsl(var(--card))]/95 backdrop-blur-xl border-t border-[hsl(var(--border))] z-40 md:hidden transition-[bottom] duration-300',
+        hasPlayer ? 'bottom-[var(--player-height)]' : 'bottom-0'
+      )}
+    >
       <div className="flex items-center justify-around py-2">
         {items.map((item) => {
           const isActive = pathname === item.href;

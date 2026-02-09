@@ -1,426 +1,427 @@
-# Kairux - Business in Flow
+# Morlo.ai — AI-Generated Music Platform
 
-<p align="center">
-  <img src="frontend/public/kairux-logo.svg" alt="Kairux Logo" width="320" height="85" />
-</p>
-
-> **Where business connects and flows seamlessly**
-
-A modern, AI-powered Cloud ERP system built with Next.js, TypeScript, and PostgreSQL. Kairux provides comprehensive business management with real-time collaboration, intelligent analytics, and enterprise-grade security.
-
-[![TypeScript](https://img.shields.io/badge/TypeScript-007ACC?style=flat&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-316192?style=flat&logo=postgresql&logoColor=white)](https://www.postgresql.org/)
-[![Prisma](https://img.shields.io/badge/Prisma-2D3748?style=flat&logo=prisma&logoColor=white)](https://www.prisma.io/)
-
-## 💫 What is Kairux?
-
-**Kairux** (kai + rux) represents the "Connecting Flow" - where:
-- **Kai** (Greek: καί) means "and" or "connection" 
-- **Rux** derives from "flux," meaning "flow"
-
-Together, Kairux embodies seamless integration and continuous movement of data, processes, and insights across your entire organization. Just as "kai" connects ideas, Kairux connects every aspect of your business, allowing data to flow naturally and decisions to emerge clearly.
-
-## 🚀 Features
-
-### Core Modules
-- **👤 User Management**: Role-based access control (USER, ADMIN)
-- **💼 Accounting & Finance**: Chart of accounts, journal entries, invoicing
-- **📦 Inventory Management**: Product management, stock tracking, categories
-- **👥 CRM**: Lead management, opportunity tracking, customer relationships
-- **💰 Payroll System**: Employee time tracking, pay periods, automated calculations
-- **🏪 Point of Sale (POS)**: Sales transactions, employee management, inventory integration
-- **📊 Reporting**: Comprehensive business analytics and reports
-- **🛠️ Project Management**: Project and task tracking with status management
-
-### Technical Features
-- **🔐 Security**: JWT authentication, encrypted data, secure headers, rate limiting
-- **📱 Responsive Design**: Mobile-first UI with modern aesthetics
-- **⚡ Performance**: Optimized database queries, connection pooling, lazy loading
-- **🎨 UI/UX**: Radix UI components, Tailwind CSS, Framer Motion animations
-- **🌐 API**: RESTful API with comprehensive error handling
-- **📝 Type Safety**: Full TypeScript implementation across frontend and backend
-- **🗄️ Database**: PostgreSQL with Prisma ORM for type-safe queries
-
-## 🛠️ Tech Stack
-
-### Backend
-- **Runtime**: Node.js 20+
-- **Framework**: Express.js 5.x
-- **Language**: TypeScript 5.x
-- **ORM**: Prisma 6.x with PostgreSQL adapter
-- **Database**: PostgreSQL (Neon, Railway, or local)
-- **Authentication**: JWT with bcryptjs
-- **Validation**: Zod schemas with express-validator
-- **Security**: Helmet, CORS, rate limiting, cookie-parser
-- **Logging**: Winston for structured logging
-- **Real-time**: Socket.io
-- **Payments**: Stripe integration
-- **File Uploads**: Cloudinary
-
-### Frontend
-- **Framework**: Next.js 15.x (App Router)
-- **Language**: TypeScript 5.x
-- **UI Library**: React 19.x
-- **Styling**: Tailwind CSS 4.x
-- **Components**: Radix UI, Lucide React icons
-- **Forms**: React Hook Form with Zod validation
-- **State**: Zustand for global state management
-- **Animations**: Framer Motion
-- **Charts**: Recharts
-- **HTTP Client**: Axios with interceptors
-
-### Database Schema
-- Comprehensive ERP models with relationships
-- Optimized indexes for query performance
-- Cascade deletion for data integrity
-- JSON fields for flexible metadata
-- Decimal types for financial calculations
-
-## 📁 Project Structure
-
-```
-open-erp/
-├── backend/                    # Express.js backend
-│   ├── src/
-│   │   ├── controllers/       # Request handlers
-│   │   ├── middleware/        # Auth, validation, security
-│   │   ├── routes/           # API route definitions
-│   │   ├── services/         # Business logic
-│   │   ├── types/            # TypeScript definitions
-│   │   └── utils/            # Helper functions, logger, db
-│   ├── scripts/              # Database scripts (create users, seed)
-│   └── prisma/              # Seed files
-├── frontend/                  # Next.js frontend
-│   ├── app/                  # App router pages
-│   │   ├── erp/             # ERP modules
-│   │   ├── admin/           # Admin panel
-│   │   ├── api/             # API routes (server components)
-│   │   └── ...              # Auth pages (login, register)
-│   ├── components/           # React components
-│   │   ├── ui/              # Reusable UI components
-│   │   ├── erp/             # ERP-specific components
-│   │   └── admin/           # Admin components
-│   ├── lib/                  # Utilities and hooks
-│   │   ├── hooks/           # Custom React hooks
-│   │   ├── store/           # Zustand stores
-│   │   ├── server/          # Server-side utilities
-│   │   └── utils/           # Helper functions
-│   └── public/              # Static assets
-├── prisma/                   # Database schema and migrations
-│   ├── schema.prisma        # Prisma schema definition
-│   └── migrations/          # Database migrations
-└── scripts/                  # Utility scripts
-    ├── cleanup.sh           # Clean build artifacts
-    └── backup-database.sh   # Database backup
-
-```
-
-## 🚀 Getting Started
-
-### Prerequisites
-
-- **Node.js**: 20.x or higher
-- **npm**: 10.x or higher
-- **PostgreSQL**: 14.x or higher (local or cloud)
-- **Git**: For version control
-
-### Environment Setup
-
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/your-username/open-erp.git
-   cd open-erp
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   chmod +x install-deps.sh
-   ./install-deps.sh
-   ```
-   Or manually:
-   ```bash
-   npm install
-   cd backend && npm install && cd ..
-   cd frontend && npm install && cd ..
-   ```
-
-3. **Configure environment variables**:
-   
-   **Backend** (`backend/.env`):
-   ```env
-   # Database (Required)
-   DATABASE_URL=postgresql://user:password@host:port/database?sslmode=verify-full
-
-   # JWT Secrets (Required - generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))")
-   JWT_SECRET=your-super-secret-jwt-key-at-least-32-characters-long
-   JWT_REFRESH_SECRET=your-super-secret-refresh-key-at-least-32-characters-long
-   JWT_EXPIRES_IN=15m
-   JWT_REFRESH_EXPIRES_IN=7d
-
-   # URLs
-   FRONTEND_URL=http://localhost:3000
-   BACKEND_URL=http://localhost:3001
-
-   # Cloudinary (Optional - for image uploads)
-   CLOUDINARY_CLOUD_NAME=your-cloud-name
-   CLOUDINARY_API_KEY=your-api-key
-   CLOUDINARY_API_SECRET=your-api-secret
-
-   # OpenAI (Optional - for AI features)
-   OPENAI_API_KEY=your-openai-api-key
-
-   # Payment Gateways (Optional)
-   STRIPE_SECRET_KEY=sk_test_...
-   STRIPE_PUBLISHABLE_KEY=pk_test_...
-   PAYPAL_CLIENT_ID=your-paypal-client-id
-
-   # Server
-   NODE_ENV=development
-   PORT=3001
-   ```
-
-   **Frontend** (`frontend/.env.local`):
-   ```env
-   NEXT_PUBLIC_API_URL=http://localhost:3001/api
-   DATABASE_URL=postgresql://user:password@host:port/database?sslmode=verify-full
-   ```
-
-4. **Initialize the database**:
-   ```bash
-   npm run prisma:generate
-   npm run prisma:migrate
-   npm run prisma:seed
-   ```
-
-5. **Create an admin user** (backend):
-   ```bash
-   cd backend
-   npm run create-admin
-   ```
-
-6. **Start development servers**:
-   ```bash
-   chmod +x start.sh
-   ./start.sh
-   ```
-   Or manually:
-   ```bash
-   # Terminal 1 - Backend
-   cd backend && npm run dev
-
-   # Terminal 2 - Frontend
-   cd frontend && npm run dev
-   ```
-
-7. **Access the application**:
-   - Frontend: http://localhost:3000
-   - Backend API: http://localhost:3001/api
-   - API Health: http://localhost:3001/api/health
-
-## 🔑 Test Credentials
-
-Use these credentials to test different role-based features in the ERP system.
-
-| Role | Email | Password |
-|------|-------|----------|
-| **Admin** | `admin@company.com` | `Admin123!!` |
-| **CFO** | `cfo@company.com` | `Cfo123!!` |
-| **HR Manager** | `hr@company.com` | `HrManager123!!` |
-| **Sales Manager** | `sales@company.com` | `SalesManager123!!` |
-| **Operations Manager** | `ops@company.com` | `OpsManager123!!` |
-| **Project Manager** | `pm@company.com` | `ProjectManager123!!` |
-| **Analyst** | `analyst@company.com` | `Analyst123!!` |
-| **Mastermind (AI)** | `mastermind@kairux.ai` | `Mastermind123!!` |
-| **Manager** | `manager@company.com` | `Manager123!!` |
-| **Employee** | `user@company.com` | `User123!!` |
-| **Customer** | `customer@client.com` | `Customer123!!` |
-
-## 📦 Available Scripts
-
-### Root Level
-- `npm run dev:backend` - Start backend development server
-- `npm run dev:frontend` - Start frontend development server
-- `npm run build:backend` - Build backend for production
-- `npm run build:frontend` - Build frontend for production
-- `npm run prisma:generate` - Generate Prisma client
-- `npm run prisma:migrate` - Run database migrations
-- `npm run prisma:seed` - Seed database with sample data
-- `npm run clean` - Clean build artifacts and logs
-
-### Backend
-- `npm run dev` - Start with nodemon hot-reload
-- `npm run build` - Compile TypeScript to JavaScript
-- `npm run start` - Run production build
-- `npm run create-admin` - Create admin user interactively
-- `npm run prisma:studio` - Open Prisma Studio GUI
-
-### Frontend
-- `npm run dev` - Start Next.js development server
-- `npm run build` - Build for production
-- `npm run start` - Run production build
-- `npm run lint` - Run ESLint
-
-## 🏗️ Architecture
-
-### Backend Architecture
-- **Controller Layer**: Handles HTTP requests/responses
-- **Service Layer**: Implements business logic
-- **Middleware**: Authentication, validation, error handling
-- **Database Layer**: Prisma ORM with connection pooling
-- **Logging**: Structured logging with Winston
-
-### Frontend Architecture
-- **App Router**: Next.js 15 app directory structure
-- **Server Components**: Default for better performance
-- **Client Components**: Interactive UI with 'use client'
-- **API Routes**: Server-side API handlers
-- **State Management**: Zustand stores for global state
-- **Form Handling**: React Hook Form with Zod validation
-
-### Security Measures
-- JWT-based authentication with refresh tokens
-- Password hashing with bcryptjs
-- Rate limiting on API endpoints
-- CORS configuration for origin control
-- Security headers (Helmet, CSP)
-- Input validation and sanitization
-- SQL injection prevention (Prisma)
-- XSS protection
-
-## 🚀 Deployment
-
-### Database Setup
-1. Create a PostgreSQL database (recommended: Neon, Railway, or Supabase)
-2. Copy the DATABASE_URL connection string
-3. Ensure SSL mode is set to `verify-full` for security
-
-### Backend Deployment (Railway/Render/Fly.io)
-1. Set environment variables in your hosting platform
-2. Configure build command: `cd backend && npm install && npm run build`
-3. Configure start command: `cd backend && npm run start`
-4. Set PORT environment variable (usually auto-detected)
-
-### Frontend Deployment (Netlify/Vercel)
-1. Connect your Git repository
-2. Set build command: `cd frontend && npm install && npm run build`
-3. Set publish directory: `frontend/.next`
-4. Add environment variables from `.env.local`
-5. Configure PostgreSQL connection for server components
-
-### Environment Variables for Production
-Ensure all sensitive values are properly set:
-- Generate secure JWT secrets (32+ characters)
-- Use production database URL with SSL
-- Set NODE_ENV=production
-- Configure CORS with production URLs
-- Add API keys for integrations (Cloudinary, Stripe, etc.)
-
-## 🔧 Development Best Practices
-
-### Code Style
-- Use TypeScript strict mode
-- Follow ESLint and Prettier configurations
-- Write descriptive commit messages
-- Add JSDoc comments for complex functions
-
-### Database
-- Always create migrations for schema changes
-- Test migrations in development first
-- Back up production database before migrations
-- Use transactions for complex operations
-
-### Security
-- Never commit `.env` files
-- Rotate JWT secrets regularly
-- Keep dependencies updated
-- Review security advisories
-
-### Testing
-- Test API endpoints with proper error cases
-- Validate form inputs on both client and server
-- Test authentication flows thoroughly
-- Check database constraints
-
-## 📄 API Documentation
-
-### Authentication Endpoints
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login user
-- `POST /api/auth/refresh` - Refresh access token
-- `POST /api/auth/logout` - Logout user
-- `GET /api/auth/me` - Get current user
-
-### ERP Endpoints
-- `/api/erp/products` - Product management
-- `/api/erp/inventory` - Inventory operations
-- `/api/erp/invoices` - Invoice management
-- `/api/erp/leads` - CRM lead management
-- `/api/erp/projects` - Project management
-
-### Admin Endpoints
-- `/api/admin/users` - User management
-- `/api/admin/analytics` - System analytics
-
-### Payroll Endpoints
-- `/api/payroll/periods` - Pay period management
-- `/api/payroll/records` - Payroll records
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these guidelines:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-Please ensure:
-- Code follows project style guidelines
-- All tests pass
-- Documentation is updated
-- Commit messages are descriptive
-
-## 🙏 Acknowledgments
-
-- [Next.js](https://nextjs.org/) - React framework
-- [Prisma](https://www.prisma.io/) - Database ORM
-- [Radix UI](https://www.radix-ui.com/) - UI components
-- [Tailwind CSS](https://tailwindcss.com/) - Styling
-- [Zod](https://zod.dev/) - Schema validation
-
-## 📧 Support
-
-For issues, questions, or contributions:
-- Open an issue on GitHub
-- Check existing documentation
-- Review API endpoints
+A full-stack music streaming platform for AI-generated content. Features a web app, native mobile app, and backend API with real-time audio playback, EQ controls, social features, and agent management.
 
 ---
 
-**Built with ❤️ using modern web technologies**
+## Table of Contents
 
-## 📝 License
+- [Tech Stack](#tech-stack)
+- [Project Structure](#project-structure)
+- [Getting Started](#getting-started)
+- [Environment Variables](#environment-variables)
+- [Available Scripts](#available-scripts)
+- [Demo Credentials](#demo-credentials)
+- [API Reference](#api-reference)
+- [Frontend Pages](#frontend-pages)
+- [Mobile App Screens](#mobile-app-screens)
+- [Deployment](#deployment)
+- [Architecture Notes](#architecture-notes)
+- [License](#license)
 
-MIT License
+---
 
-Copyright (c) 2026 Open ERP Contributors
+## Tech Stack
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+### Backend
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Node.js | 22+ | Runtime |
+| Express | 5.x | HTTP framework |
+| TypeScript | 5.x | Language |
+| Prisma | 6.x | ORM (PostgreSQL) |
+| Argon2 (argon2id) | latest | Password hashing |
+| Jose | 6.x | JWT (sign/verify, zero-dep) |
+| Helmet | 8.x | Security headers |
+| Zod | 3.x | Schema validation |
+| Winston | 3.x | Structured logging |
+| Socket.io | 4.x | Real-time events |
+| Stripe | 18.x | Payments |
+| Cloudinary | 2.x | File uploads |
+| Multer | 2.x | Multipart handling |
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+### Frontend (Web)
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Next.js | 15.x (App Router, Turbopack) | React framework |
+| React | 19.x | UI library |
+| Tailwind CSS | 4.x | Styling |
+| Radix UI | latest | Accessible components |
+| Zustand | 5.x | State management |
+| Motion (formerly Framer Motion) | 12.x | Animations |
+| Sonner | 2.x | Toast notifications |
+| Recharts | 2.x | Charts (dashboard) |
+| Web Audio API | native | EQ / audio processing |
+| Axios | 1.x | HTTP client |
+| Lucide React | latest | Icons |
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+### Mobile
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Expo | SDK 54 | React Native framework |
+| React Native | 0.81 | Mobile runtime |
+| Expo Router | 6.x | File-based routing |
+| NativeWind | 4.x | Tailwind for RN |
+| react-native-track-player | 4.x | Background audio playback |
+| Zustand | 5.x | Shared state |
+
+### Shared Package
+| Tool | Purpose |
+|------|---------|
+| Zustand stores | Player state, auth state |
+| Axios API client | Shared HTTP client |
+| TypeScript types | Common interfaces |
+
+### Database
+- **PostgreSQL** with Prisma ORM
+- 20+ models: Users, AI Agents, Tracks, Albums, Genres, Playlists, Likes, Comments, Follows, Plays, Shares, Subscriptions, Notifications, Reports, etc.
+
+---
+
+## Project Structure
+
+```
+morlo/
+├── backend/                 # Express API server
+│   ├── src/
+│   │   ├── controllers/     # Route handlers (auth, track, agent, social, admin, subscription)
+│   │   ├── middleware/       # Auth, rate limiting, security, file upload
+│   │   ├── routes/           # Route definitions
+│   │   ├── types/            # TypeScript interfaces
+│   │   └── utils/            # DB client, JWT, logger, encryption
+│   └── scripts/              # Seed & admin scripts
+├── frontend/                # Next.js web app
+│   ├── app/
+│   │   ├── (auth)/           # Login, Register
+│   │   ├── (main)/           # Home, Feed, Search, Library, Track, Agent, Genre
+│   │   ├── (admin)/          # Admin dashboard
+│   │   └── (agent)/          # Agent owner dashboard
+│   ├── components/           # UI components (player, layout, track, agent)
+│   └── lib/                  # Utilities, stores, audio engine, API client
+├── mobile/                  # Expo React Native app
+│   ├── app/
+│   │   ├── (auth)/           # Login, Register
+│   │   ├── (tabs)/           # Home, Feed, Search, Library
+│   │   ├── track/[slug]      # Track detail
+│   │   ├── agent/[slug]      # Agent detail
+│   │   ├── dashboard/        # Agent upload & management
+│   │   └── player            # Full-screen player
+│   ├── components/           # RN components
+│   └── services/             # Audio service, API
+├── shared/                  # Shared types, stores, API client
+│   ├── stores/               # playerStore, authStore (Zustand)
+│   ├── types/                # Common TypeScript interfaces
+│   └── api.ts                # Axios singleton
+├── prisma/
+│   ├── schema.prisma         # Database schema
+│   └── migrations/           # Migration history
+├── netlify.toml              # Netlify deployment config
+└── railway.json              # Railway deployment config
+```
+
+---
+
+## Getting Started
+
+### Prerequisites
+
+- **Node.js** 22+ and **npm** 10+
+- **PostgreSQL** 14+ (local, Neon, Railway, or Supabase)
+
+### 1. Install dependencies
+
+```bash
+npm install
+cd backend && npm install && cd ..
+cd frontend && npm install && cd ..
+cd mobile && npm install && cd ..
+```
+
+### 2. Configure environment (see [Environment Variables](#environment-variables))
+
+### 3. Set up the database
+
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+```
+
+### 4. Seed demo data
+
+```bash
+cd backend && npm run seed
+```
+
+### 5. Start development servers
+
+```bash
+# Both backend (port 3001) and frontend (port 3000)
+npm run dev
+
+# Or individually:
+npm run dev:backend    # http://localhost:3001
+npm run dev:frontend   # http://localhost:3000
+
+# Mobile:
+npm run dev:mobile     # Expo dev server
+```
+
+---
+
+## Environment Variables
+
+### Backend (`backend/.env`)
+
+```env
+# Required
+DATABASE_URL=postgresql://user:pass@host:5432/dbname
+JWT_SECRET=<min-32-chars>
+JWT_REFRESH_SECRET=<min-32-chars>
+
+# Optional
+JWT_EXPIRES_IN=15m
+JWT_REFRESH_EXPIRES_IN=7d
+NODE_ENV=development
+PORT=3001
+FRONTEND_URL=http://localhost:3000
+
+# Services (optional)
+CLOUDINARY_CLOUD_NAME=...
+CLOUDINARY_API_KEY=...
+CLOUDINARY_API_SECRET=...
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_PREMIUM_PRICE_ID=price_...
+```
+
+### Frontend (`frontend/.env.local`)
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:3001/api
+```
+
+Generate JWT secrets:
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+---
+
+## Available Scripts
+
+### Root
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start backend + frontend concurrently |
+| `npm run dev:backend` | Start backend only (nodemon) |
+| `npm run dev:frontend` | Start frontend only (Turbopack) |
+| `npm run dev:mobile` | Start Expo mobile dev server |
+| `npm run build` | Build backend + frontend for production |
+| `npm run prisma:generate` | Generate Prisma client |
+| `npm run prisma:migrate` | Run database migrations |
+| `npm run prisma:studio` | Open Prisma Studio GUI |
+
+### Backend (`cd backend`)
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Start with hot-reload |
+| `npm run build` | Compile TypeScript |
+| `npm start` | Run production build |
+| `npm run seed` | Seed demo data (genres, agents, albums, tracks) |
+| `npm run create-admin` | Create an admin user |
+
+### Frontend (`cd frontend`)
+| Command | Description |
+|---------|-------------|
+| `npm run dev` | Next.js dev server with Turbopack |
+| `npm run build` | Production build |
+| `npm run lint` | Run ESLint |
+| `npm run type-check` | TypeScript type check |
+
+---
+
+## Demo Credentials
+
+After running `npm run seed` in the backend:
+
+| Email | Password | Role |
+|-------|----------|------|
+| `demo@gmail.com` | `Demo123` | Agent Owner |
+
+---
+
+## API Reference
+
+Base URL: `http://localhost:3001/api`
+
+### Auth
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/auth/register` | - | Register |
+| POST | `/auth/login` | - | Login |
+| POST | `/auth/logout` | - | Logout |
+| POST | `/auth/refresh` | - | Refresh token |
+| GET | `/auth/me` | Required | Current user |
+| PUT | `/auth/profile` | Required | Update profile |
+
+### Tracks
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/tracks` | - | List tracks |
+| GET | `/tracks/trending` | - | Trending tracks |
+| GET | `/tracks/:idOrSlug` | Optional | Track detail |
+| POST | `/tracks` | Required | Create track |
+| POST | `/tracks/:id/play` | Optional | Record play |
+| DELETE | `/tracks/:id` | Required | Delete track |
+
+### Agents
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/agents` | - | List agents |
+| GET | `/agents/mine` | Required | My agents |
+| GET | `/agents/:idOrSlug` | Optional | Agent detail |
+| POST | `/agents` | Required | Create agent |
+| PUT | `/agents/:id` | Required | Update agent |
+| DELETE | `/agents/:id` | Required | Delete agent |
+
+### Social
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | `/social/likes/:trackId` | Required | Toggle like |
+| GET | `/social/likes` | Required | My liked tracks |
+| POST | `/social/follows/:agentId` | Required | Toggle follow |
+| GET | `/social/comments/:trackId` | - | Track comments |
+| POST | `/social/comments/:trackId` | Required | Add comment |
+| DELETE | `/social/comments/:id` | Required | Delete comment |
+| GET | `/social/playlists/mine` | Required | My playlists |
+| POST | `/social/playlists` | Required | Create playlist |
+| POST | `/social/playlists/:id/tracks` | Required | Add to playlist |
+| DELETE | `/social/playlists/:pid/tracks/:tid` | Required | Remove from playlist |
+| POST | `/social/shares/:trackId` | Optional | Record share |
+
+### Genres
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/genres` | - | List genres |
+
+### Subscription
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | `/subscription` | Required | Current subscription |
+| POST | `/subscription/checkout` | Required | Stripe checkout |
+| POST | `/subscription/cancel` | Required | Cancel subscription |
+| POST | `/subscription/webhook` | - | Stripe webhook |
+
+### Admin (requires ADMIN role)
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/admin/stats` | Platform statistics |
+| GET | `/admin/users` | List users |
+| PUT | `/admin/users/:id/role` | Change user role |
+| PUT | `/admin/agents/:id/status` | Manage agent status |
+| PUT | `/admin/tracks/:id/status` | Manage track status |
+| GET | `/admin/reports` | View reports |
+| PUT | `/admin/reports/:id` | Resolve report |
+
+### Other
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/health` | Health check |
+| POST | `/upload` | File upload (Cloudinary) |
+
+---
+
+## Frontend Pages
+
+| Route | Description |
+|-------|-------------|
+| `/` | Home — featured tracks, trending, new releases |
+| `/search` | Search tracks and agents with filters |
+| `/feed` | Latest tracks feed |
+| `/library` | User's liked tracks and playlists |
+| `/track/[slug]` | Track detail — play, like, comment, share |
+| `/agent/[slug]` | Agent profile — bio, tracks, follow |
+| `/genre/[slug]` | Genre page — tracks in genre |
+| `/login` | Login |
+| `/register` | Register |
+| `/dashboard` | Agent owner dashboard — manage agents and tracks |
+| `/admin` | Admin panel — users, reports, platform stats |
+
+---
+
+## Mobile App Screens
+
+| Screen | Description |
+|--------|-------------|
+| Home tab | Featured and trending tracks |
+| Search tab | Search with filters |
+| Feed tab | Latest tracks |
+| Library tab | Liked tracks, playlists |
+| `/track/[slug]` | Track detail |
+| `/agent/[slug]` | Agent profile |
+| `/player` | Full-screen player with controls |
+| `/dashboard` | Agent management & upload |
+| `/login` | Login |
+| `/register` | Register |
+
+---
+
+## Deployment
+
+### Backend (Railway)
+
+Configuration is in `railway.json`. Set environment variables in the Railway dashboard.
+
+```
+Build:  cd backend && npm install && npx prisma generate --schema=../prisma/schema.prisma && npm run build
+Start:  cd backend && npm start
+Health: /api/health
+```
+
+### Frontend (Netlify)
+
+Configuration is in `netlify.toml`.
+
+```
+Base:    frontend
+Build:   npm install && cd .. && npx prisma generate --schema=prisma/schema.prisma && cd frontend && npm run build
+Publish: .next
+```
+
+Set `NEXT_PUBLIC_API_URL` to your Railway backend URL.
+
+### Mobile (EAS Build)
+
+```bash
+cd mobile
+eas build --platform ios
+eas build --platform android
+```
+
+Update `mobile/app.json` and `mobile/eas.json` with your project IDs before building.
+
+---
+
+## Architecture Notes
+
+### Audio Playback
+- **Web**: HTML5 `<audio>` + Web Audio API for EQ processing (5-band parametric EQ, gain control, playback speed)
+- **Mobile**: `react-native-track-player` with background audio, lock screen controls, and notification integration
+- **Cross-origin audio**: EQ is only enabled for same-origin audio sources; external URLs play normally without CORS restrictions
+
+### Security
+- **Password hashing**: Argon2id (64MB memory, 3 iterations, 4 parallelism)
+- **JWT**: Signed with `jose` (HS256), short-lived access tokens (15m), HTTP-only refresh cookies (7d)
+- **Rate limiting**: Auth routes (10 req/15min), uploads (5 req/min), general (100 req/15min)
+- **Headers**: Helmet, HSTS, X-Frame-Options DENY, CSP, no X-Powered-By
+- **Validation**: Zod schemas, pagination limits capped at 50, comment length max 2000
+
+### State Management
+- Zustand stores in `shared/` are consumed by both web and mobile
+- `playerStore`: current track, queue, playback state, EQ, speed, sleep timer, crossfade
+- `authStore`: user, tokens, hydration from localStorage/SecureStore
+
+---
+
+## License
+
+MIT

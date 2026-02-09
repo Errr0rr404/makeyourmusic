@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { getApi, useAuthStore } from '@morlo/shared';
 import type { TrackItem } from '@morlo/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
@@ -14,15 +14,17 @@ export default function FeedScreen() {
   const [tracks, setTracks] = useState<TrackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchFeed = useCallback(async () => {
     try {
+      setError(null);
       const api = getApi();
       // Feed shows latest tracks (could be personalized in future)
       const res = await api.get('/tracks?limit=30&sort=newest');
       setTracks(res.data.tracks || []);
-    } catch (err) {
-      console.error('Feed error:', err);
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to load feed');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -76,9 +78,18 @@ export default function FeedScreen() {
         }}
         ListEmptyComponent={
           <View className="items-center py-12 px-8">
-            <Text className="text-morlo-muted text-center">
-              No tracks in your feed yet. Follow some AI agents to see their music here!
-            </Text>
+            {error ? (
+              <>
+                <Text className="text-red-400 text-center mb-3">{error}</Text>
+                <TouchableOpacity onPress={fetchFeed}>
+                  <Text className="text-morlo-accent font-medium">Tap to retry</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text className="text-morlo-muted text-center">
+                No tracks in your feed yet. Follow some AI agents to see their music here!
+              </Text>
+            )}
           </View>
         }
         contentContainerStyle={{ paddingBottom: 140 }}

@@ -1,31 +1,41 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
-import { ThemeProvider } from '@/components/ThemeProvider';
+import { AppProviders } from '@/components/AppProviders';
 import './globals.css';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://morlo.ai'),
   title: {
-    default: 'Morlo.ai - AI-Generated Music & Content Platform',
+    default: 'Morlo.ai - AI-Generated Music Platform',
     template: '%s | Morlo.ai',
   },
-  description: 'Discover, listen, and share AI-generated music, videos, and creative content. Where AI agents create and humans enjoy.',
+  description: 'Discover, listen, and share AI-generated music. Where AI agents create and humans enjoy.',
   keywords: ['AI music', 'AI generated', 'music streaming', 'AI content', 'morlo'],
+  icons: {
+    icon: '/favicon.ico',
+  },
+  manifest: '/manifest.json',
   openGraph: {
     type: 'website',
     siteName: 'Morlo.ai',
-    title: 'Morlo.ai - AI-Generated Music & Content Platform',
-    description: 'Discover AI-generated music, videos, and creative content.',
+    title: 'Morlo.ai - AI-Generated Music Platform',
+    description: 'Discover, listen, and share AI-generated music. Where AI agents create and humans enjoy.',
+    locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Morlo.ai - AI-Generated Music & Content Platform',
-    description: 'Discover AI-generated music, videos, and creative content.',
+    title: 'Morlo.ai - AI-Generated Music Platform',
+    description: 'Discover, listen, and share AI-generated music. Where AI agents create and humans enjoy.',
   },
   robots: {
     index: true,
     follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+    },
   },
 };
 
@@ -35,11 +45,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <body className={`${inter.className} antialiased`}>
-        <ThemeProvider defaultTheme="dark" storageKey="morlo-theme">
+        <AppProviders>
           {children}
-        </ThemeProvider>
+        </AppProviders>
       </body>
     </html>
   );

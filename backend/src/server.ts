@@ -53,11 +53,12 @@ const allowedOrigins = process.env.FRONTEND_URL
 app.use(
   cors({
     origin: (origin, callback) => {
+      // Allow requests with no origin (mobile apps, server-to-server, health checks)
       if (!origin) return callback(null, true);
       if (allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
-        callback(null, false);
+        callback(new Error(`Origin ${origin} not allowed by CORS`));
       }
     },
     credentials: true,
@@ -68,9 +69,9 @@ app.use(
   })
 );
 
-// Body parsing
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+// Body parsing (10MB for JSON, uploads handled separately by multer)
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(sanitizeBody);
 app.use(cookieParser());
 app.use(performanceMonitor);
@@ -99,16 +100,48 @@ app.use(errorHandler);
 export { app };
 
 if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, '0.0.0.0', () => {
+  // Validate critical environment variables on startup
+  const requiredVars = ['DATABASE_URL', 'JWT_SECRET', 'JWT_REFRESH_SECRET'];
+  const missing = requiredVars.filter((v) => !process.env[v]);
+  if (missing.length > 0) {
+    logger.error(`Missing required environment variables: ${missing.join(', ')}`);
+    process.exit(1);
+  }
+
+  const server = app.listen(PORT, '0.0.0.0', () => {
     logger.info('Morlo.ai API started', {
       port: PORT,
       environment: process.env.NODE_ENV || 'development',
+      cors: allowedOrigins,
     });
   });
 
-  const gracefulShutdown = (signal: string) => {
-    logger.info(`${signal} received. Shutting down...`);
-    process.exit(0);
+  server.on('error', (error: NodeJS.ErrnoException) => {
+    if (error.code === 'EADDRINUSE') {
+      logger.error(`Port ${PORT} is already in use`);
+    } else {
+      logger.error('Server startup error', { error: error.message, code: error.code });
+    }
+    process.exit(1);
+  });
+
+  const gracefulShutdown = async (signal: string) => {
+    logger.info(`${signal} received. Shutting down gracefully...`);
+    server.close(async () => {
+      try {
+        const { prisma } = await import('./utils/db');
+        await prisma.$disconnect();
+        logger.info('Database connection closed');
+      } catch (e) {
+        logger.error('Error disconnecting database', { error: (e as Error).message });
+      }
+      process.exit(0);
+    });
+    // Force shutdown after 10s if graceful shutdown hangs
+    setTimeout(() => {
+      logger.error('Forced shutdown after timeout');
+      process.exit(1);
+    }, 10000);
   };
 
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

@@ -1,5 +1,5 @@
 import * as path from 'path';
-import bcrypt from 'bcryptjs';
+import argon2 from 'argon2';
 import dotenv from 'dotenv';
 
 // Load environment variables from backend/.env or frontend/.env.local
@@ -53,7 +53,7 @@ async function updatePasswords() {
     for (const user of users) {
       try {
         // Hash the password
-        const passwordHash = await bcrypt.hash(user.password, 12);
+        const passwordHash = await argon2.hash(user.password, { type: argon2.argon2id, memoryCost: 65536, timeCost: 3, parallelism: 4 });
 
         // Update or create the user
         const updatedUser = await prisma.user.upsert({

@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { Play, Pause, Heart } from 'lucide-react';
 import { usePlayerStore, TrackItem } from '@/lib/store/playerStore';
@@ -30,6 +31,7 @@ function formatCount(n: number): string {
 export function TrackRow({ track, index, tracks, onLike }: TrackRowProps) {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const isCurrentTrack = currentTrack?.id === track.id;
+  const [imgError, setImgError] = useState(false);
 
   const handlePlay = () => {
     if (isCurrentTrack) {
@@ -48,15 +50,15 @@ export function TrackRow({ track, index, tracks, onLike }: TrackRowProps) {
         <span className={`text-sm group-hover:hidden ${isCurrentTrack ? 'text-[hsl(var(--accent))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
           {isCurrentTrack && isPlaying ? '♫' : index + 1}
         </span>
-        <button onClick={handlePlay} className="hidden group-hover:block text-white">
+        <button onClick={handlePlay} aria-label={isCurrentTrack && isPlaying ? 'Pause' : 'Play'} className="hidden group-hover:block text-white">
           {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4 mx-auto" /> : <Play className="w-4 h-4 mx-auto" />}
         </button>
       </div>
 
       {/* Cover */}
       <div className="w-10 h-10 rounded overflow-hidden bg-[hsl(var(--secondary))] flex-shrink-0">
-        {track.coverArt ? (
-          <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" />
+        {track.coverArt && !imgError ? (
+          <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" onError={() => setImgError(true)} />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-purple-600/20 to-pink-600/20" />
         )}

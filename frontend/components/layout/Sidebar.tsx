@@ -1,10 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Home, Search, Library, Radio, TrendingUp, Music, Plus, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
+import api from '@/lib/api';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
@@ -15,9 +17,26 @@ const navItems = [
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
+  const [creatingPlaylist, setCreatingPlaylist] = useState(false);
 
   const isAgentOwner = user?.role === 'AGENT_OWNER' || user?.role === 'ADMIN';
+
+  const handleCreatePlaylist = async () => {
+    if (creatingPlaylist) return;
+    setCreatingPlaylist(true);
+    try {
+      const res = await api.post('/social/playlists', { title: 'My Playlist', isPublic: true });
+      if (res.data.playlist?.slug) {
+        router.push('/library');
+      }
+    } catch (err) {
+      console.error('Create playlist error:', err);
+    } finally {
+      setCreatingPlaylist(false);
+    }
+  };
 
   return (
     <aside className="fixed left-0 top-0 bottom-[var(--player-height)] w-[var(--sidebar-width)] bg-[hsl(var(--card))] border-r border-[hsl(var(--border))] flex flex-col z-40">
@@ -83,9 +102,13 @@ export function Sidebar() {
             <p className="px-3 mb-2 text-xs font-semibold uppercase text-[hsl(var(--muted-foreground))]">
               Playlists
             </p>
-            <button className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors w-full">
+            <button
+              onClick={handleCreatePlaylist}
+              disabled={creatingPlaylist}
+              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors w-full disabled:opacity-50"
+            >
               <Plus className="w-5 h-5" />
-              Create Playlist
+              {creatingPlaylist ? 'Creating...' : 'Create Playlist'}
             </button>
             <Link
               href="/library"

@@ -1,10 +1,9 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { View, Text, TextInput, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
 import { getApi, debounce } from '@morlo/shared';
 import type { TrackItem } from '@morlo/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
-import { Input } from '../../components/ui/Input';
 import { TrackRow } from '../../components/track/TrackRow';
 import { AgentCard } from '../../components/agent/AgentCard';
 import { Search as SearchIcon } from 'lucide-react-native';
@@ -56,18 +55,18 @@ export default function SearchScreen() {
     <ScreenContainer scrollable={false}>
       {/* Search input */}
       <View className="px-4 pt-2 pb-3">
-        <View className="flex-row items-center bg-morlo-card border border-morlo-border rounded-xl px-4 py-3">
+        <View className="flex-row items-center bg-morlo-card border border-morlo-border rounded-xl px-4">
           <SearchIcon size={18} color="#71717a" />
-          <View className="flex-1 ml-3">
-            <Input
-              placeholder="Search tracks, agents..."
-              value={query}
-              onChangeText={handleQueryChange}
-              autoCapitalize="none"
-              autoCorrect={false}
-              returnKeyType="search"
-            />
-          </View>
+          <TextInput
+            className="flex-1 ml-3 py-3 text-morlo-text text-base"
+            placeholder="Search tracks, agents..."
+            placeholderTextColor="#71717a"
+            value={query}
+            onChangeText={handleQueryChange}
+            autoCapitalize="none"
+            autoCorrect={false}
+            returnKeyType="search"
+          />
         </View>
       </View>
 

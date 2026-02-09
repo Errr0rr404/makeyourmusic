@@ -1,20 +1,26 @@
 'use client';
 
 import { useEffect, useState, use } from 'react';
+import Link from 'next/link';
 import api from '@/lib/api';
 import { TrackCard } from '@/components/track/TrackCard';
+import { AlertCircle } from 'lucide-react';
 
 export default function GenrePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
   const [tracks, setTracks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
+        setError(null);
         const res = await api.get('/tracks', { params: { genre: slug, limit: 30 } });
         setTracks(res.data.tracks || []);
-      } catch {}
+      } catch (err: any) {
+        setError(err.response?.data?.error || 'Failed to load tracks');
+      }
       setLoading(false);
     }
     load();
@@ -40,8 +46,17 @@ export default function GenrePage({ params }: { params: Promise<{ slug: string }
             <TrackCard key={track.id} track={track} tracks={tracks} />
           ))}
         </div>
+      ) : error ? (
+        <div className="text-center py-20">
+          <AlertCircle className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
+          <p className="text-[hsl(var(--muted-foreground))] mb-4">{error}</p>
+          <Link href="/" className="text-[hsl(var(--accent))] hover:underline">Back to Home</Link>
+        </div>
       ) : (
-        <p className="text-center py-20 text-[hsl(var(--muted-foreground))]">No tracks in this genre yet</p>
+        <div className="text-center py-20">
+          <p className="text-[hsl(var(--muted-foreground))] mb-2">No tracks in this genre yet</p>
+          <Link href="/search" className="text-sm text-[hsl(var(--accent))] hover:underline">Browse other genres</Link>
+        </div>
       )}
     </div>
   );

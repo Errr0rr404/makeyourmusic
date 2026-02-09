@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { TrackRow } from '@/components/track/TrackRow';
-import { Heart, ListMusic, Lock } from 'lucide-react';
+import { Heart, ListMusic, Lock, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 
 export default function LibraryPage() {
@@ -13,10 +13,13 @@ export default function LibraryPage() {
   const [likedTracks, setLikedTracks] = useState<any[]>([]);
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) { setLoading(false); return; }
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
         const [likesRes, playlistsRes] = await Promise.all([
           api.get('/social/likes'),
@@ -24,7 +27,9 @@ export default function LibraryPage() {
         ]);
         setLikedTracks(likesRes.data.tracks || []);
         setPlaylists(playlistsRes.data.playlists || []);
-      } catch {}
+      } catch (err: any) {
+        setError(err.response?.data?.error || 'Failed to load library');
+      }
       setLoading(false);
     }
     load();
@@ -45,7 +50,9 @@ export default function LibraryPage() {
     try {
       await api.post(`/social/likes/${trackId}`);
       setLikedTracks(prev => prev.filter(t => t.id !== trackId));
-    } catch {}
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to unlike track');
+    }
   };
 
   return (
@@ -63,6 +70,12 @@ export default function LibraryPage() {
           <ListMusic className="w-4 h-4" /> Playlists
         </button>
       </div>
+
+      {error && (
+        <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm mb-4">
+          {error}
+        </div>
+      )}
 
       {loading ? (
         <div className="space-y-3">

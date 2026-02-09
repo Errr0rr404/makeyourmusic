@@ -1,5 +1,5 @@
 import * as path from 'path';
-import bcrypt from 'bcryptjs';
+import argon2 from 'argon2';
 import dotenv from 'dotenv';
 
 // Load environment variables from backend/.env or frontend/.env.local
@@ -23,7 +23,7 @@ async function createEmployee() {
 
     // 1. Create a user for the employee
     console.log('📧 Creating employee user...');
-    const employeePassword = await bcrypt.hash('Employee123!!', 12);
+    const employeePassword = await argon2.hash('Employee123!!', { type: argon2.argon2id, memoryCost: 65536, timeCost: 3, parallelism: 4 });
     const employeeUser = await prisma.user.upsert({
       where: { email: 'employee@pos.com' },
       update: {
@@ -61,7 +61,7 @@ async function createEmployee() {
 
     // 3. Set manager passcode to "1111" (hashed)
     console.log('\n🔐 Setting manager passcode...');
-    const managerPasscodeHash = await bcrypt.hash('1111', 12);
+    const managerPasscodeHash = await argon2.hash('1111', { type: argon2.argon2id, memoryCost: 65536, timeCost: 3, parallelism: 4 });
     
     // Get existing store config or create new one
     const prismaClient = prisma as any;

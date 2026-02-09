@@ -11,20 +11,27 @@ export default function FeedPage() {
   const { isAuthenticated } = useAuthStore();
   const [tracks, setTracks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const [retryKey, setRetryKey] = useState(0);
 
   useEffect(() => {
     if (!isAuthenticated) { setLoading(false); return; }
     async function load() {
+      setLoading(true);
+      setError(null);
       try {
         // For now, feed shows the latest tracks. 
         // Future: personalized based on followed agents and listening history
         const res = await api.get('/tracks?sort=newest&limit=30');
         setTracks(res.data.tracks || []);
-      } catch {}
+      } catch (err: any) {
+        setError(err.response?.data?.error || 'Failed to load feed');
+      }
       setLoading(false);
     }
     load();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, retryKey]);
 
   if (!isAuthenticated) {
     return (
@@ -52,6 +59,11 @@ export default function FeedPage() {
               <div className="h-4 w-3/4 bg-[hsl(var(--secondary))] rounded animate-pulse" />
             </div>
           ))}
+        </div>
+      ) : error ? (
+        <div className="text-center py-20">
+          <p className="text-red-400 mb-4">{error}</p>
+          <button onClick={() => setRetryKey(k => k + 1)} className="text-[hsl(var(--accent))] hover:underline">Retry</button>
         </div>
       ) : tracks.length > 0 ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">

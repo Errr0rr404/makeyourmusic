@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, FlatList, TextInput } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, FlatList, TextInput, Share, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
 import { getApi, usePlayerStore, useAuthStore, formatDuration, formatCount, formatDate } from '@morlo/shared';
@@ -27,6 +27,7 @@ export default function TrackDetailScreen() {
   const [track, setTrack] = useState<Track | null>(null);
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [newComment, setNewComment] = useState('');
@@ -39,19 +40,41 @@ export default function TrackDetailScreen() {
   const fetchTrack = async () => {
     try {
       const api = getApi();
-      const [trackRes, commentsRes] = await Promise.all([
-        api.get(`/tracks/${slug}`),
-        api.get(`/social/comments/${slug}`).catch(() => ({ data: { comments: [] } })),
-      ]);
+      // First fetch track by slug
+      const trackRes = await api.get(`/tracks/${slug}`);
       const t = trackRes.data.track || trackRes.data;
       setTrack(t);
       setLiked(t.isLiked || false);
       setLikeCount(t._count?.likes || t.likeCount || 0);
-      setComments(commentsRes.data.comments || []);
-    } catch (err) {
-      console.error('Track fetch error:', err);
+
+      // Then fetch comments using track's actual ID
+      if (t?.id) {
+        try {
+          const commentsRes = await api.get(`/social/comments/${t.id}`);
+          setComments(commentsRes.data.comments || []);
+        } catch {
+          setComments([]);
+        }
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to load track');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleShare = async () => {
+    if (!track) return;
+    try {
+      await Share.share({
+        message: `Listen to "${track.title}" by ${track.agent.name} on Morlo.ai`,
+        url: `https://morlo.ai/track/${track.slug}`,
+      });
+      // Record share
+      const api = getApi();
+      api.post(`/social/shares/${track.id}`, { platform: 'native' }).catch(() => {});
+    } catch {
+      // user cancelled
     }
   };
 
@@ -69,9 +92,9 @@ export default function TrackDetailScreen() {
     if (!isAuthenticated || !track) return;
     try {
       const api = getApi();
-      await api.post(`/social/like/${track.id}`);
-      setLiked(!liked);
-      setLikeCount((c) => (liked ? c - 1 : c + 1));
+      const res = await api.post(`/social/likes/${track.id}`);
+      setLiked(res.data.liked);
+      setLikeCount((c) => (res.data.liked ? c + 1 : c - 1));
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (err) {
       console.error('Like error:', err);
@@ -101,10 +124,13 @@ export default function TrackDetailScreen() {
     );
   }
 
-  if (!track) {
+  if (error || !track) {
     return (
-      <View className="flex-1 bg-morlo-bg items-center justify-center">
-        <Text className="text-morlo-muted">Track not found</Text>
+      <View className="flex-1 bg-morlo-bg items-center justify-center px-8">
+        <Text className="text-morlo-muted text-base mb-4">{error || 'Track not found'}</Text>
+        <TouchableOpacity onPress={() => router.back()}>
+          <Text className="text-morlo-accent text-base font-medium">Go Back</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -196,7 +222,7 @@ export default function TrackDetailScreen() {
 
             <Text className="text-morlo-muted text-sm mr-3">{formatCount(likeCount)}</Text>
 
-            <TouchableOpacity className="p-3">
+            <TouchableOpacity className="p-3" onPress={handleShare} accessibilityLabel="Share track">
               <Share2 size={22} color="#a1a1aa" />
             </TouchableOpacity>
           </View>

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { TrackCard } from '@/components/track/TrackCard';
-import { TrendingUp, Sparkles, Clock, ChevronRight } from 'lucide-react';
+import { TrendingUp, Sparkles, Clock, ChevronRight, AlertCircle } from 'lucide-react';
 
 interface Genre {
   id: string;
@@ -19,10 +19,12 @@ export default function HomePage() {
   const [latest, setLatest] = useState<any[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function load() {
       try {
+        setError(null);
         const [trendingRes, latestRes, genresRes] = await Promise.all([
           api.get('/tracks/trending').catch(() => ({ data: { tracks: [] } })),
           api.get('/tracks?sort=newest&limit=12').catch(() => ({ data: { tracks: [] } })),
@@ -31,7 +33,9 @@ export default function HomePage() {
         setTrending(trendingRes.data.tracks || []);
         setLatest(latestRes.data.tracks || []);
         setGenres(genresRes.data.genres || []);
-      } catch {}
+      } catch (err: any) {
+        setError(err.message || 'Failed to load content');
+      }
       setLoading(false);
     }
     load();
@@ -58,6 +62,14 @@ export default function HomePage() {
 
   return (
     <div className="space-y-10 animate-fade-in">
+      {/* Error Banner */}
+      {error && (
+        <div className="flex items-center gap-3 p-4 bg-red-900/20 border border-red-500/30 rounded-xl">
+          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+          <p className="text-sm text-red-400">{error}</p>
+        </div>
+      )}
+
       {/* Hero Section (when no content yet) */}
       {!hasContent && (
         <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-900/50 via-[hsl(var(--card))] to-pink-900/30 p-8 md:p-12">

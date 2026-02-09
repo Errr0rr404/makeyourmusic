@@ -1,7 +1,7 @@
 import { Response } from 'express';
-import bcrypt from 'bcryptjs';
+import argon2 from 'argon2';
 import { prisma } from '../utils/db';
-import { generateTokenPair } from '../utils/jwt';
+import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 
@@ -40,7 +40,12 @@ export const register = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    const passwordHash = await argon2.hash(password, {
+      type: argon2.argon2id,
+      memoryCost: 65536, // 64 MB
+      timeCost: 3,
+      parallelism: 4,
+    });
 
     const user = await prisma.user.create({
       data: {
@@ -54,10 +59,10 @@ export const register = async (req: RequestWithUser, res: Response) => {
       select: { id: true, email: true, username: true, displayName: true, role: true, avatar: true },
     });
 
-    const { accessToken, refreshToken } = generateTokenPair({
+    const { accessToken, refreshToken } = await generateTokenPair({
       userId: user.id,
       email: user.email,
-      role: user.role as any,
+      role: user.role,
     });
 
     res.cookie('refreshToken', refreshToken, {
@@ -93,7 +98,7 @@ export const login = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const validPassword = await bcrypt.compare(password, user.passwordHash);
+    const validPassword = await argon2.verify(user.passwordHash, password);
     if (!validPassword) {
       res.status(401).json({ error: 'Invalid credentials' });
       return;
@@ -101,10 +106,10 @@ export const login = async (req: RequestWithUser, res: Response) => {
 
     const { passwordHash: _, ...safeUser } = user;
 
-    const { accessToken, refreshToken } = generateTokenPair({
+    const { accessToken, refreshToken } = await generateTokenPair({
       userId: user.id,
       email: user.email,
-      role: user.role as any,
+      role: user.role,
     });
 
     res.cookie('refreshToken', refreshToken, {
@@ -189,8 +194,7 @@ export const refresh = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const { verifyRefreshToken } = require('../utils/jwt');
-    const decoded = verifyRefreshToken(refreshTokenCookie);
+    const decoded = await verifyRefreshToken(refreshTokenCookie);
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
@@ -202,10 +206,10 @@ export const refresh = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const { accessToken, refreshToken } = generateTokenPair({
+    const { accessToken, refreshToken } = await generateTokenPair({
       userId: user.id,
       email: user.email,
-      role: user.role as any,
+      role: user.role,
     });
 
     res.cookie('refreshToken', refreshToken, {
@@ -216,7 +220,7 @@ export const refresh = async (req: RequestWithUser, res: Response) => {
     });
 
     res.json({ accessToken });
-  } catch (error) {
+  } catch {
     res.status(401).json({ error: 'Invalid refresh token' });
   }
 };

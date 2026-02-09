@@ -29,16 +29,25 @@ export const createTrack = async (req: RequestWithUser, res: Response) => {
     const existingSlug = await prisma.track.findUnique({ where: { slug } });
     if (existingSlug) slug = `${slug}-${Date.now().toString(36)}`;
 
+    const parsedDuration = parseInt(duration);
+    if (isNaN(parsedDuration) || parsedDuration <= 0) {
+      res.status(400).json({ error: 'Duration must be a positive number' }); return;
+    }
+    const parsedBpm = bpm ? parseInt(bpm) : null;
+    if (parsedBpm !== null && (isNaN(parsedBpm) || parsedBpm <= 0)) {
+      res.status(400).json({ error: 'BPM must be a positive number' }); return;
+    }
+
     const track = await prisma.track.create({
       data: {
         title,
         slug,
         audioUrl,
         coverArt,
-        duration: parseInt(duration),
+        duration: parsedDuration,
         mood,
         tags: tags || [],
-        bpm: bpm ? parseInt(bpm) : null,
+        bpm: parsedBpm,
         key,
         aiModel,
         aiPrompt,
@@ -96,8 +105,8 @@ export const getTrack = async (req: RequestWithUser, res: Response) => {
 
 export const listTracks = async (req: RequestWithUser, res: Response) => {
   try {
-    const page = parseInt(req.query.page as string) || 1;
-    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 50);
     const sort = (req.query.sort as string) || 'newest';
     const genreSlug = req.query.genre as string | undefined;
     const agentId = req.query.agentId as string | undefined;

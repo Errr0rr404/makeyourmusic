@@ -2,7 +2,7 @@ import { Response, NextFunction } from 'express';
 import { RequestWithUser, UserRole } from '../types';
 import { verifyAccessToken } from '../utils/jwt';
 
-export const authenticate = (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const authenticate = async (req: RequestWithUser, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
 
@@ -18,7 +18,7 @@ export const authenticate = (req: RequestWithUser, res: Response, next: NextFunc
       return;
     }
 
-    const decoded = verifyAccessToken(token);
+    const decoded = await verifyAccessToken(token);
 
     req.user = {
       userId: decoded.userId,
@@ -33,13 +33,13 @@ export const authenticate = (req: RequestWithUser, res: Response, next: NextFunc
   }
 };
 
-export const optionalAuth = (req: RequestWithUser, _res: Response, next: NextFunction) => {
+export const optionalAuth = async (req: RequestWithUser, _res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.substring(7);
       if (token) {
-        const decoded = verifyAccessToken(token);
+        const decoded = await verifyAccessToken(token);
         req.user = {
           userId: decoded.userId,
           email: decoded.email,

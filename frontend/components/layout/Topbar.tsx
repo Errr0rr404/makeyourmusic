@@ -16,6 +16,16 @@ export function Topbar() {
     fetchUser();
   }, [fetchUser]);
 
+  // Close user menu on Escape key
+  useEffect(() => {
+    if (!showUserMenu) return;
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowUserMenu(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [showUserMenu]);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
@@ -76,7 +86,7 @@ export function Topbar() {
                       Profile
                     </Link>
                     <Link
-                      href="/settings"
+                      href="/library"
                       className="flex items-center gap-3 px-4 py-2.5 text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors"
                       onClick={() => setShowUserMenu(false)}
                     >

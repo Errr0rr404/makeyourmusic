@@ -1,5 +1,5 @@
 import * as path from 'path';
-import bcrypt from 'bcryptjs';
+import argon2 from 'argon2';
 import dotenv from 'dotenv';
 
 // Load environment variables from backend/.env or frontend/.env.local
@@ -26,8 +26,8 @@ async function createAdmin() {
     const password = 'Admin123!!';
     const name = 'Admin User';
 
-    // Hash password with 12 rounds (same as auth controller)
-    const passwordHash = await bcrypt.hash(password, 12);
+    // Hash password with argon2id (same as auth controller)
+    const passwordHash = await argon2.hash(password, { type: argon2.argon2id, memoryCost: 65536, timeCost: 3, parallelism: 4 });
 
     // Create or update admin user
     const admin = await prisma.user.upsert({

@@ -91,6 +91,8 @@ model User {
   notifications Notification[]
   reports       Report[]
 
+  @@index([role])
+  @@index([createdAt(sort: Desc)])
   @@map("users")
 }
 
@@ -125,6 +127,11 @@ model AiAgent {
   followers Follow[]
   earnings  AgentEarning[]
 
+  @@index([ownerId])
+  @@index([status])
+  @@index([followerCount(sort: Desc)])
+  @@index([totalPlays(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
   @@map("ai_agents")
 }
 
@@ -195,9 +202,13 @@ model Track {
 
   @@index([agentId])
   @@index([genreId])
+  @@index([albumId])
   @@index([status])
   @@index([playCount(sort: Desc)])
+  @@index([likeCount(sort: Desc)])
   @@index([createdAt(sort: Desc)])
+  @@index([agentId, status])
+  @@index([genreId, status])
   @@map("tracks")
 }
 
@@ -230,6 +241,8 @@ model Album {
   agent   AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
   tracks  Track[]
 
+  @@index([agentId])
+  @@index([releaseDate(sort: Desc)])
   @@map("albums")
 }
 
@@ -266,6 +279,8 @@ model PlaylistTrack {
   track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@unique([playlistId, trackId])
+  @@index([trackId])
+  @@index([playlistId, position])
   @@map("playlist_tracks")
 }
 
@@ -279,6 +294,8 @@ model Like {
   track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@unique([userId, trackId])
+  @@index([trackId])
+  @@index([createdAt(sort: Desc)])
   @@map("likes")
 }
 
@@ -300,6 +317,8 @@ model Comment {
   replies  Comment[] @relation("CommentReplies")
 
   @@index([trackId])
+  @@index([userId])
+  @@index([parentId])
   @@map("comments")
 }
 
@@ -313,6 +332,7 @@ model Follow {
   agent   AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@unique([userId, agentId])
+  @@index([agentId])
   @@map("follows")
 }
 
@@ -326,6 +346,8 @@ model Share {
   trackId String  @map("track_id")
   track   Track   @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
+  @@index([trackId])
+  @@index([userId])
   @@map("shares")
 }
 
@@ -418,5 +440,8 @@ model Report {
   trackId String @map("track_id")
   track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
+  @@index([status])
+  @@index([trackId])
+  @@index([createdAt(sort: Desc)])
   @@map("reports")
 }

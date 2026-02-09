@@ -5,7 +5,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot } from 'lucide-react';
+import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle } from 'lucide-react';
 
 export default function TrackPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
@@ -13,19 +13,33 @@ export default function TrackPage({ params }: { params: Promise<{ slug: string }
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [shareToast, setShareToast] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
     async function load() {
       try {
-        const [trackRes, commentsRes] = await Promise.all([
-          api.get(`/tracks/${slug}`),
-          api.get(`/social/comments/${slug}`).catch(() => ({ data: { comments: [] } })),
-        ]);
-        setTrack(trackRes.data.track);
-        setComments(commentsRes.data.comments || []);
-      } catch {}
+        setError(null);
+        // First fetch the track by slug
+        const trackRes = await api.get(`/tracks/${slug}`);
+        const fetchedTrack = trackRes.data.track;
+        setTrack(fetchedTrack);
+
+        // Then fetch comments using the track's actual ID
+        if (fetchedTrack?.id) {
+          try {
+            const commentsRes = await api.get(`/social/comments/${fetchedTrack.id}`);
+            setComments(commentsRes.data.comments || []);
+          } catch {
+            setComments([]);
+          }
+        }
+      } catch (err: any) {
+        setError(err.response?.data?.error || 'Failed to load track');
+      }
       setLoading(false);
     }
     load();
@@ -40,12 +54,21 @@ export default function TrackPage({ params }: { params: Promise<{ slug: string }
     }
   };
 
+  // Auto-dismiss action errors
+  useEffect(() => {
+    if (!actionError) return;
+    const t = setTimeout(() => setActionError(null), 4000);
+    return () => clearTimeout(t);
+  }, [actionError]);
+
   const handleLike = async () => {
     if (!track || !isAuthenticated) return;
     try {
       const res = await api.post(`/social/likes/${track.id}`);
       setTrack({ ...track, isLiked: res.data.liked, likeCount: track.likeCount + (res.data.liked ? 1 : -1) });
-    } catch {}
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || 'Failed to like track');
+    }
   };
 
   const handleComment = async (e: React.FormEvent) => {
@@ -55,16 +78,29 @@ export default function TrackPage({ params }: { params: Promise<{ slug: string }
       const res = await api.post(`/social/comments/${track.id}`, { content: newComment });
       setComments([res.data.comment, ...comments]);
       setNewComment('');
-    } catch {}
+    } catch (err: any) {
+      setActionError(err.response?.data?.error || 'Failed to post comment');
+    }
   };
 
   const handleShare = async () => {
     if (!track) return;
     const url = `${window.location.origin}/track/${track.slug}`;
     try {
-      await navigator.clipboard.writeText(url);
-      api.post(`/social/shares/${track.id}`, { platform: 'copy' }).catch(() => {});
-    } catch {}
+      if (navigator.share) {
+        await navigator.share({ title: track.title, text: `Listen to "${track.title}" by ${track.agent.name} on Morlo.ai`, url });
+      } else {
+        await navigator.clipboard.writeText(url);
+        setShareToast(true);
+        setTimeout(() => setShareToast(false), 2000);
+      }
+      const platform = typeof navigator.share === 'function' ? 'native' : 'copy';
+      api.post(`/social/shares/${track.id}`, { platform }).catch(() => {});
+    } catch (err: any) {
+      if (err?.name !== 'AbortError') {
+        setActionError('Failed to share track');
+      }
+    }
   };
 
   if (loading) {
@@ -81,16 +117,36 @@ export default function TrackPage({ params }: { params: Promise<{ slug: string }
     );
   }
 
-  if (!track) return <div className="text-center py-20 text-[hsl(var(--muted-foreground))]">Track not found</div>;
+  if (error || !track) {
+    return (
+      <div className="text-center py-20 animate-fade-in">
+        <AlertCircle className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
+        <p className="text-[hsl(var(--muted-foreground))] mb-4">{error || 'Track not found'}</p>
+        <Link href="/" className="text-[hsl(var(--accent))] hover:underline">Back to Home</Link>
+      </div>
+    );
+  }
 
   const isCurrentTrack = currentTrack?.id === track.id;
   const formatDuration = (s: number) => `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
+      {/* Toasts */}
+      {shareToast && (
+        <div className="fixed top-4 right-4 z-50 bg-[hsl(var(--accent))] text-white px-4 py-2 rounded-lg shadow-lg text-sm animate-fade-in">
+          Link copied to clipboard!
+        </div>
+      )}
+      {actionError && (
+        <div className="fixed top-4 right-4 z-50 bg-red-500/90 text-white px-4 py-2 rounded-lg shadow-lg text-sm animate-fade-in">
+          {actionError}
+        </div>
+      )}
+
       {/* Track Header */}
       <div className="flex flex-col md:flex-row gap-6 mb-8">
-        <div className="w-64 h-64 rounded-xl overflow-hidden bg-[hsl(var(--secondary))] flex-shrink-0">
+        <div className="w-full md:w-64 aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-[hsl(var(--secondary))] flex-shrink-0 max-w-[300px] mx-auto md:mx-0">
           {track.coverArt ? (
             <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" />
           ) : (
@@ -115,15 +171,15 @@ export default function TrackPage({ params }: { params: Promise<{ slug: string }
 
           {/* Actions */}
           <div className="flex items-center gap-3 mt-6">
-            <button onClick={handlePlay}
+            <button onClick={handlePlay} aria-label={isCurrentTrack && isPlaying ? 'Pause' : 'Play'}
               className="w-12 h-12 rounded-full bg-[hsl(var(--accent))] flex items-center justify-center hover:scale-105 transition-transform">
               {isCurrentTrack && isPlaying ? <Pause className="w-6 h-6 text-white" /> : <Play className="w-6 h-6 text-white ml-0.5" />}
             </button>
-            <button onClick={handleLike}
+            <button onClick={handleLike} aria-label={track.isLiked ? 'Unlike' : 'Like'}
               className={`p-2.5 rounded-full border transition-colors ${track.isLiked ? 'border-pink-500 text-pink-500' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-white hover:border-white/30'}`}>
               <Heart className="w-5 h-5" fill={track.isLiked ? 'currentColor' : 'none'} />
             </button>
-            <button onClick={handleShare}
+            <button onClick={handleShare} aria-label="Share track"
               className="p-2.5 rounded-full border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-white hover:border-white/30 transition-colors">
               <Share2 className="w-5 h-5" />
             </button>

@@ -1,6 +1,14 @@
-// ─── User ────────────────────────────────────────────────
+// ─── Enums ───────────────────────────────────────────────
 
 export type UserRole = 'LISTENER' | 'AGENT_OWNER' | 'ADMIN';
+export type TrackStatus = 'PROCESSING' | 'ACTIVE' | 'REMOVED' | 'FLAGGED';
+export type AgentStatus = 'ACTIVE' | 'SUSPENDED' | 'PENDING_APPROVAL';
+export type SubscriptionTier = 'FREE' | 'PREMIUM';
+export type SubscriptionStatus = 'ACTIVE' | 'CANCELLED' | 'PAST_DUE' | 'EXPIRED';
+export type NotificationType = 'NEW_TRACK' | 'NEW_FOLLOWER' | 'TRACK_LIKED' | 'COMMENT' | 'SYSTEM';
+export type ReportStatus = 'PENDING' | 'REVIEWED' | 'RESOLVED' | 'DISMISSED';
+
+// ─── User ────────────────────────────────────────────────
 
 export interface User {
   id: string;
@@ -11,7 +19,7 @@ export interface User {
   avatar: string | null;
   bio?: string | null;
   createdAt?: string;
-  subscription?: { tier: string; status: string } | null;
+  subscription?: { tier: SubscriptionTier; status: SubscriptionStatus } | null;
   _count?: { likes: number; playlists: number; follows: number };
 }
 
@@ -26,7 +34,7 @@ export interface TrackItem {
   duration: number;
   agent: AgentBrief;
   genre?: GenreBrief | null;
-  video?: { id: string; videoUrl: string } | null;
+  video?: Video | null;
 }
 
 export interface Track extends TrackItem {
@@ -39,10 +47,20 @@ export interface Track extends TrackItem {
   playCount: number;
   likeCount: number;
   shareCount: number;
-  status: string;
+  status: TrackStatus;
   createdAt: string;
   isLiked?: boolean;
   _count?: { likes: number; comments: number; plays: number };
+}
+
+// ─── Video ──────────────────────────────────────────────
+
+export interface Video {
+  id: string;
+  videoUrl: string;
+  thumbnail?: string | null;
+  duration?: number | null;
+  createdAt?: string;
 }
 
 // ─── Agent ───────────────────────────────────────────────
@@ -57,7 +75,7 @@ export interface AgentBrief {
 export interface Agent extends AgentBrief {
   coverImage: string | null;
   bio: string | null;
-  status: string;
+  status: AgentStatus;
   aiModel: string | null;
   totalPlays: number;
   totalLikes: number;
@@ -111,12 +129,41 @@ export interface Playlist {
 
 export interface Subscription {
   id: string;
-  tier: 'FREE' | 'PREMIUM';
-  status: 'ACTIVE' | 'CANCELLED' | 'PAST_DUE' | 'EXPIRED';
+  tier: SubscriptionTier;
+  status: SubscriptionStatus;
   currentPeriodEnd?: string | null;
 }
 
+// ─── Notification ────────────────────────────────────────
+
+export interface Notification {
+  id: string;
+  type: NotificationType;
+  title: string;
+  message: string;
+  read: boolean;
+  data?: Record<string, any> | null;
+  createdAt: string;
+}
+
+// ─── Report ──────────────────────────────────────────────
+
+export interface Report {
+  id: string;
+  reason: string;
+  status: ReportStatus;
+  notes?: string | null;
+  createdAt: string;
+  user?: { id: string; username: string };
+  track?: { id: string; title: string; slug: string };
+}
+
 // ─── API Responses ───────────────────────────────────────
+
+export interface ApiError {
+  error: string;
+  details?: string;
+}
 
 export interface PaginatedResponse<T> {
   total: number;
