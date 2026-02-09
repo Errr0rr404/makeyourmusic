@@ -80,41 +80,38 @@ const logger = winston.createLogger({
   format: logFormat,
   defaultMeta: { service: 'morlo-api' },
   transports: [
-    // Write all logs to combined.log
-    new winston.transports.File({
-      filename: path.join(logsDir, 'combined.log'),
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
-    }),
-    // Write errors to error.log
-    new winston.transports.File({
-      filename: path.join(logsDir, 'error.log'),
-      level: 'error',
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
+    // Always log to console (required for Railway/Docker to capture logs)
+    new winston.transports.Console({
+      format: process.env.NODE_ENV === 'production' ? logFormat : consoleFormat,
     }),
   ],
   exceptionHandlers: [
-    new winston.transports.File({
-      filename: path.join(logsDir, 'exceptions.log'),
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
+    new winston.transports.Console({
+      format: process.env.NODE_ENV === 'production' ? logFormat : consoleFormat,
     }),
   ],
   rejectionHandlers: [
-    new winston.transports.File({
-      filename: path.join(logsDir, 'rejections.log'),
-      maxsize: 5242880, // 5MB
-      maxFiles: 5,
+    new winston.transports.Console({
+      format: process.env.NODE_ENV === 'production' ? logFormat : consoleFormat,
     }),
   ],
 });
 
-// Add console transport for non-production environments
+// Add file transports in non-production environments (local dev)
 if (process.env.NODE_ENV !== 'production') {
   logger.add(
-    new winston.transports.Console({
-      format: consoleFormat,
+    new winston.transports.File({
+      filename: path.join(logsDir, 'combined.log'),
+      maxsize: 5242880,
+      maxFiles: 5,
+    })
+  );
+  logger.add(
+    new winston.transports.File({
+      filename: path.join(logsDir, 'error.log'),
+      level: 'error',
+      maxsize: 5242880,
+      maxFiles: 5,
     })
   );
 }
