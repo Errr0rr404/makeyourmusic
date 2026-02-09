@@ -1,47 +1,16 @@
-# Dependencies
+# ─── Dependencies ─────────────────────────────────────
 node_modules/
 .pnp
 .pnp.js
 
-# Testing
-/coverage
-/playwright-report/
-/test-results/
-.playwright/
-
-# Production
+# ─── Build output ────────────────────────────────────
 /build
 /dist
 .next/
 out/
 backend/dist/
 
-# Misc
-.DS_Store
-*.pem
-
-# Debug & Logs
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-*.log
-backend.log
-frontend.log
-backend/logs/*.log
-frontend/logs/*.log
-
-# TypeScript compiled files
-*.js.map
-*.d.ts.map
-backend/scripts/*.d.ts
-backend/scripts/*.js.map
-backend/scripts/*.d.ts.map
-# Allow Prisma generation scripts to be committed
-!backend/generate-prisma.sh
-!backend/scripts/generate-prisma.js
-
-# Local env files
+# ─── Environment variables (SECRETS — never commit) ──
 .env
 .env*.local
 .env.test
@@ -49,51 +18,58 @@ backend/scripts/*.d.ts.map
 backend/.env
 frontend/.env
 frontend/.env.local
+mobile/.env
 
-# Vercel
-.vercel
+# ─── Prisma generated clients (rebuilt on install) ───
+frontend/generated/
+backend/node_modules/.prisma/
 
-# TypeScript
+# ─── Expo / React Native ─────────────────────────────
+mobile/.expo/
+mobile/android/
+mobile/ios/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+google-services.json
+GoogleService-Info.plist
+
+# ─── OS files ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.pem
+
+# ─── Logs ─────────────────────────────────────────────
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+*.log
+backend/logs/
+frontend/logs/
+
+# ─── TypeScript ───────────────────────────────────────
 *.tsbuildinfo
 next-env.d.ts
 
-# IDE
+# ─── IDE ──────────────────────────────────────────────
 .vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# Watchman
+# ─── Testing ─────────────────────────────────────────
+/coverage
+/playwright-report/
+/test-results/
+.playwright/
+
+# ─── Misc ─────────────────────────────────────────────
+.vercel
 .watchman-cookie-*
-
-# Monitor files
-monitor.pid
-monitor-output.log
-
-# Backup files
 *.bak
 *.backup
-*.config.backup.js
-prisma.config.*.js
-
-# Setup flags
-.dummy-data-created
-
-# Prisma generated client (generated at build time)
-frontend/generated/prisma/
-
-# Database backups (keep in backups/ directory, not root)
-backup_*.sql
-backup_*.sql.gz
-
-# Temporary test scripts (keep only essential scripts)
-fix-*.sh
-test-*.sh
-verify-*.sh
-setup-pos.sh
-setup-erp.sh
-
-# Cleanup plan (temporary file)
-CLEANUP_PLAN.md
-
