@@ -7,7 +7,11 @@ const nextConfig = {
   reactStrictMode: true,
 
   // Proxy /api requests to the backend server in development
+  // In production (Netlify), the [[redirects]] in netlify.toml handles this
   async rewrites() {
+    if (process.env.NODE_ENV === 'production') {
+      return [];
+    }
     const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
     return [
       {

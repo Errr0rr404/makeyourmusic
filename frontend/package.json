@@ -4,18 +4,15 @@
   "description": "Morlo.ai - AI-Generated Music & Content Platform",
   "private": true,
   "scripts": {
-    "postinstall": "prisma generate --schema=../prisma/schema.prisma",
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
     "type-check": "tsc --noEmit",
-    "check-all": "npm run type-check && npm run lint",
-    "regenerate-prisma": "prisma generate --schema=../prisma/schema.prisma"
+    "check-all": "npm run type-check && npm run lint"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.10.0",
-    "@prisma/client": "^6.8.2",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-checkbox": "^1.3.2",
     "@radix-ui/react-dialog": "^1.1.14",
@@ -54,6 +51,7 @@
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.1",
+    "@netlify/plugin-nextjs": "^5.15.8",
     "@tailwindcss/postcss": "^4.1.7",
     "@types/node": "^22.15.21",
     "@types/react": "^19.1.5",
@@ -62,7 +60,6 @@
     "eslint": "^9.27.0",
     "eslint-config-next": "^15.3.2",
     "postcss": "^8.5.3",
-    "prisma": "^6.8.2",
     "tailwindcss": "^4.1.7",
     "typescript": "^5.8.3"
   }
