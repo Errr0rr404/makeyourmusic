@@ -1,12 +1,9 @@
 [build]
   command = "npx prisma generate --schema=../prisma/schema.prisma && npm run build"
-  publish = ".next"
 
 [build.environment]
   NODE_VERSION = "22"
   NEXT_PUBLIC_API_URL = "https://morlo-production.up.railway.app/api"
-
-# Next.js on Netlify uses @netlify/plugin-nextjs automatically
 
 [[headers]]
   for = "/*"
