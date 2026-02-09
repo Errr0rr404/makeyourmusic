@@ -1,7 +1,7 @@
 {
-  "name": "kairux-frontend",
+  "name": "morlo-frontend",
   "version": "1.0.0",
-  "description": "Kairux - Business in Flow. Modern AI-powered Cloud ERP System",
+  "description": "Morlo.ai - AI-Generated Music & Content Platform",
   "private": true,
   "scripts": {
     "postinstall": "prisma generate --schema=../prisma/schema.prisma",

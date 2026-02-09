@@ -1,379 +1,222 @@
-import { Request, Response, NextFunction } from 'express';
+import { Response } from 'express';
 import bcrypt from 'bcryptjs';
 import { prisma } from '../utils/db';
-import {
-  generateTokenPair,
-  verifyRefreshToken,
-} from '../utils/jwt';
-import { AppError } from '../middleware/errorHandler';
-import { UserRole } from '../types';
-import { validatePassword } from '../middleware/validation';
-import {
-  isRefreshTokenValid,
-  persistRefreshToken,
-  rotateRefreshToken,
-  revokeRefreshToken,
-} from '../utils/refreshTokenStore';
+import { generateTokenPair } from '../utils/jwt';
+import { RequestWithUser } from '../types';
+import logger from '../utils/logger';
 
-const parseDurationMs = (value: string | undefined, fallbackMs: number): number => {
-  if (!value) return fallbackMs;
-  const match = /^([0-9]+)([smhd])$/.exec(value.trim());
-  if (!match) return fallbackMs;
-  const amount = parseInt(match[1]!, 10);
-  const unit = match[2]! as string;
-  switch (unit) {
-    case 's':
-      return amount * 1000;
-    case 'm':
-      return amount * 60 * 1000;
-    case 'h':
-      return amount * 60 * 60 * 1000;
-    case 'd':
-      return amount * 24 * 60 * 60 * 1000;
-    default:
-      return fallbackMs;
-  }
-};
-
-const REFRESH_TTL_MS = parseDurationMs(process.env.JWT_REFRESH_EXPIRES_IN, 7 * 24 * 60 * 60 * 1000);
-
-const setRefreshCookie = (res: Response, refreshToken: string) => {
-  const secure = process.env.NODE_ENV === 'production';
-  const sameSite: 'lax' | 'strict' = secure ? 'strict' : 'lax';
-  res.cookie('refreshToken', refreshToken, {
-    httpOnly: true,
-    secure,
-    sameSite,
-    maxAge: REFRESH_TTL_MS,
-    path: '/api/auth',
-    domain: process.env.COOKIE_DOMAIN || undefined,
-  });
-};
-
-const persistSession = (
-  refreshJti: string,
-  userId: string,
-  sessionId: string,
-  req: Request
-) => {
-  persistRefreshToken(refreshJti, {
-    userId,
-    sessionId,
-    expiresAt: Date.now() + REFRESH_TTL_MS,
-    userAgent: req.get('user-agent') || undefined,
-    ip: req.ip,
-  });
-};
-
-export const register = async (req: Request, res: Response, next: NextFunction) => {
+export const register = async (req: RequestWithUser, res: Response) => {
   try {
-    const { email, password, firstName, lastName } = req.body;
+    const { email, password, username, displayName } = req.body;
 
-    if (!email || !password) {
-      throw new AppError('Email and password are required', 400);
+    if (!email || !password || !username) {
+      res.status(400).json({ error: 'Email, password, and username are required' });
+      return;
     }
 
-    // Validate password strength
-    const passwordValidation = validatePassword(password);
-    if (!passwordValidation.valid) {
-      throw new AppError(passwordValidation.message || 'Password does not meet requirements', 400);
+    if (password.length < 8) {
+      res.status(400).json({ error: 'Password must be at least 8 characters' });
+      return;
     }
 
-    // Normalize email to lowercase (consistent with login)
-    const normalizedEmail = email.trim().toLowerCase();
+    if (username.length < 3 || username.length > 30) {
+      res.status(400).json({ error: 'Username must be 3-30 characters' });
+      return;
+    }
 
-    const existingUser = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      res.status(400).json({ error: 'Username can only contain letters, numbers, and underscores' });
+      return;
+    }
+
+    const existingUser = await prisma.user.findFirst({
+      where: { OR: [{ email }, { username }] },
     });
 
     if (existingUser) {
-      // Don't reveal if email exists (prevent user enumeration)
-      throw new AppError('Registration failed', 400);
+      res.status(409).json({
+        error: existingUser.email === email ? 'Email already registered' : 'Username already taken',
+      });
+      return;
     }
 
     const passwordHash = await bcrypt.hash(password, 12);
 
     const user = await prisma.user.create({
       data: {
-        email: normalizedEmail,
+        email,
         passwordHash,
-        firstName: firstName || null, lastName: lastName || null,
-        role: UserRole.USER,
+        username,
+        displayName: displayName || username,
+        role: 'LISTENER',
+        subscription: { create: { tier: 'FREE', status: 'ACTIVE' } },
       },
-      select: {
-        id: true,
-        email: true,
-        firstName: true, lastName: true,
-        role: true,
-        createdAt: true,
-      },
+      select: { id: true, email: true, username: true, displayName: true, role: true, avatar: true },
     });
 
-    const { accessToken, refreshToken, refreshJti, sessionId } = generateTokenPair({
+    const { accessToken, refreshToken } = generateTokenPair({
       userId: user.id,
       email: user.email,
-      role: user.role as UserRole,
+      role: user.role as any,
     });
 
-    persistSession(refreshJti, user.id, sessionId, req);
-    setRefreshCookie(res, refreshToken);
-
-    res.status(201).json({
-      user,
-      accessToken,
-      sessionId,
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
+    res.status(201).json({ user, accessToken });
   } catch (error) {
-    next(error);
+    logger.error('Registration error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Registration failed' });
   }
 };
 
-export const login = async (req: Request, res: Response, next: NextFunction) => {
+export const login = async (req: RequestWithUser, res: Response) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      throw new AppError('Email and password are required', 400);
+      res.status(400).json({ error: 'Email and password are required' });
+      return;
     }
-
-    // Normalize email to lowercase (consistent with register)
-    const normalizedEmail = email.trim().toLowerCase();
 
     const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+      where: { email },
+      select: { id: true, email: true, username: true, displayName: true, role: true, avatar: true, passwordHash: true },
     });
 
-    const dummyHash = '$2a$12$dummy.hash.to.prevent.timing.attacks.here';
-    const hashToCompare = user?.passwordHash || dummyHash;
-    const isValidPassword = await bcrypt.compare(password, hashToCompare);
-
-    if (!user || !isValidPassword) {
-      throw new AppError('Invalid email or password', 401);
+    if (!user) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
 
-    const { accessToken, refreshToken, refreshJti, sessionId } = generateTokenPair({
+    const validPassword = await bcrypt.compare(password, user.passwordHash);
+    if (!validPassword) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+
+    const { passwordHash: _, ...safeUser } = user;
+
+    const { accessToken, refreshToken } = generateTokenPair({
       userId: user.id,
       email: user.email,
-      role: user.role as UserRole,
+      role: user.role as any,
     });
 
-    persistSession(refreshJti, user.id, sessionId, req);
-    setRefreshCookie(res, refreshToken);
-
-    res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName, lastName: user.lastName,
-        role: user.role as UserRole,
-      },
-      accessToken,
-      sessionId,
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
+
+    res.json({ user: safeUser, accessToken });
   } catch (error) {
-    next(error);
+    logger.error('Login error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Login failed' });
   }
 };
 
-export const getMe = async (req: Request, res: Response, next: NextFunction) => {
+export const me = async (req: RequestWithUser, res: Response) => {
   try {
-    const userId = (req as any).user?.userId;
-
-    if (!userId) {
-      throw new AppError('User not authenticated', 401);
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
     }
 
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: req.user.userId },
       select: {
-        id: true,
-        email: true,
-        firstName: true, lastName: true,
-        phone: true,
-        role: true,
-        createdAt: true,
+        id: true, email: true, username: true, displayName: true,
+        role: true, avatar: true, bio: true, createdAt: true,
+        subscription: { select: { tier: true, status: true } },
+        _count: { select: { likes: true, playlists: true, follows: true } },
       },
     });
 
     if (!user) {
-      throw new AppError('User not found', 404);
+      res.status(404).json({ error: 'User not found' });
+      return;
     }
 
     res.json({ user });
   } catch (error) {
-    next(error);
+    logger.error('Get me error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to get user' });
   }
 };
 
-export const updateProfile = async (req: Request, res: Response, next: NextFunction) => {
+export const updateProfile = async (req: RequestWithUser, res: Response) => {
   try {
-    const userId = (req as any).user?.userId;
-
-    if (!userId) {
-      throw new AppError('User not authenticated', 401);
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
     }
 
-    const { firstName, lastName, email, phone } = req.body;
+    const { displayName, bio, avatar } = req.body;
 
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { id: userId },
-    });
-
-    if (!existingUser) {
-      throw new AppError('User not found', 404);
-    }
-
-    // If email is being changed, check if new email is available
-    if (email && email !== existingUser.email) {
-      // Normalize email to lowercase
-      const normalizedEmail = email.trim().toLowerCase();
-      const emailTaken = await prisma.user.findUnique({
-        where: { email: normalizedEmail },
-      });
-
-      if (emailTaken) {
-        throw new AppError('Email is already in use', 400);
-      }
-    }
-
-    // Update user profile
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
+    const user = await prisma.user.update({
+      where: { id: req.user.userId },
       data: {
-        ...(firstName !== undefined && { firstName: firstName.trim() || null }),
-        ...(lastName !== undefined && { lastName: lastName.trim() || null }),
-        ...(email !== undefined && email !== existingUser.email && { email: email.trim().toLowerCase() }),
-        ...(phone !== undefined && { phone: phone?.trim() || null }),
+        ...(displayName !== undefined && { displayName }),
+        ...(bio !== undefined && { bio }),
+        ...(avatar !== undefined && { avatar }),
       },
-      select: {
-        id: true,
-        email: true,
-        firstName: true, lastName: true,
-        phone: true,
-        role: true,
-        createdAt: true,
-      },
+      select: { id: true, email: true, username: true, displayName: true, role: true, avatar: true, bio: true },
     });
 
-    res.json({ user: updatedUser });
+    res.json({ user });
   } catch (error) {
-    next(error);
+    logger.error('Update profile error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to update profile' });
   }
 };
 
-export const refresh = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const refreshToken = req.cookies?.refreshToken;
-
-    if (!refreshToken) {
-      throw new AppError('Refresh token not provided', 401);
-    }
-
-    const decoded = verifyRefreshToken(refreshToken);
-    if (!decoded.jti) {
-      throw new AppError('Invalid refresh token', 401);
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: decoded.userId },
-      select: {
-        id: true,
-        email: true,
-        role: true,
-      },
-    });
-
-    if (!user) {
-      throw new AppError('User not found', 404);
-    }
-
-    const isValid = isRefreshTokenValid(decoded.jti, user.id);
-    if (!isValid) {
-      throw new AppError('Refresh token revoked or expired', 401);
-    }
-
-    const { accessToken, refreshToken: newRefreshToken, refreshJti, sessionId } = generateTokenPair({
-      userId: user.id,
-      email: user.email,
-      role: user.role as UserRole,
-      sessionId: decoded.sessionId,
-    });
-
-    rotateRefreshToken(decoded.jti, refreshJti, {
-      userId: user.id,
-      sessionId: sessionId,
-      expiresAt: Date.now() + REFRESH_TTL_MS,
-      userAgent: req.get('user-agent') || undefined,
-      ip: req.ip,
-    });
-
-    setRefreshCookie(res, newRefreshToken);
-
-    res.json({ accessToken, sessionId });
-  } catch (error) {
-    next(error);
-  }
-};
-
-export const logout = async (req: Request, res: Response) => {
-  const refreshToken = req.cookies?.refreshToken;
-  if (refreshToken) {
-    try {
-      const decoded = verifyRefreshToken(refreshToken);
-      if (decoded.jti) {
-        revokeRefreshToken(decoded.jti);
-      }
-    } catch (err) {
-      // ignore decode errors on logout
-    }
-  }
-  res.clearCookie('refreshToken', { path: '/api/auth', domain: process.env.COOKIE_DOMAIN || undefined });
+export const logout = async (_req: RequestWithUser, res: Response) => {
+  res.clearCookie('refreshToken');
   res.json({ message: 'Logged out successfully' });
 };
 
-export const forgotPassword = async (req: Request, res: Response, next: NextFunction) => {
+export const refresh = async (req: RequestWithUser, res: Response) => {
   try {
-    const { email } = req.body;
-
-    if (!email) {
-      throw new AppError('Email is required', 400);
+    const refreshTokenCookie = req.cookies?.refreshToken;
+    if (!refreshTokenCookie) {
+      res.status(401).json({ error: 'No refresh token' });
+      return;
     }
 
-    // Normalize email to lowercase (consistent with other auth functions)
-    const normalizedEmail = email.trim().toLowerCase();
+    const { verifyRefreshToken } = require('../utils/jwt');
+    const decoded = verifyRefreshToken(refreshTokenCookie);
 
     const user = await prisma.user.findUnique({
-      where: { email: normalizedEmail },
+      where: { id: decoded.userId },
+      select: { id: true, email: true, role: true },
     });
 
-    if (user) {
-      // In a real application, you would generate a password reset token,
-      // save it to the database, and send an email to the user with a
-      // link to reset their password.
-      //
-      // For this example, we'll just return a success message.
+    if (!user) {
+      res.status(401).json({ error: 'User not found' });
+      return;
     }
 
-    res.json({ message: 'If a user with that email exists, a password reset link has been sent.' });
+    const { accessToken, refreshToken } = generateTokenPair({
+      userId: user.id,
+      email: user.email,
+      role: user.role as any,
+    });
+
+    res.cookie('refreshToken', refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.json({ accessToken });
   } catch (error) {
-    next(error);
-  }
-};
-
-export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { token: _token, password: _password } = req.body;
-
-    // In a real application, you would:
-    // 1. Find the user by the password reset token.
-    // 2. Verify that the token has not expired.
-    // 3. Hash the new password.
-    // 4. Update the user's password in the database.
-    // 5. Invalidate the password reset token.
-
-    res.json({ message: 'Password has been reset successfully.' });
-  } catch (error) {
-    next(error);
+    res.status(401).json({ error: 'Invalid refresh token' });
   }
 };

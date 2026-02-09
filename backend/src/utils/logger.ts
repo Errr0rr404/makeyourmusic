@@ -78,7 +78,7 @@ const consoleFormat = winston.format.combine(
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
   format: logFormat,
-  defaultMeta: { service: 'erp-api' },
+  defaultMeta: { service: 'morlo-api' },
   transports: [
     // Write all logs to combined.log
     new winston.transports.File({

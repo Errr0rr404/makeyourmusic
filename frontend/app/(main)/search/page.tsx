@@ -1,0 +1,125 @@
+'use client';
+
+import { useEffect, useState, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
+import api from '@/lib/api';
+import { TrackCard } from '@/components/track/TrackCard';
+import { AgentCard } from '@/components/agent/AgentCard';
+import { Search } from 'lucide-react';
+
+function SearchContent() {
+  const searchParams = useSearchParams();
+  const q = searchParams.get('q') || '';
+  const sort = searchParams.get('sort') || 'newest';
+  const genre = searchParams.get('genre') || '';
+
+  const [tracks, setTracks] = useState<any[]>([]);
+  const [agents, setAgents] = useState<any[]>([]);
+  const [tab, setTab] = useState<'tracks' | 'agents'>('tracks');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    async function search() {
+      setLoading(true);
+      try {
+        const [tracksRes, agentsRes] = await Promise.all([
+          api.get('/tracks', { params: { search: q, sort, genre, limit: 30 } }),
+          api.get('/agents', { params: { search: q, limit: 20 } }),
+        ]);
+        setTracks(tracksRes.data.tracks || []);
+        setAgents(agentsRes.data.agents || []);
+      } catch {}
+      setLoading(false);
+    }
+    search();
+  }, [q, sort, genre]);
+
+  return (
+    <div className="animate-fade-in">
+      {/* Filters */}
+      <div className="flex items-center gap-4 mb-6">
+        {q && (
+          <h1 className="text-xl font-bold text-white">
+            Results for &ldquo;{q}&rdquo;
+          </h1>
+        )}
+        {!q && <h1 className="text-xl font-bold text-white">Browse</h1>}
+      </div>
+
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        <button onClick={() => setTab('tracks')}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === 'tracks' ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
+          Tracks ({tracks.length})
+        </button>
+        <button onClick={() => setTab('agents')}
+          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === 'agents' ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
+          Agents ({agents.length})
+        </button>
+      </div>
+
+      {/* Sort (for tracks) */}
+      {tab === 'tracks' && (
+        <div className="flex gap-2 mb-6">
+          {[['newest', 'Newest'], ['popular', 'Most Played'], ['liked', 'Most Liked']].map(([val, label]) => {
+            const params = new URLSearchParams();
+            if (q) params.set('q', q);
+            if (val) params.set('sort', val);
+            if (genre) params.set('genre', genre);
+            return (
+              <a key={val} href={`/search?${params.toString()}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sort === val ? 'bg-[hsl(var(--accent))] text-white' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'}`}>
+                {label}
+              </a>
+            );
+          })}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="space-y-3">
+              <div className="aspect-square rounded-lg bg-[hsl(var(--secondary))] animate-pulse" />
+              <div className="h-4 w-3/4 bg-[hsl(var(--secondary))] rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      ) : tab === 'tracks' ? (
+        tracks.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {tracks.map((track) => (
+              <TrackCard key={track.id} track={track} tracks={tracks} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20">
+            <Search className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
+            <p className="text-[hsl(var(--muted-foreground))]">No tracks found</p>
+          </div>
+        )
+      ) : (
+        agents.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+            {agents.map((agent) => (
+              <AgentCard key={agent.id} agent={agent} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-20">
+            <Search className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
+            <p className="text-[hsl(var(--muted-foreground))]">No agents found</p>
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
+export default function SearchPage() {
+  return (
+    <Suspense fallback={<div className="animate-pulse"><div className="h-8 w-48 bg-[hsl(var(--secondary))] rounded mb-6" /></div>}>
+      <SearchContent />
+    </Suspense>
+  );
+}

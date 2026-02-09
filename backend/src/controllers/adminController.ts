@@ -1,147 +1,158 @@
-import { Request, Response, NextFunction } from 'express';
-import { RequestWithUser } from '../types';
+import { Response } from 'express';
 import { prisma } from '../utils/db';
-import { AppError } from '../middleware/errorHandler';
-import { getStringQuery, getNumberQuery } from '../utils/request';
-import { getPaginationParams, formatPaginationResponse } from '../utils/pagination';
-import bcrypt from 'bcryptjs';
-import { generateAccessToken, generateRefreshToken } from '../utils/jwt';
+import { RequestWithUser } from '../types';
+import logger from '../utils/logger';
 
-// Admin login (separate from regular user login)
-export const adminLogin = async (req: Request, res: Response, next: NextFunction) => {
+export const getStats = async (_req: RequestWithUser, res: Response) => {
   try {
-    const { email, password } = req.body;
-
-    if (!email || !password) {
-      throw new AppError('Email and password are required', 400);
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: email.trim().toLowerCase() },
-    });
-
-    // Prevent timing attacks by always performing bcrypt comparison
-    // Use a dummy hash if user doesn't exist or is not admin
-    const dummyHash = '$2a$12$dummy.hash.to.prevent.timing.attacks.here';
-    const hashToCompare = (user && user.role === 'ADMIN') ? user.passwordHash : dummyHash;
-    
-    const isValidPassword = await bcrypt.compare(password, hashToCompare);
-
-    // Don't reveal if user exists or is admin (prevent user enumeration)
-    if (!user || user.role !== 'ADMIN' || !isValidPassword) {
-      throw new AppError('Invalid credentials', 401);
-    }
-
-    const accessToken = generateAccessToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
-    const refreshToken = generateRefreshToken({
-      userId: user.id,
-      email: user.email,
-      role: user.role,
-    });
-
-    res.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        firstName: user.firstName, lastName: user.lastName,
-        role: user.role,
-      },
-      accessToken,
-      refreshToken,
-    });
-  } catch (error) {
-    next(error);
-  }
-};
-
-// Dashboard statistics
-export const getDashboardStats = async (_req: RequestWithUser, res: Response, next: NextFunction) => {
-  try {
-
-    const [
-      totalUsers,
-      recentUsers,
-    ] = await Promise.all([
-      prisma.user.count().catch(() => 0),
-      prisma.user.findMany({
-        take: 5,
-        orderBy: { createdAt: 'desc' },
-        select: {
-          id: true,
-          email: true,
-          firstName: true, lastName: true,
-          role: true,
-          createdAt: true,
-        },
-      }).catch(() => []),
+    const [users, agents, tracks, plays, premiumSubs] = await Promise.all([
+      prisma.user.count(),
+      prisma.aiAgent.count(),
+      prisma.track.count({ where: { status: 'ACTIVE' } }),
+      prisma.play.count(),
+      prisma.subscription.count({ where: { tier: 'PREMIUM', status: 'ACTIVE' } }),
     ]);
 
-    res.json({
-      stats: {
-        totalUsers,
-      },
-      recentUsers,
-    });
+    res.json({ stats: { users, agents, tracks, plays, premiumSubs } });
   } catch (error) {
-    next(error);
+    logger.error('Admin stats error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to get stats' });
   }
 };
 
-// Get all users (admin view)
-export const getAllUsers = async (req: RequestWithUser, res: Response, next: NextFunction) => {
+export const listUsers = async (req: RequestWithUser, res: Response) => {
   try {
-    const { page, limit, skip } = getPaginationParams(
-      getNumberQuery(req, 'page', 1),
-      getNumberQuery(req, 'limit', 50),
-      50,
-      100
-    );
-    const search = getStringQuery(req, 'search');
+    const page = parseInt(req.query.page as string) || 1;
+    const limit = Math.min(parseInt(req.query.limit as string) || 20, 50);
+    const search = req.query.search as string | undefined;
 
     const where: any = {};
-    if (search && typeof search === 'string' && search.trim().length > 0) {
-      const searchTerm = search.trim();
+    if (search) {
       where.OR = [
-        { email: { contains: searchTerm, mode: 'insensitive' } },
-        { firstName: { contains: searchTerm, mode: 'insensitive' } },
-        { lastName: { contains: searchTerm, mode: 'insensitive' } },
-        { last_name: { contains: searchTerm, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { username: { contains: search, mode: 'insensitive' } },
       ];
     }
 
-    const prismaClient = prisma as any;
-
     const [users, total] = await Promise.all([
-      prismaClient.user.findMany({
+      prisma.user.findMany({
         where,
         select: {
-          id: true,
-          email: true,
-          firstName: true, lastName: true,
-          role: true,
-          createdAt: true,
+          id: true, email: true, username: true, displayName: true, role: true,
+          avatar: true, createdAt: true,
+          subscription: { select: { tier: true, status: true } },
+          _count: { select: { agents: true, likes: true, playlists: true } },
         },
-        skip,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
         take: limit,
-        orderBy: {
-          createdAt: 'desc',
-        },
       }),
-      prismaClient.user.count({ where }),
+      prisma.user.count({ where }),
     ]);
 
-    const response = formatPaginationResponse(users, total, page, limit);
-    
-    res.json({
-      users: response.data,
-      pagination: response.pagination,
-    });
+    res.json({ users, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
-    next(error);
+    logger.error('Admin list users error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to list users' });
+  }
+};
+
+export const updateUserRole = async (req: RequestWithUser, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const { role } = req.body;
+
+    if (!['LISTENER', 'AGENT_OWNER', 'ADMIN'].includes(role)) {
+      res.status(400).json({ error: 'Invalid role' }); return;
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { role },
+      select: { id: true, email: true, username: true, role: true },
+    });
+
+    res.json({ user });
+  } catch (error) {
+    logger.error('Update user role error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to update role' });
+  }
+};
+
+export const manageAgent = async (req: RequestWithUser, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const { status } = req.body;
+
+    if (!['ACTIVE', 'SUSPENDED', 'PENDING_APPROVAL'].includes(status)) {
+      res.status(400).json({ error: 'Invalid status' }); return;
+    }
+
+    const agent = await prisma.aiAgent.update({
+      where: { id },
+      data: { status },
+      include: { owner: { select: { id: true, username: true } } },
+    });
+
+    res.json({ agent });
+  } catch (error) {
+    logger.error('Manage agent error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to manage agent' });
+  }
+};
+
+export const manageTrack = async (req: RequestWithUser, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const { status } = req.body;
+
+    if (!['ACTIVE', 'REMOVED', 'FLAGGED'].includes(status)) {
+      res.status(400).json({ error: 'Invalid status' }); return;
+    }
+
+    const track = await prisma.track.update({ where: { id }, data: { status } });
+    res.json({ track });
+  } catch (error) {
+    logger.error('Manage track error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to manage track' });
+  }
+};
+
+export const getReports = async (req: RequestWithUser, res: Response) => {
+  try {
+    const status = req.query.status as string | undefined;
+    const where: any = {};
+    if (status) where.status = status;
+
+    const reports = await prisma.report.findMany({
+      where,
+      include: {
+        user: { select: { id: true, username: true } },
+        track: { select: { id: true, title: true, slug: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    res.json({ reports });
+  } catch (error) {
+    logger.error('Get reports error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to get reports' });
+  }
+};
+
+export const resolveReport = async (req: RequestWithUser, res: Response) => {
+  try {
+    const id = req.params.id as string;
+    const { status, notes } = req.body;
+
+    const report = await prisma.report.update({
+      where: { id },
+      data: { status, notes },
+    });
+
+    res.json({ report });
+  } catch (error) {
+    logger.error('Resolve report error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to resolve report' });
   }
 };

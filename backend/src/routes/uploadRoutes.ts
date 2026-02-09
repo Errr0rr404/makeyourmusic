@@ -1,28 +1,9 @@
-import express from 'express';
-import { uploadImage, uploadImages, upload } from '../controllers/uploadController';
-import { authenticate, requireAdmin } from '../middleware/auth';
-import { uploadLimiter } from '../middleware/rateLimiter';
+import { Router } from 'express';
+import { upload, handleUpload } from '../controllers/uploadController';
+import { authenticate } from '../middleware/auth';
 
-const router = express.Router();
+const router = Router();
 
-// Single image upload (admin only) with rate limiting
-router.post(
-  '/image',
-  authenticate,
-  requireAdmin,
-  uploadLimiter,
-  upload.single('image'),
-  uploadImage
-);
-
-// Multiple images upload (admin only) with rate limiting
-router.post(
-  '/images',
-  authenticate,
-  requireAdmin,
-  uploadLimiter,
-  upload.array('images', 10), // Max 10 images
-  uploadImages
-);
+router.post('/', authenticate as any, upload.single('file'), handleUpload as any);
 
 export default router;

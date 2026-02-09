@@ -1,33 +1,12 @@
 import { Request } from 'express';
 
-// Define UserRole locally since @prisma/client export isn't properly generated for backend
-// Must match Prisma schema enum
 export const UserRole = {
-  USER: 'USER',
+  LISTENER: 'LISTENER',
+  AGENT_OWNER: 'AGENT_OWNER',
   ADMIN: 'ADMIN',
-  CUSTOMER: 'CUSTOMER',
-  MASTERMIND: 'MASTERMIND',
-  MANAGER: 'MANAGER',
-  CFO: 'CFO',
-  HR_MANAGER: 'HR_MANAGER',
-  SALES_MANAGER: 'SALES_MANAGER',
-  OPERATIONS_MANAGER: 'OPERATIONS_MANAGER',
-  PROJECT_MANAGER: 'PROJECT_MANAGER',
-  ANALYST: 'ANALYST',
 } as const;
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole];
-
-// Payment Status enum for payment gateways
-export enum PaymentStatus {
-  PENDING = 'PENDING',
-  PROCESSING = 'PROCESSING',
-  COMPLETED = 'COMPLETED',
-  SUCCEEDED = 'SUCCEEDED',
-  FAILED = 'FAILED',
-  REFUNDED = 'REFUNDED',
-  CANCELLED = 'CANCELLED',
-}
 
 export interface JWTPayload {
   userId: string;

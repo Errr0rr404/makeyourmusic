@@ -1,47 +1,14 @@
-import express from 'express';
-import { body } from 'express-validator';
-import {
-  register,
-  login,
-  getMe,
-  updateProfile,
-  refresh,
-  logout,
-  forgotPassword,
-  resetPassword,
-} from '../controllers/authController';
+import { Router } from 'express';
+import { register, login, me, updateProfile, logout, refresh } from '../controllers/authController';
 import { authenticate } from '../middleware/auth';
-import { authLimiter } from '../middleware/rateLimiter';
-import {
-  emailValidation,
-  passwordValidation,
-  nameValidation,
-  validateRequest,
-} from '../middleware/validation';
 
-const router = express.Router();
+const router = Router();
 
-router.post(
-  '/register',
-  authLimiter,
-  [emailValidation, passwordValidation, nameValidation],
-  validateRequest,
-  register
-);
-
-router.post(
-  '/login',
-  authLimiter,
-  [emailValidation, body('password').notEmpty().withMessage('Password is required')],
-  validateRequest,
-  login
-);
-
-router.post('/refresh', refresh);
-router.post('/logout', logout);
-router.get('/me', authenticate, getMe);
-router.put('/me', authenticate, updateProfile);
-router.post('/forgot-password', authLimiter, [emailValidation], validateRequest, forgotPassword);
-router.post('/reset-password', authLimiter, [body('token').notEmpty(), passwordValidation], validateRequest, resetPassword);
+router.post('/register', register as any);
+router.post('/login', login as any);
+router.post('/logout', logout as any);
+router.post('/refresh', refresh as any);
+router.get('/me', authenticate as any, me as any);
+router.put('/profile', authenticate as any, updateProfile as any);
 
 export default router;

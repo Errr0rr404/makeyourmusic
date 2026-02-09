@@ -1,15 +1,12 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// Morlo.ai - AI-Generated Content Platform
+// Prisma Schema
 
-// Generator for frontend (custom output location) - TypeScript
 generator client {
   provider      = "prisma-client-js"
   output        = "../frontend/generated/prisma"
   binaryTargets = ["native", "rhel-openssl-1.0.x", "rhel-openssl-3.0.x"]
 }
 
-// Generator for backend (uses prisma-client-js for @prisma/client compatibility)
-// This generates to node_modules/.prisma/client which @prisma/client expects
 generator clientBackend {
   provider = "prisma-client-js"
   output   = "../backend/node_modules/.prisma/client"
@@ -20,658 +17,406 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─── Enums ───────────────────────────────────────────────
+
+enum UserRole {
+  LISTENER
+  AGENT_OWNER
+  ADMIN
+}
+
+enum SubscriptionTier {
+  FREE
+  PREMIUM
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  EXPIRED
+}
+
+enum TrackStatus {
+  PROCESSING
+  ACTIVE
+  REMOVED
+  FLAGGED
+}
+
+enum AgentStatus {
+  ACTIVE
+  SUSPENDED
+  PENDING_APPROVAL
+}
+
+enum NotificationType {
+  NEW_TRACK
+  NEW_FOLLOWER
+  TRACK_LIKED
+  COMMENT
+  SYSTEM
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+// ─── Core Models ─────────────────────────────────────────
+
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String    @map("password_hash")
-  firstName    String?   @map("first_name")
-  lastName     String?   @map("last_name")
-  phone        String?
-  role         UserRole  @default(USER)
+  id           String           @id @default(cuid())
+  email        String           @unique
+  passwordHash String           @map("password_hash")
+  username     String           @unique
+  displayName  String?          @map("display_name")
   avatar       String?
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
-  orders       Order[]
-  employee     Employee?
+  bio          String?
+  role         UserRole         @default(LISTENER)
+  createdAt    DateTime         @default(now()) @map("created_at")
+  updatedAt    DateTime         @updatedAt @map("updated_at")
+
+  // Relations
+  agents        AiAgent[]
+  playlists     Playlist[]
+  likes         Like[]
+  comments      Comment[]
+  follows       Follow[]
+  plays         Play[]
+  shares        Share[]
+  subscription  Subscription?
+  notifications Notification[]
+  reports       Report[]
 
   @@map("users")
 }
 
-enum UserRole {
-  USER
-  ADMIN
-  CUSTOMER
-  MASTERMIND
-  MANAGER
-  CFO
-  HR_MANAGER
-  SALES_MANAGER
-  OPERATIONS_MANAGER
-  PROJECT_MANAGER
-  ANALYST
-}
+model AiAgent {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String      @unique
+  avatar      String?
+  coverImage  String?     @map("cover_image")
+  bio         String?
+  status      AgentStatus @default(ACTIVE)
+  
+  // AI Generation config
+  aiModel     String?     @map("ai_model")
+  apiKeyEnc   String?     @map("api_key_enc") // encrypted API key for external services
+  genConfig   Json?       @map("gen_config")   // JSON config for generation params
 
-// Payroll System
-model PayPeriod {
-  id         String          @id @default(cuid())
-  name       String // e.g., "Week 1 - Jan 2024"
-  startDate  DateTime        @map("start_date")
-  endDate    DateTime        @map("end_date")
-  periodType PayPeriodType   @default(WEEKLY) @map("period_type")
-  status     PayPeriodStatus @default(DRAFT) @map("status")
-  createdAt  DateTime        @default(now()) @map("created_at")
-  updatedAt  DateTime        @map("updated_at")
-  createdBy  String?         @map("created_by") // User ID who created this period
+  // Stats (denormalized for performance)
+  totalPlays    Int @default(0) @map("total_plays")
+  totalLikes    Int @default(0) @map("total_likes")
+  followerCount Int @default(0) @map("follower_count")
 
-  payrolls Payroll[]
-
-  @@index([startDate])
-  @@index([endDate])
-  @@index([status])
-  @@map("pay_periods")
-}
-
-enum PayPeriodType {
-  WEEKLY
-  BIWEEKLY
-  MONTHLY
-  CUSTOM
-}
-
-enum PayPeriodStatus {
-  DRAFT
-  PROCESSING
-  APPROVED
-  PAID
-  CANCELLED
-}
-
-model Payroll {
-  id            String        @id @default(cuid())
-  payPeriodId   String        @map("pay_period_id")
-  employeeId    String        @map("employee_id")
-  regularHours  Decimal       @default(0) @map("regular_hours") @db.Decimal(10, 2)
-  overtimeHours Decimal       @default(0) @map("overtime_hours") @db.Decimal(10, 2)
-  totalHours    Decimal       @default(0) @map("total_hours") @db.Decimal(10, 2)
-  hourlyRate    Decimal       @map("hourly_rate") @db.Decimal(10, 2)
-  regularPay    Decimal       @default(0) @map("regular_pay") @db.Decimal(10, 2)
-  overtimePay   Decimal       @default(0) @map("overtime_pay") @db.Decimal(10, 2)
-  grossPay      Decimal       @default(0) @map("gross_pay") @db.Decimal(10, 2)
-  deductions    Decimal       @default(0) @db.Decimal(10, 2)
-  taxes         Decimal       @default(0) @db.Decimal(10, 2)
-  netPay        Decimal       @default(0) @map("net_pay") @db.Decimal(10, 2)
-  status        PayrollStatus @default(DRAFT)
-  notes         String?       @db.Text
-  paidAt        DateTime?     @map("paid_at")
-  createdAt     DateTime      @default(now()) @map("created_at")
-  updatedAt     DateTime      @updatedAt @map("updated_at")
-
-  payPeriod PayPeriod     @relation(fields: [payPeriodId], references: [id], onDelete: Cascade)
-  employee  Employee      @relation(fields: [employeeId], references: [id])
-  items     PayrollItem[]
-
-  @@index([payPeriodId])
-  @@index([employeeId])
-  @@index([status])
-  @@map("payrolls")
-}
-
-enum PayrollStatus {
-  DRAFT
-  APPROVED
-  PAID
-  CANCELLED
-}
-
-model PayrollSettings {
-  id                 String   @id @default(cuid())
-  overtimeThreshold  Decimal  @default(40) @map("overtime_threshold") @db.Decimal(10, 2)
-  overtimeMultiplier Decimal  @default(1.5) @map("overtime_multiplier") @db.Decimal(10, 2)
-  autoCalculateTaxes Boolean  @default(false) @map("auto_calculate_taxes")
-  taxRateFederal     Decimal? @map("tax_rate_federal") @db.Decimal(10, 5)
-  updatedAt          DateTime @updatedAt @map("updated_at")
-
-  @@map("payroll_settings")
-}
-
-model PayrollItem {
-  id          String          @id @default(cuid())
-  payrollId   String          @map("payroll_id")
-  itemType    PayrollItemType @map("item_type")
-  description String?         @db.Text
-  amount      Decimal         @db.Decimal(10, 2)
-
-  payroll Payroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
-
-  @@index([payrollId])
-  @@index([itemType])
-  @@map("payroll_items")
-}
-
-enum PayrollItemType {
-  REGULAR_HOURS
-  OVERTIME_HOURS
-  BONUS
-  DEDUCTION
-}
-
-model Report {
-  id             String   @id @default(cuid())
-  reportType     String   @map("report_type")
-  title          String
-  description    String?  @db.Text
-  dateRangeStart DateTime @map("date_range_start")
-  dateRangeEnd   DateTime @map("date_range_end")
-  filters        Json     @default("{}")
-  data           Json
-  status         String   @default("PENDING")
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-  createdBy      String?  @map("created_by")
-
-  @@index([reportType])
-  @@index([createdAt])
-  @@map("reports")
-}
-
-// ============================================
-// ERP MODULES
-// ============================================
-
-// Accounting & Finance Module
-model ChartOfAccount {
-  id            String      @id @default(cuid())
-  accountNumber String      @unique @map("account_number")
-  accountName   String      @map("account_name")
-  accountType   AccountType @map("account_type")
-  parentId      String?     @map("parent_id")
-  isActive      Boolean     @default(true) @map("is_active")
-  description   String?     @db.Text
-  createdAt     DateTime    @default(now()) @map("created_at")
-  updatedAt     DateTime    @map("updated_at")
-
-  parent         ChartOfAccount?    @relation("AccountHierarchy", fields: [parentId], references: [id])
-  children       ChartOfAccount[]   @relation("AccountHierarchy")
-  journalEntries JournalEntryLine[]
-
-  @@index([accountType])
-  @@index([parentId])
-  @@map("chart_of_accounts")
-}
-
-enum AccountType {
-  ASSET
-  LIABILITY
-  EQUITY
-  REVENUE
-  EXPENSE
-}
-
-model JournalEntry {
-  id          String   @id @default(cuid())
-  entryDate   DateTime @map("entry_date")
-  description String
-  createdAt   DateTime @default(now()) @map("created_at")
-  createdBy   String   @map("created_by")
-
-  lines JournalEntryLine[]
-
-  @@index([entryDate])
-  @@map("journal_entries")
-}
-
-model JournalEntryLine {
-  id             String   @id @default(cuid())
-  journalEntryId String   @map("journal_entry_id")
-  accountId      String   @map("account_id")
-  debit          Decimal  @db.Decimal(15, 2)
-  credit         Decimal  @db.Decimal(15, 2)
-  description    String?  @db.Text
-  createdAt      DateTime @default(now()) @map("created_at")
-
-  journalEntry JournalEntry   @relation(fields: [journalEntryId], references: [id], onDelete: Cascade)
-  account      ChartOfAccount @relation(fields: [accountId], references: [id])
-
-  @@index([journalEntryId])
-  @@index([accountId])
-  @@map("journal_entry_lines")
-}
-
-model Invoice {
-  id            String        @id @default(cuid())
-  invoiceNumber String        @unique
-  customerId    String        @map("customer_id")
-  issueDate     DateTime      @map("issue_date")
-  dueDate       DateTime      @map("due_date")
-  total         Decimal       @db.Decimal(15, 2)
-  status        InvoiceStatus @default(DRAFT)
-  createdAt     DateTime      @default(now()) @map("created_at")
-  createdBy     String        @map("created_by")
-
-  customer Customer      @relation(fields: [customerId], references: [id])
-  items    InvoiceItem[]
-
-  @@index([customerId])
-  @@index([status])
-  @@map("invoices")
-}
-
-enum InvoiceStatus {
-  DRAFT
-  SENT
-  PAID
-  OVERDUE
-  CANCELLED
-}
-
-model InvoiceItem {
-  id          String   @id @default(cuid())
-  invoiceId   String   @map("invoice_id")
-  description String
-  quantity    Decimal  @db.Decimal(10, 2)
-  unitPrice   Decimal  @map("unit_price") @db.Decimal(15, 2)
-  total       Decimal  @db.Decimal(15, 2)
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  invoice Invoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-
-  @@index([invoiceId])
-  @@map("invoice_items")
-}
-
-// CRM Module
-model Customer {
-  id        String   @id @default(cuid())
-  name      String
-  email     String   @unique
-  phone     String?
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  invoices Invoice[]
+  // Relations
+  ownerId  String  @map("owner_id")
+  owner    User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tracks   Track[]
+  albums   Album[]
+  genres   AiAgentGenre[]
+  followers Follow[]
+  earnings  AgentEarning[]
 
-  @@map("customers")
+  @@map("ai_agents")
 }
 
-model Lead {
-  id        String     @id @default(cuid())
-  name      String
-  email     String?
-  phone     String?
-  source    String?
-  status    LeadStatus @default(NEW)
-  createdAt DateTime   @default(now()) @map("created_at")
-  createdBy String?    @map("created_by")
+model Genre {
+  id    String @id @default(cuid())
+  name  String @unique
+  slug  String @unique
+  color String? // hex color for UI
 
-  customFieldValues CustomFieldValue[] @relation("LeadToCustomFieldValue")
-  opportunities     Opportunity[]
+  tracks Track[]
+  agents AiAgentGenre[]
 
-  @@index([status])
-  @@map("leads")
+  @@map("genres")
 }
 
-enum LeadStatus {
-  NEW
-  CONTACTED
-  QUALIFIED
-  CLOSED_WON
-  CLOSED_LOST
+model AiAgentGenre {
+  agentId String @map("agent_id")
+  genreId String @map("genre_id")
+  agent   AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  genre   Genre   @relation(fields: [genreId], references: [id], onDelete: Cascade)
+
+  @@id([agentId, genreId])
+  @@map("ai_agent_genres")
 }
 
-model Opportunity {
-  id                String    @id @default(cuid())
-  name              String
-  stage             String
-  amount            Decimal   @db.Decimal(15, 2)
-  expectedCloseDate DateTime? @map("expected_close_date")
-  createdAt         DateTime  @default(now()) @map("created_at")
-  createdBy         String?   @map("created_by")
-  leadId            String?   @map("lead_id")
-
-  lead Lead? @relation(fields: [leadId], references: [id], onDelete: Cascade)
-
-  @@index([stage])
-  @@map("opportunities")
-}
-
-// Inventory Module
-model Product {
+model Track {
   id          String      @id @default(cuid())
-  name        String
-  description String?     @db.Text
-  sku         String      @unique
-  price       Decimal     @db.Decimal(10, 2)
-  stock       Int
-  active      Boolean     @default(true)
-  featured    Boolean     @default(false)
-  imageUrls   String[]    @map("image_urls")
-  categoryId  String?     @map("category_id")
-  category    Category?   @relation(fields: [categoryId], references: [id])
-  createdAt   DateTime    @default(now()) @map("created_at")
-  updatedAt   DateTime    @updatedAt @map("updated_at")
-  orderItems  OrderItem[]
+  title       String
+  slug        String      @unique
+  duration    Int         // duration in seconds
+  audioUrl    String      @map("audio_url")
+  coverArt    String?     @map("cover_art")
+  status      TrackStatus @default(PROCESSING)
+  
+  // Metadata
+  mood        String?
+  tags        String[]    @default([])
+  bpm         Int?
+  key         String?     // musical key (e.g. "C minor")
+  
+  // AI Attribution
+  aiModel     String?     @map("ai_model")   // which AI model generated it
+  aiPrompt    String?     @map("ai_prompt")  // the prompt used
+  
+  // Stats (denormalized)
+  playCount   Int @default(0) @map("play_count")
+  likeCount   Int @default(0) @map("like_count")
+  shareCount  Int @default(0) @map("share_count")
 
-  @@map("products")
-}
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-model Category {
-  id        String    @id @default(cuid())
-  name      String
-  slug      String?   @unique
-  products  Product[]
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
+  // Relations
+  agentId  String   @map("agent_id")
+  agent    AiAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  genreId  String?  @map("genre_id")
+  genre    Genre?   @relation(fields: [genreId], references: [id], onDelete: SetNull)
+  albumId  String?  @map("album_id")
+  album    Album?   @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  
+  video          Video?
+  likes          Like[]
+  comments       Comment[]
+  plays          Play[]
+  shares         Share[]
+  playlistTracks PlaylistTrack[]
+  reports        Report[]
 
-  @@map("categories")
-}
-
-model Order {
-  id               String         @id @default(cuid())
-  userId           String         @map("user_id")
-  orderNumber      String         @unique @map("order_number")
-  subtotal         Decimal        @db.Decimal(15, 2)
-  discount         Decimal        @default(0) @db.Decimal(15, 2)
-  shippingCost     Decimal        @default(0) @map("shipping_cost") @db.Decimal(15, 2)
-  totalAmount      Decimal        @map("total_amount") @db.Decimal(15, 2)
-  status           OrderStatus    @default(PENDING)
-  deliveryMethod   String         @default("SHIPPING") @map("delivery_method")
-  paymentTiming    String         @default("PAY_NOW") @map("payment_timing")
-  billingAddress   Json?          @map("billing_address")
-  source           String         @default("ONLINE")
-  posSessionId     String?        @map("pos_session_id")
-  posTransactionId String?        @unique @map("pos_transaction_id")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-
-  user           User                @relation(fields: [userId], references: [id])
-  items          OrderItem[]
-  posSession     PosSession?         @relation(fields: [posSessionId], references: [id])
-  statusHistory  OrderStatusHistory[]
-  posTransaction PosTransaction?     @relation("OrderToPosTransaction", fields: [posTransactionId], references: [id])
-
-  @@index([userId])
+  @@index([agentId])
+  @@index([genreId])
   @@index([status])
-  @@index([posSessionId])
-  @@map("orders")
+  @@index([playCount(sort: Desc)])
+  @@index([createdAt(sort: Desc)])
+  @@map("tracks")
 }
 
-model OrderStatusHistory {
-  id        String      @id @default(cuid())
-  orderId   String      @map("order_id")
-  status    OrderStatus
-  note      String?     @db.Text
-  createdAt DateTime    @default(now()) @map("created_at")
+model Video {
+  id          String @id @default(cuid())
+  videoUrl    String @map("video_url")
+  thumbnail   String?
+  duration    Int?   // video duration in seconds
 
-  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
-
-  @@index([orderId])
-  @@map("order_status_history")
-}
-
-model PosSession {
-  id             String           @id @default(cuid())
-  managerId      String           @map("manager_id")
-  status         String           @default("ACTIVE") // ACTIVE, CLOSED
-  openingBalance Decimal          @default(0) @map("opening_balance") @db.Decimal(15, 2)
-  closingBalance Decimal?         @map("closing_balance") @db.Decimal(15, 2)
-  expectedCash   Decimal?         @map("expected_cash") @db.Decimal(15, 2)
-  actualCash     Decimal?         @map("actual_cash") @db.Decimal(15, 2)
-  difference     Decimal?         @db.Decimal(15, 2)
-  heldOrders     Json?            @map("held_orders")
-  notes          String?          @db.Text
-  openedAt       DateTime         @default(now()) @map("opened_at")
-  closedAt       DateTime?        @map("closed_at")
-  createdAt      DateTime         @default(now()) @map("created_at")
-  updatedAt      DateTime         @updatedAt @map("updated_at")
-
-  transactions PosTransaction[]
-  orders       Order[]
-
-  @@index([managerId])
-  @@index([status])
-  @@map("pos_sessions")
-}
-
-model PosTransaction {
-  id              String   @id @default(cuid())
-  sessionId       String   @map("session_id")
-  orderId         String?  @unique @map("order_id")
-  transactionType String   @map("transaction_type") // SALE, REFUND
-  paymentMethod   String   @map("payment_method") // CASH, CARD, MIXED
-  subtotal        Decimal  @db.Decimal(15, 2)
-  tax             Decimal  @default(0) @db.Decimal(15, 2)
-  discount        Decimal  @default(0) @db.Decimal(15, 2)
-  total           Decimal  @db.Decimal(15, 2)
-  cashAmount      Decimal  @default(0) @map("cash_amount") @db.Decimal(15, 2)
-  cardAmount      Decimal  @default(0) @map("card_amount") @db.Decimal(15, 2)
-  customerEmail   String?  @map("customer_email")
-  customerName    String?  @map("customer_name")
-  notes           String?  @db.Text
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  session PosSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  order   Order?     @relation("OrderToPosTransaction")
-
-  @@index([sessionId])
-  @@index([orderId])
-  @@map("pos_transactions")
-}
-
-enum OrderStatus {
-  PENDING
-  PROCESSING
-  SHIPPED
-  DELIVERED
-  CANCELLED
-  RETURNED
-  REFUNDED
-}
-
-model PromoCode {
-  id            String    @id @default(cuid())
-  code          String    @unique
-  discountType  String    @map("discount_type") // PERCENTAGE or FIXED
-  discountValue Decimal   @map("discount_value") @db.Decimal(10, 2)
-  minPurchase   Decimal?  @map("min_purchase") @db.Decimal(10, 2)
-  maxDiscount   Decimal?  @map("max_discount") @db.Decimal(10, 2)
-  startDate     DateTime  @map("start_date")
-  endDate       DateTime  @map("end_date")
-  usageLimit    Int?      @map("usage_limit")
-  usageCount    Int       @default(0) @map("usage_count")
-  isActive      Boolean   @default(true) @map("is_active")
-  createdAt     DateTime  @default(now()) @map("created_at")
-  updatedAt     DateTime  @updatedAt @map("updated_at")
-
-  @@map("promo_codes")
-}
-
-model Workflow {
-  id            String              @id @default(cuid())
-  name          String
-  description   String?             @db.Text
-  triggerType   String              @map("trigger_type")
-  triggerConfig Json                @map("trigger_config")
-  steps         Json
-  status        String              @default("ACTIVE")
-  isActive      Boolean             @default(true) @map("is_active")
-  createdAt     DateTime            @default(now()) @map("created_at")
-  updatedAt     DateTime            @updatedAt @map("updated_at")
-  createdBy     String?             @map("created_by")
-  executions    WorkflowExecution[]
-
-  @@map("workflows")
-}
-
-model WorkflowExecution {
-  id          String    @id @default(cuid())
-  workflowId  String    @map("workflow_id")
-  status      String    @default("RUNNING")
-  inputData   Json      @map("input_data")
-  outputData  Json?     @map("output_data")
-  error       String?   @db.Text
-  startedAt   DateTime  @default(now()) @map("started_at")
-  completedAt DateTime? @map("completed_at")
-  duration    Int? // in milliseconds
-
-  workflow Workflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-
-  @@index([workflowId])
-  @@map("workflow_executions")
-}
-
-model Notification {
-  id        String   @id @default(cuid())
-  userId    String   @map("user_id")
-  type      String
-  title     String
-  message   String   @db.Text
-  link      String?
-  isRead    Boolean  @default(false) @map("is_read")
   createdAt DateTime @default(now()) @map("created_at")
 
+  trackId String @unique @map("track_id")
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@map("videos")
+}
+
+model Album {
+  id       String  @id @default(cuid())
+  title    String
+  slug     String  @unique
+  coverArt String? @map("cover_art")
+  description String?
+  
+  releaseDate DateTime? @map("release_date")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  agentId String  @map("agent_id")
+  agent   AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  tracks  Track[]
+
+  @@map("albums")
+}
+
+// ─── Social Models ───────────────────────────────────────
+
+model Playlist {
+  id          String  @id @default(cuid())
+  title       String
+  slug        String  @unique
+  description String?
+  coverArt    String? @map("cover_art")
+  isPublic    Boolean @default(true) @map("is_public")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tracks PlaylistTrack[]
+
   @@index([userId])
-  @@index([isRead])
+  @@map("playlists")
+}
+
+model PlaylistTrack {
+  id       String @id @default(cuid())
+  position Int    // ordering within playlist
+
+  addedAt DateTime @default(now()) @map("added_at")
+
+  playlistId String   @map("playlist_id")
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  trackId    String   @map("track_id")
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, trackId])
+  @@map("playlist_tracks")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId  String @map("user_id")
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId String @map("track_id")
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trackId])
+  @@map("likes")
+}
+
+model Comment {
+  id      String @id @default(cuid())
+  content String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId  String @map("user_id")
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId String @map("track_id")
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  // Self-referencing for threaded comments
+  parentId String?   @map("parent_id")
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  @@index([trackId])
+  @@map("comments")
+}
+
+model Follow {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId  String  @map("user_id")
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentId String  @map("agent_id")
+  agent   AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, agentId])
+  @@map("follows")
+}
+
+model Share {
+  id        String   @id @default(cuid())
+  platform  String?  // 'copy', 'twitter', 'facebook', etc.
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId  String? @map("user_id")
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  trackId String  @map("track_id")
+  track   Track   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@map("shares")
+}
+
+// ─── Analytics Models ────────────────────────────────────
+
+model Play {
+  id             String   @id @default(cuid())
+  durationPlayed Int      @default(0) @map("duration_played") // seconds actually listened
+  completed      Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  userId  String? @map("user_id")
+  user    User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  trackId String  @map("track_id")
+  track   Track   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([trackId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("plays")
+}
+
+// ─── Monetization Models ─────────────────────────────────
+
+model Subscription {
+  id               String             @id @default(cuid())
+  tier             SubscriptionTier   @default(FREE)
+  status           SubscriptionStatus @default(ACTIVE)
+  stripeCustomerId String?            @unique @map("stripe_customer_id")
+  stripeSubId      String?            @unique @map("stripe_sub_id")
+  
+  currentPeriodStart DateTime? @map("current_period_start")
+  currentPeriodEnd   DateTime? @map("current_period_end")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model AgentEarning {
+  id       String @id @default(cuid())
+  amount   Float  @default(0) // earnings in USD
+  plays    Int    @default(0) // plays in this period
+  period   String // e.g. "2026-02"
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  agentId String  @map("agent_id")
+  agent   AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([agentId, period])
+  @@map("agent_earnings")
+}
+
+// ─── Platform Models ─────────────────────────────────────
+
+model Notification {
+  id      String           @id @default(cuid())
+  type    NotificationType
+  title   String
+  message String
+  read    Boolean          @default(false)
+  data    Json?            // additional data (trackId, agentId, etc.)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt(sort: Desc)])
   @@map("notifications")
 }
 
-model OrderItem {
-  id              String  @id @default(cuid())
-  orderId         String  @map("order_id")
-  productId       String  @map("product_id")
-  quantity        Int
-  price           Decimal @db.Decimal(10, 2)
-  priceAtPurchase Decimal @map("price_at_purchase") @db.Decimal(10, 2)
-  variantId       String? @map("variant_id")
+model Report {
+  id     String       @id @default(cuid())
+  reason String
+  status ReportStatus @default(PENDING)
+  notes  String?
 
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  product Product @relation(fields: [productId], references: [id])
-
-  @@index([orderId])
-  @@index([productId])
-  @@map("order_items")
-}
-
-
-// HR Module
-model Employee {
-  id         String      @id @default(cuid())
-  employeeId String      @unique @map("employee_id")
-  userId     String?     @unique @map("user_id")
-  firstName  String      @map("first_name")
-  lastName   String      @map("last_name")
-  email      String      @unique
-  phone      String?
-  jobTitle   String      @map("job_title")
-  department String
-  hourlyRate Decimal?    @map("hourly_rate") @db.Decimal(10, 2)
-  hireDate   DateTime    @map("hire_date")
-  createdAt  DateTime    @default(now()) @map("created_at")
-  updatedAt  DateTime    @updatedAt @map("updated_at")
-  payrolls   Payroll[]
-  timeClocks TimeClock[]
-  user       User?       @relation(fields: [userId], references: [id])
-
-  @@map("employees")
-}
-
-model TimeClock {
-  id         String   @id @default(cuid())
-  employeeId String   @map("employee_id")
-  punchType  String   @map("punch_type") // CLOCK_IN, CLOCK_OUT, etc.
-  punchTime  DateTime @default(now()) @map("punch_time")
-  notes      String?  @db.Text
-  createdAt  DateTime @default(now()) @map("created_at")
-
-  employee Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
-
-  @@index([employeeId])
-  @@map("time_clocks")
-}
-
-// Extensibility
-model CustomField {
-  id        String    @id @default(cuid())
-  name      String
-  type      FieldType
-  module    String // e.g., "Lead", "Customer"
-  createdAt DateTime  @default(now()) @map("created_at")
-
-  values CustomFieldValue[] @relation("CustomFieldToValue")
-
-  @@unique([name, module])
-  @@map("custom_fields")
-}
-
-enum FieldType {
-  TEXT
-  NUMBER
-  DATE
-}
-
-model CustomFieldValue {
-  id        String   @id @default(cuid())
-  fieldId   String   @map("field_id")
-  entityId  String   @map("entity_id") // ID of the lead, customer, etc.
-  value     String
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
-  field CustomField @relation("CustomFieldToValue", fields: [fieldId], references: [id], onDelete: Cascade)
-  lead  Lead?       @relation("LeadToCustomFieldValue", fields: [entityId], references: [id], onDelete: Cascade)
+  userId  String @map("user_id")
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId String @map("track_id")
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
-  @@unique([fieldId, entityId])
-  @@map("custom_field_values")
-}
-
-model Project {
-  id          String        @id @default(cuid())
-  name        String
-  description String?       @db.Text
-  status      ProjectStatus @default(PLANNING)
-  priority    String        @default("MEDIUM")
-  startDate   DateTime?     @map("start_date")
-  endDate     DateTime?     @map("end_date")
-  budget      Decimal?      @db.Decimal(15, 2)
-  actualCost  Decimal       @default(0) @map("actual_cost") @db.Decimal(15, 2)
-  progress    Int           @default(0)
-  managerId   String?       @map("manager_id")
-  customerId  String?       @map("customer_id")
-  notes       String?       @db.Text
-  createdAt   DateTime      @default(now()) @map("created_at")
-  createdBy   String?       @map("created_by")
-
-  tasks ProjectTask[]
-
-  @@index([status])
-  @@map("projects")
-}
-
-model ProjectTask {
-  id             String        @id @default(cuid())
-  projectId      String        @map("project_id")
-  name           String
-  description    String?       @db.Text
-  status         String        @default("TODO")
-  priority       String        @default("MEDIUM")
-  startDate      DateTime?     @map("start_date")
-  dueDate        DateTime?     @map("due_date")
-  estimatedHours Decimal?      @map("estimated_hours") @db.Decimal(10, 2)
-  actualHours    Decimal       @default(0) @map("actual_hours") @db.Decimal(10, 2)
-  progress       Int           @default(0)
-  parentTaskId   String?       @map("parent_task_id")
-  dependencies   String[]      @default([])
-  notes          String?       @db.Text
-  createdAt      DateTime      @default(now()) @map("created_at")
-  createdBy      String?       @map("created_by")
-
-  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-
-  @@index([projectId])
-  @@map("project_tasks")
-}
-
-enum ProjectStatus {
-  PLANNING
-  IN_PROGRESS
-  COMPLETED
-  ON_HOLD
+  @@map("reports")
 }

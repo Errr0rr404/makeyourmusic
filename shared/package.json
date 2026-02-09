@@ -1,0 +1,12 @@
+{
+  "name": "@morlo/shared",
+  "version": "1.0.0",
+  "description": "Shared types, stores, API client, and utilities for Morlo.ai",
+  "main": "index.ts",
+  "types": "index.ts",
+  "private": true,
+  "dependencies": {
+    "axios": "^1.9.0",
+    "zustand": "^5.0.5"
+  }
+}
