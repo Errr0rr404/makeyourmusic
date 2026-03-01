@@ -1,39 +1,40 @@
 #!/bin/bash
 
-# Open ERP - Dependency Installation Script
-# Note: You can also use: ./start.sh --install
+# Morlo.ai — Dependency Installation Script
+# Installs dependencies for all packages (root, backend, frontend, shared).
 
 echo "════════════════════════════════════════"
-echo "   🚀 Open ERP - Dependency Install"
+echo "   🎵 Morlo.ai — Dependency Install"
 echo "════════════════════════════════════════"
 echo ""
 
 # Check Node.js version
 if ! command -v node &> /dev/null; then
-    echo "❌ Node.js is not installed. Please install Node.js 20+ first."
+    echo "❌ Node.js is not installed. Please install Node.js 22+ first."
     exit 1
 fi
 
 NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-if [ "$NODE_VERSION" -lt 20 ]; then
-    echo "❌ Node.js 20+ is required. Current version: $(node -v)"
+if [ "$NODE_VERSION" -lt 22 ]; then
+    echo "❌ Node.js 22+ is required. Current version: $(node -v)"
     exit 1
 fi
 
 echo "✅ Node.js version: $(node -v)"
 echo ""
 
+# Install root dependencies
+echo "📦 Installing root dependencies..."
+npm install || { echo "❌ Root installation failed"; exit 1; }
+
+# Install backend dependencies
+echo "📦 Installing backend dependencies..."
+cd backend && npm install || { echo "❌ Backend installation failed"; exit 1; }
+cd ..
+
 # Install frontend dependencies
 echo "📦 Installing frontend dependencies..."
-cd frontend
-npm install
-if [ $? -eq 0 ]; then
-    echo "✅ Frontend dependencies installed"
-else
-    echo "❌ Frontend installation failed"
-    exit 1
-fi
-
+cd frontend && npm install || { echo "❌ Frontend installation failed"; exit 1; }
 cd ..
 
 echo ""
@@ -42,22 +43,7 @@ echo "✅ Installation Complete!"
 echo "════════════════════════════════════════"
 echo ""
 echo "Next steps:"
-echo "  1. Configure your .env.local file in frontend/"
-echo "  2. Run: ./start.sh"
-echo ""
-echo "Or run everything at once:"
-echo "  ./start.sh --install"
-cd ..
-
-echo ""
-echo "════════════════════════════════════════"
-echo "✅ Installation Complete!"
-echo "════════════════════════════════════════"
-echo ""
-echo "Next steps:"
-echo "  1. Configure your .env.local file in frontend/"
-echo "  2. Run: ./start.sh"
-echo ""
-echo "Or run everything at once:"
-echo "  ./start.sh --install"
+echo "  1. Configure backend/.env (see README.md)"
+echo "  2. Configure frontend/.env.local"
+echo "  3. Run: npm run dev"
 echo ""

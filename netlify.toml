@@ -8,6 +8,8 @@
   NEXT_TELEMETRY_DISABLED = "1"
 
 # Proxy API calls to the Railway backend
+# NOTE: Netlify redirects don't support env vars. Update this URL when
+# the Railway backend URL changes.
 [[redirects]]
   from = "/api/*"
   to = "https://morlo-production.up.railway.app/api/:splat"
