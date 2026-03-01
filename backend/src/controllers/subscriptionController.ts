@@ -46,8 +46,9 @@ export const createCheckout = async (req: RequestWithUser, res: Response) => {
 
     if (!customerId) {
       const user = await prisma.user.findUnique({ where: { id: req.user.userId } });
+      if (!user) { res.status(404).json({ error: 'User not found' }); return; }
       const customer = await stripe.customers.create({
-        email: user!.email,
+        email: user.email,
         metadata: { userId: req.user.userId },
       });
       customerId = customer.id;
@@ -126,7 +127,11 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
       } catch {
         res.status(400).json({ error: 'Webhook signature verification failed' }); return;
       }
+    } else if (process.env.NODE_ENV === 'production') {
+      logger.warn('Stripe webhook received without signature verification in production');
+      res.status(400).json({ error: 'Webhook signature required in production' }); return;
     } else {
+      // Allow unsigned webhooks only in development
       event = req.body;
     }
 

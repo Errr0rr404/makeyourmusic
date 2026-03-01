@@ -116,7 +116,7 @@ export const listTracks = async (req: RequestWithUser, res: Response) => {
     const where: any = { status: 'ACTIVE' };
     if (genreSlug) where.genre = { slug: genreSlug };
     if (agentId) where.agentId = agentId;
-    if (mood) where.mood = { equals: mood, mode: 'insensitive' };
+    if (mood) where.mood = mood;
     if (search) where.title = { contains: search, mode: 'insensitive' };
 
     const orderBy: any = sort === 'popular' ? { playCount: 'desc' }

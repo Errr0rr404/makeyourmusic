@@ -70,6 +70,10 @@ export function AudioPlayer() {
     if (sameOrigin && !engineInitRef.current) {
       audioEngine.init(audio);
       engineInitRef.current = true;
+    } else if (!sameOrigin && engineInitRef.current) {
+      // Switching from same-origin to cross-origin: disconnect engine
+      audioEngine.destroy();
+      engineInitRef.current = false;
     }
 
     if (isPlaying) {

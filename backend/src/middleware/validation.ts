@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from 'express';
-import { body, validationResult } from 'express-validator';
+import { body, validationResult, query } from 'express-validator';
 import validator from 'validator';
 
 // Password strength validation
@@ -239,8 +239,6 @@ export const resolveReportRules = [
 ];
 
 // ─── Query parameter helpers ──────────────────────────────
-
-import { query } from 'express-validator';
 
 export const paginationRules = [
   query('page').optional().isInt({ min: 1 }).withMessage('Page must be a positive integer'),

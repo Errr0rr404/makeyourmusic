@@ -116,7 +116,7 @@ export default function LibraryScreen() {
           renderItem={({ item }) => (
             <TouchableOpacity
               className="flex-row items-center px-4 py-3"
-              onPress={() => router.push(`/library`)}
+              onPress={() => router.push(`/playlist/${item.slug || item.id}` as any)}
               activeOpacity={0.7}
             >
               <View className="w-14 h-14 rounded-lg bg-morlo-card items-center justify-center mr-3">
