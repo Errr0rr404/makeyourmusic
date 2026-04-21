@@ -4,7 +4,8 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Search, Bell, User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { Search, User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { NotificationBell } from '@/components/notifications/NotificationBell';
 
 export function Topbar() {
   const router = useRouter();
@@ -13,8 +14,11 @@ export function Topbar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
 
   useEffect(() => {
-    fetchUser();
-  }, [fetchUser]);
+    // Only fetch user if we don't already have one loaded
+    if (!user && !isAuthenticated) {
+      fetchUser();
+    }
+  }, [user, isAuthenticated, fetchUser]);
 
   // Close user menu on Escape key
   useEffect(() => {
@@ -53,9 +57,7 @@ export function Topbar() {
       <div className="flex items-center gap-3 ml-4">
         {isAuthenticated ? (
           <>
-            <button className="relative p-2 rounded-full hover:bg-white/5 transition-colors" aria-label="Notifications">
-              <Bell className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
-            </button>
+            <NotificationBell />
 
             {/* User Menu */}
             <div className="relative">

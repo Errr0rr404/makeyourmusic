@@ -81,20 +81,14 @@ const getPrismaClient = (): PrismaClient => {
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   }) as any;
 
-  // Suppress Prisma error logs for schema/column mismatches during tests
+  // Suppress Prisma error logs for known schema mismatches during development/tests
   prisma.$on('error', (event: any) => {
-    // Silently ignore schema mismatch errors (tables/columns that don't exist)
-    // These occur during tests when optional models haven't been migrated
     if (event.message && (
       event.message.includes('does not exist in the current database') ||
-      event.message.includes('column') ||
-      event.message.includes('storeConfig') ||
-      event.message.includes('invalid') ||
-      event.message.toLowerCase().includes('table')
+      event.message.includes('storeConfig')
     )) {
-      return; // Suppress this error
+      return; // Suppress known schema mismatch errors
     }
-    // Log other errors normally
     if (process.env.NODE_ENV !== 'test') {
       logger.error('[Prisma Error]', { message: event.message, target: event.target });
     }

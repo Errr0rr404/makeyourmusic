@@ -23,6 +23,9 @@ export const createGenre = async (req: RequestWithUser, res: Response) => {
 
     const slug = name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
 
+    const existing = await prisma.genre.findUnique({ where: { slug } });
+    if (existing) { res.status(409).json({ error: 'Genre with this name already exists' }); return; }
+
     const genre = await prisma.genre.create({ data: { name, slug, color } });
     res.status(201).json({ genre });
   } catch (error) {

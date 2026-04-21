@@ -18,6 +18,7 @@ export interface User {
   role: UserRole;
   avatar: string | null;
   bio?: string | null;
+  emailVerified?: boolean;
   createdAt?: string;
   subscription?: { tier: SubscriptionTier; status: SubscriptionStatus } | null;
   _count?: { likes: number; playlists: number; follows: number };
@@ -42,8 +43,10 @@ export interface Track extends TrackItem {
   tags: string[];
   bpm: number | null;
   key: string | null;
+  lyrics?: string | null;
   aiModel: string | null;
   aiPrompt: string | null;
+  isPublic?: boolean;
   playCount: number;
   likeCount: number;
   shareCount: number;
@@ -169,5 +172,10 @@ export interface PaginatedResponse<T> {
   total: number;
   page: number;
   totalPages: number;
-  [key: string]: T[] | number; // items array key varies
+  items?: T[];
+  tracks?: T[];
+  agents?: T[];
+  genres?: T[];
+  comments?: T[];
+  playlists?: T[];
 }

@@ -71,6 +71,13 @@ export default function LoginScreen() {
             secureTextEntry
           />
 
+          <TouchableOpacity
+            onPress={() => router.push('/(auth)/forgot-password')}
+            className="mb-4 -mt-2 self-end"
+          >
+            <Text className="text-morlo-accent text-xs font-semibold">Forgot password?</Text>
+          </TouchableOpacity>
+
           <Button title="Sign In" onPress={handleLogin} loading={loading} size="lg" />
 
           <View className="flex-row items-center justify-center mt-6">

@@ -2,7 +2,10 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApi } from '@morlo/shared';
+
+const PUSH_TOKEN_KEY = 'morlo-push-token';
 
 // Configure how notifications appear when the app is in the foreground
 Notifications.setNotificationHandler({
@@ -62,18 +65,36 @@ export async function registerForPushNotifications(): Promise<string | null> {
     projectId,
   });
 
-  // Register token with backend
+  // Register token with backend (best-effort; don't break launch if the user
+  // isn't logged in or the network is down)
   try {
     const api = getApi();
     await api.post('/notifications/register-token', {
       token: token.data,
       platform: Platform.OS,
     });
+    await AsyncStorage.setItem(PUSH_TOKEN_KEY, token.data);
   } catch {
-    // Backend might not have this endpoint yet, silent fail
+    // Silent — will retry on next launch or login
   }
 
   return token.data;
+}
+
+/**
+ * Tell the backend to forget this device's push token. Call on logout so the
+ * user doesn't keep receiving pushes for the previous account on this device.
+ */
+export async function unregisterPushToken(): Promise<void> {
+  const cached = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+  if (!cached) return;
+  try {
+    await getApi().post('/notifications/unregister-token', { token: cached });
+  } catch {
+    // Silent — the token record will get overwritten when the next user logs in
+  } finally {
+    await AsyncStorage.removeItem(PUSH_TOKEN_KEY);
+  }
 }
 
 /**

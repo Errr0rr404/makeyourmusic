@@ -4,6 +4,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { Topbar } from '@/components/layout/Topbar';
 import { AudioPlayer } from '@/components/player/AudioPlayer';
 import { MobileNav } from '@/components/layout/MobileNav';
+import { Footer } from '@/components/layout/Footer';
 import { usePlayerStore } from '@/lib/store/playerStore';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
@@ -26,6 +27,9 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
       >
         <div className="p-4 md:p-6">
           {children}
+        </div>
+        <div className="md:ml-0">
+          <Footer />
         </div>
       </main>
       <MobileNav />

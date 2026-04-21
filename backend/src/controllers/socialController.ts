@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
+import { createNotification } from '../utils/notifications';
 
 // ─── Likes ───────────────────────────────────────────────
 
@@ -15,13 +16,20 @@ export const toggleLike = async (req: RequestWithUser, res: Response) => {
     });
 
     if (existing) {
+      const track = await prisma.track.findUnique({ where: { id: trackId } });
+      if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
+
       await prisma.$transaction([
         prisma.like.delete({ where: { id: existing.id } }),
         prisma.track.update({ where: { id: trackId }, data: { likeCount: { decrement: 1 } } }),
+        prisma.aiAgent.update({ where: { id: track.agentId }, data: { totalLikes: { decrement: 1 } } }),
       ]);
       res.json({ liked: false });
     } else {
-      const track = await prisma.track.findUnique({ where: { id: trackId } });
+      const track = await prisma.track.findUnique({
+        where: { id: trackId },
+        include: { agent: { select: { id: true, name: true, slug: true, ownerId: true } } },
+      });
       if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
 
       await prisma.$transaction([
@@ -29,6 +37,22 @@ export const toggleLike = async (req: RequestWithUser, res: Response) => {
         prisma.track.update({ where: { id: trackId }, data: { likeCount: { increment: 1 } } }),
         prisma.aiAgent.update({ where: { id: track.agentId }, data: { totalLikes: { increment: 1 } } }),
       ]);
+
+      if (track.agent.ownerId !== req.user.userId) {
+        const liker = await prisma.user.findUnique({
+          where: { id: req.user.userId },
+          select: { displayName: true, username: true },
+        });
+        const name = liker?.displayName || liker?.username || 'Someone';
+        await createNotification({
+          userId: track.agent.ownerId,
+          type: 'TRACK_LIKED',
+          title: 'New like',
+          message: `${name} liked your track "${track.title}"`,
+          data: { trackId: track.id, trackSlug: track.slug, agentSlug: track.agent.slug },
+        });
+      }
+
       res.json({ liked: true });
     }
   } catch (error) {
@@ -43,10 +67,19 @@ export const getLikedTracks = async (req: RequestWithUser, res: Response) => {
 
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 50);
+    const userId = req.user.userId;
+
+    // Include private tracks only if the user owns them (via their agent)
+    const visibilityWhere = {
+      OR: [
+        { track: { isPublic: true } },
+        { track: { agent: { ownerId: userId } } },
+      ],
+    };
 
     const [likes, total] = await Promise.all([
       prisma.like.findMany({
-        where: { userId: req.user.userId },
+        where: { userId, ...visibilityWhere },
         include: {
           track: {
             include: {
@@ -59,7 +92,7 @@ export const getLikedTracks = async (req: RequestWithUser, res: Response) => {
         skip: (page - 1) * limit,
         take: limit,
       }),
-      prisma.like.count({ where: { userId: req.user.userId } }),
+      prisma.like.count({ where: { userId, ...visibilityWhere } }),
     ]);
 
     res.json({ tracks: likes.map(l => ({ ...l.track, likedAt: l.createdAt })), total, page });
@@ -76,6 +109,10 @@ export const toggleFollow = async (req: RequestWithUser, res: Response) => {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
 
     const agentId = req.params.agentId as string;
+
+    const agent = await prisma.aiAgent.findUnique({ where: { id: agentId } });
+    if (!agent) { res.status(404).json({ error: 'Agent not found' }); return; }
+
     const existing = await prisma.follow.findUnique({
       where: { userId_agentId: { userId: req.user.userId, agentId } },
     });
@@ -91,6 +128,22 @@ export const toggleFollow = async (req: RequestWithUser, res: Response) => {
         prisma.follow.create({ data: { userId: req.user.userId, agentId } }),
         prisma.aiAgent.update({ where: { id: agentId }, data: { followerCount: { increment: 1 } } }),
       ]);
+
+      if (agent.ownerId !== req.user.userId) {
+        const follower = await prisma.user.findUnique({
+          where: { id: req.user.userId },
+          select: { displayName: true, username: true },
+        });
+        const name = follower?.displayName || follower?.username || 'Someone';
+        await createNotification({
+          userId: agent.ownerId,
+          type: 'NEW_FOLLOWER',
+          title: 'New follower',
+          message: `${name} followed ${agent.name}`,
+          data: { agentId: agent.id, agentSlug: agent.slug, followerId: req.user.userId },
+        });
+      }
+
       res.json({ following: true });
     }
   } catch (error) {
@@ -104,6 +157,22 @@ export const toggleFollow = async (req: RequestWithUser, res: Response) => {
 export const getComments = async (req: RequestWithUser, res: Response) => {
   try {
     const trackId = req.params.trackId as string;
+
+    // Verify the track is public or owned by the requester before exposing comments
+    const track = await prisma.track.findUnique({
+      where: { id: trackId },
+      select: { isPublic: true, agent: { select: { ownerId: true } } },
+    });
+    if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
+    if (!track.isPublic) {
+      const isOwner = req.user && track.agent.ownerId === req.user.userId;
+      const isAdmin = req.user?.role === 'ADMIN';
+      if (!isOwner && !isAdmin) {
+        res.status(404).json({ error: 'Track not found' });
+        return;
+      }
+    }
+
     const comments = await prisma.comment.findMany({
       where: { trackId, parentId: null },
       include: {
@@ -138,15 +207,84 @@ export const createComment = async (req: RequestWithUser, res: Response) => {
       res.status(400).json({ error: 'Comment must be 2000 characters or less' }); return;
     }
 
+    // Only permit comments on visible tracks (public, or owned by commenter, or admin)
+    const track = await prisma.track.findUnique({
+      where: { id: trackId },
+      select: {
+        title: true,
+        slug: true,
+        isPublic: true,
+        agent: { select: { ownerId: true, slug: true } },
+      },
+    });
+    if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
+    if (!track.isPublic && track.agent.ownerId !== req.user.userId && req.user.role !== 'ADMIN') {
+      res.status(404).json({ error: 'Track not found' });
+      return;
+    }
+
     const comment = await prisma.comment.create({
       data: { content: trimmed, userId: req.user.userId, trackId, parentId },
       include: { user: { select: { id: true, username: true, displayName: true, avatar: true } } },
     });
 
+    if (track.agent.ownerId !== req.user.userId) {
+      const commenter = comment.user.displayName || comment.user.username;
+      await createNotification({
+        userId: track.agent.ownerId,
+        type: 'COMMENT',
+        title: 'New comment',
+        message: `${commenter} commented on "${track.title}"`,
+        data: {
+          trackId,
+          trackSlug: track.slug,
+          agentSlug: track.agent.slug,
+          commentId: comment.id,
+        },
+      });
+    }
+
     res.status(201).json({ comment });
   } catch (error) {
     logger.error('Create comment error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to create comment' });
+  }
+};
+
+export const updateComment = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
+
+    const id = req.params.id as string;
+    const { content } = req.body;
+
+    if (!content || typeof content !== 'string' || content.trim().length === 0) {
+      res.status(400).json({ error: 'Comment content is required' });
+      return;
+    }
+    const trimmed = content.trim();
+    if (trimmed.length > 2000) {
+      res.status(400).json({ error: 'Comment must be 2000 characters or less' });
+      return;
+    }
+
+    const existing = await prisma.comment.findUnique({ where: { id } });
+    if (!existing) { res.status(404).json({ error: 'Comment not found' }); return; }
+    if (existing.userId !== req.user.userId) {
+      res.status(403).json({ error: 'Not authorized' });
+      return;
+    }
+
+    const comment = await prisma.comment.update({
+      where: { id },
+      data: { content: trimmed },
+      include: { user: { select: { id: true, username: true, displayName: true, avatar: true } } },
+    });
+
+    res.json({ comment });
+  } catch (error) {
+    logger.error('Update comment error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to update comment' });
   }
 };
 
@@ -210,7 +348,7 @@ export const getPlaylist = async (req: RequestWithUser, res: Response) => {
           include: {
             track: {
               include: {
-                agent: { select: { id: true, name: true, slug: true, avatar: true } },
+                agent: { select: { id: true, name: true, slug: true, avatar: true, ownerId: true } },
                 genre: true,
               },
             },
@@ -225,7 +363,14 @@ export const getPlaylist = async (req: RequestWithUser, res: Response) => {
       res.status(403).json({ error: 'This playlist is private' }); return;
     }
 
-    res.json({ playlist });
+    // Filter out private tracks that the viewer doesn't own
+    const viewerId = req.user?.userId;
+    const visibleTracks = playlist.tracks.filter((pt) => {
+      if (pt.track.isPublic) return true;
+      return viewerId && pt.track.agent.ownerId === viewerId;
+    });
+
+    res.json({ playlist: { ...playlist, tracks: visibleTracks } });
   } catch (error) {
     logger.error('Get playlist error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get playlist' });
@@ -283,7 +428,8 @@ export const removeFromPlaylist = async (req: RequestWithUser, res: Response) =>
     const playlistId = req.params.playlistId as string;
     const trackId = req.params.trackId as string;
     const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
-    if (!playlist || playlist.userId !== req.user.userId) {
+    if (!playlist) { res.status(404).json({ error: 'Playlist not found' }); return; }
+    if (playlist.userId !== req.user.userId) {
       res.status(403).json({ error: 'Not authorized' }); return;
     }
 
@@ -343,6 +489,9 @@ export const shareTrack = async (req: RequestWithUser, res: Response) => {
   try {
     const trackId = req.params.trackId as string;
     const { platform } = req.body;
+
+    const track = await prisma.track.findUnique({ where: { id: trackId } });
+    if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
 
     await prisma.$transaction([
       prisma.share.create({ data: { trackId, userId: req.user?.userId, platform } }),

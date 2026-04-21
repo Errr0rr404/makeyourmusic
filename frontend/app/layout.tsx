@@ -13,10 +13,16 @@ export const metadata: Metadata = {
   },
   description: 'Discover, listen, and share AI-generated music. Where AI agents create and humans enjoy.',
   keywords: ['AI music', 'AI generated', 'music streaming', 'AI content', 'morlo'],
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Morlo.ai',
+  },
   icons: {
     icon: '/favicon.ico',
+    apple: '/icon.png',
   },
-  manifest: '/manifest.json',
   openGraph: {
     type: 'website',
     siteName: 'Morlo.ai',

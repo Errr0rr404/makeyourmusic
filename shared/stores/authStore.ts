@@ -100,7 +100,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     const storage = getStorage();
     const token = await storage.getItem(TOKEN_KEY);
     if (!token) {
-      set({ isLoading: false });
+      set({ isLoading: false, isAuthenticated: false });
       return;
     }
     set({ isLoading: true, accessToken: token });

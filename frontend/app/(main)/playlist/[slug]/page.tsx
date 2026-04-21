@@ -8,10 +8,12 @@ import { TrackRow } from '@/components/track/TrackRow';
 import { ListMusic, Globe, Lock, Play, Pencil, Trash2, Check, X, Loader2, AlertCircle } from 'lucide-react';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 export default function PlaylistPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
+  const confirm = useConfirm();
   const { isAuthenticated } = useAuthStore();
   const { playTrack } = usePlayerStore();
   const [playlist, setPlaylist] = useState<any>(null);
@@ -66,7 +68,13 @@ export default function PlaylistPage() {
   };
 
   const handleDelete = async () => {
-    if (!confirm('Delete this playlist? This cannot be undone.')) return;
+    const ok = await confirm({
+      title: `Delete "${playlist?.title}"?`,
+      message: 'This will permanently delete the playlist. Tracks in it will not be deleted.',
+      confirmLabel: 'Delete playlist',
+      destructive: true,
+    });
+    if (!ok) return;
     setDeleting(true);
     try {
       await api.delete(`/social/playlists/${playlist.id}`);

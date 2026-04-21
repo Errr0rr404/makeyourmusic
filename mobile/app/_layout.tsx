@@ -1,17 +1,20 @@
 import '../global.css';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import TrackPlayer from 'react-native-track-player';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bootstrap } from '../lib/bootstrap';
 import { useAuthStore, usePlayerStore } from '@morlo/shared';
 import { MiniPlayer } from '../components/player/MiniPlayer';
 import { setupPlayer, setupNativePlayerListeners, useSyncPlayerToNative } from '../services/audioService';
 import { registerForPushNotifications, setupNotificationListeners } from '../services/notificationService';
+import { hydrateDownloadCache } from '../services/downloadService';
 import { parseDeepLink } from '../lib/linking';
+import { ONBOARDING_KEY } from './onboarding';
 
 // Initialize shared services before anything else
 bootstrap();
@@ -23,6 +26,8 @@ export default function RootLayout() {
   const router = useRouter();
   const { isLoading, hydrate, fetchUser, isAuthenticated } = useAuthStore();
   const playerReady = useRef(false);
+  const [booted, setBooted] = useState(false);
+  const [needsOnboarding, setNeedsOnboarding] = useState(false);
 
   // Setup player, auth, and push notifications on boot
   useEffect(() => {
@@ -30,8 +35,16 @@ export default function RootLayout() {
     let cleanupNotifications: (() => void) | undefined;
 
     (async () => {
-      await hydrate();
+      // Run auth hydration, onboarding check, and download cache load in parallel
+      const [seen] = await Promise.all([
+        AsyncStorage.getItem(ONBOARDING_KEY),
+        hydrate(),
+        hydrateDownloadCache().catch(() => undefined),
+      ]);
       await fetchUser();
+
+      setNeedsOnboarding(!seen);
+      setBooted(true);
 
       // Audio player
       const ready = await setupPlayer();
@@ -46,7 +59,9 @@ export default function RootLayout() {
         // Navigate on notification tap
         if (data?.url) {
           const route = parseDeepLink(data.url);
-          if (route) router.push(route as any);
+          // parseDeepLink returns a validated runtime path string; typed routes
+          // can't narrow a dynamic string, so a cast here is intentional.
+          if (route) router.push(route as Parameters<typeof router.push>[0]);
         } else if (data?.trackSlug) {
           router.push(`/track/${data.trackSlug}`);
         } else if (data?.agentSlug) {
@@ -60,6 +75,15 @@ export default function RootLayout() {
       cleanupNotifications?.();
     };
   }, []);
+
+  // Once booted, if user hasn't seen onboarding, route to it AFTER Stack is mounted
+  useEffect(() => {
+    if (booted && needsOnboarding) {
+      // Small delay so the Stack finishes initial render before we navigate
+      const t = setTimeout(() => router.replace('/onboarding'), 0);
+      return () => clearTimeout(t);
+    }
+  }, [booted, needsOnboarding, router]);
 
   // Sync Zustand -> native player
   const { currentTrack, queue, isPlaying, repeat } = usePlayerStore();
@@ -89,7 +113,7 @@ export default function RootLayout() {
     }
   }, [repeat]);
 
-  if (isLoading) {
+  if (isLoading || !booted) {
     return (
       <View className="flex-1 bg-morlo-bg items-center justify-center">
         <ActivityIndicator size="large" color="#8b5cf6" />
@@ -112,7 +136,15 @@ export default function RootLayout() {
           <Stack.Screen name="track/[slug]" />
           <Stack.Screen name="agent/[slug]" />
           <Stack.Screen name="genre/[slug]" />
+          <Stack.Screen name="playlist/[slug]" />
           <Stack.Screen name="dashboard" />
+          <Stack.Screen name="profile/index" />
+          <Stack.Screen name="settings/index" />
+          <Stack.Screen name="notifications/index" />
+          <Stack.Screen name="create/index" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="studio/generations" />
+          <Stack.Screen name="studio/video" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="onboarding" options={{ animation: 'fade' }} />
           <Stack.Screen
             name="player"
             options={{ presentation: 'fullScreenModal', animation: 'slide_from_bottom' }}

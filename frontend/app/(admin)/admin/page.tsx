@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
+import Link from 'next/link';
 import {
-  Users, Bot, Music, Play, Crown, Shield, AlertTriangle,
+  Users, Bot, Music, Play, Crown, Shield, AlertTriangle, ExternalLink,
+  Check, X, Filter,
 } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function AdminPage() {
   const { user, isAuthenticated } = useAuthStore();
@@ -14,6 +17,8 @@ export default function AdminPage() {
   const [reports, setReports] = useState<any[]>([]);
   const [tab, setTab] = useState<'overview' | 'users' | 'reports'>('overview');
   const [loading, setLoading] = useState(true);
+  const [reportFilter, setReportFilter] = useState<'PENDING' | 'RESOLVED' | 'DISMISSED' | 'ALL'>('PENDING');
+  const [resolvingId, setResolvingId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated || user?.role !== 'ADMIN') { setLoading(false); return; }
@@ -56,13 +61,32 @@ export default function AdminPage() {
     }
   };
 
-  const handleResolveReport = async (reportId: string, status: string) => {
+  const handleResolveReport = async (reportId: string, status: 'RESOLVED' | 'DISMISSED', notes?: string) => {
+    setResolvingId(reportId);
     try {
-      await api.put(`/admin/reports/${reportId}`, { status });
-      setReports(reports.map(r => r.id === reportId ? { ...r, status } : r));
+      await api.put(`/admin/reports/${reportId}`, { status, notes });
+      setReports((prev) => prev.map(r => r.id === reportId ? { ...r, status, notes } : r));
+      toast.success(status === 'RESOLVED' ? 'Report resolved' : 'Report dismissed');
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to update report');
+      toast.error(err.response?.data?.error || 'Failed to update report');
+    } finally {
+      setResolvingId(null);
     }
+  };
+
+  const filteredReports = reportFilter === 'ALL'
+    ? reports
+    : reports.filter((r) => r.status === reportFilter);
+
+  const reasonLabels: Record<string, string> = {
+    copyright: 'Copyright',
+    harassment: 'Harassment',
+    'hate-speech': 'Hate speech',
+    'sexual-content': 'Sexual content',
+    spam: 'Spam',
+    violence: 'Violence',
+    misinformation: 'Misinformation',
+    other: 'Other',
   };
 
   return (
@@ -140,28 +164,124 @@ export default function AdminPage() {
             </table>
           </div>
         ) : tab === 'reports' ? (
-          reports.length > 0 ? (
-            <div className="space-y-3">
-              {reports.map(r => (
-                <div key={r.id} className="bg-[hsl(var(--card))] rounded-xl p-4 border border-[hsl(var(--border))] flex items-start gap-3">
-                  <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-sm text-white"><strong>{r.user.username}</strong> reported <strong>{r.track.title}</strong></p>
-                    <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{r.reason}</p>
-                    <p className="text-xs text-[hsl(var(--muted-foreground))]">Status: {r.status}</p>
-                  </div>
-                  {r.status === 'PENDING' && (
-                    <div className="flex gap-2">
-                      <button onClick={() => handleResolveReport(r.id, 'RESOLVED')} className="px-3 py-1 rounded bg-green-500/20 text-green-400 text-xs">Resolve</button>
-                      <button onClick={() => handleResolveReport(r.id, 'DISMISSED')} className="px-3 py-1 rounded bg-gray-500/20 text-gray-400 text-xs">Dismiss</button>
-                    </div>
-                  )}
-                </div>
-              ))}
+          <div>
+            {/* Filter bar */}
+            <div className="flex items-center gap-2 mb-4 overflow-x-auto">
+              <Filter className="w-4 h-4 text-[hsl(var(--muted-foreground))] flex-shrink-0" />
+              {(['PENDING', 'RESOLVED', 'DISMISSED', 'ALL'] as const).map((f) => {
+                const count = f === 'ALL' ? reports.length : reports.filter((r) => r.status === f).length;
+                return (
+                  <button
+                    key={f}
+                    onClick={() => setReportFilter(f)}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold whitespace-nowrap ${
+                      reportFilter === f
+                        ? 'bg-[hsl(var(--accent))] text-white'
+                        : 'bg-[hsl(var(--card))] border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-white'
+                    }`}
+                  >
+                    {f.charAt(0) + f.slice(1).toLowerCase()} <span className="opacity-70">({count})</span>
+                  </button>
+                );
+              })}
             </div>
-          ) : (
-            <p className="text-center py-12 text-[hsl(var(--muted-foreground))]">No reports</p>
-          )
+
+            {filteredReports.length > 0 ? (
+              <div className="space-y-3">
+                {filteredReports.map(r => (
+                  <div key={r.id} className="bg-[hsl(var(--card))] rounded-xl p-4 border border-[hsl(var(--border))]">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center ${
+                          r.status === 'PENDING'
+                            ? 'bg-amber-500/10'
+                            : r.status === 'RESOLVED'
+                              ? 'bg-green-500/10'
+                              : 'bg-gray-500/10'
+                        }`}
+                      >
+                        <AlertTriangle
+                          className={`w-4 h-4 ${
+                            r.status === 'PENDING'
+                              ? 'text-amber-400'
+                              : r.status === 'RESOLVED'
+                                ? 'text-green-400'
+                                : 'text-gray-400'
+                          }`}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap mb-1">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/10 text-red-300 text-[10px] font-semibold">
+                            {reasonLabels[r.reason] || r.reason}
+                          </span>
+                          <span
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                              r.status === 'PENDING'
+                                ? 'bg-amber-500/10 text-amber-300'
+                                : r.status === 'RESOLVED'
+                                  ? 'bg-green-500/10 text-green-300'
+                                  : 'bg-gray-500/10 text-gray-300'
+                            }`}
+                          >
+                            {r.status}
+                          </span>
+                          <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                            {new Date(r.createdAt).toLocaleString()}
+                          </span>
+                        </div>
+                        <p className="text-sm text-white">
+                          <strong>{r.user?.displayName || r.user?.username || 'Someone'}</strong>{' '}
+                          reported{' '}
+                          {r.track ? (
+                            <Link
+                              href={`/track/${r.track.slug}`}
+                              className="text-[hsl(var(--accent))] hover:underline inline-flex items-center gap-1"
+                            >
+                              <strong>{r.track.title}</strong>
+                              <ExternalLink className="w-3 h-3" />
+                            </Link>
+                          ) : (
+                            <strong>a deleted track</strong>
+                          )}
+                        </p>
+                        {r.notes && (
+                          <p className="text-xs text-[hsl(var(--muted-foreground))] mt-2 italic">
+                            &ldquo;{r.notes}&rdquo;
+                          </p>
+                        )}
+                      </div>
+                      {r.status === 'PENDING' && (
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => handleResolveReport(r.id, 'RESOLVED')}
+                            disabled={resolvingId === r.id}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 text-xs font-semibold disabled:opacity-50"
+                          >
+                            <Check className="w-3 h-3" /> Resolve
+                          </button>
+                          <button
+                            onClick={() => handleResolveReport(r.id, 'DISMISSED')}
+                            disabled={resolvingId === r.id}
+                            className="flex items-center gap-1 px-3 py-1.5 rounded bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 text-xs font-semibold disabled:opacity-50"
+                          >
+                            <X className="w-3 h-3" /> Dismiss
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-16 bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))]">
+                <Check className="w-10 h-10 text-green-400/60 mx-auto mb-3" />
+                <p className="text-sm text-[hsl(var(--muted-foreground))]">
+                  {reportFilter === 'PENDING' ? 'No pending reports — inbox zero!' : `No ${reportFilter.toLowerCase()} reports`}
+                </p>
+              </div>
+            )}
+          </div>
         ) : null}
       </div>
     </div>

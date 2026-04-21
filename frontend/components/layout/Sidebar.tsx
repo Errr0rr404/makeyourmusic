@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Search, Library, Radio, TrendingUp, Music, Plus, LayoutDashboard } from 'lucide-react';
+import { Home, Search, Library, Radio, TrendingUp, Music, Plus, LayoutDashboard, Sparkles, Wand2, Film } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
 import api from '@/lib/api';
 
@@ -75,24 +75,63 @@ export function Sidebar() {
           })}
         </div>
 
-        {/* Agent Dashboard Link */}
-        {isAgentOwner && (
+        {/* AI Studio (all logged-in users) */}
+        {isAuthenticated && (
           <div className="mt-6 pt-6 border-t border-[hsl(var(--border))]">
             <p className="px-3 mb-2 text-xs font-semibold uppercase text-[hsl(var(--muted-foreground))]">
-              Creator Studio
+              AI Studio
             </p>
             <Link
-              href="/dashboard"
+              href="/create"
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                pathname === '/dashboard'
+                pathname === '/create'
+                  ? 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 text-white border border-purple-500/30'
+                  : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5'
+              )}
+            >
+              <Wand2 className="w-5 h-5 text-purple-400" />
+              Create Music
+              <Sparkles className="w-3 h-3 text-purple-400 ml-auto" />
+            </Link>
+            <Link
+              href="/studio/video"
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                pathname === '/studio/video'
                   ? 'bg-[hsl(var(--accent))] text-white'
                   : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5'
               )}
             >
-              <LayoutDashboard className="w-5 h-5" />
-              Dashboard
+              <Film className="w-5 h-5" />
+              Generate Video
             </Link>
+            <Link
+              href="/studio/generations"
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                pathname === '/studio/generations'
+                  ? 'bg-[hsl(var(--accent))] text-white'
+                  : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5'
+              )}
+            >
+              <Sparkles className="w-5 h-5" />
+              My Generations
+            </Link>
+            {isAgentOwner && (
+              <Link
+                href="/dashboard"
+                className={cn(
+                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  pathname === '/dashboard'
+                    ? 'bg-[hsl(var(--accent))] text-white'
+                    : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5'
+                )}
+              >
+                <LayoutDashboard className="w-5 h-5" />
+                Dashboard
+              </Link>
+            )}
           </div>
         )}
 

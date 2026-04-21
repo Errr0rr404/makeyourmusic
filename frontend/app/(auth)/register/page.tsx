@@ -11,18 +11,27 @@ export default function RegisterPage() {
   const { register, isLoading } = useAuthStore();
   const [form, setForm] = useState({ email: '', username: '', displayName: '', password: '', confirmPassword: '' });
   const [showPassword, setShowPassword] = useState(false);
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
+    if (!acceptTerms) {
+      setError('You must accept the Terms and Privacy Policy');
+      return;
+    }
     if (form.password !== form.confirmPassword) {
       setError('Passwords do not match');
       return;
     }
     if (form.password.length < 8) {
       setError('Password must be at least 8 characters');
+      return;
+    }
+    if (!/[A-Z]/.test(form.password) || !/[a-z]/.test(form.password) || !/[0-9]/.test(form.password)) {
+      setError('Password must include uppercase, lowercase, and a number');
       return;
     }
     if (form.username.length < 3) {
@@ -32,7 +41,7 @@ export default function RegisterPage() {
 
     try {
       await register(form.email, form.password, form.username, form.displayName || undefined);
-      router.push('/');
+      router.push('/verify-email');
     } catch (err: any) {
       setError(err.message);
     }
@@ -98,8 +107,28 @@ export default function RegisterPage() {
               className="w-full h-11 px-4 rounded-lg bg-[hsl(var(--secondary))] text-white border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" placeholder="Confirm your password" />
           </div>
 
-          <button type="submit" disabled={isLoading}
-            className="w-full h-11 rounded-full bg-[hsl(var(--primary))] text-white font-semibold hover:bg-[hsl(var(--primary))]/90 transition-colors disabled:opacity-50">
+          <label className="flex items-start gap-2.5 text-sm text-[hsl(var(--muted-foreground))] cursor-pointer">
+            <input
+              type="checkbox"
+              checked={acceptTerms}
+              onChange={(e) => setAcceptTerms(e.target.checked)}
+              className="mt-0.5 w-4 h-4 rounded border-[hsl(var(--border))] bg-[hsl(var(--secondary))] accent-[hsl(var(--primary))]"
+            />
+            <span>
+              I agree to the{' '}
+              <Link href="/terms" className="text-[hsl(var(--accent))] hover:underline" target="_blank">
+                Terms of Service
+              </Link>{' '}
+              and{' '}
+              <Link href="/privacy" className="text-[hsl(var(--accent))] hover:underline" target="_blank">
+                Privacy Policy
+              </Link>
+              .
+            </span>
+          </label>
+
+          <button type="submit" disabled={isLoading || !acceptTerms}
+            className="w-full h-11 rounded-full bg-[hsl(var(--primary))] text-white font-semibold hover:bg-[hsl(var(--primary))]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
             {isLoading ? 'Creating account...' : 'Sign Up'}
           </button>
         </form>

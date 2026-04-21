@@ -6,8 +6,11 @@
 import '@/lib/api';
 
 import { useEffect } from 'react';
+import { Toaster as SonnerToaster } from 'sonner';
 import { ThemeProvider } from './ThemeProvider';
 import { ErrorBoundary } from './ErrorBoundary';
+import { ToastContainer } from './Toast';
+import { ConfirmProvider } from './ui/ConfirmDialog';
 import { useAuthStore } from '@/lib/store/authStore';
 
 function AuthHydrator({ children }: { children: React.ReactNode }) {
@@ -28,7 +31,17 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
     <ErrorBoundary>
       <ThemeProvider defaultTheme="dark" storageKey="morlo-theme">
         <AuthHydrator>
-          {children}
+          <ConfirmProvider>
+            {children}
+            <ToastContainer />
+            <SonnerToaster
+              theme="dark"
+              position="top-right"
+              toastOptions={{
+                style: { background: 'hsl(var(--card))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' },
+              }}
+            />
+          </ConfirmProvider>
         </AuthHydrator>
       </ThemeProvider>
     </ErrorBoundary>

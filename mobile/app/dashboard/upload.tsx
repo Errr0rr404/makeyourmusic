@@ -13,25 +13,36 @@ interface AgentOption {
   name: string;
 }
 
+interface GenreOption {
+  id: string;
+  name: string;
+}
+
 export default function UploadScreen() {
   const router = useRouter();
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<string>('');
+  const [genres, setGenres] = useState<GenreOption[]>([]);
+  const [selectedGenreId, setSelectedGenreId] = useState<string>('');
   const [title, setTitle] = useState('');
-  const [genre, setGenre] = useState('');
   const [aiModel, setAiModel] = useState('');
   const [aiPrompt, setAiPrompt] = useState('');
   const [audioFile, setAudioFile] = useState<any>(null);
   const [uploading, setUploading] = useState(false);
+  const [isPublic, setIsPublic] = useState(true);
 
   useEffect(() => {
     (async () => {
       try {
         const api = getApi();
-        const res = await api.get('/agents/mine');
-        const a = res.data.agents || [];
+        const [agentsRes, genresRes] = await Promise.all([
+          api.get('/agents/mine'),
+          api.get('/genres'),
+        ]);
+        const a = agentsRes.data.agents || [];
         setAgents(a);
         if (a.length > 0) setSelectedAgent(a[0].id);
+        setGenres(genresRes.data.genres || []);
       } catch (err) {
         console.error(err);
       }
@@ -75,14 +86,16 @@ export default function UploadScreen() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      // Create track
+      // Create track (use duration from Cloudinary response, fall back to 120s)
       await api.post('/tracks', {
         title: title.trim(),
         agentId: selectedAgent,
         audioUrl: uploadRes.data.url,
-        genre: genre.trim() || undefined,
+        duration: Math.round(uploadRes.data.duration || 120),
+        genreId: selectedGenreId || undefined,
         aiModel: aiModel.trim() || undefined,
         aiPrompt: aiPrompt.trim() || undefined,
+        isPublic,
       });
 
       Alert.alert('Success', 'Track uploaded successfully!', [
@@ -137,7 +150,27 @@ export default function UploadScreen() {
           </View>
 
           <Input label="Title *" placeholder="Track title" value={title} onChangeText={setTitle} />
-          <Input label="Genre" placeholder="e.g. Electronic, Hip-Hop" value={genre} onChangeText={setGenre} />
+
+          {/* Genre selector */}
+          <Text className="text-morlo-muted text-sm mb-2 font-medium">Genre</Text>
+          <View className="flex-row flex-wrap mb-4">
+            <TouchableOpacity
+              onPress={() => setSelectedGenreId('')}
+              className={`mr-2 mb-2 px-4 py-2 rounded-full border ${!selectedGenreId ? 'bg-morlo-accent border-morlo-accent' : 'bg-morlo-card border-morlo-border'}`}
+            >
+              <Text className={`text-sm font-medium ${!selectedGenreId ? 'text-white' : 'text-morlo-muted'}`}>None</Text>
+            </TouchableOpacity>
+            {genres.map((g) => (
+              <TouchableOpacity
+                key={g.id}
+                onPress={() => setSelectedGenreId(g.id)}
+                className={`mr-2 mb-2 px-4 py-2 rounded-full border ${selectedGenreId === g.id ? 'bg-morlo-accent border-morlo-accent' : 'bg-morlo-card border-morlo-border'}`}
+              >
+                <Text className={`text-sm font-medium ${selectedGenreId === g.id ? 'text-white' : 'text-morlo-muted'}`}>{g.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
           <Input label="AI Model" placeholder="e.g. Suno v3, Udio" value={aiModel} onChangeText={setAiModel} />
           <Input
             label="AI Prompt"
@@ -159,6 +192,29 @@ export default function UploadScreen() {
               {audioFile ? audioFile.name : 'Tap to select audio file'}
             </Text>
           </TouchableOpacity>
+
+          {/* Visibility */}
+          <Text className="text-morlo-muted text-sm mb-2 font-medium">Visibility</Text>
+          <View className="flex-row gap-2 mb-6">
+            <TouchableOpacity
+              onPress={() => setIsPublic(true)}
+              className={`flex-1 p-3 rounded-xl border ${isPublic ? 'bg-morlo-accent/10 border-morlo-accent' : 'bg-morlo-card border-morlo-border'}`}
+            >
+              <Text className={`text-sm font-semibold ${isPublic ? 'text-morlo-accent' : 'text-morlo-text'}`}>
+                🌍 Public
+              </Text>
+              <Text className="text-morlo-muted text-xs mt-0.5">Anyone can listen</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              onPress={() => setIsPublic(false)}
+              className={`flex-1 p-3 rounded-xl border ${!isPublic ? 'bg-morlo-accent/10 border-morlo-accent' : 'bg-morlo-card border-morlo-border'}`}
+            >
+              <Text className={`text-sm font-semibold ${!isPublic ? 'text-morlo-accent' : 'text-morlo-text'}`}>
+                🔒 Private
+              </Text>
+              <Text className="text-morlo-muted text-xs mt-0.5">Only you</Text>
+            </TouchableOpacity>
+          </View>
 
           <Button title="Upload Track" onPress={handleUpload} loading={uploading} size="lg" />
           <View className="h-32" />

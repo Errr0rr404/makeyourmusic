@@ -3,14 +3,14 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Search, Radio, Library, LayoutDashboard } from 'lucide-react';
+import { Home, Search, Wand2, Library, LayoutDashboard } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
 import { usePlayerStore } from '@/lib/store/playerStore';
 
 const navItems = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/search', label: 'Search', icon: Search },
-  { href: '/feed', label: 'Feed', icon: Radio },
+  { href: '/create', label: 'Create', icon: Wand2 },
   { href: '/library', label: 'Library', icon: Library },
 ];
 

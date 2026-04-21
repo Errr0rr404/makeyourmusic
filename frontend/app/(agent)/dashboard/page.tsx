@@ -7,20 +7,26 @@ import { useAuthStore } from '@/lib/store/authStore';
 import {
   Bot, Plus, Music, Users, Play, Heart, Upload, Pencil, Trash2, BarChart3,
 } from 'lucide-react';
+import { ImageUpload } from '@/components/upload/ImageUpload';
+import { AudioUpload } from '@/components/upload/AudioUpload';
+import { toast } from 'sonner';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuthStore();
+  const confirm = useConfirm();
   const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateAgent, setShowCreateAgent] = useState(false);
   const [showUploadTrack, setShowUploadTrack] = useState(false);
   const [selectedAgentId, setSelectedAgentId] = useState('');
-  const [agentForm, setAgentForm] = useState({ name: '', bio: '' });
+  const [agentForm, setAgentForm] = useState({ name: '', bio: '', avatar: '', coverImage: '' });
   const [trackForm, setTrackForm] = useState({
     title: '', audioUrl: '', coverArt: '', duration: '', genreId: '', mood: '',
-    aiModel: '', aiPrompt: '', videoUrl: '',
+    aiModel: '', aiPrompt: '', videoUrl: '', isPublic: true,
   });
   const [genres, setGenres] = useState<any[]>([]);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -42,38 +48,56 @@ export default function DashboardPage() {
 
   const handleCreateAgent = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitting(true);
     try {
-      const res = await api.post('/agents', agentForm);
+      const payload: any = { name: agentForm.name };
+      if (agentForm.bio) payload.bio = agentForm.bio;
+      if (agentForm.avatar) payload.avatar = agentForm.avatar;
+      if (agentForm.coverImage) payload.coverImage = agentForm.coverImage;
+      const res = await api.post('/agents', payload);
       setAgents([res.data.agent, ...agents]);
       setShowCreateAgent(false);
-      setAgentForm({ name: '', bio: '' });
+      setAgentForm({ name: '', bio: '', avatar: '', coverImage: '' });
+      toast.success(`Agent "${res.data.agent.name}" created`);
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to create agent');
+      toast.error(err.response?.data?.error || 'Failed to create agent');
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleUploadTrack = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedAgentId) return;
+    setSubmitting(true);
     try {
       await api.post('/tracks', { ...trackForm, agentId: selectedAgentId });
       setShowUploadTrack(false);
-      setTrackForm({ title: '', audioUrl: '', coverArt: '', duration: '', genreId: '', mood: '', aiModel: '', aiPrompt: '', videoUrl: '' });
-      // Refresh agents
+      setTrackForm({ title: '', audioUrl: '', coverArt: '', duration: '', genreId: '', mood: '', aiModel: '', aiPrompt: '', videoUrl: '', isPublic: true });
       const res = await api.get('/agents/mine');
       setAgents(res.data.agents || []);
+      toast.success('Track uploaded');
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to upload track');
+      toast.error(err.response?.data?.error || 'Failed to upload track');
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleDeleteAgent = async (id: string) => {
-    if (!confirm('Are you sure? This will delete the agent and all its tracks.')) return;
+  const handleDeleteAgent = async (id: string, name: string) => {
+    const ok = await confirm({
+      title: `Delete "${name}"?`,
+      message: `This will permanently remove the agent and all its tracks, followers, and stats. This cannot be undone.`,
+      confirmLabel: 'Delete agent',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/agents/${id}`);
       setAgents(agents.filter(a => a.id !== id));
+      toast.success('Agent deleted');
     } catch (err: any) {
-      alert(err.response?.data?.error || 'Failed to delete agent');
+      toast.error(err.response?.data?.error || 'Failed to delete agent');
     }
   };
 
@@ -101,6 +125,12 @@ export default function DashboardPage() {
             <p className="text-[hsl(var(--muted-foreground))] text-sm mt-1">Manage your AI agents and tracks</p>
           </div>
           <div className="flex gap-3">
+            <Link
+              href="/dashboard/earnings"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-white text-sm font-medium hover:bg-white/5 transition-colors"
+            >
+              <BarChart3 className="w-4 h-4" /> Earnings
+            </Link>
             <button onClick={() => setShowCreateAgent(true)}
               className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium hover:bg-[hsl(var(--primary))]/90 transition-colors">
               <Plus className="w-4 h-4" /> New Agent
@@ -110,23 +140,49 @@ export default function DashboardPage() {
 
         {/* Create Agent Modal */}
         {showCreateAgent && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-            <div className="bg-[hsl(var(--card))] rounded-xl p-6 w-full max-w-md border border-[hsl(var(--border))]">
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowCreateAgent(false)}>
+            <div className="bg-[hsl(var(--card))] rounded-xl p-6 w-full max-w-lg border border-[hsl(var(--border))] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <h2 className="text-lg font-bold text-white mb-4">Create AI Agent</h2>
               <form onSubmit={handleCreateAgent} className="space-y-4">
-                <div>
-                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Name</label>
-                  <input value={agentForm.name} onChange={e => setAgentForm(p => ({ ...p, name: e.target.value }))} required
-                    className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
+                <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
+                  <div className="w-28">
+                    <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Avatar</label>
+                    <ImageUpload
+                      value={agentForm.avatar}
+                      onChange={(url) => setAgentForm(p => ({ ...p, avatar: url }))}
+                      aspectRatio="square"
+                      maxSizeMB={5}
+                      label="Upload"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Name *</label>
+                      <input value={agentForm.name} onChange={e => setAgentForm(p => ({ ...p, name: e.target.value }))} required maxLength={100}
+                        className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
+                    </div>
+                    <div>
+                      <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Bio</label>
+                      <textarea value={agentForm.bio} onChange={e => setAgentForm(p => ({ ...p, bio: e.target.value }))} rows={3} maxLength={500}
+                        className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none resize-none" />
+                    </div>
+                  </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Bio</label>
-                  <textarea value={agentForm.bio} onChange={e => setAgentForm(p => ({ ...p, bio: e.target.value }))} rows={3}
-                    className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none resize-none" />
+                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Cover image (optional)</label>
+                  <ImageUpload
+                    value={agentForm.coverImage}
+                    onChange={(url) => setAgentForm(p => ({ ...p, coverImage: url }))}
+                    aspectRatio="banner"
+                    maxSizeMB={8}
+                    label="Upload banner"
+                  />
                 </div>
-                <div className="flex gap-3 justify-end">
+                <div className="flex gap-3 justify-end pt-2">
                   <button type="button" onClick={() => setShowCreateAgent(false)} className="px-4 py-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-white">Cancel</button>
-                  <button type="submit" className="px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium">Create</button>
+                  <button type="submit" disabled={submitting || !agentForm.name} className="px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium disabled:opacity-50">
+                    {submitting ? 'Creating…' : 'Create Agent'}
+                  </button>
                 </div>
               </form>
             </div>
@@ -135,65 +191,117 @@ export default function DashboardPage() {
 
         {/* Upload Track Modal */}
         {showUploadTrack && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4">
-            <div className="bg-[hsl(var(--card))] rounded-xl p-6 w-full max-w-lg border border-[hsl(var(--border))] max-h-[90vh] overflow-y-auto">
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowUploadTrack(false)}>
+            <div className="bg-[hsl(var(--card))] rounded-xl p-6 w-full max-w-xl border border-[hsl(var(--border))] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <h2 className="text-lg font-bold text-white mb-4">Upload Track</h2>
-              <form onSubmit={handleUploadTrack} className="space-y-3">
+              <form onSubmit={handleUploadTrack} className="space-y-4">
                 <div>
-                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Title *</label>
-                  <input value={trackForm.title} onChange={e => setTrackForm(p => ({ ...p, title: e.target.value }))} required
-                    className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
+                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Audio file *</label>
+                  <AudioUpload
+                    value={trackForm.audioUrl}
+                    onChange={(url, meta) => {
+                      setTrackForm(p => ({
+                        ...p,
+                        audioUrl: url,
+                        duration: meta?.duration ? String(Math.round(meta.duration)) : p.duration,
+                      }));
+                    }}
+                  />
                 </div>
-                <div>
-                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Audio URL *</label>
-                  <input value={trackForm.audioUrl} onChange={e => setTrackForm(p => ({ ...p, audioUrl: e.target.value }))} required placeholder="https://..."
-                    className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
+
+                <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
+                  <div className="w-28">
+                    <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Cover art</label>
+                    <ImageUpload
+                      value={trackForm.coverArt}
+                      onChange={(url) => setTrackForm(p => ({ ...p, coverArt: url }))}
+                      aspectRatio="square"
+                      maxSizeMB={5}
+                      label="Upload"
+                    />
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Title *</label>
+                      <input value={trackForm.title} onChange={e => setTrackForm(p => ({ ...p, title: e.target.value }))} required maxLength={200}
+                        className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Duration (s) *</label>
+                        <input type="number" value={trackForm.duration} onChange={e => setTrackForm(p => ({ ...p, duration: e.target.value }))} required min={1} max={36000}
+                          className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
+                      </div>
+                      <div>
+                        <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Genre</label>
+                        <select value={trackForm.genreId} onChange={e => setTrackForm(p => ({ ...p, genreId: e.target.value }))}
+                          className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none">
+                          <option value="">Select genre</option>
+                          {genres.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                  </div>
                 </div>
+
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Duration (seconds) *</label>
-                    <input type="number" value={trackForm.duration} onChange={e => setTrackForm(p => ({ ...p, duration: e.target.value }))} required
+                    <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">AI Model</label>
+                    <input value={trackForm.aiModel} onChange={e => setTrackForm(p => ({ ...p, aiModel: e.target.value }))} placeholder="e.g. Suno v3" maxLength={100}
                       className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
                   </div>
                   <div>
-                    <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Genre</label>
-                    <select value={trackForm.genreId} onChange={e => setTrackForm(p => ({ ...p, genreId: e.target.value }))}
-                      className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none">
-                      <option value="">Select genre</option>
-                      {genres.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Cover Art URL</label>
-                  <input value={trackForm.coverArt} onChange={e => setTrackForm(p => ({ ...p, coverArt: e.target.value }))} placeholder="https://..."
-                    className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">AI Model</label>
-                    <input value={trackForm.aiModel} onChange={e => setTrackForm(p => ({ ...p, aiModel: e.target.value }))} placeholder="e.g. Suno v3"
-                      className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
-                  </div>
-                  <div>
-                    <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Mood</label>
-                    <input value={trackForm.mood} onChange={e => setTrackForm(p => ({ ...p, mood: e.target.value }))} placeholder="e.g. Chill"
+                    <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Mood</label>
+                    <input value={trackForm.mood} onChange={e => setTrackForm(p => ({ ...p, mood: e.target.value }))} placeholder="e.g. Chill" maxLength={50}
                       className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">AI Prompt</label>
-                  <textarea value={trackForm.aiPrompt} onChange={e => setTrackForm(p => ({ ...p, aiPrompt: e.target.value }))} rows={2}
+                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">AI Prompt</label>
+                  <textarea value={trackForm.aiPrompt} onChange={e => setTrackForm(p => ({ ...p, aiPrompt: e.target.value }))} rows={2} maxLength={2000}
                     className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none resize-none" />
                 </div>
                 <div>
-                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Video URL (optional)</label>
-                  <input value={trackForm.videoUrl} onChange={e => setTrackForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="https://..."
+                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Video URL (optional)</label>
+                  <input value={trackForm.videoUrl} onChange={e => setTrackForm(p => ({ ...p, videoUrl: e.target.value }))} placeholder="https://..." type="url"
                     className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-2">Visibility</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className={`flex items-start gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${trackForm.isPublic ? 'bg-[hsl(var(--accent))]/10 border-[hsl(var(--accent))]' : 'bg-[hsl(var(--secondary))] border-[hsl(var(--border))] hover:border-white/20'}`}>
+                      <input
+                        type="radio"
+                        name="visibility"
+                        checked={trackForm.isPublic}
+                        onChange={() => setTrackForm(p => ({ ...p, isPublic: true }))}
+                        className="sr-only"
+                      />
+                      <div>
+                        <p className="text-sm font-semibold text-white">Public</p>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))]">Anyone can listen</p>
+                      </div>
+                    </label>
+                    <label className={`flex items-start gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${!trackForm.isPublic ? 'bg-[hsl(var(--accent))]/10 border-[hsl(var(--accent))]' : 'bg-[hsl(var(--secondary))] border-[hsl(var(--border))] hover:border-white/20'}`}>
+                      <input
+                        type="radio"
+                        name="visibility"
+                        checked={!trackForm.isPublic}
+                        onChange={() => setTrackForm(p => ({ ...p, isPublic: false }))}
+                        className="sr-only"
+                      />
+                      <div>
+                        <p className="text-sm font-semibold text-white">Private</p>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))]">Only you can listen</p>
+                      </div>
+                    </label>
+                  </div>
                 </div>
                 <div className="flex gap-3 justify-end pt-2">
                   <button type="button" onClick={() => setShowUploadTrack(false)} className="px-4 py-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-white">Cancel</button>
-                  <button type="submit" className="px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium">Upload Track</button>
+                  <button type="submit" disabled={submitting || !trackForm.audioUrl || !trackForm.title || !trackForm.duration} className="px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium disabled:opacity-50">
+                    {submitting ? 'Uploading…' : 'Upload Track'}
+                  </button>
                 </div>
               </form>
             </div>
@@ -228,8 +336,9 @@ export default function DashboardPage() {
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[hsl(var(--primary))] text-white text-xs font-medium hover:bg-[hsl(var(--primary))]/90">
                           <Upload className="w-3 h-3" /> Upload Track
                         </button>
-                        <button onClick={() => handleDeleteAgent(agent.id)}
-                          className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors">
+                        <button onClick={() => handleDeleteAgent(agent.id, agent.name)}
+                          className="p-1.5 rounded-lg text-red-400 hover:bg-red-500/10 transition-colors"
+                          aria-label={`Delete ${agent.name}`}>
                           <Trash2 className="w-4 h-4" />
                         </button>
                       </div>

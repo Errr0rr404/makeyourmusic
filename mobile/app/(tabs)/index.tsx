@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, ScrollView, ActivityIndicator } from 'react-native';
-import { useRouter } from 'expo-router';
-import { getApi } from '@morlo/shared';
+import { useRouter, useFocusEffect } from 'expo-router';
+import { getApi, useAuthStore } from '@morlo/shared';
 import type { TrackItem, Genre } from '@morlo/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { SectionHeader } from '../../components/ui/SectionHeader';
@@ -9,9 +9,11 @@ import { TrackCard } from '../../components/track/TrackCard';
 import { TrackRow } from '../../components/track/TrackRow';
 import { AgentCard } from '../../components/agent/AgentCard';
 import { TouchableOpacity } from 'react-native';
+import { Bell } from 'lucide-react-native';
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { isAuthenticated } = useAuthStore();
   const [trending, setTrending] = useState<TrackItem[]>([]);
   const [latest, setLatest] = useState<TrackItem[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -19,6 +21,7 @@ export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const fetchData = useCallback(async () => {
     try {
@@ -46,6 +49,18 @@ export default function HomeScreen() {
     fetchData();
   }, [fetchData]);
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!isAuthenticated) {
+        setUnreadCount(0);
+        return;
+      }
+      getApi().get('/notifications/unread-count')
+        .then((r) => setUnreadCount(r.data.count || 0))
+        .catch(() => setUnreadCount(0));
+    }, [isAuthenticated])
+  );
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchData();
@@ -62,9 +77,26 @@ export default function HomeScreen() {
   return (
     <ScreenContainer refreshing={refreshing} onRefresh={onRefresh}>
       {/* Header */}
-      <View className="px-4 pt-2 pb-4">
-        <Text className="text-morlo-text text-2xl font-bold">Morlo</Text>
-        <Text className="text-morlo-muted text-sm">AI-Generated Music</Text>
+      <View className="flex-row items-start justify-between px-4 pt-2 pb-4">
+        <View>
+          <Text className="text-morlo-text text-2xl font-bold">Morlo</Text>
+          <Text className="text-morlo-muted text-sm">AI-Generated Music</Text>
+        </View>
+        {isAuthenticated && (
+          <TouchableOpacity
+            onPress={() => router.push('/notifications')}
+            className="relative p-2 rounded-full bg-morlo-card"
+          >
+            <Bell size={20} color="#a1a1aa" />
+            {unreadCount > 0 && (
+              <View className="absolute -top-0.5 -right-0.5 bg-red-500 rounded-full min-w-[18px] h-[18px] items-center justify-center px-1">
+                <Text className="text-white text-[10px] font-bold">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </Text>
+              </View>
+            )}
+          </TouchableOpacity>
+        )}
       </View>
 
       {/* Error state */}

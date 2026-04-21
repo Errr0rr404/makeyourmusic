@@ -112,11 +112,6 @@ export const sanitizeBody = (req: Request, _res: Response, next: NextFunction): 
           else if (key === 'email') {
             sanitized[key] = sanitizeEmail(obj[key] as string);
           }
-          // Handle storePickupAddress and featuresJson objects specially
-          else if (key === 'storePickupAddress' || key === 'featuresJson') {
-            // Recursively sanitize nested object, passing parent key
-            sanitized[key] = sanitize(obj[key], key);
-          }
           // Recursively sanitize nested objects/arrays
           else {
             sanitized[key] = sanitize(obj[key], key);
@@ -163,7 +158,7 @@ export const nameValidation = body('name')
 export const registerRules = [
   emailValidation,
   passwordValidation,
-  body('username').trim().isLength({ min: 2, max: 30 }).withMessage('Username must be 2-30 characters')
+  body('username').trim().isLength({ min: 3, max: 30 }).withMessage('Username must be 3-30 characters')
     .matches(/^[a-zA-Z0-9_]+$/).withMessage('Username can only contain letters, numbers, and underscores'),
   body('displayName').optional().trim().isLength({ max: 100 }).withMessage('Display name max 100 characters'),
 ];
@@ -177,6 +172,37 @@ export const profileUpdateRules = [
   body('displayName').optional().trim().isLength({ max: 100 }).withMessage('Display name max 100 characters'),
   body('bio').optional().trim().isLength({ max: 500 }).withMessage('Bio max 500 characters'),
   body('avatar').optional().trim().isURL().withMessage('Avatar must be a valid URL'),
+];
+
+export const forgotPasswordRules = [
+  body('email').isEmail().withMessage('Invalid email'),
+];
+
+export const resetPasswordRules = [
+  body('token').notEmpty().withMessage('Token is required').isLength({ min: 20, max: 200 }).withMessage('Invalid token format'),
+  passwordValidation,
+];
+
+export const changePasswordRules = [
+  body('currentPassword').notEmpty().withMessage('Current password is required'),
+  body('newPassword')
+    .isLength({ min: 8 })
+    .withMessage('Password must be at least 8 characters')
+    .matches(/[A-Z]/)
+    .withMessage('Password must contain at least one uppercase letter')
+    .matches(/[a-z]/)
+    .withMessage('Password must contain at least one lowercase letter')
+    .matches(/[0-9]/)
+    .withMessage('Password must contain at least one number'),
+];
+
+export const deleteAccountRules = [
+  body('password').notEmpty().withMessage('Password required to delete account'),
+  body('confirmUsername').notEmpty().withMessage('Type your username to confirm'),
+];
+
+export const resendVerificationRules = [
+  body('email').isEmail().withMessage('Invalid email'),
 ];
 
 // ─── Track rules ──────────────────────────────────────────
@@ -217,7 +243,7 @@ export const updateAgentRules = [
 // ─── Social rules ─────────────────────────────────────────
 
 export const createCommentRules = [
-  body('content').trim().notEmpty().withMessage('Comment is required').isLength({ max: 1000 }).withMessage('Comment max 1000 characters'),
+  body('content').trim().notEmpty().withMessage('Comment is required').isLength({ max: 2000 }).withMessage('Comment max 2000 characters'),
   body('parentId').optional().isUUID().withMessage('Parent ID must be a valid UUID'),
 ];
 

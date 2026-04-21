@@ -1,15 +1,19 @@
 'use client';
 
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import Link from 'next/link';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
-  Shuffle, Repeat, Repeat1, ListMusic, SlidersHorizontal,
+  Shuffle, Repeat, Repeat1, ListMusic, SlidersHorizontal, ListOrdered,
 } from 'lucide-react';
+import { AnimatePresence } from 'framer-motion';
 import api from '@/lib/api';
 import { audioEngine } from '@/lib/audioEngine';
 import { PlayerSettings } from './PlayerSettings';
+import { QueuePanel } from './QueuePanel';
+import { useKeyboardShortcuts } from './useKeyboardShortcuts';
+import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
 
 function formatTime(seconds: number): string {
   if (!seconds || isNaN(seconds)) return '0:00';
@@ -38,6 +42,7 @@ export function AudioPlayer() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const playRecordedRef = useRef(false);
   const engineInitRef = useRef(false);
+  const isPlayingRef = useRef(false);
 
   const {
     currentTrack, isPlaying, volume, progress, duration,
@@ -45,7 +50,17 @@ export function AudioPlayer() {
     setVolume, setProgress, setDuration, toggleShuffle, toggleRepeat,
     playbackSpeed, eqEnabled, eqBands, showSettings, toggleSettings,
     sleepTimerEnd, tickSleepTimer,
+    showQueue, toggleQueue, queue,
   } = usePlayerStore();
+
+  // Keep ref in sync for use in non-reactive effects
+  isPlayingRef.current = isPlaying;
+
+  // Keyboard shortcuts help dialog state (? opens it)
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+
+  // Global keyboard shortcuts (Space, arrows, M, N, P, S, R, ?)
+  useKeyboardShortcuts(audioRef, () => setShowShortcutsHelp(true));
 
   // Load track & optionally init audio engine (only for same-origin audio)
   useEffect(() => {
@@ -76,10 +91,10 @@ export function AudioPlayer() {
       engineInitRef.current = false;
     }
 
-    if (isPlaying) {
+    if (isPlayingRef.current) {
       audio.play().catch(() => {});
     }
-  }, [currentTrack]);
+  }, [currentTrack, playbackSpeed]);
 
   useEffect(() => {
     const audio = audioRef.current;
@@ -94,7 +109,7 @@ export function AudioPlayer() {
     } else {
       audio.pause();
     }
-  }, [isPlaying]);
+  }, [isPlaying, currentTrack]);
 
   // Volume — apply to gain node when engine is active, otherwise on element
   useEffect(() => {
@@ -128,6 +143,64 @@ export function AudioPlayer() {
     const interval = setInterval(() => tickSleepTimer(), 1000);
     return () => clearInterval(interval);
   }, [sleepTimerEnd, tickSleepTimer]);
+
+  // Media Session API — OS-level media controls (lock screen, notification center, etc.)
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !currentTrack) return;
+
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: currentTrack.title,
+      artist: currentTrack.agent?.name || 'Unknown Artist',
+      album: 'Morlo.ai',
+      artwork: currentTrack.coverArt
+        ? [
+            { src: currentTrack.coverArt, sizes: '96x96', type: 'image/png' },
+            { src: currentTrack.coverArt, sizes: '256x256', type: 'image/png' },
+            { src: currentTrack.coverArt, sizes: '512x512', type: 'image/png' },
+          ]
+        : [],
+    });
+
+    navigator.mediaSession.setActionHandler('play', () => { if (!isPlayingRef.current) togglePlay(); });
+    navigator.mediaSession.setActionHandler('pause', () => { if (isPlayingRef.current) togglePlay(); });
+    navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
+    navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
+    navigator.mediaSession.setActionHandler('seekto', (details) => {
+      if (details.seekTime != null && audioRef.current) {
+        audioRef.current.currentTime = details.seekTime;
+        setProgress(details.seekTime);
+      }
+    });
+
+    return () => {
+      navigator.mediaSession.setActionHandler('play', null);
+      navigator.mediaSession.setActionHandler('pause', null);
+      navigator.mediaSession.setActionHandler('previoustrack', null);
+      navigator.mediaSession.setActionHandler('nexttrack', null);
+      navigator.mediaSession.setActionHandler('seekto', null);
+    };
+  }, [currentTrack, togglePlay, prevTrack, nextTrack, setProgress]);
+
+  // Keep media session playback state in sync
+  useEffect(() => {
+    if ('mediaSession' in navigator) {
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+    }
+  }, [isPlaying]);
+
+  // Update media session position state for seek bar
+  useEffect(() => {
+    if (!('mediaSession' in navigator) || !duration) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration,
+        playbackRate: playbackSpeed,
+        position: Math.min(progress, duration),
+      });
+    } catch {
+      // setPositionState may throw if values are invalid
+    }
+  }, [progress, duration, playbackSpeed]);
 
   const handleTimeUpdate = useCallback(() => {
     const audio = audioRef.current;
@@ -175,6 +248,10 @@ export function AudioPlayer() {
     <>
       {/* Settings Panel (above player) */}
       <PlayerSettings />
+      <AnimatePresence>
+        {showQueue && <QueuePanel />}
+      </AnimatePresence>
+      <KeyboardShortcutsDialog open={showShortcutsHelp} onClose={() => setShowShortcutsHelp(false)} />
 
       <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[hsl(var(--card))] border-t border-[hsl(var(--border))] z-50 flex items-center px-4">
         <audio
@@ -251,6 +328,24 @@ export function AudioPlayer() {
 
         {/* Right Controls */}
         <div className="hidden sm:flex items-center gap-2 w-[200px] justify-end">
+          {/* Queue Button */}
+          <button
+            onClick={toggleQueue}
+            aria-label="Queue"
+            className={`p-1.5 rounded-md transition-colors relative ${
+              showQueue
+                ? 'text-[hsl(var(--accent))] bg-[hsl(var(--accent)/0.15)]'
+                : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-[hsl(var(--secondary))]'
+            }`}
+          >
+            <ListOrdered className="w-4 h-4" />
+            {queue.length > 1 && !showQueue && (
+              <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-[hsl(var(--accent))] text-white rounded-full w-4 h-4 flex items-center justify-center">
+                {queue.length}
+              </span>
+            )}
+          </button>
+
           {/* Settings/EQ Button */}
           <button
             onClick={toggleSettings}

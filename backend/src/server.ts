@@ -15,12 +15,13 @@ import logger from './utils/logger';
 // Global error handlers
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
-  process.exit(1);
+  // Give time for logs to flush before exiting
+  setTimeout(() => process.exit(1), 1000);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', { promise, reason });
-  process.exit(1);
+  // Don't crash the server on unhandled promise rejections — log and continue
 });
 
 // Routes
@@ -32,6 +33,8 @@ import adminRoutes from './routes/adminRoutes';
 import genreRoutes from './routes/genreRoutes';
 import subscriptionRoutes from './routes/subscriptionRoutes';
 import uploadRoutes from './routes/uploadRoutes';
+import notificationRoutes from './routes/notificationRoutes';
+import aiRoutes from './routes/aiRoutes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -69,6 +72,10 @@ app.use(
   })
 );
 
+// Stripe webhook needs raw body for signature verification — mount BEFORE json parsing
+import { handleWebhook } from './controllers/subscriptionController';
+app.post('/api/subscription/webhook', express.raw({ type: 'application/json' }), handleWebhook as any);
+
 // Body parsing (10MB for JSON, uploads handled separately by multer)
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -93,6 +100,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/genres', genreRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/upload', uploadRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/ai', aiRoutes);
 
 // Error handling
 app.use(errorHandler);

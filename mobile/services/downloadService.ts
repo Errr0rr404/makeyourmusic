@@ -11,6 +11,33 @@ export interface DownloadedTrack extends TrackItem {
   fileSize: number;
 }
 
+// In-memory cache of trackId → localAudioUri so that sync-style callers
+// (e.g. the audioService that converts tracks to native format) can resolve
+// offline URIs without an async AsyncStorage roundtrip per track.
+const localUriCache = new Map<string, string>();
+let cacheHydrated = false;
+
+export async function hydrateDownloadCache(): Promise<void> {
+  try {
+    const all = await getDownloadedTracks();
+    localUriCache.clear();
+    for (const t of all) {
+      localUriCache.set(t.id, t.localAudioUri);
+    }
+  } finally {
+    cacheHydrated = true;
+  }
+}
+
+/** Synchronously look up a downloaded track's local file URI. */
+export function getLocalUri(trackId: string): string | null {
+  return localUriCache.get(trackId) || null;
+}
+
+export function isCacheHydrated(): boolean {
+  return cacheHydrated;
+}
+
 /**
  * Get the downloads directory, creating it if needed.
  */
@@ -38,6 +65,8 @@ export async function getDownloadedTracks(): Promise<DownloadedTrack[]> {
  * Check if a track is already downloaded.
  */
 export async function isTrackDownloaded(trackId: string): Promise<boolean> {
+  // Fast path: if cache is hydrated, no need to touch AsyncStorage
+  if (cacheHydrated) return localUriCache.has(trackId);
   const tracks = await getDownloadedTracks();
   return tracks.some((t) => t.id === trackId);
 }
@@ -53,14 +82,18 @@ export async function downloadTrack(
   const filename = `${track.id}.mp3`;
   const file = new File(dir, filename);
 
-  // Download using fetch + file write
+  // Delete any stale file before writing (File.write only creates fresh)
+  if (file.exists) {
+    try { file.delete(); } catch { /* non-fatal */ }
+  }
+  file.create();
+
+  // Download via fetch → arrayBuffer → write. For very large files this
+  // could be improved with createDownloadResumable, but works for typical songs.
   const response = await fetch(track.audioUrl);
-  if (!response.ok) throw new Error('Download failed');
+  if (!response.ok) throw new Error(`Download failed (${response.status})`);
 
-  const blob = await response.blob();
-  const buffer = await blob.arrayBuffer();
-
-  // Write to file using the new API
+  const buffer = await response.arrayBuffer();
   file.write(new Uint8Array(buffer));
 
   const downloadedTrack: DownloadedTrack = {
@@ -74,6 +107,9 @@ export async function downloadTrack(
   const existing = await getDownloadedTracks();
   const updated = [...existing.filter((t) => t.id !== track.id), downloadedTrack];
   await AsyncStorage.setItem(DOWNLOADS_META_KEY, JSON.stringify(updated));
+
+  // Update the in-memory cache so playback can immediately use the offline URI
+  localUriCache.set(track.id, downloadedTrack.localAudioUri);
 
   onProgress?.(1);
   return downloadedTrack;
@@ -91,12 +127,14 @@ export async function removeDownload(trackId: string): Promise<void> {
       file.delete();
     }
   } catch {
-    // file might not exist
+    // File might be missing or permission issue — the metadata cleanup below
+    // is the source of truth; ignore here.
   }
 
   const existing = await getDownloadedTracks();
   const updated = existing.filter((t) => t.id !== trackId);
   await AsyncStorage.setItem(DOWNLOADS_META_KEY, JSON.stringify(updated));
+  localUriCache.delete(trackId);
 }
 
 /**
@@ -120,4 +158,5 @@ export async function clearAllDownloads(): Promise<void> {
     // ignore
   }
   await AsyncStorage.setItem(DOWNLOADS_META_KEY, JSON.stringify([]));
+  localUriCache.clear();
 }

@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import type { TrackItem } from '../types';
+import { getApi } from '../api';
 
 // ─── EQ Types ──────────────────────────────────────────────
 
@@ -16,7 +17,7 @@ export const DEFAULT_EQ_BANDS: EQBand[] = [
   { frequency: 1000, gain: 0, label: '1K' },
   { frequency: 2400, gain: 0, label: '2.4K' },
   { frequency: 6000, gain: 0, label: '6K' },
-  { frequency: 15000,gain: 0, label: '15K' },
+  { frequency: 15000, gain: 0, label: '15K' },
 ];
 
 export interface EQPreset {
@@ -44,6 +45,47 @@ export const EQ_PRESETS: EQPreset[] = [
 export const PLAYBACK_SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 1.75, 2] as const;
 export type PlaybackSpeed = (typeof PLAYBACK_SPEEDS)[number];
 
+type PersistedPlayerPrefs = {
+  playbackSpeed: PlaybackSpeed;
+  eqEnabled: boolean;
+  eqPresetId: string;
+  eqBands: EQBand[];
+  crossfade: number;
+  volume: number;
+  shuffle: boolean;
+  repeat: 'none' | 'one' | 'all';
+  autoplay: boolean;
+};
+
+const PREFS_STORAGE_KEY = "music4ai-player-prefs-v1";
+
+function loadPlayerPrefs(): Partial<PersistedPlayerPrefs> {
+  try {
+    if (typeof globalThis === "undefined") return {};
+    const ls = (globalThis as any).localStorage;
+    if (!ls) return {};
+    const raw = ls.getItem(PREFS_STORAGE_KEY);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw) as Partial<PersistedPlayerPrefs>;
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function persistPlayerPrefs(update: Partial<PersistedPlayerPrefs>): void {
+  try {
+    if (typeof globalThis === "undefined") return;
+    const ls = (globalThis as any).localStorage;
+    if (!ls) return;
+    const current = loadPlayerPrefs();
+    const next = { ...current, ...update };
+    ls.setItem(PREFS_STORAGE_KEY, JSON.stringify(next));
+  } catch {
+    // Local persistence is best-effort only.
+  }
+}
+
 // ─── Player State ──────────────────────────────────────────
 
 export interface PlayerState {
@@ -56,6 +98,7 @@ export interface PlayerState {
   duration: number;
   shuffle: boolean;
   repeat: 'none' | 'one' | 'all';
+  autoplay: boolean;
 
   // Audio settings
   playbackSpeed: PlaybackSpeed;
@@ -68,6 +111,7 @@ export interface PlayerState {
 
   // UI state
   showSettings: boolean;
+  showQueue: boolean;
 }
 
 export interface PlayerActions {
@@ -83,9 +127,13 @@ export interface PlayerActions {
   setDuration: (duration: number) => void;
   toggleShuffle: () => void;
   toggleRepeat: () => void;
+  toggleAutoplay: () => void;
   addToQueue: (track: TrackItem) => void;
+  appendToQueue: (tracks: TrackItem[]) => void;
   removeFromQueue: (trackId: string) => void;
   clearQueue: () => void;
+  /** Fetch similar tracks and append to queue if autoplay is on and we're near the end. */
+  autoFillIfNeeded: () => Promise<void>;
 
   // Audio settings actions
   setPlaybackSpeed: (speed: PlaybackSpeed) => void;
@@ -97,32 +145,40 @@ export interface PlayerActions {
   setSleepTimer: (minutes: number | null) => void;
   tickSleepTimer: () => void;
   toggleSettings: () => void;
+  toggleQueue: () => void;
+  moveInQueue: (fromIndex: number, toIndex: number) => void;
 }
 
 export type PlayerStore = PlayerState & PlayerActions;
+
+const persistedPrefs = loadPlayerPrefs();
 
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
   currentTrack: null,
   queue: [],
   queueIndex: -1,
   isPlaying: false,
-  volume: 0.8,
+  volume: typeof persistedPrefs.volume === "number" ? persistedPrefs.volume : 0.8,
   progress: 0,
   duration: 0,
-  shuffle: false,
-  repeat: 'none',
+  shuffle: typeof persistedPrefs.shuffle === "boolean" ? persistedPrefs.shuffle : false,
+  repeat: persistedPrefs.repeat ?? 'none',
+  autoplay: typeof persistedPrefs.autoplay === "boolean" ? persistedPrefs.autoplay : true,
 
   // Audio settings defaults
-  playbackSpeed: 1,
-  eqEnabled: false,
-  eqPresetId: 'flat',
-  eqBands: DEFAULT_EQ_BANDS.map((b) => ({ ...b })),
-  crossfade: 0,
+  playbackSpeed: persistedPrefs.playbackSpeed ?? 1,
+  eqEnabled: typeof persistedPrefs.eqEnabled === "boolean" ? persistedPrefs.eqEnabled : false,
+  eqPresetId: persistedPrefs.eqPresetId ?? 'flat',
+  eqBands: Array.isArray(persistedPrefs.eqBands) && persistedPrefs.eqBands.length === DEFAULT_EQ_BANDS.length
+    ? persistedPrefs.eqBands
+    : DEFAULT_EQ_BANDS.map((b) => ({ ...b })),
+  crossfade: typeof persistedPrefs.crossfade === "number" ? persistedPrefs.crossfade : 0,
   sleepTimer: null,
   sleepTimerEnd: null,
 
   // UI
   showSettings: false,
+  showQueue: false,
 
   playTrack: (track, queue) => {
     const newQueue = queue || [track];
@@ -141,7 +197,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   resume: () => set({ isPlaying: true }),
 
   nextTrack: () => {
-    const { queue, queueIndex, shuffle, repeat } = get();
+    const { queue, queueIndex, shuffle, repeat, autoplay } = get();
     if (queue.length === 0) return;
 
     let nextIndex: number;
@@ -151,6 +207,23 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       nextIndex = queueIndex + 1;
     } else if (repeat === 'all') {
       nextIndex = 0;
+    } else if (autoplay) {
+      // Radio mode: fetch similar and keep playing. Fire-and-forget.
+      get().autoFillIfNeeded().then(() => {
+        const fresh = get();
+        if (fresh.queueIndex < fresh.queue.length - 1) {
+          const ni = fresh.queueIndex + 1;
+          set({
+            currentTrack: fresh.queue[ni],
+            queueIndex: ni,
+            isPlaying: true,
+            progress: 0,
+          });
+        } else {
+          set({ isPlaying: false });
+        }
+      });
+      return;
     } else {
       set({ isPlaying: false });
       return;
@@ -162,6 +235,11 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       isPlaying: true,
       progress: 0,
     });
+
+    // Pre-fetch more tracks if we're nearing the end and autoplay is on
+    if (autoplay && queue.length - 1 - nextIndex <= 2) {
+      void get().autoFillIfNeeded();
+    }
   },
 
   prevTrack: () => {
@@ -186,15 +264,38 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
 
   seek: (position) => set({ progress: position }),
-  setVolume: (volume) => set({ volume: Math.max(0, Math.min(1, volume)) }),
+  setVolume: (volume) => {
+    const next = Math.max(0, Math.min(1, volume));
+    persistPlayerPrefs({ volume: next });
+    set({ volume: next });
+  },
   setProgress: (progress) => set({ progress }),
   setDuration: (duration) => set({ duration }),
-  toggleShuffle: () => set((s) => ({ shuffle: !s.shuffle })),
+  toggleShuffle: () =>
+    set((s) => {
+      const shuffle = !s.shuffle;
+      persistPlayerPrefs({ shuffle });
+      return { shuffle };
+    }),
   toggleRepeat: () =>
-    set((s) => ({
-      repeat: s.repeat === 'none' ? 'all' : s.repeat === 'all' ? 'one' : 'none',
-    })),
+    set((s) => {
+      const repeat = s.repeat === 'none' ? 'all' : s.repeat === 'all' ? 'one' : 'none';
+      persistPlayerPrefs({ repeat });
+      return { repeat };
+    }),
+  toggleAutoplay: () =>
+    set((s) => {
+      const autoplay = !s.autoplay;
+      persistPlayerPrefs({ autoplay });
+      return { autoplay };
+    }),
   addToQueue: (track) => set((s) => ({ queue: [...s.queue, track] })),
+  appendToQueue: (tracks) => set((s) => {
+    // Dedupe — skip tracks already in queue
+    const existing = new Set(s.queue.map((t) => t.id));
+    const fresh = tracks.filter((t) => !existing.has(t.id));
+    return { queue: [...s.queue, ...fresh] };
+  }),
   removeFromQueue: (trackId) => set((s) => {
     const newQueue = s.queue.filter((t) => t.id !== trackId);
     const newIndex = s.currentTrack
@@ -204,11 +305,41 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   }),
   clearQueue: () => set({ queue: [], queueIndex: -1 }),
 
+  autoFillIfNeeded: async () => {
+    const { autoplay, currentTrack, queue, queueIndex } = get();
+    if (!autoplay || !currentTrack) return;
+    // Only fill when we're on the last track (or there's nothing after)
+    const tracksRemaining = queue.length - 1 - queueIndex;
+    if (tracksRemaining > 2) return;
+
+    try {
+      const api = getApi();
+      const slugOrId = (currentTrack as any).slug || currentTrack.id;
+      const res = await api.get(`/tracks/${slugOrId}/similar?limit=10`);
+      const similar: TrackItem[] = (res.data?.tracks || []).filter(
+        (t: TrackItem) => t.id !== currentTrack.id
+      );
+      if (similar.length > 0) {
+        get().appendToQueue(similar);
+      }
+    } catch {
+      // Non-critical — if it fails, nothing bad happens
+    }
+  },
+
   // ─── Audio Settings Actions ────────────────────────────
 
-  setPlaybackSpeed: (speed) => set({ playbackSpeed: speed }),
+  setPlaybackSpeed: (speed) => {
+    persistPlayerPrefs({ playbackSpeed: speed });
+    set({ playbackSpeed: speed });
+  },
 
-  toggleEQ: () => set((s) => ({ eqEnabled: !s.eqEnabled })),
+  toggleEQ: () =>
+    set((s) => {
+      const eqEnabled = !s.eqEnabled;
+      persistPlayerPrefs({ eqEnabled });
+      return { eqEnabled };
+    }),
 
   setEQPreset: (presetId) => {
     const preset = EQ_PRESETS.find((p) => p.id === presetId);
@@ -217,6 +348,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       ...band,
       gain: preset.bands[i] ?? 0,
     }));
+    persistPlayerPrefs({ eqPresetId: presetId, eqBands: newBands, eqEnabled: true });
     set({ eqPresetId: presetId, eqBands: newBands, eqEnabled: true });
   },
 
@@ -226,17 +358,26 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       const newBands = [...s.eqBands];
       const existing = newBands[index];
       if (existing) newBands[index] = { ...existing, gain: clampedGain };
+      persistPlayerPrefs({ eqBands: newBands, eqPresetId: 'custom' });
       return { eqBands: newBands, eqPresetId: 'custom' };
     });
   },
 
-  resetEQ: () => set({
-    eqBands: DEFAULT_EQ_BANDS.map((b) => ({ ...b })),
-    eqPresetId: 'flat',
-    eqEnabled: false,
-  }),
+  resetEQ: () => {
+    const eqBands = DEFAULT_EQ_BANDS.map((b) => ({ ...b }));
+    persistPlayerPrefs({ eqBands, eqPresetId: 'flat', eqEnabled: false });
+    set({
+      eqBands,
+      eqPresetId: 'flat',
+      eqEnabled: false,
+    });
+  },
 
-  setCrossfade: (seconds) => set({ crossfade: Math.max(0, Math.min(12, seconds)) }),
+  setCrossfade: (seconds) => {
+    const crossfade = Math.max(0, Math.min(12, seconds));
+    persistPlayerPrefs({ crossfade });
+    set({ crossfade });
+  },
 
   setSleepTimer: (minutes) => {
     if (minutes === null || minutes <= 0) {
@@ -261,5 +402,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     }
   },
 
-  toggleSettings: () => set((s) => ({ showSettings: !s.showSettings })),
+  toggleSettings: () => set((s) => ({ showSettings: !s.showSettings, showQueue: false })),
+  toggleQueue: () => set((s) => ({ showQueue: !s.showQueue, showSettings: false })),
+  moveInQueue: (fromIndex, toIndex) => set((s) => {
+    const newQueue = [...s.queue];
+    const [moved] = newQueue.splice(fromIndex, 1);
+    if (moved) newQueue.splice(toIndex, 0, moved);
+    // Recalculate queueIndex to keep current track selected
+    const newIdx = s.currentTrack ? newQueue.findIndex((t) => t.id === s.currentTrack!.id) : -1;
+    return { queue: newQueue, queueIndex: newIdx };
+  }),
 }));

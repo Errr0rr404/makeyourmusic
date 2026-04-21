@@ -15,8 +15,13 @@ import {
   ArrowLeft,
   Cpu,
   Send,
+  Download,
+  Check,
+  Loader2,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { downloadTrack, isTrackDownloaded, removeDownload } from '../../services/downloadService';
+import { Lyrics } from '../../components/track/Lyrics';
 
 export default function TrackDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -28,6 +33,42 @@ export default function TrackDetailScreen() {
   const [comments, setComments] = useState<Comment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [downloaded, setDownloaded] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  useEffect(() => {
+    if (track?.id) {
+      isTrackDownloaded(track.id).then(setDownloaded).catch(() => {});
+    }
+  }, [track?.id]);
+
+  const handleDownload = async () => {
+    if (!track) return;
+    if (downloaded) {
+      Alert.alert('Remove download?', 'This track will no longer be available offline.', [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            await removeDownload(track.id);
+            setDownloaded(false);
+          },
+        },
+      ]);
+      return;
+    }
+    setDownloading(true);
+    try {
+      await downloadTrack(track);
+      setDownloaded(true);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    } catch (err: any) {
+      Alert.alert('Download failed', err.message || 'Could not save for offline');
+    } finally {
+      setDownloading(false);
+    }
+  };
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(0);
   const [newComment, setNewComment] = useState('');
@@ -225,7 +266,29 @@ export default function TrackDetailScreen() {
             <TouchableOpacity className="p-3" onPress={handleShare} accessibilityLabel="Share track">
               <Share2 size={22} color="#a1a1aa" />
             </TouchableOpacity>
+
+            <TouchableOpacity
+              className="p-3"
+              onPress={handleDownload}
+              disabled={downloading}
+              accessibilityLabel={downloaded ? 'Remove download' : 'Download for offline'}
+            >
+              {downloading ? (
+                <ActivityIndicator size="small" color="#8b5cf6" />
+              ) : downloaded ? (
+                <Check size={22} color="#4ade80" />
+              ) : (
+                <Download size={22} color="#a1a1aa" />
+              )}
+            </TouchableOpacity>
           </View>
+
+          {/* Lyrics */}
+          {track.lyrics ? (
+            <View className="mt-6">
+              <Lyrics lyrics={track.lyrics} />
+            </View>
+          ) : null}
 
           {/* AI Attribution */}
           {(track.aiModel || track.aiPrompt) && (

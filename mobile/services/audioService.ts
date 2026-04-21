@@ -11,6 +11,7 @@ import TrackPlayer, {
 import { usePlayerStore } from '@morlo/shared';
 import type { TrackItem } from '@morlo/shared';
 import { getApi } from '@morlo/shared';
+import { getLocalUri } from './downloadService';
 
 let isInitialized = false;
 
@@ -58,9 +59,11 @@ export async function setupPlayer(): Promise<boolean> {
  * Convert our TrackItem to react-native-track-player's Track format.
  */
 function toNativeTrack(track: TrackItem) {
+  // Prefer an offline download if present — enables playback without network
+  const localUri = getLocalUri(track.id);
   return {
     id: track.id,
-    url: track.audioUrl,
+    url: localUri || track.audioUrl,
     title: track.title,
     artist: track.agent.name,
     artwork: track.coverArt || undefined,

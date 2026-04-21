@@ -16,7 +16,13 @@ export default function RegisterScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  const [acceptTerms, setAcceptTerms] = useState(false);
+
   const handleRegister = async () => {
+    if (!acceptTerms) {
+      setError('Please accept the Terms and Privacy Policy');
+      return;
+    }
     if (!email.trim() || !username.trim() || !password) {
       setError('Please fill in all required fields');
       return;
@@ -25,11 +31,15 @@ export default function RegisterScreen() {
       setError('Password must be at least 8 characters');
       return;
     }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[0-9]/.test(password)) {
+      setError('Password must include uppercase, lowercase, and a number');
+      return;
+    }
     setLoading(true);
     setError('');
     try {
       await register(email.trim(), password, username.trim(), displayName.trim() || undefined);
-      router.replace('/(tabs)');
+      router.replace('/(auth)/verify-email');
     } catch (err: any) {
       setError(err.message || 'Registration failed');
     } finally {
@@ -86,13 +96,25 @@ export default function RegisterScreen() {
 
           <Input
             label="Password *"
-            placeholder="At least 8 characters"
+            placeholder="8+ chars, 1 upper, 1 lower, 1 number"
             value={password}
             onChangeText={setPassword}
             secureTextEntry
           />
 
-          <Button title="Create Account" onPress={handleRegister} loading={loading} size="lg" />
+          <TouchableOpacity
+            onPress={() => setAcceptTerms(!acceptTerms)}
+            className="flex-row items-start gap-2 mb-4"
+          >
+            <View className={`w-5 h-5 rounded border items-center justify-center mt-0.5 ${acceptTerms ? 'bg-morlo-accent border-morlo-accent' : 'border-morlo-border bg-morlo-card'}`}>
+              {acceptTerms && <Text className="text-white text-xs font-bold">✓</Text>}
+            </View>
+            <Text className="text-morlo-muted text-sm flex-1">
+              I agree to the <Text className="text-morlo-accent font-semibold">Terms of Service</Text> and <Text className="text-morlo-accent font-semibold">Privacy Policy</Text>
+            </Text>
+          </TouchableOpacity>
+
+          <Button title="Create Account" onPress={handleRegister} loading={loading} disabled={!acceptTerms} size="lg" />
 
           <View className="flex-row items-center justify-center mt-6">
             <Text className="text-morlo-muted text-sm">Already have an account? </Text>

@@ -4,17 +4,26 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
-import { User, Music, Heart, Clock, Calendar, Shield, Crown, Pencil, Save, X, Loader2, AlertCircle } from 'lucide-react';
+import { User, Music, Heart, Clock, Calendar, Shield, Crown, Pencil, Save, X, Loader2, AlertCircle, Globe, LockKeyhole, Wand2, Sparkles, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { ImageUpload } from '@/components/upload/ImageUpload';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
+import Link from 'next/link';
+import { usePlayerStore } from '@/lib/store/playerStore';
 
 export default function ProfilePage() {
   const router = useRouter();
+  const confirm = useConfirm();
   const { user, isAuthenticated, fetchUser } = useAuthStore();
+  const { playTrack } = usePlayerStore();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [form, setForm] = useState({ displayName: '', bio: '', avatar: '' });
   const [error, setError] = useState<string | null>(null);
+  const [myTracks, setMyTracks] = useState<any[]>([]);
+  const [tracksTab, setTracksTab] = useState<'all' | 'public' | 'private'>('all');
+  const [tracksLoading, setTracksLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -24,6 +33,7 @@ export default function ProfilePage() {
       avatar: user?.avatar || '',
     });
     loadStats();
+    loadMyTracks();
   }, [isAuthenticated, user]);
 
   const loadStats = async () => {
@@ -40,6 +50,53 @@ export default function ProfilePage() {
       // Stats are non-critical
     }
   };
+
+  const loadMyTracks = async () => {
+    setTracksLoading(true);
+    try {
+      const res = await api.get('/tracks/mine?limit=50');
+      setMyTracks(res.data.tracks || []);
+    } catch {
+      setMyTracks([]);
+    } finally {
+      setTracksLoading(false);
+    }
+  };
+
+  const handleToggleVisibility = async (trackId: string, makePublic: boolean) => {
+    const prev = myTracks;
+    setMyTracks((ts) => ts.map((t) => (t.id === trackId ? { ...t, isPublic: makePublic } : t)));
+    try {
+      await api.patch(`/tracks/${trackId}/visibility`, { isPublic: makePublic });
+      toast.success(makePublic ? 'Track is now public' : 'Track is now private');
+    } catch {
+      setMyTracks(prev);
+      toast.error('Failed to update visibility');
+    }
+  };
+
+  const handleDeleteTrack = async (trackId: string, title: string) => {
+    const ok = await confirm({
+      title: `Delete "${title}"?`,
+      message: 'This will permanently remove the track, its plays, likes, and comments. This cannot be undone.',
+      confirmLabel: 'Delete track',
+      destructive: true,
+    });
+    if (!ok) return;
+    try {
+      await api.delete(`/tracks/${trackId}`);
+      setMyTracks((ts) => ts.filter((t) => t.id !== trackId));
+      toast.success('Track deleted');
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to delete');
+    }
+  };
+
+  const filteredTracks = myTracks.filter((t) => {
+    if (tracksTab === 'public') return t.isPublic;
+    if (tracksTab === 'private') return !t.isPublic;
+    return true;
+  });
 
   const handleSave = async () => {
     setSaving(true);
@@ -150,13 +207,24 @@ export default function ProfilePage() {
               />
             </div>
             <div>
-              <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Avatar URL</label>
-              <input
-                value={form.avatar}
-                onChange={(e) => setForm((p) => ({ ...p, avatar: e.target.value }))}
-                placeholder="https://..."
-                className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
-              />
+              <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-2">Avatar</label>
+              <div className="flex items-start gap-4">
+                <div className="w-24 flex-shrink-0">
+                  <ImageUpload
+                    value={form.avatar}
+                    onChange={(url) => setForm((p) => ({ ...p, avatar: url }))}
+                    aspectRatio="square"
+                    label="Upload"
+                    maxSizeMB={5}
+                  />
+                </div>
+                <input
+                  value={form.avatar}
+                  onChange={(e) => setForm((p) => ({ ...p, avatar: e.target.value }))}
+                  placeholder="Or paste a URL"
+                  className="flex-1 h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
+                />
+              </div>
             </div>
             <div className="flex gap-3 justify-end">
               <button
@@ -194,11 +262,145 @@ export default function ProfilePage() {
         ))}
       </div>
 
+      {/* Your tracks */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center gap-2">
+            <Music className="w-5 h-5 text-[hsl(var(--accent))]" />
+            <h2 className="text-lg font-bold text-white">Your tracks</h2>
+            <span className="text-xs text-[hsl(var(--muted-foreground))]">({myTracks.length})</span>
+          </div>
+          <Link
+            href="/create"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-purple-200 text-xs font-medium hover:scale-105 transition-transform"
+          >
+            <Wand2 className="w-3.5 h-3.5" /> Create with AI
+          </Link>
+        </div>
+
+        <div className="flex gap-1 mb-3 border-b border-[hsl(var(--border))]">
+          {(['all', 'public', 'private'] as const).map((t) => {
+            const count =
+              t === 'all'
+                ? myTracks.length
+                : t === 'public'
+                  ? myTracks.filter((x) => x.isPublic).length
+                  : myTracks.filter((x) => !x.isPublic).length;
+            return (
+              <button
+                key={t}
+                onClick={() => setTracksTab(t)}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px capitalize ${
+                  tracksTab === t
+                    ? 'text-white border-[hsl(var(--accent))]'
+                    : 'text-[hsl(var(--muted-foreground))] border-transparent hover:text-white'
+                }`}
+              >
+                {t} <span className="text-xs text-[hsl(var(--muted-foreground))]">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {tracksLoading ? (
+          <div className="space-y-2">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-16 rounded-lg bg-[hsl(var(--card))] animate-pulse" />
+            ))}
+          </div>
+        ) : filteredTracks.length === 0 ? (
+          <div className="text-center py-12 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
+            <Sparkles className="w-10 h-10 text-[hsl(var(--muted-foreground))] mx-auto mb-3 opacity-50" />
+            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">
+              {tracksTab === 'private'
+                ? 'No private tracks yet'
+                : tracksTab === 'public'
+                  ? 'No public tracks yet'
+                  : "You haven't created any tracks yet"}
+            </p>
+            <Link
+              href="/create"
+              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium"
+            >
+              <Wand2 className="w-4 h-4" /> Create your first track
+            </Link>
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {filteredTracks.map((track) => (
+              <li
+                key={track.id}
+                className="group flex items-center gap-3 p-3 rounded-lg bg-[hsl(var(--card))] border border-[hsl(var(--border))] hover:border-white/20 transition-colors"
+              >
+                <button
+                  onClick={() => playTrack(track, filteredTracks)}
+                  className="w-12 h-12 rounded-lg overflow-hidden bg-[hsl(var(--secondary))] flex-shrink-0 flex items-center justify-center group/play"
+                  aria-label={`Play ${track.title}`}
+                >
+                  {track.coverArt ? (
+                    <img src={track.coverArt} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <Music className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
+                  )}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/track/${track.slug}`}
+                      className="text-sm font-semibold text-white hover:underline truncate"
+                    >
+                      {track.title}
+                    </Link>
+                    <span
+                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                        track.isPublic
+                          ? 'bg-green-500/10 text-green-300'
+                          : 'bg-amber-500/10 text-amber-300'
+                      }`}
+                    >
+                      {track.isPublic ? <Globe className="w-2.5 h-2.5" /> : <LockKeyhole className="w-2.5 h-2.5" />}
+                      {track.isPublic ? 'Public' : 'Private'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">
+                    {track.agent?.name} · {track.playCount || 0} plays · {track.likeCount || 0} likes
+                  </p>
+                </div>
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => handleToggleVisibility(track.id, !track.isPublic)}
+                    className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5"
+                    title={track.isPublic ? 'Make private' : 'Make public'}
+                  >
+                    {track.isPublic ? (
+                      <LockKeyhole className="w-4 h-4" />
+                    ) : (
+                      <Globe className="w-4 h-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteTrack(track.id, track.title)}
+                    className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-red-400 hover:bg-red-500/10"
+                    title="Delete track"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
       {/* Quick Links */}
       <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] divide-y divide-[hsl(var(--border))]">
         <button onClick={() => router.push('/library')} className="flex items-center gap-3 px-5 py-4 text-left w-full hover:bg-white/5 transition-colors">
           <Heart className="w-5 h-5 text-pink-400" />
           <span className="text-sm text-white">Liked Songs</span>
+        </button>
+        <button onClick={() => router.push('/studio/generations')} className="flex items-center gap-3 px-5 py-4 text-left w-full hover:bg-white/5 transition-colors">
+          <Sparkles className="w-5 h-5 text-purple-400" />
+          <span className="text-sm text-white">My AI Generations</span>
         </button>
         <button onClick={() => router.push('/settings')} className="flex items-center gap-3 px-5 py-4 text-left w-full hover:bg-white/5 transition-colors">
           <Clock className="w-5 h-5 text-blue-400" />

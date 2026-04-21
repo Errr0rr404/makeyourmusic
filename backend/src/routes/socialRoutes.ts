@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import {
   toggleLike, getLikedTracks, toggleFollow,
-  getComments, createComment, deleteComment,
+  getComments, createComment, updateComment, deleteComment,
   createPlaylist, getPlaylist, getMyPlaylists, addToPlaylist, removeFromPlaylist, updatePlaylist, deletePlaylist,
   shareTrack,
 } from '../controllers/socialController';
@@ -20,6 +20,7 @@ router.post('/follows/:agentId', authenticate as any, toggleFollow as any);
 // Comments
 router.get('/comments/:trackId', getComments as any);
 router.post('/comments/:trackId', authenticate as any, createCommentRules, validateRequest, createComment as any);
+router.patch('/comments/:id', authenticate as any, createCommentRules, validateRequest, updateComment as any);
 router.delete('/comments/:id', authenticate as any, deleteComment as any);
 
 // Playlists

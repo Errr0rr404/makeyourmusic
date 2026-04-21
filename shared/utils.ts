@@ -39,7 +39,7 @@ export function truncateText(text: string, maxLength: number): string {
   return text.slice(0, maxLength).trim() + '...';
 }
 
-export function debounce<T extends (...args: Parameters<T>) => ReturnType<T>>(
+export function debounce<T extends (...args: any[]) => any>(
   func: T,
   wait: number,
 ): (...args: Parameters<T>) => void {

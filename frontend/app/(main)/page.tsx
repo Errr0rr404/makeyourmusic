@@ -4,7 +4,10 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { TrackCard } from '@/components/track/TrackCard';
-import { TrendingUp, Sparkles, Clock, ChevronRight, AlertCircle } from 'lucide-react';
+import { SplashLoader } from '@/components/SplashLoader';
+import { OnboardingBanner } from '@/components/OnboardingBanner';
+import { TrendingUp, Sparkles, Clock, ChevronRight, AlertCircle, Music2, Play, Volume2, Zap } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface Genre {
   id: string;
@@ -20,154 +23,225 @@ export default function HomePage() {
   const [genres, setGenres] = useState<Genre[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isSplashComplete, setIsSplashComplete] = useState(() => {
+    // Only show splash once per session
+    if (typeof window !== 'undefined') {
+      return sessionStorage.getItem('morlo-splash-shown') === '1';
+    }
+    return false;
+  });
 
-  useEffect(() => {
-    async function load() {
-      try {
-        setError(null);
-        const [trendingRes, latestRes, genresRes] = await Promise.all([
-          api.get('/tracks/trending').catch(() => ({ data: { tracks: [] } })),
-          api.get('/tracks?sort=newest&limit=12').catch(() => ({ data: { tracks: [] } })),
-          api.get('/genres').catch(() => ({ data: { genres: [] } })),
-        ]);
-        setTrending(trendingRes.data.tracks || []);
-        setLatest(latestRes.data.tracks || []);
-        setGenres(genresRes.data.genres || []);
-      } catch (err: any) {
-        setError(err.message || 'Failed to load content');
+  const loadContent = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [trendingRes, latestRes, genresRes] = await Promise.allSettled([
+        api.get('/tracks/trending'),
+        api.get('/tracks?sort=newest&limit=12'),
+        api.get('/genres'),
+      ]);
+      const fulfilled = (r: PromiseSettledResult<any>) =>
+        r.status === 'fulfilled' ? r.value : null;
+      const anyFailed =
+        [trendingRes, latestRes, genresRes].some((r) => r.status === 'rejected');
+
+      setTrending(fulfilled(trendingRes)?.data.tracks || []);
+      setLatest(fulfilled(latestRes)?.data.tracks || []);
+      setGenres(fulfilled(genresRes)?.data.genres || []);
+
+      if (anyFailed && [trendingRes, latestRes, genresRes].every((r) => r.status === 'rejected')) {
+        setError('Could not load content. Check your connection and try again.');
       }
+    } catch (err: any) {
+      setError(err.message || 'Failed to load content');
+    } finally {
       setLoading(false);
     }
-    load();
-  }, []);
+  };
 
-  if (loading) {
-    return (
-      <div className="space-y-8 animate-fade-in">
-        <div className="h-8 w-48 bg-[hsl(var(--secondary))] rounded animate-pulse" />
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="space-y-3">
-              <div className="aspect-square rounded-lg bg-[hsl(var(--secondary))] animate-pulse" />
-              <div className="h-4 w-3/4 bg-[hsl(var(--secondary))] rounded animate-pulse" />
-              <div className="h-3 w-1/2 bg-[hsl(var(--secondary))] rounded animate-pulse" />
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
+  useEffect(() => {
+    loadContent();
+  }, []);
 
   const hasContent = trending.length > 0 || latest.length > 0;
 
   return (
-    <div className="space-y-10 animate-fade-in">
+    <div className="space-y-12 pb-20 selection:bg-blue-500/30">
+      <AnimatePresence>
+        {!isSplashComplete && (
+          <SplashLoader
+            logo="/icon.png"
+            appName="Morlo"
+            color="#3b82f6"
+            onComplete={() => {
+              sessionStorage.setItem('morlo-splash-shown', '1');
+              setIsSplashComplete(true);
+            }}
+          />
+        )}
+      </AnimatePresence>
+
+
       {/* Error Banner */}
       {error && (
-        <div className="flex items-center gap-3 p-4 bg-red-900/20 border border-red-500/30 rounded-xl">
-          <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-          <p className="text-sm text-red-400">{error}</p>
+        <div className="flex items-center justify-between gap-3 p-4 bg-red-900/20 border border-red-500/30 rounded-xl">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
+            <p className="text-sm text-red-400">{error}</p>
+          </div>
+          <button
+            onClick={loadContent}
+            className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-medium transition-colors"
+          >
+            Retry
+          </button>
         </div>
       )}
 
-      {/* Hero Section (when no content yet) */}
-      {!hasContent && (
-        <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-purple-900/50 via-[hsl(var(--card))] to-pink-900/30 p-8 md:p-12">
-          <div className="relative z-10">
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Welcome to{' '}
-              <span className="bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                Morlo
-              </span>
-            </h1>
-            <p className="text-lg text-[hsl(var(--muted-foreground))] max-w-xl mb-6">
-              The platform where AI agents create music, videos, and content — and you discover, listen, and enjoy.
-            </p>
-            <div className="flex gap-3">
-              <Link
-                href="/search"
-                className="px-6 py-3 rounded-full bg-[hsl(var(--primary))] text-white font-medium hover:bg-[hsl(var(--primary))]/90 transition-colors"
-              >
-                Explore Content
-              </Link>
-              <Link
-                href="/register"
-                className="px-6 py-3 rounded-full bg-white/10 text-white font-medium hover:bg-white/20 transition-colors"
-              >
-                Join Free
-              </Link>
-            </div>
-          </div>
-          <div className="absolute top-0 right-0 w-1/2 h-full opacity-20">
-            <div className="absolute inset-0 bg-gradient-to-l from-purple-500/30 to-transparent" />
+      <OnboardingBanner />
+
+      {loading ? (
+        <div className="space-y-8 animate-fade-in">
+          <div className="h-8 w-48 bg-white/5 rounded animate-pulse" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {Array.from({ length: 12 }).map((_, i) => (
+              <div key={i} className="space-y-3">
+                <div className="aspect-square rounded-2xl bg-white/5 animate-pulse" />
+                <div className="h-4 w-3/4 bg-white/5 rounded animate-pulse" />
+                <div className="h-3 w-1/2 bg-white/5 rounded animate-pulse" />
+              </div>
+            ))}
           </div>
         </div>
-      )}
-
-      {/* Trending */}
-      {trending.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-[hsl(var(--accent))]" />
-              <h2 className="text-xl font-bold text-white">Trending Now</h2>
-            </div>
-            <Link href="/search?sort=popular" className="flex items-center gap-1 text-sm text-[hsl(var(--muted-foreground))] hover:text-white transition-colors">
-              See all <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            {trending.slice(0, 6).map((track) => (
-              <TrackCard key={track.id} track={track} tracks={trending} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Latest Releases */}
-      {latest.length > 0 && (
-        <section>
-          <div className="flex items-center justify-between mb-5">
-            <div className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-[hsl(var(--accent))]" />
-              <h2 className="text-xl font-bold text-white">Latest Releases</h2>
-            </div>
-            <Link href="/search?sort=newest" className="flex items-center gap-1 text-sm text-[hsl(var(--muted-foreground))] hover:text-white transition-colors">
-              See all <ChevronRight className="w-4 h-4" />
-            </Link>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            {latest.slice(0, 6).map((track) => (
-              <TrackCard key={track.id} track={track} tracks={latest} />
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Browse by Genre */}
-      {genres.length > 0 && (
-        <section>
-          <div className="flex items-center gap-2 mb-5">
-            <Sparkles className="w-5 h-5 text-[hsl(var(--accent))]" />
-            <h2 className="text-xl font-bold text-white">Browse by Genre</h2>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-            {genres.map((genre) => (
-              <Link
-                key={genre.id}
-                href={`/genre/${genre.slug}`}
-                className="relative overflow-hidden rounded-xl p-5 h-24 flex items-end transition-transform hover:scale-[1.02]"
-                style={{ backgroundColor: genre.color || '#6366f1' }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-                <div className="relative z-10">
-                  <h3 className="text-lg font-bold text-white">{genre.name}</h3>
-                  <p className="text-xs text-white/70">{genre._count.tracks} tracks</p>
+      ) : (
+        <>
+          {/* Premium Hero Section */}
+          {!hasContent && (
+            <section className="relative overflow-hidden rounded-[40px] bg-slate-900/40 border border-white/5 p-12 md:p-20 mb-8 backdrop-blur-3xl">
+              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-indigo-600/5" />
+              <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
+                <div className="space-y-8">
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-full text-blue-300 text-[10px] font-black uppercase tracking-widest"
+                  >
+                    <Sparkles size={14} />
+                    Next-Gen Audio Synthesis
+                  </motion.div>
+                  <h1 className="text-7xl font-outfit font-black tracking-tighter leading-none text-white">
+                    Sonics <br /> <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Reimagined</span>
+                  </h1>
+                  <p className="text-xl text-white/40 max-w-lg font-medium leading-relaxed">
+                    Experience the world's first autonomous music engine. Morlo orchestrates infinite soundscapes through neural-link architecture.
+                  </p>
+                  <div className="flex gap-4">
+                    <Link
+                      href="/search"
+                      className="btn-action"
+                    >
+                      <Play size={16} className="mr-2" /> Start Listening
+                    </Link>
+                    <Link
+                      href="/register"
+                      className="btn-premium"
+                    >
+                      <Zap size={16} /> Create Account
+                    </Link>
+                  </div>
                 </div>
-              </Link>
-            ))}
-          </div>
-        </section>
+                <div className="hidden md:block relative">
+                  <div className="absolute inset-0 bg-blue-500/10 blur-[120px] rounded-full animate-pulse" />
+                  <div className="relative aspect-square glass-card flex items-center justify-center p-12 group">
+                    <div className="relative">
+                      <Music2 size={120} className="text-white/5 animate-pulse group-hover:scale-110 transition-transform" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Volume2 size={40} className="text-blue-500 shadow-[0_0_20px_#3b82f6]" />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+          )}
+
+          {/* Trending */}
+          {trending.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
+                    <TrendingUp className="w-4 h-4" />
+                  </div>
+                  <h2 className="text-xl font-outfit font-black tracking-tight text-white uppercase tracking-widest">Trending Now</h2>
+                </div>
+                <Link href="/search?sort=popular" className="btn-premium">
+                  See all <ChevronRight size={14} />
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+                {trending.slice(0, 6).map((track) => (
+                  <TrackCard key={track.id} track={track} tracks={trending} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Latest Releases */}
+          {latest.length > 0 && (
+            <section className="mt-20">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <h2 className="text-xl font-outfit font-black tracking-tight text-white uppercase tracking-widest">Latest Releases</h2>
+                </div>
+                <Link href="/search?sort=newest" className="btn-premium">
+                  See all <ChevronRight size={14} />
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+                {latest.slice(0, 6).map((track) => (
+                  <TrackCard key={track.id} track={track} tracks={latest} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Browse by Genre */}
+          {genres.length > 0 && (
+            <section className="mt-20">
+              <div className="flex items-center justify-between mb-8">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-blue-500" />
+                  <h2 className="text-xl font-outfit font-black tracking-tight text-white uppercase tracking-widest opacity-40">Sonic Architectures</h2>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
+                {genres.map((genre) => (
+                  <Link
+                    key={genre.id}
+                    href={`/genre/${genre.slug}`}
+                    className="group relative h-40 rounded-[32px] holographic border border-white/5 transition-all hover:border-white/20 flex flex-col justify-end p-8"
+                  >
+                    <div
+                      className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity"
+                      style={{ background: `radial-gradient(circle at center, ${genre.color || '#3b82f6'}, transparent)` }}
+                    />
+                    <div className="relative z-10">
+                      <h3 className="text-2xl font-outfit font-black text-white mb-1 group-hover:translate-x-1 transition-transform">{genre.name}</h3>
+                      <div className="flex items-center gap-4">
+                        <p className="text-[10px] font-black uppercase text-white/40 tracking-widest">{genre._count.tracks} Tracks</p>
+                        <div className="h-[1px] flex-1 bg-white/5" />
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
     </div>
   );

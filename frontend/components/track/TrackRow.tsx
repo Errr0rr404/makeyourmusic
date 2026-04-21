@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Play, Pause, Heart } from 'lucide-react';
 import { usePlayerStore, TrackItem } from '@/lib/store/playerStore';
+import { formatDuration, formatCount } from '@morlo/shared';
 
 interface TrackRowProps {
   track: TrackItem & {
@@ -14,18 +15,6 @@ interface TrackRowProps {
   index: number;
   tracks?: TrackItem[];
   onLike?: (trackId: string) => void;
-}
-
-function formatDuration(seconds: number): string {
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-}
-
-function formatCount(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toString();
 }
 
 export function TrackRow({ track, index, tracks, onLike }: TrackRowProps) {

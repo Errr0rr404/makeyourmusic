@@ -59,11 +59,22 @@ export const getAgent = async (req: RequestWithUser, res: Response) => {
       include: {
         genres: { include: { genre: true } },
         owner: { select: { id: true, username: true, displayName: true } },
-        _count: { select: { tracks: true, followers: true } },
+        _count: { select: { followers: true } },
       },
     });
 
     if (!agent) { res.status(404).json({ error: 'Agent not found' }); return; }
+
+    const isOwner = req.user?.userId === agent.ownerId;
+
+    // Public track count should not leak private-track counts to outsiders
+    const trackCount = await prisma.track.count({
+      where: {
+        agentId: agent.id,
+        status: 'ACTIVE',
+        ...(isOwner ? {} : { isPublic: true }),
+      },
+    });
 
     // Check if current user follows this agent
     let isFollowing = false;
@@ -74,7 +85,13 @@ export const getAgent = async (req: RequestWithUser, res: Response) => {
       isFollowing = !!follow;
     }
 
-    res.json({ agent: { ...agent, isFollowing } });
+    res.json({
+      agent: {
+        ...agent,
+        isFollowing,
+        _count: { ...agent._count, tracks: trackCount },
+      },
+    });
   } catch (error) {
     logger.error('Get agent error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get agent' });
