@@ -12,6 +12,7 @@ import {
   startVideoGeneration,
   getVideoGeneration,
 } from '../controllers/aiGenerationController';
+import { playlistFromPrompt } from '../controllers/aiPlaylistController';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -47,5 +48,8 @@ router.post('/generations/:id/variation', createVariation as any);
 // Video
 router.post('/video', startVideoGeneration as any);
 router.get('/video/:id', getVideoGeneration as any);
+
+// Vibe → Playlist
+router.post('/playlist/from-prompt', playlistFromPrompt as any);
 
 export default router;

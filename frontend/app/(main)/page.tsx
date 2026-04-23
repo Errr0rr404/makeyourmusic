@@ -6,7 +6,9 @@ import api from '@/lib/api';
 import { TrackCard } from '@/components/track/TrackCard';
 import { SplashLoader } from '@/components/SplashLoader';
 import { OnboardingBanner } from '@/components/OnboardingBanner';
-import { TrendingUp, Sparkles, Clock, ChevronRight, AlertCircle, Music2, Play, Volume2, Zap } from 'lucide-react';
+import { VibePromptTile } from '@/components/VibePromptTile';
+import { useAuthStore } from '@/lib/store/authStore';
+import { TrendingUp, Sparkles, Clock, ChevronRight, AlertCircle, Music2, Play, Volume2, Zap, Radio } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Genre {
@@ -18,9 +20,12 @@ interface Genre {
 }
 
 export default function HomePage() {
+  const { isAuthenticated, user } = useAuthStore();
   const [trending, setTrending] = useState<any[]>([]);
   const [latest, setLatest] = useState<any[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
+  const [forYou, setForYou] = useState<any[]>([]);
+  const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSplashComplete, setIsSplashComplete] = useState(() => {
@@ -35,21 +40,34 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const [trendingRes, latestRes, genresRes] = await Promise.allSettled([
+      const baseRequests = [
         api.get('/tracks/trending'),
         api.get('/tracks?sort=newest&limit=12'),
         api.get('/genres'),
-      ]);
+      ];
+      const personalRequests = isAuthenticated
+        ? [
+            api.get('/tracks/recommendations?limit=12'),
+            api.get('/tracks/history?limit=8'),
+          ]
+        : [];
+
+      const settled = await Promise.allSettled([...baseRequests, ...personalRequests]);
       const fulfilled = (r: PromiseSettledResult<any>) =>
         r.status === 'fulfilled' ? r.value : null;
-      const anyFailed =
-        [trendingRes, latestRes, genresRes].some((r) => r.status === 'rejected');
 
-      setTrending(fulfilled(trendingRes)?.data.tracks || []);
-      setLatest(fulfilled(latestRes)?.data.tracks || []);
-      setGenres(fulfilled(genresRes)?.data.genres || []);
+      setTrending(fulfilled(settled[0]!)?.data.tracks || []);
+      setLatest(fulfilled(settled[1]!)?.data.tracks || []);
+      setGenres(fulfilled(settled[2]!)?.data.genres || []);
+      if (isAuthenticated) {
+        setForYou(fulfilled(settled[3]!)?.data.tracks || []);
+        setHistory(fulfilled(settled[4]!)?.data.tracks || []);
+      } else {
+        setForYou([]);
+        setHistory([]);
+      }
 
-      if (anyFailed && [trendingRes, latestRes, genresRes].every((r) => r.status === 'rejected')) {
+      if (settled.slice(0, 3).every((r) => r.status === 'rejected')) {
         setError('Could not load content. Check your connection and try again.');
       }
     } catch (err: any) {
@@ -61,9 +79,13 @@ export default function HomePage() {
 
   useEffect(() => {
     loadContent();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated]);
 
   const hasContent = trending.length > 0 || latest.length > 0;
+  const greetingHour = new Date().getHours();
+  const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 18 ? 'Good afternoon' : 'Good evening';
+  const displayName = user?.displayName || user?.username || 'there';
 
   return (
     <div className="space-y-12 pb-20 selection:bg-blue-500/30">
@@ -161,6 +183,70 @@ export default function HomePage() {
                     </div>
                   </div>
                 </div>
+              </div>
+            </section>
+          )}
+
+          {/* Personal greeting + Vibe → Playlist */}
+          {isAuthenticated && (
+            <section className="mb-2">
+              <h1 className="text-3xl md:text-4xl font-outfit font-black text-white tracking-tight">
+                {greeting}, {displayName}
+              </h1>
+              <p className="text-sm text-white/40 mt-1">Tell us a vibe and we'll spin up a playlist of AI music.</p>
+              <div className="mt-5">
+                <VibePromptTile />
+              </div>
+            </section>
+          )}
+
+          {/* Vibe prompt for guests too */}
+          {!isAuthenticated && (
+            <section className="mb-2">
+              <VibePromptTile />
+            </section>
+          )}
+
+          {/* Jump back in (history) */}
+          {isAuthenticated && history.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <h2 className="text-xl font-outfit font-black text-white uppercase tracking-widest">Jump back in</h2>
+                </div>
+                <Link href="/library?tab=history" className="btn-premium">
+                  History <ChevronRight size={14} />
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+                {history.slice(0, 6).map((track) => (
+                  <TrackCard key={track.id} track={track} tracks={history} />
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Made for You (recommendations) */}
+          {isAuthenticated && forYou.length > 0 && (
+            <section>
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <h2 className="text-xl font-outfit font-black text-white uppercase tracking-widest">Made for you</h2>
+                </div>
+                <Link href="/library?tab=foryou" className="btn-premium">
+                  More <ChevronRight size={14} />
+                </Link>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+                {forYou.slice(0, 12).map((track) => (
+                  <TrackCard key={track.id} track={track} tracks={forYou} />
+                ))}
               </div>
             </section>
           )}

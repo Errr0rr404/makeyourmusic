@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Play, Pause, Video } from 'lucide-react';
+import { Play, Pause, Video, Radio } from 'lucide-react';
 import { usePlayerStore, TrackItem } from '@/lib/store/playerStore';
 
 interface TrackCardProps {
@@ -17,7 +17,7 @@ interface TrackCardProps {
 }
 
 export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
-  const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
+  const { currentTrack, isPlaying, playTrack, togglePlay, startRadio } = usePlayerStore();
   const isCurrentTrack = currentTrack?.id === track.id;
   const [imgError, setImgError] = useState(false);
 
@@ -29,6 +29,12 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
     } else {
       playTrack(track, tracks);
     }
+  };
+
+  const handleRadio = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    void startRadio(track);
   };
 
   return (
@@ -52,7 +58,15 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
             </div>
           )}
 
-          {/* Play Button Overlay */}
+          {/* Hover actions: Radio (left) + Play (right) */}
+          <button
+            onClick={handleRadio}
+            aria-label={`Start radio from ${track.title}`}
+            title="Start AI Radio from this track"
+            className="absolute bottom-2 right-14 w-10 h-10 rounded-full bg-black/70 backdrop-blur shadow-lg flex items-center justify-center opacity-0 group-hover:opacity-100 translate-y-2 group-hover:translate-y-0 transition-all hover:scale-105 hover:bg-black/85"
+          >
+            <Radio className="w-4 h-4 text-white" />
+          </button>
           <button
             onClick={handlePlay}
             aria-label={isCurrentTrack && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}

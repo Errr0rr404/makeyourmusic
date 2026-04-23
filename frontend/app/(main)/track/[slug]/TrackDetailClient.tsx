@@ -5,7 +5,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag } from 'lucide-react';
+import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio } from 'lucide-react';
 import { formatDuration } from '@morlo/shared';
 import { toast } from '@/lib/store/toastStore';
 import { Lyrics } from '@/components/track/Lyrics';
@@ -27,7 +27,7 @@ export function TrackDetailClient({ slug }: { slug: string }) {
   const [showReport, setShowReport] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
-  const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
+  const { currentTrack, isPlaying, playTrack, togglePlay, startRadio } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
@@ -177,6 +177,14 @@ export function TrackDetailClient({ slug }: { slug: string }) {
             <button onClick={handlePlay} aria-label={isCurrentTrack && isPlaying ? 'Pause' : 'Play'}
               className="w-12 h-12 rounded-full bg-[hsl(var(--accent))] flex items-center justify-center hover:scale-105 transition-transform">
               {isCurrentTrack && isPlaying ? <Pause className="w-6 h-6 text-white" /> : <Play className="w-6 h-6 text-white ml-0.5" />}
+            </button>
+            <button
+              onClick={() => { void startRadio(track); toast.success('AI Radio started — endless tracks like this'); }}
+              title="Start AI Radio"
+              className="flex items-center gap-2 h-10 px-4 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold hover:scale-[1.03] transition-transform"
+            >
+              <Radio className="w-4 h-4" />
+              AI Radio
             </button>
             <button onClick={handleLike} aria-label={track.isLiked ? 'Unlike' : 'Like'}
               className={`p-2.5 rounded-full border transition-colors ${track.isLiked ? 'border-pink-500 text-pink-500' : 'border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-white hover:border-white/30'}`}>

@@ -23,9 +23,9 @@ function formatTime(seconds: number): string {
 }
 
 /**
- * Check if a URL is same-origin (or relative).
- * Only same-origin audio can use crossOrigin="anonymous" + Web Audio API
- * without the remote server sending CORS headers.
+ * Same-origin URLs (and the CORS-enabled ones our app sets crossOrigin on)
+ * can flow through Web Audio API. Cross-origin without CORS headers cannot,
+ * so the engine is bypassed and we control volume/crossfade on the elements.
  */
 function isSameOrigin(url: string): boolean {
   if (!url) return false;
@@ -34,12 +34,27 @@ function isSameOrigin(url: string): boolean {
     const parsed = new URL(url);
     return parsed.origin === window.location.origin;
   } catch {
-    return true; // relative URL
+    return true;
   }
 }
 
+type Slot = 'a' | 'b';
+const otherSlot = (s: Slot): Slot => (s === 'a' ? 'b' : 'a');
+
 export function AudioPlayer() {
-  const audioRef = useRef<HTMLAudioElement>(null);
+  // Two audio elements so we can overlap during a crossfade.
+  const audioARef = useRef<HTMLAudioElement>(null);
+  const audioBRef = useRef<HTMLAudioElement>(null);
+
+  // Which element is currently the "active" one driving the UI / store.
+  const activeSlotRef = useRef<Slot>('a');
+  // The track id loaded on the inactive element (so we can detect interruptions).
+  const preloadedTrackIdRef = useRef<string | null>(null);
+  // True while a crossfade is mid-flight; suppresses the load-effect for one cycle.
+  const skipNextLoadRef = useRef(false);
+  const crossfadingRef = useRef(false);
+  const crossfadeTimerRef = useRef<number | null>(null);
+
   const playRecordedRef = useRef(false);
   const engineInitRef = useRef(false);
   const isPlayingRef = useRef(false);
@@ -51,103 +66,147 @@ export function AudioPlayer() {
     playbackSpeed, eqEnabled, eqBands, showSettings, toggleSettings,
     sleepTimerEnd, tickSleepTimer,
     showQueue, toggleQueue, queue,
+    crossfade, queueIndex,
   } = usePlayerStore();
 
-  // Keep ref in sync for use in non-reactive effects
   isPlayingRef.current = isPlaying;
 
-  // Keyboard shortcuts help dialog state (? opens it)
-  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const getActiveEl = () => (activeSlotRef.current === 'a' ? audioARef.current : audioBRef.current);
+  const getInactiveEl = () => (activeSlotRef.current === 'a' ? audioBRef.current : audioARef.current);
 
-  // Global keyboard shortcuts (Space, arrows, M, N, P, S, R, ?)
-  useKeyboardShortcuts(audioRef, () => setShowShortcutsHelp(true));
-
-  // Load track & optionally init audio engine (only for same-origin audio)
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio || !currentTrack) return;
-
-    const sameOrigin = isSameOrigin(currentTrack.audioUrl);
-
-    // Set crossOrigin before changing src — required for Web Audio API,
-    // but only works when the server sends CORS headers (same-origin or CORS-enabled CDN)
-    if (sameOrigin) {
-      audio.crossOrigin = 'anonymous';
-    } else {
-      audio.removeAttribute('crossorigin');
+  const cancelCrossfade = useCallback(() => {
+    if (crossfadeTimerRef.current) {
+      window.clearInterval(crossfadeTimerRef.current);
+      crossfadeTimerRef.current = null;
     }
-
-    audio.src = currentTrack.audioUrl;
-    audio.playbackRate = playbackSpeed;
-    playRecordedRef.current = false;
-
-    // Initialize audio engine only for same-origin sources
-    if (sameOrigin && !engineInitRef.current) {
-      audioEngine.init(audio);
-      engineInitRef.current = true;
-    } else if (!sameOrigin && engineInitRef.current) {
-      // Switching from same-origin to cross-origin: disconnect engine
-      audioEngine.destroy();
-      engineInitRef.current = false;
-    }
-
-    if (isPlayingRef.current) {
-      audio.play().catch(() => {});
-    }
-  }, [currentTrack, playbackSpeed]);
-
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (isPlaying) {
-      // Ensure engine is initialized on play (only for same-origin audio)
-      if (!engineInitRef.current && currentTrack && isSameOrigin(currentTrack.audioUrl)) {
-        audioEngine.init(audio);
-        engineInitRef.current = true;
-      }
-      audio.play().catch(() => {});
-    } else {
-      audio.pause();
-    }
-  }, [isPlaying, currentTrack]);
-
-  // Volume — apply to gain node when engine is active, otherwise on element
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
+    crossfadingRef.current = false;
+    preloadedTrackIdRef.current = null;
+    // Reset gains: active full, inactive silent
     if (engineInitRef.current) {
-      audioEngine.setVolume(volume);
-      audio.volume = 1; // Let the gain node control volume
+      audioEngine.setSlotGain(activeSlotRef.current, 1);
+      audioEngine.setSlotGain(otherSlot(activeSlotRef.current), 0);
     } else {
-      audio.volume = volume;
+      const inactive = getInactiveEl();
+      if (inactive) {
+        try { inactive.pause(); } catch {}
+        inactive.volume = 0;
+      }
+      const active = getActiveEl();
+      if (active) active.volume = volume;
     }
   }, [volume]);
 
-  // Sync playback speed
+  const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  useKeyboardShortcuts(audioARef, () => setShowShortcutsHelp(true));
+
+  // Try to lazily init the engine once both elements are mounted and the
+  // current source is same-origin. Cross-origin breaks Web Audio.
+  const tryInitEngine = useCallback(() => {
+    if (engineInitRef.current) return;
+    const a = audioARef.current;
+    const b = audioBRef.current;
+    if (!a || !b || !currentTrack) return;
+    if (!isSameOrigin(currentTrack.audioUrl)) return;
+    audioEngine.init(a, b);
+    engineInitRef.current = true;
+  }, [currentTrack]);
+
+  // Load track on the active element when currentTrack changes — unless a
+  // crossfade just promoted it, in which case the new track is already playing.
   useEffect(() => {
-    const audio = audioRef.current;
-    if (audio) audio.playbackRate = playbackSpeed;
+    if (!currentTrack) return;
+    if (skipNextLoadRef.current) {
+      skipNextLoadRef.current = false;
+      // Crossfade just completed; the freshly-active element already has the
+      // right src. Just make sure metadata/play state is right.
+      const active = getActiveEl();
+      if (active && isPlayingRef.current) {
+        active.play().catch(() => {});
+      }
+      return;
+    }
+
+    // A user action (skip, play different track) replaced the queue head.
+    // Cancel any in-flight crossfade and load on the active element.
+    cancelCrossfade();
+
+    const active = getActiveEl();
+    if (!active) return;
+
+    const sameOrigin = isSameOrigin(currentTrack.audioUrl);
+    if (sameOrigin) active.crossOrigin = 'anonymous';
+    else active.removeAttribute('crossorigin');
+
+    active.src = currentTrack.audioUrl;
+    active.playbackRate = playbackSpeed;
+    playRecordedRef.current = false;
+
+    tryInitEngine();
+
+    if (engineInitRef.current) {
+      // Active gain full, inactive muted
+      audioEngine.setSlotGain(activeSlotRef.current, 1);
+      audioEngine.setSlotGain(otherSlot(activeSlotRef.current), 0);
+      audioEngine.setVolume(volume);
+      active.volume = 1; // master gain handles user volume
+    } else {
+      active.volume = volume;
+      const inactive = getInactiveEl();
+      if (inactive) inactive.volume = 0;
+    }
+
+    if (isPlayingRef.current) {
+      active.play().catch(() => {});
+    }
+  }, [currentTrack, playbackSpeed, volume, cancelCrossfade, tryInitEngine]);
+
+  useEffect(() => {
+    const el = getActiveEl();
+    if (!el) return;
+    if (isPlaying) {
+      tryInitEngine();
+      el.play().catch(() => {});
+    } else {
+      el.pause();
+      // Pause inactive too if it's mid-crossfade
+      const inactive = getInactiveEl();
+      if (inactive) try { inactive.pause(); } catch {}
+    }
+  }, [isPlaying, tryInitEngine]);
+
+  // Volume — masters through the gain node when engine is active.
+  useEffect(() => {
+    const active = getActiveEl();
+    if (!active) return;
+    if (engineInitRef.current) {
+      audioEngine.setVolume(volume);
+      active.volume = 1;
+      const inactive = getInactiveEl();
+      if (inactive) inactive.volume = 1;
+    } else {
+      active.volume = volume;
+    }
+  }, [volume]);
+
+  useEffect(() => {
+    if (audioARef.current) audioARef.current.playbackRate = playbackSpeed;
+    if (audioBRef.current) audioBRef.current.playbackRate = playbackSpeed;
     if (engineInitRef.current) audioEngine.setPlaybackSpeed(playbackSpeed);
   }, [playbackSpeed]);
 
-  // Sync EQ
   useEffect(() => {
-    if (engineInitRef.current) {
-      audioEngine.updateEQ(eqBands, eqEnabled);
-    }
+    if (engineInitRef.current) audioEngine.updateEQ(eqBands, eqEnabled);
   }, [eqBands, eqEnabled]);
 
-  // Sleep timer tick
   useEffect(() => {
     if (!sleepTimerEnd) return;
     const interval = setInterval(() => tickSleepTimer(), 1000);
     return () => clearInterval(interval);
   }, [sleepTimerEnd, tickSleepTimer]);
 
-  // Media Session API — OS-level media controls (lock screen, notification center, etc.)
+  // Media Session API
   useEffect(() => {
     if (!('mediaSession' in navigator) || !currentTrack) return;
-
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentTrack.title,
       artist: currentTrack.agent?.name || 'Unknown Artist',
@@ -160,18 +219,17 @@ export function AudioPlayer() {
           ]
         : [],
     });
-
     navigator.mediaSession.setActionHandler('play', () => { if (!isPlayingRef.current) togglePlay(); });
     navigator.mediaSession.setActionHandler('pause', () => { if (isPlayingRef.current) togglePlay(); });
     navigator.mediaSession.setActionHandler('previoustrack', prevTrack);
     navigator.mediaSession.setActionHandler('nexttrack', nextTrack);
     navigator.mediaSession.setActionHandler('seekto', (details) => {
-      if (details.seekTime != null && audioRef.current) {
-        audioRef.current.currentTime = details.seekTime;
+      const el = getActiveEl();
+      if (details.seekTime != null && el) {
+        el.currentTime = details.seekTime;
         setProgress(details.seekTime);
       }
     });
-
     return () => {
       navigator.mediaSession.setActionHandler('play', null);
       navigator.mediaSession.setActionHandler('pause', null);
@@ -181,14 +239,12 @@ export function AudioPlayer() {
     };
   }, [currentTrack, togglePlay, prevTrack, nextTrack, setProgress]);
 
-  // Keep media session playback state in sync
   useEffect(() => {
     if ('mediaSession' in navigator) {
       navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
     }
   }, [isPlaying]);
 
-  // Update media session position state for seek bar
   useEffect(() => {
     if (!('mediaSession' in navigator) || !duration) return;
     try {
@@ -197,17 +253,100 @@ export function AudioPlayer() {
         playbackRate: playbackSpeed,
         position: Math.min(progress, duration),
       });
-    } catch {
-      // setPositionState may throw if values are invalid
-    }
+    } catch {}
   }, [progress, duration, playbackSpeed]);
 
+  // Kick off a crossfade: load the next track on the inactive element, ramp
+  // gains in opposite directions over `crossfade` seconds, then promote it.
+  const startCrossfade = useCallback(() => {
+    if (crossfadingRef.current) return;
+    if (crossfade <= 0 || repeat === 'one') return;
+    if (queue.length === 0 || queueIndex < 0 || queueIndex >= queue.length - 1) return;
+    if (shuffle) return; // pick is randomized in nextTrack(); skip predictive crossfade
+
+    const next = queue[queueIndex + 1];
+    if (!next) return;
+
+    const inactive = getInactiveEl();
+    const active = getActiveEl();
+    if (!inactive || !active) return;
+
+    // Load next on inactive
+    const sameOrigin = isSameOrigin(next.audioUrl);
+    if (sameOrigin) inactive.crossOrigin = 'anonymous';
+    else inactive.removeAttribute('crossorigin');
+    inactive.src = next.audioUrl;
+    inactive.playbackRate = playbackSpeed;
+    inactive.currentTime = 0;
+    preloadedTrackIdRef.current = next.id;
+
+    crossfadingRef.current = true;
+
+    const startGains = () => {
+      inactive.play().catch(() => {});
+      const targetSlot: Slot = otherSlot(activeSlotRef.current);
+      if (engineInitRef.current) {
+        audioEngine.rampSlotGain(activeSlotRef.current, 0, crossfade);
+        audioEngine.rampSlotGain(targetSlot, 1, crossfade);
+      } else {
+        // Linear interpolation via interval (~30fps)
+        inactive.volume = 0;
+        const startActiveVol = active.volume;
+        const t0 = performance.now();
+        const dur = crossfade * 1000;
+        crossfadeTimerRef.current = window.setInterval(() => {
+          const t = Math.min(1, (performance.now() - t0) / dur);
+          active.volume = Math.max(0, startActiveVol * (1 - t));
+          inactive.volume = Math.min(volume, volume * t);
+          if (t >= 1 && crossfadeTimerRef.current) {
+            window.clearInterval(crossfadeTimerRef.current);
+            crossfadeTimerRef.current = null;
+          }
+        }, 33);
+      }
+
+      // Promote after the ramp completes.
+      window.setTimeout(() => {
+        if (!crossfadingRef.current) return;
+        try { active.pause(); } catch {}
+        if (engineInitRef.current) {
+          audioEngine.setSlotGain(activeSlotRef.current, 0);
+          audioEngine.setSlotGain(targetSlot, 1);
+        } else {
+          inactive.volume = volume;
+        }
+        activeSlotRef.current = targetSlot;
+        crossfadingRef.current = false;
+        preloadedTrackIdRef.current = null;
+        // Tell the load-effect that the freshly-active element already has the
+        // new track loaded and playing.
+        skipNextLoadRef.current = true;
+        playRecordedRef.current = false;
+        nextTrack();
+      }, crossfade * 1000 + 50);
+    };
+
+    if (inactive.readyState >= 2) {
+      startGains();
+    } else {
+      const onCanPlay = () => {
+        inactive.removeEventListener('canplay', onCanPlay);
+        if (crossfadingRef.current) startGains();
+      };
+      inactive.addEventListener('canplay', onCanPlay);
+      // Safety: if it never loads in time, abort
+      window.setTimeout(() => {
+        inactive.removeEventListener('canplay', onCanPlay);
+        if (crossfadingRef.current && inactive.readyState < 2) cancelCrossfade();
+      }, 5000);
+    }
+  }, [crossfade, repeat, queue, queueIndex, shuffle, playbackSpeed, volume, nextTrack, cancelCrossfade]);
+
   const handleTimeUpdate = useCallback(() => {
-    const audio = audioRef.current;
+    const audio = getActiveEl();
     if (!audio) return;
     setProgress(audio.currentTime);
 
-    // Record play after 30 seconds
     if (audio.currentTime > 30 && !playRecordedRef.current && currentTrack) {
       playRecordedRef.current = true;
       api.post(`/tracks/${currentTrack.id}/play`, {
@@ -215,14 +354,26 @@ export function AudioPlayer() {
         completed: false,
       }).catch(() => {});
     }
-  }, [currentTrack, setProgress]);
+
+    // Crossfade trigger: enter overlap window.
+    if (
+      !crossfadingRef.current &&
+      crossfade > 0 &&
+      audio.duration &&
+      audio.duration - audio.currentTime <= crossfade + 0.05
+    ) {
+      startCrossfade();
+    }
+  }, [currentTrack, setProgress, crossfade, startCrossfade]);
 
   const handleEnded = useCallback(() => {
+    // If a crossfade promoted the next track, the active element changed and
+    // the previous (now-paused) element fired `ended` — ignore it here.
+    if (crossfadingRef.current) return;
     if (repeat === 'one') {
-      const audio = audioRef.current;
+      const audio = getActiveEl();
       if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
     } else {
-      // Record completed play
       if (currentTrack) {
         api.post(`/tracks/${currentTrack.id}/play`, {
           durationPlayed: Math.floor(duration),
@@ -235,18 +386,21 @@ export function AudioPlayer() {
 
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const time = parseFloat(e.target.value);
-    if (audioRef.current) audioRef.current.currentTime = time;
+    const el = getActiveEl();
+    if (el) el.currentTime = time;
     setProgress(time);
   };
+
+  // Cleanup any ramping interval on unmount.
+  useEffect(() => () => cancelCrossfade(), [cancelCrossfade]);
 
   if (!currentTrack) return null;
 
   const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
-  const hasActiveSettings = eqEnabled || playbackSpeed !== 1 || sleepTimerEnd !== null;
+  const hasActiveSettings = eqEnabled || playbackSpeed !== 1 || sleepTimerEnd !== null || crossfade > 0;
 
   return (
     <>
-      {/* Settings Panel (above player) */}
       <PlayerSettings />
       <AnimatePresence>
         {showQueue && <QueuePanel />}
@@ -255,12 +409,20 @@ export function AudioPlayer() {
 
       <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[hsl(var(--card))] border-t border-[hsl(var(--border))] z-50 flex items-center px-4">
         <audio
-          ref={audioRef}
-          onTimeUpdate={handleTimeUpdate}
+          ref={audioARef}
+          onTimeUpdate={() => { if (activeSlotRef.current === 'a') handleTimeUpdate(); }}
           onLoadedMetadata={() => {
-            if (audioRef.current) setDuration(audioRef.current.duration);
+            if (activeSlotRef.current === 'a' && audioARef.current) setDuration(audioARef.current.duration);
           }}
-          onEnded={handleEnded}
+          onEnded={() => { if (activeSlotRef.current === 'a') handleEnded(); }}
+        />
+        <audio
+          ref={audioBRef}
+          onTimeUpdate={() => { if (activeSlotRef.current === 'b') handleTimeUpdate(); }}
+          onLoadedMetadata={() => {
+            if (activeSlotRef.current === 'b' && audioBRef.current) setDuration(audioBRef.current.duration);
+          }}
+          onEnded={() => { if (activeSlotRef.current === 'b') handleEnded(); }}
         />
 
         {/* Track Info */}
@@ -306,7 +468,6 @@ export function AudioPlayer() {
             </button>
           </div>
 
-          {/* Progress Bar */}
           <div className="flex items-center gap-2 w-full">
             <span className="text-xs text-[hsl(var(--muted-foreground))] w-10 text-right">{formatTime(progress)}</span>
             <div className="flex-1 relative group">
@@ -326,9 +487,7 @@ export function AudioPlayer() {
           </div>
         </div>
 
-        {/* Right Controls */}
         <div className="hidden sm:flex items-center gap-2 w-[200px] justify-end">
-          {/* Queue Button */}
           <button
             onClick={toggleQueue}
             aria-label="Queue"
@@ -346,7 +505,6 @@ export function AudioPlayer() {
             )}
           </button>
 
-          {/* Settings/EQ Button */}
           <button
             onClick={toggleSettings}
             aria-label="Audio settings"
@@ -364,14 +522,12 @@ export function AudioPlayer() {
             )}
           </button>
 
-          {/* Speed Indicator (when not 1x) */}
           {playbackSpeed !== 1 && (
             <span className="text-[10px] font-semibold text-[hsl(var(--accent))] bg-[hsl(var(--accent)/0.15)] px-1.5 py-0.5 rounded-md">
               {playbackSpeed}x
             </span>
           )}
 
-          {/* Volume */}
           <button onClick={() => setVolume(volume === 0 ? 0.8 : 0)} aria-label={volume === 0 ? 'Unmute' : 'Mute'} className="p-1 text-[hsl(var(--muted-foreground))] hover:text-white transition-colors">
             {volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
           </button>
@@ -391,7 +547,6 @@ export function AudioPlayer() {
           </div>
         </div>
 
-        {/* Mobile settings button */}
         <button
           onClick={toggleSettings}
           aria-label="Audio settings"

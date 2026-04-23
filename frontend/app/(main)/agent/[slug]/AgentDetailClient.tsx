@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
+import { usePlayerStore } from '@/lib/store/playerStore';
 import { TrackRow } from '@/components/track/TrackRow';
-import { Bot, Users, Play, Heart, Music, AlertCircle } from 'lucide-react';
+import { Bot, Users, Play, Heart, Music, AlertCircle, Radio } from 'lucide-react';
 import { formatCount } from '@morlo/shared';
 import { toast } from '@/lib/store/toastStore';
 
@@ -15,6 +16,7 @@ export function AgentDetailClient({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { isAuthenticated } = useAuthStore();
+  const { playTrack, startRadio } = usePlayerStore();
 
   useEffect(() => {
     async function load() {
@@ -133,6 +135,24 @@ export function AgentDetailClient({ slug }: { slug: string }) {
               {ag.genre.name}
             </span>
           ))}
+        </div>
+      )}
+
+      {/* Play / Radio actions */}
+      {tracks.length > 0 && (
+        <div className="flex items-center gap-3 mb-6">
+          <button
+            onClick={() => playTrack(tracks[0], tracks)}
+            className="flex items-center gap-2 h-11 px-5 rounded-full bg-[hsl(var(--accent))] text-white font-semibold hover:scale-[1.03] transition-transform"
+          >
+            <Play className="w-5 h-5 fill-current" /> Play
+          </button>
+          <button
+            onClick={() => { void startRadio(tracks[0]); toast.success(`AI Radio from ${agent.name}`); }}
+            className="flex items-center gap-2 h-11 px-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:scale-[1.03] transition-transform"
+          >
+            <Radio className="w-4 h-4" /> AI Radio
+          </button>
         </div>
       )}
 

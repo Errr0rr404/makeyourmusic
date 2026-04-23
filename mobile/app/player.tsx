@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Share, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
-import { usePlayerStore, formatDuration } from '@morlo/shared';
+import { usePlayerStore, useAuthStore, getApi, formatDuration } from '@morlo/shared';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronDown,
@@ -28,6 +28,9 @@ import PlayerSettingsModal from '../components/player/PlayerSettings';
 export default function FullScreenPlayer() {
   const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
+  const [liked, setLiked] = useState(false);
+  const [likeBusy, setLikeBusy] = useState(false);
+  const { isAuthenticated } = useAuthStore();
 
   const {
     currentTrack,
@@ -47,6 +50,50 @@ export default function FullScreenPlayer() {
     eqEnabled,
     sleepTimerEnd,
   } = usePlayerStore();
+
+  // Reset/refresh liked state when the active track changes.
+  useEffect(() => {
+    setLiked(Boolean((currentTrack as any)?.isLiked));
+    if (!currentTrack || !isAuthenticated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const api = getApi();
+        const res = await api.get(`/tracks/${(currentTrack as any).slug || currentTrack.id}`);
+        const fresh = res.data.track || res.data;
+        if (!cancelled && fresh?.id === currentTrack.id) {
+          setLiked(Boolean(fresh.isLiked));
+        }
+      } catch {
+        // best-effort — fall back to whatever the store already had
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [currentTrack?.id, isAuthenticated]);
+
+  const handleLike = async () => {
+    if (!currentTrack) return;
+    if (!isAuthenticated) {
+      Alert.alert('Sign in required', 'Log in to save tracks to your library.');
+      return;
+    }
+    if (likeBusy) return;
+    setLikeBusy(true);
+    // Optimistic toggle
+    setLiked((prev) => !prev);
+    hapticLight();
+    try {
+      const api = getApi();
+      const res = await api.post(`/social/likes/${currentTrack.id}`);
+      setLiked(Boolean(res.data?.liked));
+    } catch {
+      // Roll back on failure
+      setLiked((prev) => !prev);
+      Alert.alert('Like failed', 'Could not update like. Try again.');
+    } finally {
+      setLikeBusy(false);
+    }
+  };
 
   // Sync playback speed to native player
   useEffect(() => {
@@ -193,8 +240,17 @@ export default function FullScreenPlayer() {
                   </Text>
                 </TouchableOpacity>
               </View>
-              <TouchableOpacity className="p-2">
-                <Heart size={22} color="#a1a1aa" />
+              <TouchableOpacity
+                className="p-2"
+                onPress={handleLike}
+                disabled={likeBusy}
+                accessibilityLabel={liked ? 'Unlike track' : 'Like track'}
+              >
+                <Heart
+                  size={22}
+                  color={liked ? '#ef4444' : '#a1a1aa'}
+                  fill={liked ? '#ef4444' : 'none'}
+                />
               </TouchableOpacity>
             </View>
 

@@ -1,13 +1,22 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Music, Eye, EyeOff } from 'lucide-react';
 
 export default function LoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
+  );
+}
+
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { login, isLoading } = useAuthStore();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -19,7 +28,10 @@ export default function LoginPage() {
     setError('');
     try {
       await login(email, password);
-      router.push('/');
+      const next = searchParams.get('next');
+      // Only honor relative paths to avoid open-redirect.
+      const dest = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+      router.push(dest);
     } catch (err: any) {
       setError(err.message);
     }

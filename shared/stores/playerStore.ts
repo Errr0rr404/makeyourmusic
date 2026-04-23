@@ -116,6 +116,13 @@ export interface PlayerState {
 
 export interface PlayerActions {
   playTrack: (track: TrackItem, queue?: TrackItem[]) => void;
+  /**
+   * Start an AI Radio: play the seed track, fetch similar tracks from the
+   * backend, queue them, and ensure autoplay is on so the queue self-extends
+   * when it gets near the end. Falls back to playing the single track if the
+   * similarity fetch fails.
+   */
+  startRadio: (seed: TrackItem) => Promise<void>;
   togglePlay: () => void;
   pause: () => void;
   resume: () => void;
@@ -190,6 +197,39 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       isPlaying: true,
       progress: 0,
     });
+  },
+
+  startRadio: async (seed) => {
+    // Start playing immediately so the listener gets audio right away.
+    set({
+      currentTrack: seed,
+      queue: [seed],
+      queueIndex: 0,
+      isPlaying: true,
+      progress: 0,
+      autoplay: true,
+    });
+    persistPlayerPrefs({ autoplay: true });
+
+    try {
+      const api = getApi();
+      const slugOrId = (seed as any).slug || seed.id;
+      const res = await api.get(`/tracks/${slugOrId}/similar?limit=20`);
+      const similar: TrackItem[] = (res.data?.tracks || []).filter(
+        (t: TrackItem) => t.id !== seed.id
+      );
+      if (similar.length === 0) return;
+      // Append behind the seed so the user keeps hearing it; nextTrack will
+      // walk into the radio queue when this one ends.
+      set((s) => {
+        const seen = new Set(s.queue.map((t) => t.id));
+        const fresh = similar.filter((t) => !seen.has(t.id));
+        return { queue: [...s.queue, ...fresh] };
+      });
+    } catch {
+      // Non-critical — the seed is already playing. autoFillIfNeeded will retry
+      // once we approach the end of the queue.
+    }
   },
 
   togglePlay: () => set((s) => ({ isPlaying: !s.isPlaying })),
