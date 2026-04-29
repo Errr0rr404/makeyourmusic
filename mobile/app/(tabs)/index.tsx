@@ -68,7 +68,7 @@ export default function HomeScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-morlo-bg items-center justify-center">
+      <View className="flex-1 bg-mym-bg items-center justify-center">
         <ActivityIndicator size="large" color="#8b5cf6" />
       </View>
     );
@@ -79,13 +79,13 @@ export default function HomeScreen() {
       {/* Header */}
       <View className="flex-row items-start justify-between px-4 pt-2 pb-4">
         <View>
-          <Text className="text-morlo-text text-2xl font-bold">Morlo</Text>
-          <Text className="text-morlo-muted text-sm">AI-Generated Music</Text>
+          <Text className="text-mym-text text-2xl font-bold">MakeYourMusic</Text>
+          <Text className="text-mym-muted text-sm">AI-Generated Music</Text>
         </View>
         {isAuthenticated && (
           <TouchableOpacity
             onPress={() => router.push('/notifications')}
-            className="relative p-2 rounded-full bg-morlo-card"
+            className="relative p-2 rounded-full bg-mym-card"
           >
             <Bell size={20} color="#a1a1aa" />
             {unreadCount > 0 && (
@@ -104,7 +104,7 @@ export default function HomeScreen() {
         <View className="mx-4 mb-4 p-4 bg-red-900/20 border border-red-500/30 rounded-xl">
           <Text className="text-red-400 text-sm text-center">{error}</Text>
           <TouchableOpacity onPress={fetchData} className="mt-2 items-center">
-            <Text className="text-morlo-accent font-medium text-sm">Tap to retry</Text>
+            <Text className="text-mym-accent font-medium text-sm">Tap to retry</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -152,10 +152,10 @@ export default function HomeScreen() {
               <TouchableOpacity
                 key={genre.id || genre.slug}
                 onPress={() => router.push(`/genre/${genre.slug}`)}
-                className="mr-2 px-4 py-2 rounded-full bg-morlo-card border border-morlo-border"
+                className="mr-2 px-4 py-2 rounded-full bg-mym-card border border-mym-border"
                 activeOpacity={0.7}
               >
-                <Text className="text-morlo-text text-sm font-medium">{genre.name}</Text>
+                <Text className="text-mym-text text-sm font-medium">{genre.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>

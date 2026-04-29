@@ -2,11 +2,11 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "if [ \"$RAILWAY_SERVICE_NAME\" = \"morlo-web\" ] || [ \"$RAILWAY_SERVICE_NAME\" = \"makeyourmusic-web\" ]; then npm install --prefix shared && npm install --prefix frontend && npm run build --prefix frontend; else cd backend && npm install && npx prisma generate --schema=../prisma/schema.prisma && npm run build; fi",
+    "buildCommand": "if [ \"$RAILWAY_SERVICE_NAME\" = \"makeyourmusic-web\" ] || [ \"$RAILWAY_SERVICE_NAME\" = \"makeyourmusic-web\" ]; then npm install --prefix shared && npm install --prefix frontend && npm run build --prefix frontend; else cd backend && npm install && npx prisma generate --schema=../prisma/schema.prisma && npm run build; fi",
     "watchPatterns": ["backend/**", "prisma/**", "shared/**", "frontend/**"]
   },
   "deploy": {
-    "startCommand": "if [ \"$RAILWAY_SERVICE_NAME\" = \"morlo-web\" ] || [ \"$RAILWAY_SERVICE_NAME\" = \"makeyourmusic-web\" ]; then cd frontend && npm start -- -p $PORT; else cd backend && npx prisma migrate deploy --schema=../prisma/schema.prisma && npm start; fi",
+    "startCommand": "if [ \"$RAILWAY_SERVICE_NAME\" = \"makeyourmusic-web\" ] || [ \"$RAILWAY_SERVICE_NAME\" = \"makeyourmusic-web\" ]; then cd frontend && npm start -- -p $PORT; else cd backend && npx prisma migrate deploy --schema=../prisma/schema.prisma && npm start; fi",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
   }

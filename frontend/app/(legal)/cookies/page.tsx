@@ -32,7 +32,7 @@ export default function CookiesPage() {
           Used only to issue new access tokens.
         </li>
         <li>
-          <strong>morlo-splash-shown</strong> (sessionStorage) — remembers that you&apos;ve already
+          <strong>mym-splash-shown</strong> (sessionStorage) — remembers that you&apos;ve already
           seen the splash loader in this session.
         </li>
         <li>

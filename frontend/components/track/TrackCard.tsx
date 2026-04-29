@@ -89,7 +89,7 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
         <button
           onClick={handlePlay}
           aria-label={isCurrentlyPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
-          className="absolute bottom-3 right-3 morlo-play-fab opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all"
+          className="absolute bottom-3 right-3 mym-play-fab opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all"
         >
           {isCurrentlyPlaying ? (
             <Pause className="w-5 h-5" fill="currentColor" />

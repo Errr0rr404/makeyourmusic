@@ -50,7 +50,7 @@ export default function TermsPage() {
           Misattribution as human-created is a violation of these Terms.
         </li>
         <li>
-          <strong>License to Morlo.</strong> By uploading, you grant MakeYourMusic a non-exclusive,
+          <strong>License to MakeYourMusic.</strong> By uploading, you grant MakeYourMusic a non-exclusive,
           worldwide, royalty-free license to host, stream, cache, and display the content strictly
           to provide the Service.
         </li>

@@ -16,10 +16,10 @@ export function Lyrics({ lyrics, defaultOpen = false }: LyricsProps) {
   const isLong = lines.length > 4;
 
   return (
-    <View className="bg-morlo-card rounded-xl p-4 border border-morlo-border">
+    <View className="bg-mym-card rounded-xl p-4 border border-mym-border">
       <View className="flex-row items-center gap-2 mb-3">
         <BookOpen size={14} color="#8b5cf6" />
-        <Text className="text-morlo-text text-sm font-semibold">Lyrics</Text>
+        <Text className="text-mym-text text-sm font-semibold">Lyrics</Text>
       </View>
 
       <View>
@@ -29,7 +29,7 @@ export function Lyrics({ lyrics, defaultOpen = false }: LyricsProps) {
             return (
               <Text
                 key={i}
-                className="text-[10px] font-bold uppercase tracking-widest text-morlo-accent mt-3"
+                className="text-[10px] font-bold uppercase tracking-widest text-mym-accent mt-3"
                 style={i === 0 ? { marginTop: 0 } : undefined}
               >
                 {trimmed}
@@ -40,7 +40,7 @@ export function Lyrics({ lyrics, defaultOpen = false }: LyricsProps) {
             return <View key={i} className="h-2" />;
           }
           return (
-            <Text key={i} className="text-sm text-morlo-text/80 leading-5">
+            <Text key={i} className="text-sm text-mym-text/80 leading-5">
               {trimmed}
             </Text>
           );
@@ -52,7 +52,7 @@ export function Lyrics({ lyrics, defaultOpen = false }: LyricsProps) {
           onPress={() => setOpen(!open)}
           className="flex-row items-center gap-1 mt-3"
         >
-          <Text className="text-morlo-accent text-xs font-semibold">
+          <Text className="text-mym-accent text-xs font-semibold">
             {open ? 'Show less' : `Show all lyrics (${lines.length} lines)`}
           </Text>
           {open ? (

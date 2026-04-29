@@ -13,11 +13,11 @@ export function MiniPlayer() {
   const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
 
   return (
-    <View className="absolute bottom-[85px] left-0 right-0 bg-morlo-surface border-t border-morlo-border">
+    <View className="absolute bottom-[85px] left-0 right-0 bg-mym-surface border-t border-mym-border">
       {/* Progress bar */}
-      <View className="h-0.5 bg-morlo-border">
+      <View className="h-0.5 bg-mym-border">
         <View
-          className="h-full bg-morlo-accent"
+          className="h-full bg-mym-accent"
           style={{ width: `${progressPercent}%` }}
         />
       </View>
@@ -28,7 +28,7 @@ export function MiniPlayer() {
         activeOpacity={0.8}
       >
         {/* Cover art */}
-        <View className="w-11 h-11 rounded-lg overflow-hidden bg-morlo-card mr-3">
+        <View className="w-11 h-11 rounded-lg overflow-hidden bg-mym-card mr-3">
           {currentTrack.coverArt ? (
             <Image
               source={{ uri: currentTrack.coverArt }}
@@ -36,7 +36,7 @@ export function MiniPlayer() {
               contentFit="cover"
             />
           ) : (
-            <View className="flex-1 items-center justify-center bg-morlo-card">
+            <View className="flex-1 items-center justify-center bg-mym-card">
               <Text className="text-lg">🎵</Text>
             </View>
           )}
@@ -44,10 +44,10 @@ export function MiniPlayer() {
 
         {/* Track info */}
         <View className="flex-1 mr-3">
-          <Text className="text-morlo-text text-sm font-semibold" numberOfLines={1}>
+          <Text className="text-mym-text text-sm font-semibold" numberOfLines={1}>
             {currentTrack.title}
           </Text>
-          <Text className="text-morlo-muted text-xs" numberOfLines={1}>
+          <Text className="text-mym-muted text-xs" numberOfLines={1}>
             {currentTrack.agent.name}
           </Text>
         </View>

@@ -13,8 +13,8 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
   return (
     <div className="relative min-h-screen">
-      {/* Aurora — Morlo's signature ambient backdrop */}
-      <div className="morlo-aurora" />
+      {/* Aurora — MakeYourMusic's signature ambient backdrop */}
+      <div className="mym-aurora" />
 
       {/* Desktop: floating sidebar to the left */}
       <div className="hidden md:block">
@@ -31,7 +31,7 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
         <div className="md:pr-2 md:py-2">
           {/* Panel wraps the content visually but does NOT set overflow-hidden
               so the topbar inside can stick relative to the page scroll. */}
-          <div className="md:morlo-panel">
+          <div className="md:mym-panel">
             <Topbar />
             <main
               className="px-4 md:px-8 pt-4 pb-12"

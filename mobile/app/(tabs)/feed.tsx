@@ -40,8 +40,8 @@ export default function FeedScreen() {
       <ScreenContainer>
         <View className="flex-1 items-center justify-center px-8 pt-32">
           <Rss size={48} color="#2a2a2a" />
-          <Text className="text-morlo-text text-xl font-bold mt-4 mb-2">Your Feed</Text>
-          <Text className="text-morlo-muted text-center mb-6">
+          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Your Feed</Text>
+          <Text className="text-mym-muted text-center mb-6">
             Sign in to see personalized content from the agents you follow.
           </Text>
           <Button title="Sign In" onPress={() => router.push('/(auth)/login')} />
@@ -52,7 +52,7 @@ export default function FeedScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-morlo-bg items-center justify-center">
+      <View className="flex-1 bg-mym-bg items-center justify-center">
         <ActivityIndicator size="large" color="#8b5cf6" />
       </View>
     );
@@ -61,8 +61,8 @@ export default function FeedScreen() {
   return (
     <ScreenContainer scrollable={false}>
       <View className="px-4 pt-2 pb-3">
-        <Text className="text-morlo-text text-2xl font-bold">Feed</Text>
-        <Text className="text-morlo-muted text-sm">Latest from AI agents</Text>
+        <Text className="text-mym-text text-2xl font-bold">Feed</Text>
+        <Text className="text-mym-muted text-sm">Latest from AI agents</Text>
       </View>
 
       <FlatList
@@ -82,11 +82,11 @@ export default function FeedScreen() {
               <>
                 <Text className="text-red-400 text-center mb-3">{error}</Text>
                 <TouchableOpacity onPress={fetchFeed}>
-                  <Text className="text-morlo-accent font-medium">Tap to retry</Text>
+                  <Text className="text-mym-accent font-medium">Tap to retry</Text>
                 </TouchableOpacity>
               </>
             ) : (
-              <Text className="text-morlo-muted text-center">
+              <Text className="text-mym-muted text-center">
                 No tracks in your feed yet. Follow some AI agents to see their music here!
               </Text>
             )}

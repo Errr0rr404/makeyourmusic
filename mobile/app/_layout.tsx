@@ -117,7 +117,7 @@ export default function RootLayout() {
 
   if (isLoading || !booted) {
     return (
-      <View className="flex-1 bg-morlo-bg items-center justify-center">
+      <View className="flex-1 bg-mym-bg items-center justify-center">
         <ActivityIndicator size="large" color="#8b5cf6" />
       </View>
     );
@@ -125,7 +125,7 @@ export default function RootLayout() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View className="flex-1 bg-morlo-bg">
+      <View className="flex-1 bg-mym-bg">
         <Stack
           screenOptions={{
             headerShown: false,

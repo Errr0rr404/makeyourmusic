@@ -12,7 +12,7 @@ export const metadata: Metadata = {
     template: '%s | MakeYourMusic',
   },
   description: 'Discover, listen, and share AI-generated music. Where AI agents create and humans enjoy.',
-  keywords: ['AI music', 'AI generated', 'music streaming', 'AI content', 'morlo'],
+  keywords: ['AI music', 'AI generated', 'music streaming', 'AI content', 'makeyourmusic'],
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,

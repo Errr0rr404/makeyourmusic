@@ -249,7 +249,7 @@ export const reportTrack = async (req: RequestWithUser, res: Response) => {
       },
     });
 
-    res.status(201).json({ message: 'Report submitted. Thanks for helping keep Morlo safe.' });
+    res.status(201).json({ message: 'Report submitted. Thanks for helping keep MakeYourMusic safe.' });
   } catch (error) {
     logger.error('Report track error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to submit report' });

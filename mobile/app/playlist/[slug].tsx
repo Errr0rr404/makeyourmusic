@@ -178,9 +178,9 @@ export default function PlaylistScreen() {
       <ScreenContainer scrollable={false}>
         <View className="flex-1 items-center justify-center px-6">
           <AlertCircle size={40} color="#f87171" />
-          <Text className="text-morlo-text text-lg font-bold mt-3">{error || 'Playlist not found'}</Text>
+          <Text className="text-mym-text text-lg font-bold mt-3">{error || 'Playlist not found'}</Text>
           <TouchableOpacity onPress={() => router.back()} className="mt-4">
-            <Text className="text-morlo-accent text-sm font-semibold">← Back</Text>
+            <Text className="text-mym-accent text-sm font-semibold">← Back</Text>
           </TouchableOpacity>
         </View>
       </ScreenContainer>
@@ -204,7 +204,7 @@ export default function PlaylistScreen() {
                 <View className="flex-row gap-2">
                   <TouchableOpacity
                     onPress={handleToggleVisibility}
-                    className="p-2 rounded-full bg-morlo-card"
+                    className="p-2 rounded-full bg-mym-card"
                   >
                     {playlist.isPublic ? (
                       <Globe size={18} color="#4ade80" />
@@ -214,7 +214,7 @@ export default function PlaylistScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setEditing(true)}
-                    className="p-2 rounded-full bg-morlo-card"
+                    className="p-2 rounded-full bg-mym-card"
                   >
                     <Pencil size={18} color="#a1a1aa" />
                   </TouchableOpacity>
@@ -247,12 +247,12 @@ export default function PlaylistScreen() {
                       }}
                       className="px-4 py-2"
                     >
-                      <Text className="text-morlo-muted text-sm">Cancel</Text>
+                      <Text className="text-mym-muted text-sm">Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleSaveTitle}
                       disabled={saving}
-                      className="px-4 py-2 bg-morlo-accent rounded-lg"
+                      className="px-4 py-2 bg-mym-accent rounded-lg"
                     >
                       <Text className="text-white text-sm font-semibold">{saving ? 'Saving…' : 'Save'}</Text>
                     </TouchableOpacity>
@@ -260,9 +260,9 @@ export default function PlaylistScreen() {
                 </View>
               ) : (
                 <>
-                  <Text className="text-xs text-morlo-muted uppercase font-bold mt-4">Playlist</Text>
-                  <Text className="text-morlo-text text-2xl font-bold mt-1">{playlist.title}</Text>
-                  <Text className="text-morlo-muted text-sm mt-1">
+                  <Text className="text-xs text-mym-muted uppercase font-bold mt-4">Playlist</Text>
+                  <Text className="text-mym-text text-2xl font-bold mt-1">{playlist.title}</Text>
+                  <Text className="text-mym-muted text-sm mt-1">
                     {playlist.user?.displayName || playlist.user?.username} · {tracks.length} track
                     {tracks.length !== 1 ? 's' : ''}
                   </Text>
@@ -284,7 +284,7 @@ export default function PlaylistScreen() {
               {tracks.length > 0 && !editing && (
                 <TouchableOpacity
                   onPress={handlePlayAll}
-                  className="mt-5 flex-row items-center gap-2 bg-morlo-accent px-6 py-3 rounded-full"
+                  className="mt-5 flex-row items-center gap-2 bg-mym-accent px-6 py-3 rounded-full"
                 >
                   <Play size={16} color="#fff" fill="#fff" />
                   <Text className="text-white font-semibold">Play all</Text>
@@ -296,14 +296,14 @@ export default function PlaylistScreen() {
         ListEmptyComponent={
           <View className="py-12 items-center px-6">
             <Music size={36} color="#71717a" />
-            <Text className="text-morlo-muted text-sm mt-3 text-center">
+            <Text className="text-mym-muted text-sm mt-3 text-center">
               This playlist is empty
             </Text>
             <TouchableOpacity
               onPress={() => router.push('/(tabs)/search')}
-              className="mt-4 px-5 py-2 rounded-full bg-morlo-card border border-morlo-border"
+              className="mt-4 px-5 py-2 rounded-full bg-mym-card border border-mym-border"
             >
-              <Text className="text-morlo-accent text-sm font-semibold">Find tracks to add</Text>
+              <Text className="text-mym-accent text-sm font-semibold">Find tracks to add</Text>
             </TouchableOpacity>
           </View>
         }
@@ -313,8 +313,8 @@ export default function PlaylistScreen() {
             onLongPress={isOwner ? () => handleRemoveTrack(item) : undefined}
             className="flex-row items-center gap-3 px-4 py-2 active:bg-white/5"
           >
-            <Text className="text-morlo-muted text-xs w-6 text-right">{index + 1}</Text>
-            <View className="w-10 h-10 rounded bg-morlo-card overflow-hidden">
+            <Text className="text-mym-muted text-xs w-6 text-right">{index + 1}</Text>
+            <View className="w-10 h-10 rounded bg-mym-card overflow-hidden">
               {item.coverArt ? (
                 <Image source={{ uri: item.coverArt }} className="w-full h-full" />
               ) : (
@@ -324,14 +324,14 @@ export default function PlaylistScreen() {
               )}
             </View>
             <View className="flex-1 min-w-0">
-              <Text className="text-morlo-text text-sm font-semibold" numberOfLines={1}>
+              <Text className="text-mym-text text-sm font-semibold" numberOfLines={1}>
                 {item.title}
               </Text>
-              <Text className="text-morlo-muted text-xs" numberOfLines={1}>
+              <Text className="text-mym-muted text-xs" numberOfLines={1}>
                 {item.agent?.name}
               </Text>
             </View>
-            <Text className="text-morlo-muted text-xs">{formatDuration(item.duration)}</Text>
+            <Text className="text-mym-muted text-xs">{formatDuration(item.duration)}</Text>
             {isOwner && (
               <TouchableOpacity onPress={() => handleRemoveTrack(item)} className="p-2">
                 <Trash2 size={14} color="#a1a1aa" />

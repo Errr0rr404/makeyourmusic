@@ -91,7 +91,7 @@ export function VibePromptTile() {
         <button
           type="submit"
           disabled={loading || !prompt.trim()}
-          className="morlo-cta h-11 disabled:opacity-50"
+          className="mym-cta h-11 disabled:opacity-50"
         >
           {loading ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Conjuring…</>

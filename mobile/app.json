@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "Morlo",
-    "slug": "morlo",
+    "name": "MakeYourMusic",
+    "slug": "makeyourmusic",
     "version": "1.0.0",
     "runtimeVersion": {
       "policy": "appVersion"
@@ -9,7 +9,7 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "dark",
-    "scheme": "morlo",
+    "scheme": "makeyourmusic",
     "newArchEnabled": true,
     "splash": {
       "image": "./assets/splash-icon.png",
@@ -18,13 +18,13 @@
     },
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.morlo.app",
+      "bundleIdentifier": "com.makeyourmusic.app",
       "infoPlist": {
         "UIBackgroundModes": ["audio"],
-        "NSMicrophoneUsageDescription": "Morlo needs microphone access to record audio.",
+        "NSMicrophoneUsageDescription": "MakeYourMusic needs microphone access to record audio.",
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": ["morlo"]
+            "CFBundleURLSchemes": ["makeyourmusic"]
           }
         ]
       },
@@ -34,7 +34,7 @@
       }
     },
     "android": {
-      "package": "ai.morlo.app",
+      "package": "com.makeyourmusic.app",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#0a0a0a"

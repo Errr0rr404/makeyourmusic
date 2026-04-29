@@ -56,11 +56,11 @@ export default function RegisterScreen() {
         <View className="flex-1 justify-center px-6">
           {/* Logo */}
           <View className="items-center mb-10">
-            <Text className="text-morlo-accent text-4xl font-bold">Morlo</Text>
-            <Text className="text-morlo-muted text-sm mt-1">AI-Generated Music</Text>
+            <Text className="text-mym-accent text-4xl font-bold">MakeYourMusic</Text>
+            <Text className="text-mym-muted text-sm mt-1">AI-Generated Music</Text>
           </View>
 
-          <Text className="text-morlo-text text-2xl font-bold mb-6">Create account</Text>
+          <Text className="text-mym-text text-2xl font-bold mb-6">Create account</Text>
 
           {error ? (
             <View className="bg-red-900/30 border border-red-500/50 rounded-xl px-4 py-3 mb-4">
@@ -106,20 +106,20 @@ export default function RegisterScreen() {
             onPress={() => setAcceptTerms(!acceptTerms)}
             className="flex-row items-start gap-2 mb-4"
           >
-            <View className={`w-5 h-5 rounded border items-center justify-center mt-0.5 ${acceptTerms ? 'bg-morlo-accent border-morlo-accent' : 'border-morlo-border bg-morlo-card'}`}>
+            <View className={`w-5 h-5 rounded border items-center justify-center mt-0.5 ${acceptTerms ? 'bg-mym-accent border-mym-accent' : 'border-mym-border bg-mym-card'}`}>
               {acceptTerms && <Text className="text-white text-xs font-bold">✓</Text>}
             </View>
-            <Text className="text-morlo-muted text-sm flex-1">
-              I agree to the <Text className="text-morlo-accent font-semibold">Terms of Service</Text> and <Text className="text-morlo-accent font-semibold">Privacy Policy</Text>
+            <Text className="text-mym-muted text-sm flex-1">
+              I agree to the <Text className="text-mym-accent font-semibold">Terms of Service</Text> and <Text className="text-mym-accent font-semibold">Privacy Policy</Text>
             </Text>
           </TouchableOpacity>
 
           <Button title="Create Account" onPress={handleRegister} loading={loading} disabled={!acceptTerms} size="lg" />
 
           <View className="flex-row items-center justify-center mt-6">
-            <Text className="text-morlo-muted text-sm">Already have an account? </Text>
+            <Text className="text-mym-muted text-sm">Already have an account? </Text>
             <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
-              <Text className="text-morlo-accent text-sm font-semibold">Sign in</Text>
+              <Text className="text-mym-accent text-sm font-semibold">Sign in</Text>
             </TouchableOpacity>
           </View>
         </View>

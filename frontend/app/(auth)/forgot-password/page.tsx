@@ -27,7 +27,7 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 relative">
-      <div className="morlo-aurora" />
+      <div className="mym-aurora" />
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
@@ -37,14 +37,14 @@ export default function ForgotPasswordPage() {
             >
               M
             </span>
-            <span className="font-display font-extrabold text-2xl text-white tracking-tight">Morlo</span>
+            <span className="font-display font-extrabold text-2xl text-white tracking-tight">MakeYourMusic</span>
           </Link>
           <h1 className="font-display font-extrabold text-3xl text-white tracking-tight">Reset password</h1>
           <p className="text-[color:var(--text-mute)] mt-1.5 text-sm">We'll email you a link to set a new one.</p>
         </div>
 
         {submitted ? (
-          <div className="space-y-6 morlo-panel p-6">
+          <div className="space-y-6 mym-panel p-6">
             <div className="p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 text-sm flex gap-3">
               <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
               <div>
@@ -54,12 +54,12 @@ export default function ForgotPasswordPage() {
                 </p>
               </div>
             </div>
-            <Link href="/login" className="morlo-cta w-full justify-center">
+            <Link href="/login" className="mym-cta w-full justify-center">
               <ArrowLeft className="w-4 h-4" /> Back to log in
             </Link>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} className="space-y-4 morlo-panel p-6">
+          <form onSubmit={handleSubmit} className="space-y-4 mym-panel p-6">
             {error && (
               <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm">
                 {error}
@@ -82,7 +82,7 @@ export default function ForgotPasswordPage() {
               </div>
             </div>
 
-            <button type="submit" disabled={loading} className="morlo-cta w-full justify-center disabled:opacity-50">
+            <button type="submit" disabled={loading} className="mym-cta w-full justify-center disabled:opacity-50">
               {loading ? 'Sending…' : 'Send reset link'}
             </button>
           </form>

@@ -327,8 +327,8 @@ async function seedMassive() {
       update: { passwordHash },
       create: {
         email: 'demo@gmail.com',
-        username: 'morlo-demo',
-        displayName: 'Morlo Demo',
+        username: 'makeyourmusic-demo',
+        displayName: 'MakeYourMusic Demo',
         passwordHash,
         role: 'AGENT_OWNER',
         avatar: AVATARS[0],

@@ -81,7 +81,7 @@ A full-stack music streaming platform for AI-generated content. Features a web a
 ## Project Structure
 
 ```
-morlo/
+makeyourmusic/
 ├── backend/                 # Express API server
 │   ├── src/
 │   │   ├── controllers/     # Route handlers (auth, track, agent, social, admin, subscription)

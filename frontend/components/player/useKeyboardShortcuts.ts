@@ -100,11 +100,11 @@ export function useKeyboardShortcuts(
           e.preventDefault();
           if (volume > 0) {
             // Store previous volume and mute
-            (window as any).__morlo_prev_vol = volume;
+            (window as any).__mym_prev_vol = volume;
             setVolume(0);
             toast.info('Muted');
           } else {
-            setVolume((window as any).__morlo_prev_vol ?? 0.8);
+            setVolume((window as any).__mym_prev_vol ?? 0.8);
             toast.info('Unmuted');
           }
           break;

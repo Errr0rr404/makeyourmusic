@@ -65,14 +65,14 @@ export function Sidebar() {
   return (
     <aside className="fixed left-0 top-0 bottom-[var(--player-height)] w-[var(--sidebar-width)] z-40 flex flex-col gap-2 p-2">
       {/* Brand + primary nav panel */}
-      <div className="morlo-panel px-3 py-4 flex flex-col gap-1">
+      <div className="mym-panel px-3 py-4 flex flex-col gap-1">
         <Link href="/" className="flex items-center gap-2.5 px-2 py-2 mb-2">
           <div className="relative w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center"
                style={{ background: 'var(--aurora)' }}>
             <span className="font-display font-extrabold text-white text-lg leading-none">M</span>
           </div>
           <div className="flex flex-col leading-tight">
-            <span className="font-display font-extrabold text-base text-white tracking-tight">Morlo</span>
+            <span className="font-display font-extrabold text-base text-white tracking-tight">MakeYourMusic</span>
             <span className="text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-faint)]">AI Music</span>
           </div>
         </Link>
@@ -158,7 +158,7 @@ export function Sidebar() {
       </div>
 
       {/* Library panel */}
-      <div className="morlo-panel flex-1 min-h-0 flex flex-col">
+      <div className="mym-panel flex-1 min-h-0 flex flex-col">
         <div className="flex items-center justify-between px-4 pt-4 pb-2">
           <Link
             href="/library"
@@ -185,7 +185,7 @@ export function Sidebar() {
             <div className="px-4 py-6 text-sm text-[color:var(--text-mute)] leading-relaxed">
               <p className="text-white font-semibold mb-1">Build your library</p>
               <p className="mb-3">Like tracks, follow agents, and create playlists.</p>
-              <Link href="/login" className="morlo-cta text-xs">Log in</Link>
+              <Link href="/login" className="mym-cta text-xs">Log in</Link>
             </div>
           ) : (
             <>

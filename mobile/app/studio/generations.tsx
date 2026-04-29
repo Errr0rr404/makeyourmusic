@@ -175,8 +175,8 @@ export default function GenerationsScreen() {
       <ScreenContainer scrollable={false}>
         <View className="flex-1 items-center justify-center px-6">
           <Lock size={48} color="#71717a" />
-          <Text className="text-morlo-text text-xl font-bold mt-4 mb-2">Your Generations</Text>
-          <Text className="text-morlo-muted text-sm mb-6">Log in to see your AI generations</Text>
+          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Your Generations</Text>
+          <Text className="text-mym-muted text-sm mb-6">Log in to see your AI generations</Text>
           <Button title="Sign in" onPress={() => router.push('/(auth)/login')} size="lg" />
         </View>
       </ScreenContainer>
@@ -195,14 +195,14 @@ export default function GenerationsScreen() {
               <Sparkles size={12} color="#a855f7" />
               <Text className="text-purple-300 text-[10px] font-bold uppercase tracking-wider">Studio</Text>
             </View>
-            <Text className="text-morlo-text text-lg font-bold">My generations</Text>
+            <Text className="text-mym-text text-lg font-bold">My generations</Text>
           </View>
         </View>
         <View className="flex-row items-center gap-2">
           {usage && (
             <View className="items-end mr-1">
-              <Text className="text-morlo-muted text-[10px] uppercase">Today</Text>
-              <Text className="text-morlo-text text-sm font-bold">
+              <Text className="text-mym-muted text-[10px] uppercase">Today</Text>
+              <Text className="text-mym-text text-sm font-bold">
                 {usage.used}/{usage.limit}
               </Text>
             </View>
@@ -234,8 +234,8 @@ export default function GenerationsScreen() {
       ) : generations.length === 0 ? (
         <View className="flex-1 items-center justify-center px-6">
           <Wand2 size={40} color="#71717a" />
-          <Text className="text-morlo-text text-lg font-bold mt-3 mb-1">No generations yet</Text>
-          <Text className="text-morlo-muted text-sm mb-5 text-center">Start creating music with AI</Text>
+          <Text className="text-mym-text text-lg font-bold mt-3 mb-1">No generations yet</Text>
+          <Text className="text-mym-muted text-sm mb-5 text-center">Start creating music with AI</Text>
           <TouchableOpacity
             onPress={() => router.push('/create')}
             className="flex-row items-center gap-2 bg-purple-600 px-5 py-3 rounded-full"
@@ -260,10 +260,10 @@ export default function GenerationsScreen() {
             />
           }
           renderItem={({ item }) => (
-            <View className="bg-morlo-card border border-morlo-border rounded-xl p-4 mb-3">
+            <View className="bg-mym-card border border-mym-border rounded-xl p-4 mb-3">
               <View className="flex-row items-start gap-2 mb-1 flex-wrap">
-                <Text className="text-morlo-text text-base font-semibold flex-1" numberOfLines={1}>
-                  {item.title || <Text className="text-morlo-muted">Untitled</Text>}
+                <Text className="text-mym-text text-base font-semibold flex-1" numberOfLines={1}>
+                  {item.title || <Text className="text-mym-muted">Untitled</Text>}
                 </Text>
                 <StatusBadge status={item.status} />
                 {item.track && (
@@ -273,31 +273,31 @@ export default function GenerationsScreen() {
                     ) : (
                       <LockKeyhole size={9} color="#a1a1aa" />
                     )}
-                    <Text className="text-[10px] text-morlo-muted">{item.track.isPublic ? 'Public' : 'Private'}</Text>
+                    <Text className="text-[10px] text-mym-muted">{item.track.isPublic ? 'Public' : 'Private'}</Text>
                   </View>
                 )}
               </View>
               {item.prompt && (
-                <Text className="text-morlo-muted text-xs" numberOfLines={1}>{item.prompt}</Text>
+                <Text className="text-mym-muted text-xs" numberOfLines={1}>{item.prompt}</Text>
               )}
               <View className="flex-row items-center gap-2 mt-1">
-                <Text className="text-morlo-muted text-xs">{timeAgo(item.createdAt)}</Text>
+                <Text className="text-mym-muted text-xs">{timeAgo(item.createdAt)}</Text>
                 {item.durationSec && (
                   <View className="flex-row items-center gap-1">
                     <Clock size={10} color="#71717a" />
-                    <Text className="text-morlo-muted text-xs">
+                    <Text className="text-mym-muted text-xs">
                       {Math.floor(item.durationSec / 60)}:{(item.durationSec % 60).toString().padStart(2, '0')}
                     </Text>
                   </View>
                 )}
-                {item.isInstrumental && <Text className="text-morlo-muted text-xs">· Instrumental</Text>}
+                {item.isInstrumental && <Text className="text-mym-muted text-xs">· Instrumental</Text>}
               </View>
 
               {item.status === 'COMPLETED' && item.audioUrl && (
                 <View className="flex-row items-center gap-2 mt-3">
                   <TouchableOpacity
                     onPress={() => togglePlay(item)}
-                    className="w-10 h-10 rounded-full bg-morlo-accent items-center justify-center"
+                    className="w-10 h-10 rounded-full bg-mym-accent items-center justify-center"
                   >
                     {playingId === item.id ? (
                       <Pause size={16} color="#fff" fill="#fff" />
@@ -308,18 +308,18 @@ export default function GenerationsScreen() {
                   {!item.track ? (
                     <TouchableOpacity
                       onPress={() => router.push(`/create?generation=${item.id}`)}
-                      className="flex-row items-center gap-1 px-3 py-2 rounded-lg bg-morlo-accent/20 border border-morlo-accent/30"
+                      className="flex-row items-center gap-1 px-3 py-2 rounded-lg bg-mym-accent/20 border border-mym-accent/30"
                     >
                       <Upload size={12} color="#8b5cf6" />
-                      <Text className="text-morlo-accent text-xs font-semibold">Publish</Text>
+                      <Text className="text-mym-accent text-xs font-semibold">Publish</Text>
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
                       onPress={() => router.push(`/track/${item.track!.slug}`)}
-                      className="flex-row items-center gap-1 px-3 py-2 rounded-lg bg-morlo-surface border border-morlo-border"
+                      className="flex-row items-center gap-1 px-3 py-2 rounded-lg bg-mym-surface border border-mym-border"
                     >
                       <Play size={12} color="#a1a1aa" />
-                      <Text className="text-morlo-text text-xs font-semibold">Open track</Text>
+                      <Text className="text-mym-text text-xs font-semibold">Open track</Text>
                     </TouchableOpacity>
                   )}
                   <View className="flex-1" />

@@ -39,16 +39,16 @@ export default function ForgotPasswordScreen() {
       >
         <TouchableOpacity onPress={() => router.back()} className="px-4 py-3 flex-row items-center">
           <ArrowLeft size={20} color="#a1a1aa" />
-          <Text className="text-morlo-muted ml-2">Back</Text>
+          <Text className="text-mym-muted ml-2">Back</Text>
         </TouchableOpacity>
 
         <View className="flex-1 justify-center px-6">
           <View className="items-center mb-8">
-            <View className="w-16 h-16 rounded-full bg-morlo-accent/10 items-center justify-center mb-4">
+            <View className="w-16 h-16 rounded-full bg-mym-accent/10 items-center justify-center mb-4">
               <Mail size={28} color="#8b5cf6" />
             </View>
-            <Text className="text-morlo-text text-2xl font-bold mb-1">Reset your password</Text>
-            <Text className="text-morlo-muted text-sm text-center">
+            <Text className="text-mym-text text-2xl font-bold mb-1">Reset your password</Text>
+            <Text className="text-mym-muted text-sm text-center">
               We&apos;ll send you a link to create a new password
             </Text>
           </View>
@@ -90,7 +90,7 @@ export default function ForgotPasswordScreen() {
                 onPress={() => router.replace('/(auth)/login')}
                 className="items-center mt-6"
               >
-                <Text className="text-morlo-muted text-sm">Remembered your password? <Text className="text-morlo-accent font-semibold">Log in</Text></Text>
+                <Text className="text-mym-muted text-sm">Remembered your password? <Text className="text-mym-accent font-semibold">Log in</Text></Text>
               </TouchableOpacity>
             </>
           )}

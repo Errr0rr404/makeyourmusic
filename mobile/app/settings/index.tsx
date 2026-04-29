@@ -42,8 +42,8 @@ export default function SettingsScreen() {
       <ScreenContainer scrollable={false}>
         <View className="flex-1 items-center justify-center px-6">
           <Lock size={48} color="#71717a" />
-          <Text className="text-morlo-text text-xl font-bold mt-4 mb-2">Settings</Text>
-          <Text className="text-morlo-muted text-sm mb-6">Log in to access settings</Text>
+          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Settings</Text>
+          <Text className="text-mym-muted text-sm mb-6">Log in to access settings</Text>
           <Button title="Sign in" onPress={() => router.push('/(auth)/login')} size="lg" />
         </View>
       </ScreenContainer>
@@ -159,7 +159,7 @@ export default function SettingsScreen() {
           <TouchableOpacity onPress={() => router.back()}>
             <ArrowLeft size={20} color="#a1a1aa" />
           </TouchableOpacity>
-          <Text className="text-morlo-text text-lg font-bold">Settings</Text>
+          <Text className="text-mym-text text-lg font-bold">Settings</Text>
         </View>
 
         {/* Email verification banner */}
@@ -214,14 +214,14 @@ export default function SettingsScreen() {
               <Sliders size={18} color="#a1a1aa" />
               <View className="flex-1">
                 <View className="flex-row items-center gap-2">
-                  <Text className="text-morlo-text text-sm">Equalizer</Text>
-                  <View className="bg-morlo-border/60 px-1.5 py-0.5 rounded">
-                    <Text className="text-[9px] font-bold uppercase text-morlo-muted tracking-wider">
+                  <Text className="text-mym-text text-sm">Equalizer</Text>
+                  <View className="bg-mym-border/60 px-1.5 py-0.5 rounded">
+                    <Text className="text-[9px] font-bold uppercase text-mym-muted tracking-wider">
                       Web only
                     </Text>
                   </View>
                 </View>
-                <Text className="text-morlo-muted text-xs">
+                <Text className="text-mym-muted text-xs">
                   Native mobile EQ is coming soon. Configure on web for now.
                 </Text>
               </View>
@@ -239,16 +239,16 @@ export default function SettingsScreen() {
         <Section title="Security">
           <TouchableOpacity
             onPress={() => setShowPassword((v) => !v)}
-            className="flex-row items-center justify-between px-4 py-3 border-b border-morlo-border/60"
+            className="flex-row items-center justify-between px-4 py-3 border-b border-mym-border/60"
           >
             <View className="flex-row items-center gap-3">
               <KeyRound size={18} color="#a1a1aa" />
-              <Text className="text-morlo-text text-sm">Change password</Text>
+              <Text className="text-mym-text text-sm">Change password</Text>
             </View>
             <ChevronRight size={16} color="#71717a" style={{ transform: [{ rotate: showPassword ? '90deg' : '0deg' }] }} />
           </TouchableOpacity>
           {showPassword && (
-            <View className="px-4 pt-3 pb-2 bg-morlo-bg/40 border-b border-morlo-border/60">
+            <View className="px-4 pt-3 pb-2 bg-mym-bg/40 border-b border-mym-border/60">
               {pwdError ? (
                 <View className="flex-row items-start gap-2 bg-red-900/30 border border-red-500/30 rounded-lg p-2 mb-2">
                   <AlertCircle size={14} color="#f87171" />
@@ -285,8 +285,8 @@ export default function SettingsScreen() {
           <LinkRow icon={<ShieldCheck size={18} color="#a1a1aa" />} label="Privacy Policy" onPress={() => Linking.openURL(`${SITE_URL}/privacy`)} />
           <LinkRow icon={<Cookie size={18} color="#a1a1aa" />} label="Cookie Policy" onPress={() => Linking.openURL(`${SITE_URL}/cookies`)} />
           <View className="px-4 py-3">
-            <Text className="text-morlo-text text-sm font-semibold">MakeYourMusic</Text>
-            <Text className="text-morlo-muted text-xs mt-0.5">AI-Generated Music Platform — v1.0.0</Text>
+            <Text className="text-mym-text text-sm font-semibold">MakeYourMusic</Text>
+            <Text className="text-mym-muted text-xs mt-0.5">AI-Generated Music Platform — v1.0.0</Text>
           </View>
         </Section>
 
@@ -298,15 +298,15 @@ export default function SettingsScreen() {
           onRequestClose={() => setShowDeleteModal(false)}
         >
           <View className="flex-1 bg-black/70 items-center justify-center px-5">
-            <View className="bg-morlo-card border border-red-500/30 rounded-2xl w-full max-w-md overflow-hidden">
-              <View className="p-5 border-b border-morlo-border">
+            <View className="bg-mym-card border border-red-500/30 rounded-2xl w-full max-w-md overflow-hidden">
+              <View className="p-5 border-b border-mym-border">
                 <View className="flex-row items-start gap-3">
                   <View className="w-10 h-10 rounded-full bg-red-500/10 items-center justify-center">
                     <Trash2 size={18} color="#f87171" />
                   </View>
                   <View className="flex-1">
-                    <Text className="text-morlo-text text-lg font-bold">Delete account</Text>
-                    <Text className="text-morlo-muted text-sm mt-1">
+                    <Text className="text-mym-text text-lg font-bold">Delete account</Text>
+                    <Text className="text-mym-muted text-sm mt-1">
                       Permanently removes your account and all data. This cannot be undone.
                     </Text>
                   </View>
@@ -361,18 +361,18 @@ export default function SettingsScreen() {
         </Modal>
 
         {/* Danger zone */}
-        <View className="mx-4 mb-6 rounded-xl bg-morlo-card border border-red-500/20 overflow-hidden">
+        <View className="mx-4 mb-6 rounded-xl bg-mym-card border border-red-500/20 overflow-hidden">
           <Text className="text-red-400/80 text-xs uppercase font-bold tracking-wider px-4 pt-3 pb-2">Danger zone</Text>
           <TouchableOpacity
             onPress={handleLogout}
-            className="flex-row items-center gap-3 px-4 py-3 border-t border-morlo-border/60"
+            className="flex-row items-center gap-3 px-4 py-3 border-t border-mym-border/60"
           >
             <LogOut size={18} color="#f87171" />
             <Text className="text-red-400 text-sm">Log out</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleDeleteAccount}
-            className="flex-row items-start gap-3 px-4 py-3 border-t border-morlo-border/60"
+            className="flex-row items-start gap-3 px-4 py-3 border-t border-mym-border/60"
           >
             <Trash2 size={18} color="#f87171" />
             <View>
@@ -389,8 +389,8 @@ export default function SettingsScreen() {
 function Section({ title, children }: { title: string; children: any }) {
   return (
     <View className="mx-4 mb-4">
-      <Text className="text-morlo-muted text-xs uppercase font-bold tracking-wider mb-2 px-1">{title}</Text>
-      <View className="bg-morlo-card border border-morlo-border rounded-xl overflow-hidden">
+      <Text className="text-mym-muted text-xs uppercase font-bold tracking-wider mb-2 px-1">{title}</Text>
+      <View className="bg-mym-card border border-mym-border rounded-xl overflow-hidden">
         {children}
       </View>
     </View>
@@ -399,12 +399,12 @@ function Section({ title, children }: { title: string; children: any }) {
 
 function Row({ icon, label, sublabel, children }: { icon: any; label: string; sublabel?: string; children?: any }) {
   return (
-    <View className="flex-row items-center justify-between px-4 py-3 border-b border-morlo-border/60">
+    <View className="flex-row items-center justify-between px-4 py-3 border-b border-mym-border/60">
       <View className="flex-row items-center gap-3">
         {icon}
         <View>
-          <Text className="text-morlo-text text-sm">{label}</Text>
-          {sublabel && <Text className="text-morlo-muted text-xs">{sublabel}</Text>}
+          <Text className="text-mym-text text-sm">{label}</Text>
+          {sublabel && <Text className="text-mym-muted text-xs">{sublabel}</Text>}
         </View>
       </View>
       {children}
@@ -414,10 +414,10 @@ function Row({ icon, label, sublabel, children }: { icon: any; label: string; su
 
 function LinkRow({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
   return (
-    <TouchableOpacity onPress={onPress} className="flex-row items-center justify-between px-4 py-3 border-b border-morlo-border/60">
+    <TouchableOpacity onPress={onPress} className="flex-row items-center justify-between px-4 py-3 border-b border-mym-border/60">
       <View className="flex-row items-center gap-3">
         {icon}
-        <Text className="text-morlo-text text-sm">{label}</Text>
+        <Text className="text-mym-text text-sm">{label}</Text>
       </View>
       <ChevronRight size={16} color="#71717a" />
     </TouchableOpacity>

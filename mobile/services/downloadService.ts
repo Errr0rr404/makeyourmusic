@@ -2,8 +2,8 @@ import { File, Directory, Paths } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { TrackItem } from '@makeyourmusic/shared';
 
-const DOWNLOADS_DIR_NAME = 'morlo-downloads';
-const DOWNLOADS_META_KEY = 'morlo_downloads';
+const DOWNLOADS_DIR_NAME = 'makeyourmusic-downloads';
+const DOWNLOADS_META_KEY = 'makeyourmusic_downloads';
 
 export interface DownloadedTrack extends TrackItem {
   localAudioUri: string;

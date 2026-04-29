@@ -149,7 +149,7 @@ export default function PlayerSettingsModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View className="flex-1 bg-morlo-bg">
+      <View className="flex-1 bg-mym-bg">
         {/* Header */}
         <View className="flex-row items-center justify-between px-5 py-4 border-b border-zinc-800">
           <View className="flex-row items-center gap-2">

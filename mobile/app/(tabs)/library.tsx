@@ -70,8 +70,8 @@ export default function LibraryScreen() {
       <ScreenContainer>
         <View className="flex-1 items-center justify-center px-8 pt-32">
           <LibraryIcon size={48} color="#2a2a2a" />
-          <Text className="text-morlo-text text-xl font-bold mt-4 mb-2">Your Library</Text>
-          <Text className="text-morlo-muted text-center mb-6">
+          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Your Library</Text>
+          <Text className="text-mym-muted text-center mb-6">
             Sign in to access your liked songs and playlists.
           </Text>
           <Button title="Sign In" onPress={() => router.push('/(auth)/login')} />
@@ -82,7 +82,7 @@ export default function LibraryScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-morlo-bg items-center justify-center">
+      <View className="flex-1 bg-mym-bg items-center justify-center">
         <ActivityIndicator size="large" color="#8b5cf6" />
       </View>
     );
@@ -91,10 +91,10 @@ export default function LibraryScreen() {
   return (
     <ScreenContainer scrollable={false}>
       <View className="px-4 pt-2 pb-3 flex-row items-center justify-between">
-        <Text className="text-morlo-text text-2xl font-bold">Library</Text>
+        <Text className="text-mym-text text-2xl font-bold">Library</Text>
         <TouchableOpacity
           onPress={() => setShowCreate(true)}
-          className="flex-row items-center bg-morlo-accent rounded-full px-3 py-1.5"
+          className="flex-row items-center bg-mym-accent rounded-full px-3 py-1.5"
           accessibilityLabel="Create playlist"
         >
           <Plus size={14} color="#fff" />
@@ -106,19 +106,19 @@ export default function LibraryScreen() {
       <View className="flex-row px-4 mb-3">
         <TouchableOpacity
           onPress={() => setTab('liked')}
-          className={`flex-row items-center mr-3 px-4 py-2 rounded-full ${tab === 'liked' ? 'bg-morlo-accent' : 'bg-morlo-card'}`}
+          className={`flex-row items-center mr-3 px-4 py-2 rounded-full ${tab === 'liked' ? 'bg-mym-accent' : 'bg-mym-card'}`}
         >
           <Heart size={14} color={tab === 'liked' ? '#fff' : '#a1a1aa'} />
-          <Text className={`ml-2 text-sm font-medium ${tab === 'liked' ? 'text-white' : 'text-morlo-muted'}`}>
+          <Text className={`ml-2 text-sm font-medium ${tab === 'liked' ? 'text-white' : 'text-mym-muted'}`}>
             Liked Songs
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => setTab('playlists')}
-          className={`flex-row items-center px-4 py-2 rounded-full ${tab === 'playlists' ? 'bg-morlo-accent' : 'bg-morlo-card'}`}
+          className={`flex-row items-center px-4 py-2 rounded-full ${tab === 'playlists' ? 'bg-mym-accent' : 'bg-mym-card'}`}
         >
           <ListMusic size={14} color={tab === 'playlists' ? '#fff' : '#a1a1aa'} />
-          <Text className={`ml-2 text-sm font-medium ${tab === 'playlists' ? 'text-white' : 'text-morlo-muted'}`}>
+          <Text className={`ml-2 text-sm font-medium ${tab === 'playlists' ? 'text-white' : 'text-mym-muted'}`}>
             Playlists
           </Text>
         </TouchableOpacity>
@@ -134,7 +134,7 @@ export default function LibraryScreen() {
           ListEmptyComponent={
             <View className="items-center py-12">
               <Heart size={40} color="#2a2a2a" />
-              <Text className="text-morlo-muted mt-3">No liked songs yet</Text>
+              <Text className="text-mym-muted mt-3">No liked songs yet</Text>
             </View>
           }
           contentContainerStyle={{ paddingBottom: 140 }}
@@ -149,12 +149,12 @@ export default function LibraryScreen() {
               onPress={() => router.push(`/playlist/${item.slug || item.id}`)}
               activeOpacity={0.7}
             >
-              <View className="w-14 h-14 rounded-lg bg-morlo-card items-center justify-center mr-3">
+              <View className="w-14 h-14 rounded-lg bg-mym-card items-center justify-center mr-3">
                 <ListMusic size={24} color="#8b5cf6" />
               </View>
               <View className="flex-1">
-                <Text className="text-morlo-text text-base font-semibold">{item.title}</Text>
-                <Text className="text-morlo-muted text-sm">
+                <Text className="text-mym-text text-base font-semibold">{item.title}</Text>
+                <Text className="text-mym-muted text-sm">
                   {item._count?.tracks || 0} tracks
                 </Text>
               </View>
@@ -163,10 +163,10 @@ export default function LibraryScreen() {
           ListEmptyComponent={
             <View className="items-center py-12 px-6">
               <ListMusic size={40} color="#2a2a2a" />
-              <Text className="text-morlo-muted mt-3 mb-4">No playlists yet</Text>
+              <Text className="text-mym-muted mt-3 mb-4">No playlists yet</Text>
               <TouchableOpacity
                 onPress={() => setShowCreate(true)}
-                className="flex-row items-center bg-morlo-accent rounded-full px-4 py-2"
+                className="flex-row items-center bg-mym-accent rounded-full px-4 py-2"
               >
                 <Plus size={14} color="#fff" />
                 <Text className="text-white text-sm font-semibold ml-1.5">Create your first playlist</Text>
@@ -187,9 +187,9 @@ export default function LibraryScreen() {
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           className="flex-1 bg-black/70 items-center justify-center px-6"
         >
-          <View className="w-full bg-morlo-card rounded-2xl p-5 border border-morlo-border">
+          <View className="w-full bg-mym-card rounded-2xl p-5 border border-mym-border">
             <View className="flex-row items-center justify-between mb-3">
-              <Text className="text-morlo-text text-lg font-bold">New playlist</Text>
+              <Text className="text-mym-text text-lg font-bold">New playlist</Text>
               <TouchableOpacity
                 onPress={() => { setShowCreate(false); setNewTitle(''); }}
                 accessibilityLabel="Close"
@@ -206,19 +206,19 @@ export default function LibraryScreen() {
               autoFocus
               returnKeyType="done"
               onSubmitEditing={handleCreatePlaylist}
-              className="bg-morlo-bg border border-morlo-border rounded-xl px-4 py-3 text-morlo-text text-base"
+              className="bg-mym-bg border border-mym-border rounded-xl px-4 py-3 text-mym-text text-base"
             />
             <View className="flex-row justify-end mt-4 gap-2">
               <TouchableOpacity
                 onPress={() => { setShowCreate(false); setNewTitle(''); }}
                 className="px-4 py-2 rounded-full"
               >
-                <Text className="text-morlo-muted text-sm font-medium">Cancel</Text>
+                <Text className="text-mym-muted text-sm font-medium">Cancel</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={handleCreatePlaylist}
                 disabled={!newTitle.trim() || creating}
-                className={`px-4 py-2 rounded-full ${(!newTitle.trim() || creating) ? 'bg-morlo-accent/40' : 'bg-morlo-accent'}`}
+                className={`px-4 py-2 rounded-full ${(!newTitle.trim() || creating) ? 'bg-mym-accent/40' : 'bg-mym-accent'}`}
               >
                 <Text className="text-white text-sm font-semibold">
                   {creating ? 'Creating…' : 'Create'}

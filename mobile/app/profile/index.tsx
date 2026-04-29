@@ -76,8 +76,8 @@ export default function ProfileScreen() {
       <ScreenContainer scrollable={false}>
         <View className="flex-1 items-center justify-center px-6">
           <UserIcon size={48} color="#71717a" />
-          <Text className="text-morlo-text text-xl font-bold mt-4 mb-2">Your Profile</Text>
-          <Text className="text-morlo-muted text-sm mb-6 text-center">Log in to view and edit your profile</Text>
+          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Your Profile</Text>
+          <Text className="text-mym-muted text-sm mb-6 text-center">Log in to view and edit your profile</Text>
           <Button title="Sign in" onPress={() => router.push('/(auth)/login')} size="lg" />
         </View>
       </ScreenContainer>
@@ -174,7 +174,7 @@ export default function ProfileScreen() {
           <TouchableOpacity onPress={() => router.back()} className="flex-row items-center">
             <ArrowLeft size={20} color="#a1a1aa" />
           </TouchableOpacity>
-          <Text className="text-morlo-text text-lg font-bold">Profile</Text>
+          <Text className="text-mym-text text-lg font-bold">Profile</Text>
           <TouchableOpacity onPress={() => router.push('/settings')}>
             <SettingsIcon size={20} color="#a1a1aa" />
           </TouchableOpacity>
@@ -183,11 +183,11 @@ export default function ProfileScreen() {
         {/* Avatar + info */}
         <View className="items-center py-4">
           <TouchableOpacity onPress={editing ? handleUploadAvatar : undefined} className="relative">
-            <View className="w-24 h-24 rounded-full bg-morlo-card items-center justify-center overflow-hidden border-2 border-morlo-border">
+            <View className="w-24 h-24 rounded-full bg-mym-card items-center justify-center overflow-hidden border-2 border-mym-border">
               {form.avatar ? (
                 <Image source={{ uri: form.avatar }} className="w-full h-full" />
               ) : (
-                <Text className="text-morlo-accent text-4xl font-bold">
+                <Text className="text-mym-accent text-4xl font-bold">
                   {(user?.displayName || user?.username || 'U')[0]?.toUpperCase()}
                 </Text>
               )}
@@ -198,14 +198,14 @@ export default function ProfileScreen() {
               )}
             </View>
             {editing && (
-              <View className="absolute -bottom-1 -right-1 bg-morlo-accent rounded-full w-8 h-8 items-center justify-center border-2 border-morlo-bg">
+              <View className="absolute -bottom-1 -right-1 bg-mym-accent rounded-full w-8 h-8 items-center justify-center border-2 border-mym-bg">
                 <Camera size={14} color="#fff" />
               </View>
             )}
           </TouchableOpacity>
 
           <View className="flex-row items-center gap-2 mt-4">
-            <Text className="text-morlo-text text-xl font-bold">
+            <Text className="text-mym-text text-xl font-bold">
               {user?.displayName || user?.username}
             </Text>
             <View className="flex-row items-center gap-1 px-2 py-0.5 rounded-full" style={{ backgroundColor: `${roleColor}20` }}>
@@ -213,8 +213,8 @@ export default function ProfileScreen() {
               <Text className="text-xs font-semibold" style={{ color: roleColor }}>{roleLabel}</Text>
             </View>
           </View>
-          <Text className="text-morlo-muted text-sm">@{user?.username}</Text>
-          <Text className="text-morlo-muted text-xs mt-0.5">{user?.email}</Text>
+          <Text className="text-mym-muted text-sm">@{user?.username}</Text>
+          <Text className="text-mym-muted text-xs mt-0.5">{user?.email}</Text>
         </View>
 
         {/* Edit form */}
@@ -261,14 +261,14 @@ export default function ProfileScreen() {
         ) : (
           <View className="px-4 pt-2">
             {(user as any)?.bio ? (
-              <Text className="text-morlo-text text-sm px-2 mb-3">{(user as any).bio}</Text>
+              <Text className="text-mym-text text-sm px-2 mb-3">{(user as any).bio}</Text>
             ) : null}
             <TouchableOpacity
               onPress={() => setEditing(true)}
-              className="bg-morlo-card border border-morlo-border rounded-xl px-4 py-3 flex-row items-center justify-center gap-2"
+              className="bg-mym-card border border-mym-border rounded-xl px-4 py-3 flex-row items-center justify-center gap-2"
             >
               <Pencil size={14} color="#a1a1aa" />
-              <Text className="text-morlo-text text-sm font-semibold">Edit profile</Text>
+              <Text className="text-mym-text text-sm font-semibold">Edit profile</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -286,12 +286,12 @@ export default function ProfileScreen() {
           <View className="flex-row items-center justify-between mb-3">
             <View className="flex-row items-center gap-2">
               <Music size={16} color="#8b5cf6" />
-              <Text className="text-morlo-text text-lg font-bold">Your tracks</Text>
-              <Text className="text-morlo-muted text-xs">({myTracks.length})</Text>
+              <Text className="text-mym-text text-lg font-bold">Your tracks</Text>
+              <Text className="text-mym-muted text-xs">({myTracks.length})</Text>
             </View>
           </View>
 
-          <View className="flex-row gap-2 mb-3 border-b border-morlo-border">
+          <View className="flex-row gap-2 mb-3 border-b border-mym-border">
             {(['all', 'public', 'private'] as const).map((t) => {
               const count =
                 t === 'all' ? myTracks.length : myTracks.filter((x) => (t === 'public' ? x.isPublic : !x.isPublic)).length;
@@ -299,10 +299,10 @@ export default function ProfileScreen() {
                 <TouchableOpacity
                   key={t}
                   onPress={() => setTab(t)}
-                  className={`px-3 py-2 border-b-2 -mb-px ${tab === t ? 'border-morlo-accent' : 'border-transparent'}`}
+                  className={`px-3 py-2 border-b-2 -mb-px ${tab === t ? 'border-mym-accent' : 'border-transparent'}`}
                 >
-                  <Text className={`text-sm capitalize ${tab === t ? 'text-morlo-text font-semibold' : 'text-morlo-muted'}`}>
-                    {t} <Text className="text-morlo-muted text-xs">({count})</Text>
+                  <Text className={`text-sm capitalize ${tab === t ? 'text-mym-text font-semibold' : 'text-mym-muted'}`}>
+                    {t} <Text className="text-mym-muted text-xs">({count})</Text>
                   </Text>
                 </TouchableOpacity>
               );
@@ -314,14 +314,14 @@ export default function ProfileScreen() {
               <ActivityIndicator color="#8b5cf6" />
             </View>
           ) : filtered.length === 0 ? (
-            <View className="py-10 items-center bg-morlo-card rounded-xl border border-morlo-border">
+            <View className="py-10 items-center bg-mym-card rounded-xl border border-mym-border">
               <Sparkles size={32} color="#71717a" />
-              <Text className="text-morlo-muted text-sm mt-2 mb-3">
+              <Text className="text-mym-muted text-sm mt-2 mb-3">
                 {tab === 'private' ? 'No private tracks yet' : tab === 'public' ? 'No public tracks yet' : 'No tracks yet'}
               </Text>
               <TouchableOpacity
                 onPress={() => router.push('/create')}
-                className="bg-morlo-accent px-4 py-2 rounded-full"
+                className="bg-mym-accent px-4 py-2 rounded-full"
               >
                 <Text className="text-white text-sm font-semibold">Create with AI</Text>
               </TouchableOpacity>
@@ -331,11 +331,11 @@ export default function ProfileScreen() {
               {filtered.map((track) => (
                 <View
                   key={track.id}
-                  className="flex-row items-center gap-3 p-2 mb-2 rounded-xl bg-morlo-card border border-morlo-border"
+                  className="flex-row items-center gap-3 p-2 mb-2 rounded-xl bg-mym-card border border-mym-border"
                 >
                   <TouchableOpacity
                     onPress={() => playTrack(track as any, filtered as any)}
-                    className="w-12 h-12 rounded-lg overflow-hidden bg-morlo-surface items-center justify-center"
+                    className="w-12 h-12 rounded-lg overflow-hidden bg-mym-surface items-center justify-center"
                   >
                     {track.coverArt ? (
                       <Image source={{ uri: track.coverArt }} className="w-full h-full" />
@@ -345,7 +345,7 @@ export default function ProfileScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity className="flex-1" onPress={() => router.push(`/track/${track.slug}`)}>
                     <View className="flex-row items-center gap-2">
-                      <Text className="text-morlo-text text-sm font-semibold" numberOfLines={1}>
+                      <Text className="text-mym-text text-sm font-semibold" numberOfLines={1}>
                         {track.title}
                       </Text>
                       <View className={`flex-row items-center gap-0.5 px-1.5 py-0.5 rounded ${track.isPublic ? 'bg-green-900/30' : 'bg-amber-900/30'}`}>
@@ -359,7 +359,7 @@ export default function ProfileScreen() {
                         </Text>
                       </View>
                     </View>
-                    <Text className="text-morlo-muted text-xs" numberOfLines={1}>
+                    <Text className="text-mym-muted text-xs" numberOfLines={1}>
                       {track.agent?.name} · {track.playCount ?? 0} plays
                     </Text>
                   </TouchableOpacity>
@@ -383,7 +383,7 @@ export default function ProfileScreen() {
         {user?.createdAt && (
           <View className="px-4 mt-4 flex-row items-center gap-2">
             <Calendar size={12} color="#71717a" />
-            <Text className="text-morlo-muted text-xs">
+            <Text className="text-mym-muted text-xs">
               Member since {new Date(user.createdAt).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
             </Text>
           </View>
@@ -397,10 +397,10 @@ function QuickLink({ icon, label, onPress, primary }: { icon: any; label: string
   return (
     <TouchableOpacity
       onPress={onPress}
-      className={`flex-row items-center gap-2 px-4 py-2 rounded-full ${primary ? 'bg-morlo-accent/20 border border-morlo-accent/30' : 'bg-morlo-card border border-morlo-border'}`}
+      className={`flex-row items-center gap-2 px-4 py-2 rounded-full ${primary ? 'bg-mym-accent/20 border border-mym-accent/30' : 'bg-mym-card border border-mym-border'}`}
     >
       {icon}
-      <Text className={`text-xs font-semibold ${primary ? 'text-morlo-accent' : 'text-morlo-text'}`}>{label}</Text>
+      <Text className={`text-xs font-semibold ${primary ? 'text-mym-accent' : 'text-mym-text'}`}>{label}</Text>
     </TouchableOpacity>
   );
 }

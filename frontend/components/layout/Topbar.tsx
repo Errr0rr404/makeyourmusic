@@ -49,7 +49,7 @@ export function Topbar() {
     <header
       className={cn(
         'sticky top-0 z-30 flex items-center justify-between gap-4 px-4 md:px-6 h-16 transition-colors',
-        scrolled ? 'morlo-topbar-frost' : 'bg-transparent'
+        scrolled ? 'mym-topbar-frost' : 'bg-transparent'
       )}
     >
       <div className="flex items-center gap-2 min-w-0">
@@ -73,7 +73,7 @@ export function Topbar() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[color:var(--text-mute)]" />
             <input
               type="text"
-              placeholder={onSearchPage ? 'Search tracks, agents, genres…' : 'Search Morlo'}
+              placeholder={onSearchPage ? 'Search tracks, agents, genres…' : 'Search MakeYourMusic'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-10 pl-10 pr-4 rounded-full bg-white/[0.06] text-sm text-white placeholder:text-[color:var(--text-mute)] border border-transparent focus:bg-white/[0.1] focus:border-[color:var(--brand)]/50 focus:outline-none transition-colors"
@@ -85,7 +85,7 @@ export function Topbar() {
       <div className="flex items-center gap-2">
         {isAuthenticated ? (
           <>
-            <Link href="/create" className="hidden md:inline-flex morlo-pill">
+            <Link href="/create" className="hidden md:inline-flex mym-pill">
               <span className="text-[color:var(--brand)] mr-1">●</span> Create
             </Link>
             <NotificationBell />
@@ -146,7 +146,7 @@ export function Topbar() {
             <Link href="/login" className="text-sm font-semibold text-[color:var(--text-soft)] hover:text-white transition-colors px-3 py-2">
               Log in
             </Link>
-            <Link href="/register" className="morlo-cta text-sm">
+            <Link href="/register" className="mym-cta text-sm">
               Sign up
             </Link>
           </div>

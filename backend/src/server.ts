@@ -89,7 +89,7 @@ app.use('/api', apiLimiter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', service: 'morlo-api', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', service: 'makeyourmusic-api', timestamp: new Date().toISOString() });
 });
 
 // API Routes

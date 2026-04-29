@@ -55,7 +55,7 @@ export default function GenreScreen() {
           ),
         }}
       />
-      <SafeAreaView className="flex-1 bg-morlo-bg" edges={[]}>
+      <SafeAreaView className="flex-1 bg-mym-bg" edges={[]}>
         {loading ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#8b5cf6" />
@@ -69,7 +69,7 @@ export default function GenreScreen() {
             )}
             ListEmptyComponent={
               <View className="items-center py-12">
-                <Text className="text-morlo-muted">No tracks in this genre yet</Text>
+                <Text className="text-mym-muted">No tracks in this genre yet</Text>
               </View>
             }
             contentContainerStyle={{ paddingBottom: 140 }}

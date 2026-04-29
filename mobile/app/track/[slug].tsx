@@ -159,7 +159,7 @@ export default function TrackDetailScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-morlo-bg items-center justify-center">
+      <View className="flex-1 bg-mym-bg items-center justify-center">
         <ActivityIndicator size="large" color="#8b5cf6" />
       </View>
     );
@@ -167,10 +167,10 @@ export default function TrackDetailScreen() {
 
   if (error || !track) {
     return (
-      <View className="flex-1 bg-morlo-bg items-center justify-center px-8">
-        <Text className="text-morlo-muted text-base mb-4">{error || 'Track not found'}</Text>
+      <View className="flex-1 bg-mym-bg items-center justify-center px-8">
+        <Text className="text-mym-muted text-base mb-4">{error || 'Track not found'}</Text>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text className="text-morlo-accent text-base font-medium">Go Back</Text>
+          <Text className="text-mym-accent text-base font-medium">Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -195,7 +195,7 @@ export default function TrackDetailScreen() {
       <ScreenContainer>
         {/* Cover Art */}
         <View className="items-center px-6 pt-12 pb-6">
-          <View className="w-64 h-64 rounded-2xl overflow-hidden bg-morlo-card shadow-xl">
+          <View className="w-64 h-64 rounded-2xl overflow-hidden bg-mym-card shadow-xl">
             {track.coverArt ? (
               <Image
                 source={{ uri: track.coverArt }}
@@ -204,7 +204,7 @@ export default function TrackDetailScreen() {
                 transition={300}
               />
             ) : (
-              <View className="flex-1 items-center justify-center bg-morlo-surface">
+              <View className="flex-1 items-center justify-center bg-mym-surface">
                 <Text className="text-6xl">🎵</Text>
               </View>
             )}
@@ -213,29 +213,29 @@ export default function TrackDetailScreen() {
 
         {/* Track Info */}
         <View className="px-6">
-          <Text className="text-morlo-text text-2xl font-bold">{track.title}</Text>
+          <Text className="text-mym-text text-2xl font-bold">{track.title}</Text>
           <TouchableOpacity onPress={() => router.push(`/agent/${track.agent.slug}`)}>
-            <Text className="text-morlo-accent text-base mt-1">{track.agent.name}</Text>
+            <Text className="text-mym-accent text-base mt-1">{track.agent.name}</Text>
           </TouchableOpacity>
 
           {track.genre && (
             <TouchableOpacity
               onPress={() => router.push(`/genre/${track.genre!.slug}`)}
-              className="self-start mt-2 px-3 py-1 rounded-full bg-morlo-card border border-morlo-border"
+              className="self-start mt-2 px-3 py-1 rounded-full bg-mym-card border border-mym-border"
             >
-              <Text className="text-morlo-muted text-xs">{track.genre.name}</Text>
+              <Text className="text-mym-muted text-xs">{track.genre.name}</Text>
             </TouchableOpacity>
           )}
 
           {/* Stats */}
           <View className="flex-row items-center mt-3 space-x-4">
-            <Text className="text-morlo-muted text-sm">
+            <Text className="text-mym-muted text-sm">
               {formatCount(track.playCount)} plays
             </Text>
-            <Text className="text-morlo-muted text-sm ml-4">
+            <Text className="text-mym-muted text-sm ml-4">
               {formatDuration(track.duration)}
             </Text>
-            <Text className="text-morlo-muted text-sm ml-4">
+            <Text className="text-mym-muted text-sm ml-4">
               {formatDate(track.createdAt)}
             </Text>
           </View>
@@ -244,7 +244,7 @@ export default function TrackDetailScreen() {
           <View className="flex-row items-center mt-4 space-x-3">
             <TouchableOpacity
               onPress={handlePlay}
-              className="bg-morlo-accent rounded-full w-14 h-14 items-center justify-center mr-3"
+              className="bg-mym-accent rounded-full w-14 h-14 items-center justify-center mr-3"
             >
               {isActive && isPlaying ? (
                 <Pause size={24} color="#fff" fill="#fff" />
@@ -261,7 +261,7 @@ export default function TrackDetailScreen() {
               />
             </TouchableOpacity>
 
-            <Text className="text-morlo-muted text-sm mr-3">{formatCount(likeCount)}</Text>
+            <Text className="text-mym-muted text-sm mr-3">{formatCount(likeCount)}</Text>
 
             <TouchableOpacity className="p-3" onPress={handleShare} accessibilityLabel="Share track">
               <Share2 size={22} color="#a1a1aa" />
@@ -292,18 +292,18 @@ export default function TrackDetailScreen() {
 
           {/* AI Attribution */}
           {(track.aiModel || track.aiPrompt) && (
-            <View className="mt-6 p-4 bg-morlo-card border border-morlo-border rounded-xl">
+            <View className="mt-6 p-4 bg-mym-card border border-mym-border rounded-xl">
               <View className="flex-row items-center mb-2">
                 <Cpu size={16} color="#8b5cf6" />
-                <Text className="text-morlo-accent text-sm font-semibold ml-2">
+                <Text className="text-mym-accent text-sm font-semibold ml-2">
                   AI Attribution
                 </Text>
               </View>
               {track.aiModel && (
-                <Text className="text-morlo-muted text-sm">Model: {track.aiModel}</Text>
+                <Text className="text-mym-muted text-sm">Model: {track.aiModel}</Text>
               )}
               {track.aiPrompt && (
-                <Text className="text-morlo-muted text-sm mt-1" numberOfLines={3}>
+                <Text className="text-mym-muted text-sm mt-1" numberOfLines={3}>
                   Prompt: {track.aiPrompt}
                 </Text>
               )}
@@ -315,7 +315,7 @@ export default function TrackDetailScreen() {
         <View className="px-6 mt-6">
           <View className="flex-row items-center mb-3">
             <MessageCircle size={18} color="#a1a1aa" />
-            <Text className="text-morlo-text text-lg font-bold ml-2">
+            <Text className="text-mym-text text-lg font-bold ml-2">
               Comments ({comments.length})
             </Text>
           </View>
@@ -323,7 +323,7 @@ export default function TrackDetailScreen() {
           {isAuthenticated && (
             <View className="flex-row items-center mb-4">
               <TextInput
-                className="flex-1 bg-morlo-card border border-morlo-border rounded-xl px-4 py-3 text-morlo-text text-sm mr-2"
+                className="flex-1 bg-mym-card border border-mym-border rounded-xl px-4 py-3 text-mym-text text-sm mr-2"
                 placeholder="Add a comment..."
                 placeholderTextColor="#71717a"
                 value={newComment}
@@ -344,16 +344,16 @@ export default function TrackDetailScreen() {
           )}
 
           {comments.map((comment) => (
-            <View key={comment.id} className="mb-4 p-3 bg-morlo-card rounded-xl">
+            <View key={comment.id} className="mb-4 p-3 bg-mym-card rounded-xl">
               <View className="flex-row items-center mb-1">
-                <Text className="text-morlo-text text-sm font-semibold">
+                <Text className="text-mym-text text-sm font-semibold">
                   {comment.user.displayName || comment.user.username}
                 </Text>
-                <Text className="text-morlo-muted text-xs ml-2">
+                <Text className="text-mym-muted text-xs ml-2">
                   {formatDate(comment.createdAt)}
                 </Text>
               </View>
-              <Text className="text-morlo-muted text-sm">{comment.content}</Text>
+              <Text className="text-mym-muted text-sm">{comment.content}</Text>
             </View>
           ))}
         </View>

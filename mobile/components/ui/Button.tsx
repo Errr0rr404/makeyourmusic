@@ -26,12 +26,12 @@ export function Button({
   const sizeClass = size === 'sm' ? 'px-3 py-2' : size === 'lg' ? 'px-6 py-4' : 'px-5 py-3';
   const variantClass =
     variant === 'primary'
-      ? 'bg-morlo-accent'
+      ? 'bg-mym-accent'
       : variant === 'secondary'
-        ? 'bg-morlo-card border border-morlo-border'
+        ? 'bg-mym-card border border-mym-border'
         : 'bg-transparent';
   const textColor =
-    variant === 'primary' ? 'text-white' : variant === 'secondary' ? 'text-morlo-text' : 'text-morlo-accent';
+    variant === 'primary' ? 'text-white' : variant === 'secondary' ? 'text-mym-text' : 'text-mym-accent';
   const textSize = size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base';
 
   return (

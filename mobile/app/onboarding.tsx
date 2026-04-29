@@ -8,7 +8,7 @@ import { Sparkles, Headphones, Wand2, ArrowRight } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
-export const ONBOARDING_KEY = 'morlo-onboarded-v1';
+export const ONBOARDING_KEY = 'makeyourmusic-onboarded-v1';
 
 const slides = [
   {
@@ -56,10 +56,10 @@ export default function OnboardingScreen() {
   };
 
   return (
-    <SafeAreaView className="flex-1 bg-morlo-bg">
+    <SafeAreaView className="flex-1 bg-mym-bg">
       <View className="flex-row justify-end px-6 pt-4">
         <TouchableOpacity onPress={handleComplete}>
-          <Text className="text-morlo-muted text-sm">Skip</Text>
+          <Text className="text-mym-muted text-sm">Skip</Text>
         </TouchableOpacity>
       </View>
 
@@ -82,8 +82,8 @@ export default function OnboardingScreen() {
               >
                 <Icon size={56} color={item.color} />
               </View>
-              <Text className="text-morlo-text text-3xl font-bold text-center mb-3">{item.title}</Text>
-              <Text className="text-morlo-muted text-base text-center leading-6">{item.description}</Text>
+              <Text className="text-mym-text text-3xl font-bold text-center mb-3">{item.title}</Text>
+              <Text className="text-mym-muted text-base text-center leading-6">{item.description}</Text>
             </View>
           );
         }}
@@ -94,7 +94,7 @@ export default function OnboardingScreen() {
           {slides.map((_, i) => (
             <View
               key={i}
-              className={`h-1.5 rounded-full ${i === index ? 'bg-morlo-accent' : 'bg-morlo-border'}`}
+              className={`h-1.5 rounded-full ${i === index ? 'bg-mym-accent' : 'bg-mym-border'}`}
               style={{ width: i === index ? 24 : 8 }}
             />
           ))}
@@ -102,7 +102,7 @@ export default function OnboardingScreen() {
 
         <TouchableOpacity
           onPress={handleNext}
-          className="bg-morlo-accent rounded-full py-4 flex-row items-center justify-center gap-2"
+          className="bg-mym-accent rounded-full py-4 flex-row items-center justify-center gap-2"
           activeOpacity={0.85}
         >
           <Text className="text-white font-bold text-base">
@@ -113,7 +113,7 @@ export default function OnboardingScreen() {
 
         {index < slides.length - 1 && (
           <TouchableOpacity onPress={handleComplete} className="items-center mt-3 py-2">
-            <Text className="text-morlo-muted text-sm">Skip intro</Text>
+            <Text className="text-mym-muted text-sm">Skip intro</Text>
           </TouchableOpacity>
         )}
       </View>

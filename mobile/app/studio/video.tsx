@@ -76,8 +76,8 @@ export default function VideoStudioScreen() {
       <ScreenContainer scrollable={false}>
         <View className="flex-1 items-center justify-center px-6">
           <Lock size={48} color="#71717a" />
-          <Text className="text-morlo-text text-xl font-bold mt-4 mb-2">AI Video Generation</Text>
-          <Text className="text-morlo-muted text-sm mb-6">Log in to generate videos</Text>
+          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">AI Video Generation</Text>
+          <Text className="text-mym-muted text-sm mb-6">Log in to generate videos</Text>
           <Button title="Sign in" onPress={() => router.push('/(auth)/login')} size="lg" />
         </View>
       </ScreenContainer>
@@ -160,7 +160,7 @@ export default function VideoStudioScreen() {
               <Sparkles size={12} color="#a855f7" />
               <Text className="text-purple-300 text-[10px] font-bold uppercase tracking-wider">AI Video</Text>
             </View>
-            <Text className="text-morlo-text text-lg font-bold">Generate a video</Text>
+            <Text className="text-mym-text text-lg font-bold">Generate a video</Text>
           </View>
         </View>
 
@@ -170,8 +170,8 @@ export default function VideoStudioScreen() {
           keyboardShouldPersistTaps="handled"
         >
           {!gen && (
-            <View className="bg-morlo-card border border-morlo-border rounded-xl p-4">
-              <Text className="text-morlo-text text-sm font-semibold mb-2">What should the video show?</Text>
+            <View className="bg-mym-card border border-mym-border rounded-xl p-4">
+              <Text className="text-mym-text text-sm font-semibold mb-2">What should the video show?</Text>
               <TextInput
                 value={prompt}
                 onChangeText={setPrompt}
@@ -179,13 +179,13 @@ export default function VideoStudioScreen() {
                 maxLength={2000}
                 placeholder="e.g. a neon-lit city street at night, camera slowly tracking forward, cinematic"
                 placeholderTextColor="#71717a"
-                className="bg-morlo-surface border border-morlo-border rounded-xl px-3 py-2 text-morlo-text text-sm"
+                className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2 text-mym-text text-sm"
                 style={{ minHeight: 100, textAlignVertical: 'top' }}
               />
-              <Text className="text-morlo-muted text-xs mt-1">{prompt.length}/2000</Text>
+              <Text className="text-mym-muted text-xs mt-1">{prompt.length}/2000</Text>
 
-              <Text className="text-morlo-text text-sm font-semibold mb-2 mt-4">
-                Title <Text className="text-morlo-muted font-normal">(optional)</Text>
+              <Text className="text-mym-text text-sm font-semibold mb-2 mt-4">
+                Title <Text className="text-mym-muted font-normal">(optional)</Text>
               </Text>
               <TextInput
                 value={title}
@@ -193,19 +193,19 @@ export default function VideoStudioScreen() {
                 maxLength={200}
                 placeholder="Name your video"
                 placeholderTextColor="#71717a"
-                className="bg-morlo-surface border border-morlo-border rounded-xl px-3 py-2.5 text-morlo-text text-sm"
+                className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm"
               />
 
               <View className="flex-row items-center gap-1.5 mb-2 mt-4">
                 <ImageIcon size={14} color="#a1a1aa" />
-                <Text className="text-morlo-text text-sm font-semibold">
-                  Starting frame <Text className="text-morlo-muted font-normal">(image-to-video, optional)</Text>
+                <Text className="text-mym-text text-sm font-semibold">
+                  Starting frame <Text className="text-mym-muted font-normal">(image-to-video, optional)</Text>
                 </Text>
               </View>
               <TouchableOpacity
                 onPress={uploadFrame}
                 disabled={uploadingImage}
-                className="aspect-video rounded-xl border-2 border-dashed border-morlo-border items-center justify-center overflow-hidden bg-morlo-surface"
+                className="aspect-video rounded-xl border-2 border-dashed border-mym-border items-center justify-center overflow-hidden bg-mym-surface"
               >
                 {imageRefUrl ? (
                   <Image source={{ uri: imageRefUrl }} className="w-full h-full" />
@@ -214,7 +214,7 @@ export default function VideoStudioScreen() {
                 ) : (
                   <View className="items-center">
                     <ImageIcon size={20} color="#71717a" />
-                    <Text className="text-morlo-muted text-xs mt-2">Tap to upload image</Text>
+                    <Text className="text-mym-muted text-xs mt-2">Tap to upload image</Text>
                   </View>
                 )}
               </TouchableOpacity>
@@ -239,12 +239,12 @@ export default function VideoStudioScreen() {
           )}
 
           {gen && gen.status === 'COMPLETED' && gen.videoUrl && (
-            <View className="bg-morlo-card border border-morlo-border rounded-xl p-4">
+            <View className="bg-mym-card border border-mym-border rounded-xl p-4">
               <View className="flex-row items-start gap-3 mb-4">
                 <CheckCircle2 size={20} color="#4ade80" />
                 <View className="flex-1">
-                  <Text className="text-morlo-text text-lg font-bold">Your video is ready</Text>
-                  <Text className="text-morlo-muted text-sm" numberOfLines={2}>{gen.title || gen.prompt}</Text>
+                  <Text className="text-mym-text text-lg font-bold">Your video is ready</Text>
+                  <Text className="text-mym-muted text-sm" numberOfLines={2}>{gen.title || gen.prompt}</Text>
                 </View>
               </View>
               <Video
@@ -256,14 +256,14 @@ export default function VideoStudioScreen() {
               <View className="flex-row gap-2 mt-3">
                 <TouchableOpacity
                   onPress={() => Linking.openURL(gen.videoUrl!)}
-                  className="flex-row items-center gap-1 px-4 py-2.5 rounded-lg bg-morlo-surface border border-morlo-border"
+                  className="flex-row items-center gap-1 px-4 py-2.5 rounded-lg bg-mym-surface border border-mym-border"
                 >
                   <Download size={12} color="#a1a1aa" />
-                  <Text className="text-morlo-text text-sm font-semibold">Download</Text>
+                  <Text className="text-mym-text text-sm font-semibold">Download</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   onPress={handleReset}
-                  className="flex-row items-center gap-1 px-4 py-2.5 rounded-lg bg-morlo-accent"
+                  className="flex-row items-center gap-1 px-4 py-2.5 rounded-lg bg-mym-accent"
                 >
                   <Wand2 size={12} color="#fff" />
                   <Text className="text-white text-sm font-semibold">Generate another</Text>
@@ -273,13 +273,13 @@ export default function VideoStudioScreen() {
           )}
 
           {gen && gen.status === 'FAILED' && (
-            <View className="bg-morlo-card border border-red-500/30 rounded-xl p-6 items-center">
+            <View className="bg-mym-card border border-red-500/30 rounded-xl p-6 items-center">
               <AlertCircle size={40} color="#f87171" />
-              <Text className="text-morlo-text text-lg font-bold mt-3 mb-2">Generation failed</Text>
+              <Text className="text-mym-text text-lg font-bold mt-3 mb-2">Generation failed</Text>
               <Text className="text-red-400 text-sm text-center mb-4">{gen.errorMessage || 'Unknown error'}</Text>
               <TouchableOpacity
                 onPress={handleReset}
-                className="flex-row items-center gap-1 px-4 py-2.5 rounded-lg bg-morlo-accent"
+                className="flex-row items-center gap-1 px-4 py-2.5 rounded-lg bg-mym-accent"
               >
                 <RotateCcw size={12} color="#fff" />
                 <Text className="text-white text-sm font-semibold">Try again</Text>
@@ -288,17 +288,17 @@ export default function VideoStudioScreen() {
           )}
 
           {gen && (gen.status === 'PENDING' || gen.status === 'PROCESSING') && (
-            <View className="bg-morlo-card border border-morlo-border rounded-xl p-8 items-center">
+            <View className="bg-mym-card border border-mym-border rounded-xl p-8 items-center">
               <View className="w-20 h-20 rounded-full bg-purple-600 items-center justify-center mb-4">
                 <Film size={32} color="#fff" />
               </View>
-              <Text className="text-morlo-text text-lg font-bold mb-1">
+              <Text className="text-mym-text text-lg font-bold mb-1">
                 {gen.status === 'PROCESSING' ? 'Rendering…' : 'Queued…'}
               </Text>
-              <Text className="text-morlo-muted text-sm text-center mb-2">
+              <Text className="text-mym-muted text-sm text-center mb-2">
                 Video generation takes 2–5 minutes. You can leave this screen.
               </Text>
-              <Text className="text-morlo-muted text-xs">
+              <Text className="text-mym-muted text-xs">
                 Elapsed: {Math.floor(elapsed / 60)}:{(elapsed % 60).toString().padStart(2, '0')}
               </Text>
             </View>

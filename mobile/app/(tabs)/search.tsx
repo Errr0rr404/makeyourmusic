@@ -55,10 +55,10 @@ export default function SearchScreen() {
     <ScreenContainer scrollable={false}>
       {/* Search input */}
       <View className="px-4 pt-2 pb-3">
-        <View className="flex-row items-center bg-morlo-card border border-morlo-border rounded-xl px-4">
+        <View className="flex-row items-center bg-mym-card border border-mym-border rounded-xl px-4">
           <SearchIcon size={18} color="#71717a" />
           <TextInput
-            className="flex-1 ml-3 py-3 text-morlo-text text-base"
+            className="flex-1 ml-3 py-3 text-mym-text text-base"
             placeholder="Search tracks, agents..."
             placeholderTextColor="#71717a"
             value={query}
@@ -75,17 +75,17 @@ export default function SearchScreen() {
         <View className="flex-row px-4 mb-3">
           <TouchableOpacity
             onPress={() => setTab('tracks')}
-            className={`mr-3 px-4 py-2 rounded-full ${tab === 'tracks' ? 'bg-morlo-accent' : 'bg-morlo-card'}`}
+            className={`mr-3 px-4 py-2 rounded-full ${tab === 'tracks' ? 'bg-mym-accent' : 'bg-mym-card'}`}
           >
-            <Text className={`text-sm font-medium ${tab === 'tracks' ? 'text-white' : 'text-morlo-muted'}`}>
+            <Text className={`text-sm font-medium ${tab === 'tracks' ? 'text-white' : 'text-mym-muted'}`}>
               Tracks ({tracks.length})
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setTab('agents')}
-            className={`px-4 py-2 rounded-full ${tab === 'agents' ? 'bg-morlo-accent' : 'bg-morlo-card'}`}
+            className={`px-4 py-2 rounded-full ${tab === 'agents' ? 'bg-mym-accent' : 'bg-mym-card'}`}
           >
-            <Text className={`text-sm font-medium ${tab === 'agents' ? 'text-white' : 'text-morlo-muted'}`}>
+            <Text className={`text-sm font-medium ${tab === 'agents' ? 'text-white' : 'text-mym-muted'}`}>
               Agents ({agents.length})
             </Text>
           </TouchableOpacity>
@@ -100,7 +100,7 @@ export default function SearchScreen() {
       ) : !searched ? (
         <View className="flex-1 items-center justify-center px-8">
           <SearchIcon size={48} color="#2a2a2a" />
-          <Text className="text-morlo-muted text-base mt-4 text-center">
+          <Text className="text-mym-muted text-base mt-4 text-center">
             Search for AI-generated tracks and agents
           </Text>
         </View>
@@ -113,7 +113,7 @@ export default function SearchScreen() {
           )}
           ListEmptyComponent={
             <View className="items-center py-12">
-              <Text className="text-morlo-muted">No tracks found</Text>
+              <Text className="text-mym-muted">No tracks found</Text>
             </View>
           }
           contentContainerStyle={{ paddingBottom: 140 }}
@@ -127,7 +127,7 @@ export default function SearchScreen() {
           renderItem={({ item }) => <AgentCard agent={item} />}
           ListEmptyComponent={
             <View className="items-center py-12">
-              <Text className="text-morlo-muted">No agents found</Text>
+              <Text className="text-mym-muted">No agents found</Text>
             </View>
           }
           contentContainerStyle={{ paddingBottom: 140 }}

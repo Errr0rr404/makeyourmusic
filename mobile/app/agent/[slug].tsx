@@ -64,7 +64,7 @@ export default function AgentProfileScreen() {
 
   if (loading) {
     return (
-      <View className="flex-1 bg-morlo-bg items-center justify-center">
+      <View className="flex-1 bg-mym-bg items-center justify-center">
         <ActivityIndicator size="large" color="#8b5cf6" />
       </View>
     );
@@ -72,10 +72,10 @@ export default function AgentProfileScreen() {
 
   if (error || !agent) {
     return (
-      <View className="flex-1 bg-morlo-bg items-center justify-center px-8">
-        <Text className="text-morlo-muted text-base mb-4">{error || 'Agent not found'}</Text>
+      <View className="flex-1 bg-mym-bg items-center justify-center px-8">
+        <Text className="text-mym-muted text-base mb-4">{error || 'Agent not found'}</Text>
         <TouchableOpacity onPress={() => router.back()}>
-          <Text className="text-morlo-accent text-base font-medium">Go Back</Text>
+          <Text className="text-mym-accent text-base font-medium">Go Back</Text>
         </TouchableOpacity>
       </View>
     );
@@ -98,7 +98,7 @@ export default function AgentProfileScreen() {
       <ScreenContainer>
         {/* Agent Header */}
         <View className="items-center px-6 pt-12 pb-6">
-          <View className="w-28 h-28 rounded-full overflow-hidden bg-morlo-card mb-4">
+          <View className="w-28 h-28 rounded-full overflow-hidden bg-mym-card mb-4">
             {agent.avatar ? (
               <Image
                 source={{ uri: agent.avatar }}
@@ -107,34 +107,34 @@ export default function AgentProfileScreen() {
                 transition={200}
               />
             ) : (
-              <View className="flex-1 items-center justify-center bg-morlo-surface">
+              <View className="flex-1 items-center justify-center bg-mym-surface">
                 <Text className="text-4xl">🤖</Text>
               </View>
             )}
           </View>
 
-          <Text className="text-morlo-text text-2xl font-bold">{agent.name}</Text>
-          <Text className="text-morlo-muted text-sm mt-1">AI Music Agent</Text>
+          <Text className="text-mym-text text-2xl font-bold">{agent.name}</Text>
+          <Text className="text-mym-muted text-sm mt-1">AI Music Agent</Text>
 
           {/* Stats */}
           <View className="flex-row items-center mt-4 space-x-6">
             <View className="items-center mx-4">
-              <Text className="text-morlo-text text-lg font-bold">
+              <Text className="text-mym-text text-lg font-bold">
                 {formatCount(agent._count?.tracks || 0)}
               </Text>
-              <Text className="text-morlo-muted text-xs">Tracks</Text>
+              <Text className="text-mym-muted text-xs">Tracks</Text>
             </View>
             <View className="items-center mx-4">
-              <Text className="text-morlo-text text-lg font-bold">
+              <Text className="text-mym-text text-lg font-bold">
                 {formatCount(followerCount)}
               </Text>
-              <Text className="text-morlo-muted text-xs">Followers</Text>
+              <Text className="text-mym-muted text-xs">Followers</Text>
             </View>
             <View className="items-center mx-4">
-              <Text className="text-morlo-text text-lg font-bold">
+              <Text className="text-mym-text text-lg font-bold">
                 {formatCount(agent.totalPlays || 0)}
               </Text>
-              <Text className="text-morlo-muted text-xs">Plays</Text>
+              <Text className="text-mym-muted text-xs">Plays</Text>
             </View>
           </View>
 
@@ -150,7 +150,7 @@ export default function AgentProfileScreen() {
           )}
 
           {agent.bio && (
-            <Text className="text-morlo-muted text-sm text-center mt-4 px-4">
+            <Text className="text-mym-muted text-sm text-center mt-4 px-4">
               {agent.bio}
             </Text>
           )}
@@ -159,7 +159,7 @@ export default function AgentProfileScreen() {
         {/* Tracks */}
         <View className="mt-2">
           <View className="px-4 mb-3">
-            <Text className="text-morlo-text text-lg font-bold">Tracks</Text>
+            <Text className="text-mym-text text-lg font-bold">Tracks</Text>
           </View>
           {tracks.length > 0 ? (
             tracks.map((track, i) => (
@@ -167,7 +167,7 @@ export default function AgentProfileScreen() {
             ))
           ) : (
             <View className="items-center py-8">
-              <Text className="text-morlo-muted">No tracks yet</Text>
+              <Text className="text-mym-muted">No tracks yet</Text>
             </View>
           )}
         </View>

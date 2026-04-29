@@ -120,8 +120,8 @@ export default function NotificationsScreen() {
       <ScreenContainer scrollable={false}>
         <View className="flex-1 items-center justify-center px-6">
           <Lock size={48} color="#71717a" />
-          <Text className="text-morlo-text text-xl font-bold mt-4 mb-2">Notifications</Text>
-          <Text className="text-morlo-muted text-sm mb-6">Log in to see notifications</Text>
+          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Notifications</Text>
+          <Text className="text-mym-muted text-sm mb-6">Log in to see notifications</Text>
           <Button title="Sign in" onPress={() => router.push('/(auth)/login')} size="lg" />
         </View>
       </ScreenContainer>
@@ -136,30 +136,30 @@ export default function NotificationsScreen() {
           <TouchableOpacity onPress={() => router.back()}>
             <ArrowLeft size={20} color="#a1a1aa" />
           </TouchableOpacity>
-          <Text className="text-morlo-text text-lg font-bold">Notifications</Text>
+          <Text className="text-mym-text text-lg font-bold">Notifications</Text>
           {unreadCount > 0 && (
-            <View className="bg-morlo-accent/20 px-2 py-0.5 rounded-full">
-              <Text className="text-morlo-accent text-xs font-semibold">{unreadCount} unread</Text>
+            <View className="bg-mym-accent/20 px-2 py-0.5 rounded-full">
+              <Text className="text-mym-accent text-xs font-semibold">{unreadCount} unread</Text>
             </View>
           )}
         </View>
         {unreadCount > 0 && (
           <TouchableOpacity onPress={markAllRead} className="flex-row items-center gap-1">
             <Check size={14} color="#8b5cf6" />
-            <Text className="text-morlo-accent text-xs font-semibold">Mark all read</Text>
+            <Text className="text-mym-accent text-xs font-semibold">Mark all read</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {/* Tabs */}
-      <View className="flex-row gap-1 mx-4 mb-2 border-b border-morlo-border">
+      <View className="flex-row gap-1 mx-4 mb-2 border-b border-mym-border">
         {(['all', 'unread'] as const).map((f) => (
           <TouchableOpacity
             key={f}
             onPress={() => setFilter(f)}
-            className={`px-3 py-2 border-b-2 -mb-px ${filter === f ? 'border-morlo-accent' : 'border-transparent'}`}
+            className={`px-3 py-2 border-b-2 -mb-px ${filter === f ? 'border-mym-accent' : 'border-transparent'}`}
           >
-            <Text className={`text-sm capitalize ${filter === f ? 'text-morlo-text font-semibold' : 'text-morlo-muted'}`}>
+            <Text className={`text-sm capitalize ${filter === f ? 'text-mym-text font-semibold' : 'text-mym-muted'}`}>
               {f === 'all' ? 'All' : `Unread (${unreadCount})`}
             </Text>
           </TouchableOpacity>
@@ -183,10 +183,10 @@ export default function NotificationsScreen() {
       ) : notifications.length === 0 ? (
         <View className="flex-1 items-center justify-center px-6">
           <Bell size={42} color="#71717a" />
-          <Text className="text-morlo-text text-lg font-bold mt-3">
+          <Text className="text-mym-text text-lg font-bold mt-3">
             {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
           </Text>
-          <Text className="text-morlo-muted text-sm mt-1 text-center">
+          <Text className="text-mym-muted text-sm mt-1 text-center">
             {filter === 'unread'
               ? "You're all caught up."
               : "When you get followers, likes, or comments, they'll show up here."}
@@ -211,16 +211,16 @@ export default function NotificationsScreen() {
             <TouchableOpacity
               onPress={() => handleOpen(item)}
               onLongPress={() => deleteNotif(item)}
-              className={`flex-row items-start gap-3 px-4 py-3 border-b border-morlo-border/60 ${!item.read ? 'bg-morlo-accent/5' : ''}`}
+              className={`flex-row items-start gap-3 px-4 py-3 border-b border-mym-border/60 ${!item.read ? 'bg-mym-accent/5' : ''}`}
             >
               <View className="mt-1">{iconFor(item.type)}</View>
               <View className="flex-1 min-w-0">
-                <Text className="text-morlo-text text-sm" numberOfLines={2}>
+                <Text className="text-mym-text text-sm" numberOfLines={2}>
                   {item.message}
                 </Text>
-                <Text className="text-morlo-muted text-xs mt-0.5">{timeAgo(item.createdAt)}</Text>
+                <Text className="text-mym-muted text-xs mt-0.5">{timeAgo(item.createdAt)}</Text>
               </View>
-              {!item.read && <View className="w-2 h-2 rounded-full bg-morlo-accent mt-2" />}
+              {!item.read && <View className="w-2 h-2 rounded-full bg-mym-accent mt-2" />}
               <TouchableOpacity
                 onPress={() => deleteNotif(item)}
                 className="p-1 ml-1"

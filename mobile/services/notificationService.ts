@@ -5,7 +5,7 @@ import Constants from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApi } from '@makeyourmusic/shared';
 
-const PUSH_TOKEN_KEY = 'morlo-push-token';
+const PUSH_TOKEN_KEY = 'makeyourmusic-push-token';
 
 // Configure how notifications appear when the app is in the foreground
 Notifications.setNotificationHandler({

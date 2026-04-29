@@ -56,10 +56,10 @@ export default function TabLayout() {
               className="flex-1 items-center justify-center"
               activeOpacity={0.7}
             >
-              <View className="w-12 h-12 rounded-full bg-morlo-accent items-center justify-center -mt-5 shadow-lg" style={{ shadowColor: '#8b5cf6', shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 8 }}>
+              <View className="w-12 h-12 rounded-full bg-mym-accent items-center justify-center -mt-5 shadow-lg" style={{ shadowColor: '#8b5cf6', shadowOpacity: 0.5, shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 8 }}>
                 <Wand2 size={20} color="#fff" />
               </View>
-              <Text className="text-[10px] font-semibold mt-1 text-morlo-accent">Create</Text>
+              <Text className="text-[10px] font-semibold mt-1 text-mym-accent">Create</Text>
             </TouchableOpacity>
           ),
         }}

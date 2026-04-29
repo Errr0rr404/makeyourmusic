@@ -36,7 +36,7 @@ export const uploadBuffer = async (
 ): Promise<UploadResult> => {
   checkCredentials();
 
-  const cloudinaryFolder = `morlo/${folder}`;
+  const cloudinaryFolder = `makeyourmusic/${folder}`;
 
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
@@ -81,7 +81,7 @@ export const uploadImageBase64 = async (
 ): Promise<UploadResult> => {
   checkCredentials();
 
-  const cloudinaryFolder = `morlo/${folder}`;
+  const cloudinaryFolder = `makeyourmusic/${folder}`;
 
   try {
     const result = await cloudinary.uploader.upload(base64String, {

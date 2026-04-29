@@ -101,8 +101,8 @@ export default function CreateScreen() {
       <ScreenContainer scrollable={false}>
         <View className="flex-1 items-center justify-center px-6">
           <Lock size={48} color="#71717a" />
-          <Text className="text-morlo-text text-xl font-bold mt-4 mb-2">Create Music with AI</Text>
-          <Text className="text-morlo-muted text-sm mb-6 text-center">Log in to generate tracks</Text>
+          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Create Music with AI</Text>
+          <Text className="text-mym-muted text-sm mb-6 text-center">Log in to generate tracks</Text>
           <Button title="Sign in" onPress={() => router.push('/(auth)/login')} size="lg" />
         </View>
       </ScreenContainer>
@@ -355,15 +355,15 @@ function Header({ usage }: { usage: Usage | null }) {
           <Sparkles size={14} color="#a855f7" />
           <Text className="text-purple-300 text-xs font-bold uppercase tracking-wider">AI Music Studio</Text>
         </View>
-        <Text className="text-morlo-text text-2xl font-bold mt-0.5">Create a track</Text>
+        <Text className="text-mym-text text-2xl font-bold mt-0.5">Create a track</Text>
       </View>
       {usage && (
         <View className="items-end">
-          <Text className="text-morlo-muted text-[10px] uppercase">Today</Text>
-          <Text className="text-morlo-text text-lg font-bold">
+          <Text className="text-mym-muted text-[10px] uppercase">Today</Text>
+          <Text className="text-mym-text text-lg font-bold">
             {usage.used}<Text className="text-white/40">/{usage.limit}</Text>
           </Text>
-          <Text className="text-morlo-muted text-[10px]">
+          <Text className="text-mym-muted text-[10px]">
             {usage.tier === 'PREMIUM' ? 'Premium' : 'Free'}
           </Text>
         </View>
@@ -394,7 +394,7 @@ function Stepper({ current }: { current: Step }) {
           <View key={s.key} className="flex-row items-center gap-2">
             <View
               className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full ${
-                isActive ? 'bg-morlo-accent/20' : isDone ? 'bg-green-900/30' : 'bg-morlo-card'
+                isActive ? 'bg-mym-accent/20' : isDone ? 'bg-green-900/30' : 'bg-mym-card'
               }`}
             >
               {isDone ? (
@@ -402,11 +402,11 @@ function Stepper({ current }: { current: Step }) {
               ) : (
                 <Icon size={12} color={isActive ? '#8b5cf6' : '#71717a'} />
               )}
-              <Text className={`text-xs font-bold ${isActive ? 'text-morlo-accent' : isDone ? 'text-green-400' : 'text-morlo-muted'}`}>
+              <Text className={`text-xs font-bold ${isActive ? 'text-mym-accent' : isDone ? 'text-green-400' : 'text-mym-muted'}`}>
                 {s.label}
               </Text>
             </View>
-            {i < STEPS.length - 1 && <View className="w-3 h-[1px] bg-morlo-border" />}
+            {i < STEPS.length - 1 && <View className="w-3 h-[1px] bg-mym-border" />}
           </View>
         );
       })}
@@ -419,8 +419,8 @@ function Stepper({ current }: { current: Step }) {
 function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
   return (
     <View className="px-4 pt-2">
-      <View className="bg-morlo-card rounded-xl border border-morlo-border p-4">
-        <Text className="text-morlo-text text-sm font-semibold mb-2">What&apos;s the song about?</Text>
+      <View className="bg-mym-card rounded-xl border border-mym-border p-4">
+        <Text className="text-mym-text text-sm font-semibold mb-2">What&apos;s the song about?</Text>
         <TextInput
           value={idea}
           onChangeText={setIdea}
@@ -429,13 +429,13 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
           maxLength={1000}
           placeholder="e.g. a nostalgic drive through the city at midnight, neon signs reflecting in the rain"
           placeholderTextColor="#71717a"
-          className="bg-morlo-surface border border-morlo-border rounded-xl px-3 py-2 text-morlo-text text-sm"
+          className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2 text-mym-text text-sm"
           style={{ minHeight: 100, textAlignVertical: 'top' }}
         />
-        <Text className="text-morlo-muted text-xs mt-1">{idea.length}/1000 — more vivid = better</Text>
+        <Text className="text-mym-muted text-xs mt-1">{idea.length}/1000 — more vivid = better</Text>
 
-        <Text className="text-morlo-text text-sm font-semibold mb-2 mt-4">
-          Working title <Text className="text-morlo-muted font-normal">(optional)</Text>
+        <Text className="text-mym-text text-sm font-semibold mb-2 mt-4">
+          Working title <Text className="text-mym-muted font-normal">(optional)</Text>
         </Text>
         <TextInput
           value={title}
@@ -443,16 +443,16 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
           maxLength={200}
           placeholder="You can change this later"
           placeholderTextColor="#71717a"
-          className="bg-morlo-surface border border-morlo-border rounded-xl px-3 py-2.5 text-morlo-text text-sm"
+          className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm"
         />
       </View>
       <View className="flex-row justify-end mt-4">
         <TouchableOpacity
           onPress={onNext}
           disabled={!idea.trim()}
-          className={`flex-row items-center gap-1 px-5 py-3 rounded-xl ${idea.trim() ? 'bg-morlo-accent' : 'bg-morlo-card'}`}
+          className={`flex-row items-center gap-1 px-5 py-3 rounded-xl ${idea.trim() ? 'bg-mym-accent' : 'bg-mym-card'}`}
         >
-          <Text className={`text-sm font-semibold ${idea.trim() ? 'text-white' : 'text-morlo-muted'}`}>Next: Lyrics</Text>
+          <Text className={`text-sm font-semibold ${idea.trim() ? 'text-white' : 'text-mym-muted'}`}>Next: Lyrics</Text>
           <ChevronRight size={14} color={idea.trim() ? '#fff' : '#71717a'} />
         </TouchableOpacity>
       </View>
@@ -465,20 +465,20 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
 function LyricsStep({ lyrics, setLyrics, generating, error, isInstrumental, setIsInstrumental, onGenerate, onBack, onNext }: any) {
   return (
     <View className="px-4 pt-2">
-      <View className="bg-morlo-card rounded-xl border border-morlo-border p-4">
+      <View className="bg-mym-card rounded-xl border border-mym-border p-4">
         <View className="flex-row items-start justify-between mb-3">
           <View className="flex-1 pr-2">
-            <Text className="text-morlo-text text-lg font-bold">Write or generate lyrics</Text>
-            <Text className="text-morlo-muted text-xs">
-              Use <Text className="text-morlo-text">[Verse]</Text>, <Text className="text-morlo-text">[Chorus]</Text> tags on their own lines for structure
+            <Text className="text-mym-text text-lg font-bold">Write or generate lyrics</Text>
+            <Text className="text-mym-muted text-xs">
+              Use <Text className="text-mym-text">[Verse]</Text>, <Text className="text-mym-text">[Chorus]</Text> tags on their own lines for structure
             </Text>
           </View>
           <TouchableOpacity
             onPress={() => setIsInstrumental(!isInstrumental)}
-            className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${isInstrumental ? 'bg-morlo-accent/20 border-morlo-accent/40' : 'bg-morlo-surface border-morlo-border'}`}
+            className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full border ${isInstrumental ? 'bg-mym-accent/20 border-mym-accent/40' : 'bg-mym-surface border-mym-border'}`}
           >
-            <View className={`w-3 h-3 rounded ${isInstrumental ? 'bg-morlo-accent' : 'bg-morlo-muted'}`} />
-            <Text className="text-morlo-text text-xs font-semibold">Instrumental</Text>
+            <View className={`w-3 h-3 rounded ${isInstrumental ? 'bg-mym-accent' : 'bg-mym-muted'}`} />
+            <Text className="text-mym-text text-xs font-semibold">Instrumental</Text>
           </TouchableOpacity>
         </View>
 
@@ -513,17 +513,17 @@ function LyricsStep({ lyrics, setLyrics, generating, error, isInstrumental, setI
               maxLength={3500}
               placeholder={'[Verse 1]\nNeon bleeds across the windshield glass\n...\n\n[Chorus]\n...'}
               placeholderTextColor="#71717a"
-              className="bg-morlo-surface border border-morlo-border rounded-xl px-3 py-2 text-morlo-text text-sm"
+              className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2 text-mym-text text-sm"
               style={{ minHeight: 240, textAlignVertical: 'top', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
             />
-            <Text className="text-morlo-muted text-xs mt-1 text-right">{lyrics.length}/3500</Text>
+            <Text className="text-mym-muted text-xs mt-1 text-right">{lyrics.length}/3500</Text>
           </>
         )}
 
         {isInstrumental && (
-          <View className="flex-row items-start gap-2 bg-morlo-surface border border-morlo-border rounded-lg p-3">
+          <View className="flex-row items-start gap-2 bg-mym-surface border border-mym-border rounded-lg p-3">
             <BookOpen size={14} color="#8b5cf6" />
-            <Text className="text-morlo-muted text-xs flex-1">
+            <Text className="text-mym-muted text-xs flex-1">
               Instrumental mode — no lyrics. We&apos;ll generate a vocal-free track.
             </Text>
           </View>
@@ -533,14 +533,14 @@ function LyricsStep({ lyrics, setLyrics, generating, error, isInstrumental, setI
       <View className="flex-row justify-between mt-4">
         <TouchableOpacity onPress={onBack} className="flex-row items-center gap-1 px-4 py-3">
           <ChevronLeft size={14} color="#a1a1aa" />
-          <Text className="text-morlo-muted text-sm">Back</Text>
+          <Text className="text-mym-muted text-sm">Back</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onNext}
           disabled={!isInstrumental && !lyrics.trim()}
-          className={`flex-row items-center gap-1 px-5 py-3 rounded-xl ${(isInstrumental || lyrics.trim()) ? 'bg-morlo-accent' : 'bg-morlo-card'}`}
+          className={`flex-row items-center gap-1 px-5 py-3 rounded-xl ${(isInstrumental || lyrics.trim()) ? 'bg-mym-accent' : 'bg-mym-card'}`}
         >
-          <Text className={`text-sm font-semibold ${(isInstrumental || lyrics.trim()) ? 'text-white' : 'text-morlo-muted'}`}>Next: Style</Text>
+          <Text className={`text-sm font-semibold ${(isInstrumental || lyrics.trim()) ? 'text-white' : 'text-mym-muted'}`}>Next: Style</Text>
           <ChevronRight size={14} color={(isInstrumental || lyrics.trim()) ? '#fff' : '#71717a'} />
         </TouchableOpacity>
       </View>
@@ -555,10 +555,10 @@ function StyleStep({ genre, setGenre, mood, setMood, style, setStyle, durationSe
 
   return (
     <View className="px-4 pt-2">
-      <View className="bg-morlo-card rounded-xl border border-morlo-border p-4">
-        <Text className="text-morlo-text text-lg font-bold mb-3">Pick the vibe</Text>
+      <View className="bg-mym-card rounded-xl border border-mym-border p-4">
+        <Text className="text-mym-text text-lg font-bold mb-3">Pick the vibe</Text>
 
-        <Text className="text-morlo-text text-sm font-semibold mb-2">Genre</Text>
+        <Text className="text-mym-text text-sm font-semibold mb-2">Genre</Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
           {GENRES.map((g) => (
             <TouchableOpacity
@@ -567,14 +567,14 @@ function StyleStep({ genre, setGenre, mood, setMood, style, setStyle, durationSe
                 setGenre(genre === g ? '' : g);
                 hapticSelection();
               }}
-              className={`px-3 py-1.5 rounded-full ${genre === g ? 'bg-morlo-accent' : 'bg-morlo-surface border border-morlo-border'}`}
+              className={`px-3 py-1.5 rounded-full ${genre === g ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
             >
-              <Text className={`text-xs font-semibold ${genre === g ? 'text-white' : 'text-morlo-muted'}`}>{g}</Text>
+              <Text className={`text-xs font-semibold ${genre === g ? 'text-white' : 'text-mym-muted'}`}>{g}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text className="text-morlo-text text-sm font-semibold mb-2">Mood</Text>
+        <Text className="text-mym-text text-sm font-semibold mb-2">Mood</Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
           {MOODS.map((m) => (
             <TouchableOpacity
@@ -583,14 +583,14 @@ function StyleStep({ genre, setGenre, mood, setMood, style, setStyle, durationSe
                 setMood(mood === m ? '' : m);
                 hapticSelection();
               }}
-              className={`px-3 py-1.5 rounded-full ${mood === m ? 'bg-morlo-accent' : 'bg-morlo-surface border border-morlo-border'}`}
+              className={`px-3 py-1.5 rounded-full ${mood === m ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
             >
-              <Text className={`text-xs font-semibold ${mood === m ? 'text-white' : 'text-morlo-muted'}`}>{m}</Text>
+              <Text className={`text-xs font-semibold ${mood === m ? 'text-white' : 'text-mym-muted'}`}>{m}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text className="text-morlo-text text-sm font-semibold mb-2">
+        <Text className="text-mym-text text-sm font-semibold mb-2">
           Duration ({Math.floor(durationSec / 60)}:{(durationSec % 60).toString().padStart(2, '0')})
         </Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
@@ -601,17 +601,17 @@ function StyleStep({ genre, setGenre, mood, setMood, style, setStyle, durationSe
                 setDurationSec(d);
                 hapticSelection();
               }}
-              className={`px-3 py-1.5 rounded-full ${durationSec === d ? 'bg-morlo-accent' : 'bg-morlo-surface border border-morlo-border'}`}
+              className={`px-3 py-1.5 rounded-full ${durationSec === d ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
             >
-              <Text className={`text-xs font-semibold ${durationSec === d ? 'text-white' : 'text-morlo-muted'}`}>
+              <Text className={`text-xs font-semibold ${durationSec === d ? 'text-white' : 'text-mym-muted'}`}>
                 {d < 60 ? `${d}s` : `${d / 60}:${(d % 60).toString().padStart(2, '0')}`}
               </Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text className="text-morlo-text text-sm font-semibold mb-2">
-          Extra style notes <Text className="text-morlo-muted font-normal">(optional)</Text>
+        <Text className="text-mym-text text-sm font-semibold mb-2">
+          Extra style notes <Text className="text-mym-muted font-normal">(optional)</Text>
         </Text>
         <TextInput
           value={style}
@@ -619,7 +619,7 @@ function StyleStep({ genre, setGenre, mood, setMood, style, setStyle, durationSe
           maxLength={300}
           placeholder='e.g. "dreamy synth pads, trap drums, female vocals"'
           placeholderTextColor="#71717a"
-          className="bg-morlo-surface border border-morlo-border rounded-xl px-3 py-2.5 text-morlo-text text-sm"
+          className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm"
         />
       </View>
 
@@ -638,7 +638,7 @@ function StyleStep({ genre, setGenre, mood, setMood, style, setStyle, durationSe
       <View className="flex-row justify-between mt-4">
         <TouchableOpacity onPress={onBack} className="flex-row items-center gap-1 px-4 py-3">
           <ChevronLeft size={14} color="#a1a1aa" />
-          <Text className="text-morlo-muted text-sm">Back</Text>
+          <Text className="text-mym-muted text-sm">Back</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onNext}
@@ -666,21 +666,21 @@ function GenerateStep({ generation, error, onRetry, onStartOver, onBack }: any) 
   if (error) {
     return (
       <View className="px-4 pt-6">
-        <View className="bg-morlo-card border border-red-500/30 rounded-xl p-6 items-center">
+        <View className="bg-mym-card border border-red-500/30 rounded-xl p-6 items-center">
           <AlertCircle size={40} color="#f87171" />
-          <Text className="text-morlo-text text-xl font-bold mt-3 mb-2">Generation failed</Text>
+          <Text className="text-mym-text text-xl font-bold mt-3 mb-2">Generation failed</Text>
           <Text className="text-red-400 text-sm text-center mb-5">{error}</Text>
           <View className="flex-row gap-3">
-            <TouchableOpacity onPress={onBack} className="px-4 py-2.5 rounded-lg bg-morlo-surface border border-morlo-border">
-              <Text className="text-morlo-muted text-sm">Edit inputs</Text>
+            <TouchableOpacity onPress={onBack} className="px-4 py-2.5 rounded-lg bg-mym-surface border border-mym-border">
+              <Text className="text-mym-muted text-sm">Edit inputs</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={onRetry} className="flex-row items-center gap-1 px-4 py-2.5 rounded-lg bg-morlo-accent">
+            <TouchableOpacity onPress={onRetry} className="flex-row items-center gap-1 px-4 py-2.5 rounded-lg bg-mym-accent">
               <RotateCcw size={12} color="#fff" />
               <Text className="text-white text-sm font-semibold">Try again</Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity onPress={onStartOver} className="mt-3">
-            <Text className="text-morlo-muted text-xs">Start over</Text>
+            <Text className="text-mym-muted text-xs">Start over</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -695,15 +695,15 @@ function GenerateStep({ generation, error, onRetry, onStartOver, onBack }: any) 
 
   return (
     <View className="px-4 pt-6">
-      <View className="bg-morlo-card border border-morlo-border rounded-xl p-8 items-center">
+      <View className="bg-mym-card border border-mym-border rounded-xl p-8 items-center">
         <View className="w-20 h-20 rounded-full bg-purple-600 items-center justify-center mb-4">
           <Wand2 size={32} color="#fff" />
         </View>
-        <Text className="text-morlo-text text-xl font-bold mb-2">{label}</Text>
-        <Text className="text-morlo-muted text-sm text-center mb-1">
+        <Text className="text-mym-text text-xl font-bold mb-2">{label}</Text>
+        <Text className="text-mym-muted text-sm text-center mb-1">
           This usually takes 30–90 seconds. Feel free to leave this screen — we&apos;ll save the result.
         </Text>
-        <Text className="text-morlo-muted text-xs">
+        <Text className="text-mym-muted text-xs">
           Elapsed: {Math.floor(elapsed / 60)}:{(elapsed % 60).toString().padStart(2, '0')}
         </Text>
       </View>
@@ -729,23 +729,23 @@ function PublishStep({
 
   return (
     <View className="px-4 pt-2">
-      <View className="bg-morlo-card border border-morlo-border rounded-xl p-4">
+      <View className="bg-mym-card border border-mym-border rounded-xl p-4">
         <View className="flex-row items-start gap-3 mb-4">
           <View className="w-10 h-10 rounded-full bg-green-900/40 items-center justify-center">
             <CheckCircle2 size={20} color="#4ade80" />
           </View>
           <View className="flex-1">
-            <Text className="text-morlo-text text-lg font-bold">Your track is ready</Text>
-            <Text className="text-morlo-muted text-sm">Preview it, tweak details, publish.</Text>
+            <Text className="text-mym-text text-lg font-bold">Your track is ready</Text>
+            <Text className="text-mym-muted text-sm">Preview it, tweak details, publish.</Text>
           </View>
         </View>
 
         {/* Preview */}
         <TouchableOpacity
           onPress={togglePreview}
-          className="bg-morlo-surface border border-morlo-border rounded-xl p-4 flex-row items-center gap-3 mb-4"
+          className="bg-mym-surface border border-mym-border rounded-xl p-4 flex-row items-center gap-3 mb-4"
         >
-          <View className="w-10 h-10 rounded-full bg-morlo-accent items-center justify-center">
+          <View className="w-10 h-10 rounded-full bg-mym-accent items-center justify-center">
             {playingPreview ? (
               <Pause size={16} color="#fff" fill="#fff" />
             ) : (
@@ -753,11 +753,11 @@ function PublishStep({
             )}
           </View>
           <View className="flex-1">
-            <Text className="text-morlo-text text-sm font-semibold">Preview audio</Text>
+            <Text className="text-mym-text text-sm font-semibold">Preview audio</Text>
             {generation.durationSec && (
               <View className="flex-row items-center gap-1 mt-0.5">
                 <Clock size={10} color="#71717a" />
-                <Text className="text-morlo-muted text-xs">
+                <Text className="text-mym-muted text-xs">
                   {Math.floor(generation.durationSec / 60)}:{(generation.durationSec % 60).toString().padStart(2, '0')}
                 </Text>
               </View>
@@ -766,46 +766,46 @@ function PublishStep({
         </TouchableOpacity>
 
         {/* Cover */}
-        <Text className="text-morlo-text text-sm font-semibold mb-2">Cover art</Text>
+        <Text className="text-mym-text text-sm font-semibold mb-2">Cover art</Text>
         <TouchableOpacity
           onPress={uploadCover}
-          className="w-28 h-28 rounded-xl bg-morlo-surface border-2 border-dashed border-morlo-border items-center justify-center mb-4 overflow-hidden"
+          className="w-28 h-28 rounded-xl bg-mym-surface border-2 border-dashed border-mym-border items-center justify-center mb-4 overflow-hidden"
         >
           {publishCover ? (
             <Image source={{ uri: publishCover }} className="w-full h-full" />
           ) : (
             <View className="items-center">
               <Wand2 size={18} color="#71717a" />
-              <Text className="text-morlo-muted text-xs mt-1">Tap to upload</Text>
+              <Text className="text-mym-muted text-xs mt-1">Tap to upload</Text>
             </View>
           )}
         </TouchableOpacity>
 
         {/* Title */}
-        <Text className="text-morlo-text text-sm font-semibold mb-2">Title</Text>
+        <Text className="text-mym-text text-sm font-semibold mb-2">Title</Text>
         <TextInput
           value={title}
           onChangeText={setTitle}
           maxLength={200}
-          className="bg-morlo-surface border border-morlo-border rounded-xl px-3 py-2.5 text-morlo-text text-sm mb-4"
+          className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm mb-4"
         />
 
         {/* Genre */}
-        <Text className="text-morlo-text text-sm font-semibold mb-2">Genre</Text>
+        <Text className="text-mym-text text-sm font-semibold mb-2">Genre</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} className="mb-4">
           <TouchableOpacity
             onPress={() => setPublishGenreId('')}
-            className={`px-3 py-1.5 rounded-full ${!publishGenreId ? 'bg-morlo-accent' : 'bg-morlo-surface border border-morlo-border'}`}
+            className={`px-3 py-1.5 rounded-full ${!publishGenreId ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
           >
-            <Text className={`text-xs font-semibold ${!publishGenreId ? 'text-white' : 'text-morlo-muted'}`}>None</Text>
+            <Text className={`text-xs font-semibold ${!publishGenreId ? 'text-white' : 'text-mym-muted'}`}>None</Text>
           </TouchableOpacity>
           {genres.map((g: any) => (
             <TouchableOpacity
               key={g.id}
               onPress={() => setPublishGenreId(g.id)}
-              className={`px-3 py-1.5 rounded-full ${publishGenreId === g.id ? 'bg-morlo-accent' : 'bg-morlo-surface border border-morlo-border'}`}
+              className={`px-3 py-1.5 rounded-full ${publishGenreId === g.id ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
             >
-              <Text className={`text-xs font-semibold ${publishGenreId === g.id ? 'text-white' : 'text-morlo-muted'}`}>{g.name}</Text>
+              <Text className={`text-xs font-semibold ${publishGenreId === g.id ? 'text-white' : 'text-mym-muted'}`}>{g.name}</Text>
             </TouchableOpacity>
           ))}
         </ScrollView>
@@ -813,7 +813,7 @@ function PublishStep({
         {/* Agent */}
         <View className="flex-row items-center gap-1.5 mb-2">
           <Bot size={14} color="#8b5cf6" />
-          <Text className="text-morlo-text text-sm font-semibold">Publish under agent</Text>
+          <Text className="text-mym-text text-sm font-semibold">Publish under agent</Text>
         </View>
         {hasAgents ? (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8 }} className="mb-4">
@@ -821,9 +821,9 @@ function PublishStep({
               <TouchableOpacity
                 key={a.id}
                 onPress={() => setPublishAgentId(a.id)}
-                className={`px-3 py-1.5 rounded-full ${publishAgentId === a.id ? 'bg-morlo-accent' : 'bg-morlo-surface border border-morlo-border'}`}
+                className={`px-3 py-1.5 rounded-full ${publishAgentId === a.id ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
               >
-                <Text className={`text-xs font-semibold ${publishAgentId === a.id ? 'text-white' : 'text-morlo-muted'}`}>{a.name}</Text>
+                <Text className={`text-xs font-semibold ${publishAgentId === a.id ? 'text-white' : 'text-mym-muted'}`}>{a.name}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -835,23 +835,23 @@ function PublishStep({
         )}
 
         {/* Visibility */}
-        <Text className="text-morlo-text text-sm font-semibold mb-2">Visibility</Text>
+        <Text className="text-mym-text text-sm font-semibold mb-2">Visibility</Text>
         <View className="flex-row gap-2 mb-2">
           <TouchableOpacity
             onPress={() => setPublishPublic(true)}
-            className={`flex-1 p-3 rounded-xl border ${publishPublic ? 'bg-morlo-accent/10 border-morlo-accent' : 'bg-morlo-surface border-morlo-border'}`}
+            className={`flex-1 p-3 rounded-xl border ${publishPublic ? 'bg-mym-accent/10 border-mym-accent' : 'bg-mym-surface border-mym-border'}`}
           >
             <Globe size={14} color={publishPublic ? '#8b5cf6' : '#71717a'} />
-            <Text className="text-morlo-text text-sm font-semibold mt-1">Public</Text>
-            <Text className="text-morlo-muted text-xs">Anyone can discover & play</Text>
+            <Text className="text-mym-text text-sm font-semibold mt-1">Public</Text>
+            <Text className="text-mym-muted text-xs">Anyone can discover & play</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setPublishPublic(false)}
-            className={`flex-1 p-3 rounded-xl border ${!publishPublic ? 'bg-morlo-accent/10 border-morlo-accent' : 'bg-morlo-surface border-morlo-border'}`}
+            className={`flex-1 p-3 rounded-xl border ${!publishPublic ? 'bg-mym-accent/10 border-mym-accent' : 'bg-mym-surface border-mym-border'}`}
           >
             <LockKeyhole size={14} color={!publishPublic ? '#8b5cf6' : '#71717a'} />
-            <Text className="text-morlo-text text-sm font-semibold mt-1">Private</Text>
-            <Text className="text-morlo-muted text-xs">Only you can play it</Text>
+            <Text className="text-mym-text text-sm font-semibold mt-1">Private</Text>
+            <Text className="text-mym-muted text-xs">Only you can play it</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -859,7 +859,7 @@ function PublishStep({
       <View className="flex-row justify-between mt-4">
         <TouchableOpacity onPress={onStartOver} className="flex-row items-center gap-1 px-4 py-3">
           <RotateCcw size={14} color="#a1a1aa" />
-          <Text className="text-morlo-muted text-sm">Start over</Text>
+          <Text className="text-mym-muted text-sm">Start over</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onPublish}

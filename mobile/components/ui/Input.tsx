@@ -11,10 +11,10 @@ export function Input({ label, error, ...props }: InputProps) {
 
   return (
     <View className="mb-4">
-      {label && <Text className="text-morlo-muted text-sm mb-2 font-medium">{label}</Text>}
+      {label && <Text className="text-mym-muted text-sm mb-2 font-medium">{label}</Text>}
       <TextInput
-        className={`bg-morlo-card border rounded-xl px-4 py-3 text-morlo-text text-base ${
-          focused ? 'border-morlo-accent' : error ? 'border-red-500' : 'border-morlo-border'
+        className={`bg-mym-card border rounded-xl px-4 py-3 text-mym-text text-base ${
+          focused ? 'border-mym-accent' : error ? 'border-red-500' : 'border-mym-border'
         }`}
         placeholderTextColor="#71717a"
         onFocus={(e) => {

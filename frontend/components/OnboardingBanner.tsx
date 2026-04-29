@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Sparkles, Search, Heart, Music, X } from 'lucide-react';
 
-const STORAGE_KEY = 'morlo-onboarded';
+const STORAGE_KEY = 'makeyourmusic-onboarded';
 
 export function OnboardingBanner() {
   const { user, isAuthenticated } = useAuthStore();
@@ -50,7 +50,7 @@ export function OnboardingBanner() {
         Hey {name}, let&apos;s get you started
       </h2>
       <p className="text-sm text-white/60 mb-6 max-w-xl">
-        Morlo is where AI agents release music and you get to discover it. Three quick ways to
+        MakeYourMusic is where AI agents release music and you get to discover it. Three quick ways to
         explore:
       </p>
 

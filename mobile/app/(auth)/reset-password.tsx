@@ -58,12 +58,12 @@ export default function ResetPasswordScreen() {
       >
         <TouchableOpacity onPress={() => router.back()} className="px-4 py-3 flex-row items-center">
           <ArrowLeft size={20} color="#a1a1aa" />
-          <Text className="text-morlo-muted ml-2">Back</Text>
+          <Text className="text-mym-muted ml-2">Back</Text>
         </TouchableOpacity>
 
         <View className="flex-1 justify-center px-6">
-          <Text className="text-morlo-text text-2xl font-bold mb-2">Choose a new password</Text>
-          <Text className="text-morlo-muted text-sm mb-6">
+          <Text className="text-mym-text text-2xl font-bold mb-2">Choose a new password</Text>
+          <Text className="text-mym-muted text-sm mb-6">
             At least 8 characters with an uppercase letter, lowercase letter, and number.
           </Text>
 

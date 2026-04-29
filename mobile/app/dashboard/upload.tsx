@@ -126,7 +126,7 @@ export default function UploadScreen() {
       <ScreenContainer>
         <ScrollView className="px-4">
           {/* Agent Selector */}
-          <Text className="text-morlo-muted text-sm mb-2 font-medium">Agent</Text>
+          <Text className="text-mym-muted text-sm mb-2 font-medium">Agent</Text>
           <View className="flex-row flex-wrap mb-4">
             {agents.map((a) => (
               <TouchableOpacity
@@ -134,13 +134,13 @@ export default function UploadScreen() {
                 onPress={() => setSelectedAgent(a.id)}
                 className={`mr-2 mb-2 px-4 py-2 rounded-full border ${
                   selectedAgent === a.id
-                    ? 'bg-morlo-accent border-morlo-accent'
-                    : 'bg-morlo-card border-morlo-border'
+                    ? 'bg-mym-accent border-mym-accent'
+                    : 'bg-mym-card border-mym-border'
                 }`}
               >
                 <Text
                   className={`text-sm font-medium ${
-                    selectedAgent === a.id ? 'text-white' : 'text-morlo-muted'
+                    selectedAgent === a.id ? 'text-white' : 'text-mym-muted'
                   }`}
                 >
                   {a.name}
@@ -152,21 +152,21 @@ export default function UploadScreen() {
           <Input label="Title *" placeholder="Track title" value={title} onChangeText={setTitle} />
 
           {/* Genre selector */}
-          <Text className="text-morlo-muted text-sm mb-2 font-medium">Genre</Text>
+          <Text className="text-mym-muted text-sm mb-2 font-medium">Genre</Text>
           <View className="flex-row flex-wrap mb-4">
             <TouchableOpacity
               onPress={() => setSelectedGenreId('')}
-              className={`mr-2 mb-2 px-4 py-2 rounded-full border ${!selectedGenreId ? 'bg-morlo-accent border-morlo-accent' : 'bg-morlo-card border-morlo-border'}`}
+              className={`mr-2 mb-2 px-4 py-2 rounded-full border ${!selectedGenreId ? 'bg-mym-accent border-mym-accent' : 'bg-mym-card border-mym-border'}`}
             >
-              <Text className={`text-sm font-medium ${!selectedGenreId ? 'text-white' : 'text-morlo-muted'}`}>None</Text>
+              <Text className={`text-sm font-medium ${!selectedGenreId ? 'text-white' : 'text-mym-muted'}`}>None</Text>
             </TouchableOpacity>
             {genres.map((g) => (
               <TouchableOpacity
                 key={g.id}
                 onPress={() => setSelectedGenreId(g.id)}
-                className={`mr-2 mb-2 px-4 py-2 rounded-full border ${selectedGenreId === g.id ? 'bg-morlo-accent border-morlo-accent' : 'bg-morlo-card border-morlo-border'}`}
+                className={`mr-2 mb-2 px-4 py-2 rounded-full border ${selectedGenreId === g.id ? 'bg-mym-accent border-mym-accent' : 'bg-mym-card border-mym-border'}`}
               >
-                <Text className={`text-sm font-medium ${selectedGenreId === g.id ? 'text-white' : 'text-morlo-muted'}`}>{g.name}</Text>
+                <Text className={`text-sm font-medium ${selectedGenreId === g.id ? 'text-white' : 'text-mym-muted'}`}>{g.name}</Text>
               </TouchableOpacity>
             ))}
           </View>
@@ -182,37 +182,37 @@ export default function UploadScreen() {
           />
 
           {/* Audio file picker */}
-          <Text className="text-morlo-muted text-sm mb-2 font-medium">Audio File *</Text>
+          <Text className="text-mym-muted text-sm mb-2 font-medium">Audio File *</Text>
           <TouchableOpacity
             onPress={pickAudio}
-            className="border-2 border-dashed border-morlo-border rounded-xl p-6 items-center mb-6"
+            className="border-2 border-dashed border-mym-border rounded-xl p-6 items-center mb-6"
           >
             <Upload size={32} color={audioFile ? '#8b5cf6' : '#71717a'} />
-            <Text className={`mt-2 text-sm ${audioFile ? 'text-morlo-accent' : 'text-morlo-muted'}`}>
+            <Text className={`mt-2 text-sm ${audioFile ? 'text-mym-accent' : 'text-mym-muted'}`}>
               {audioFile ? audioFile.name : 'Tap to select audio file'}
             </Text>
           </TouchableOpacity>
 
           {/* Visibility */}
-          <Text className="text-morlo-muted text-sm mb-2 font-medium">Visibility</Text>
+          <Text className="text-mym-muted text-sm mb-2 font-medium">Visibility</Text>
           <View className="flex-row gap-2 mb-6">
             <TouchableOpacity
               onPress={() => setIsPublic(true)}
-              className={`flex-1 p-3 rounded-xl border ${isPublic ? 'bg-morlo-accent/10 border-morlo-accent' : 'bg-morlo-card border-morlo-border'}`}
+              className={`flex-1 p-3 rounded-xl border ${isPublic ? 'bg-mym-accent/10 border-mym-accent' : 'bg-mym-card border-mym-border'}`}
             >
-              <Text className={`text-sm font-semibold ${isPublic ? 'text-morlo-accent' : 'text-morlo-text'}`}>
+              <Text className={`text-sm font-semibold ${isPublic ? 'text-mym-accent' : 'text-mym-text'}`}>
                 🌍 Public
               </Text>
-              <Text className="text-morlo-muted text-xs mt-0.5">Anyone can listen</Text>
+              <Text className="text-mym-muted text-xs mt-0.5">Anyone can listen</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setIsPublic(false)}
-              className={`flex-1 p-3 rounded-xl border ${!isPublic ? 'bg-morlo-accent/10 border-morlo-accent' : 'bg-morlo-card border-morlo-border'}`}
+              className={`flex-1 p-3 rounded-xl border ${!isPublic ? 'bg-mym-accent/10 border-mym-accent' : 'bg-mym-card border-mym-border'}`}
             >
-              <Text className={`text-sm font-semibold ${!isPublic ? 'text-morlo-accent' : 'text-morlo-text'}`}>
+              <Text className={`text-sm font-semibold ${!isPublic ? 'text-mym-accent' : 'text-mym-text'}`}>
                 🔒 Private
               </Text>
-              <Text className="text-morlo-muted text-xs mt-0.5">Only you</Text>
+              <Text className="text-mym-muted text-xs mt-0.5">Only you</Text>
             </TouchableOpacity>
           </View>
 

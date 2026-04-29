@@ -78,8 +78,8 @@ export default function DashboardScreen() {
         <ScreenContainer>
           <View className="flex-1 items-center justify-center px-8 pt-32">
             <Bot size={48} color="#2a2a2a" />
-            <Text className="text-morlo-text text-xl font-bold mt-4 mb-2">Creator Studio</Text>
-            <Text className="text-morlo-muted text-center mb-6">
+            <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Creator Studio</Text>
+            <Text className="text-mym-muted text-center mb-6">
               Sign in to manage your AI agents and upload music.
             </Text>
             <Button title="Sign In" onPress={() => router.push('/(auth)/login')} />
@@ -106,7 +106,7 @@ export default function DashboardScreen() {
       />
       <ScreenContainer>
         <View className="px-4 pb-4">
-          <Text className="text-morlo-muted text-sm mb-4">
+          <Text className="text-mym-muted text-sm mb-4">
             Manage your AI agents and their music
           </Text>
 
@@ -118,7 +118,7 @@ export default function DashboardScreen() {
               variant="secondary"
             />
           ) : (
-            <View className="bg-morlo-card border border-morlo-border rounded-xl p-4 mb-4">
+            <View className="bg-mym-card border border-mym-border rounded-xl p-4 mb-4">
               <Input
                 label="Agent Name"
                 placeholder="e.g. Neural Beats"
@@ -152,7 +152,7 @@ export default function DashboardScreen() {
         ) : agents.length === 0 ? (
           <View className="items-center py-12 px-8">
             <Bot size={48} color="#2a2a2a" />
-            <Text className="text-morlo-muted text-center mt-4">
+            <Text className="text-mym-muted text-center mt-4">
               You don't have any AI agents yet. Create one to start uploading music!
             </Text>
           </View>
@@ -160,29 +160,29 @@ export default function DashboardScreen() {
           agents.map((agent) => (
             <TouchableOpacity
               key={agent.id}
-              className="flex-row items-center px-4 py-4 border-b border-morlo-border"
+              className="flex-row items-center px-4 py-4 border-b border-mym-border"
               onPress={() => router.push(`/agent/${agent.slug}`)}
               activeOpacity={0.7}
             >
-              <View className="w-14 h-14 rounded-full bg-morlo-surface items-center justify-center mr-4">
+              <View className="w-14 h-14 rounded-full bg-mym-surface items-center justify-center mr-4">
                 <Bot size={24} color="#8b5cf6" />
               </View>
               <View className="flex-1">
-                <Text className="text-morlo-text text-base font-semibold">{agent.name}</Text>
+                <Text className="text-mym-text text-base font-semibold">{agent.name}</Text>
                 <View className="flex-row items-center mt-1">
                   <Music size={12} color="#a1a1aa" />
-                  <Text className="text-morlo-muted text-xs ml-1 mr-3">
+                  <Text className="text-mym-muted text-xs ml-1 mr-3">
                     {agent._count?.tracks || 0} tracks
                   </Text>
                   <BarChart3 size={12} color="#a1a1aa" />
-                  <Text className="text-morlo-muted text-xs ml-1">
+                  <Text className="text-mym-muted text-xs ml-1">
                     {formatCount(agent.totalPlays)} plays
                   </Text>
                 </View>
               </View>
               <TouchableOpacity
                 onPress={() => router.push('/dashboard/upload')}
-                className="bg-morlo-accent rounded-full p-2"
+                className="bg-mym-accent rounded-full p-2"
               >
                 <Plus size={16} color="#fff" />
               </TouchableOpacity>

@@ -42,15 +42,15 @@ export default function Slider({ value, max, onValueChange }: SliderProps) {
       className="h-6 justify-center"
       {...panResponder.panHandlers}
     >
-      <View className="h-1 bg-morlo-border rounded-full overflow-hidden">
+      <View className="h-1 bg-mym-border rounded-full overflow-hidden">
         <View
-          className="h-full bg-morlo-accent rounded-full"
+          className="h-full bg-mym-accent rounded-full"
           style={{ width: `${percent}%` }}
         />
       </View>
       {/* Thumb */}
       <View
-        className="absolute w-4 h-4 bg-morlo-accent rounded-full -mt-1.5"
+        className="absolute w-4 h-4 bg-mym-accent rounded-full -mt-1.5"
         style={{ left: `${Math.min(percent, 100)}%`, marginLeft: -8 }}
       />
     </View>

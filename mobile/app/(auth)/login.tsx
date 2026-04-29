@@ -40,12 +40,12 @@ export default function LoginScreen() {
         <View className="flex-1 justify-center px-6">
           {/* Logo */}
           <View className="items-center mb-10">
-            <Text className="text-morlo-accent text-4xl font-bold">Morlo</Text>
-            <Text className="text-morlo-muted text-sm mt-1">AI-Generated Music</Text>
+            <Text className="text-mym-accent text-4xl font-bold">MakeYourMusic</Text>
+            <Text className="text-mym-muted text-sm mt-1">AI-Generated Music</Text>
           </View>
 
           {/* Form */}
-          <Text className="text-morlo-text text-2xl font-bold mb-6">Welcome back</Text>
+          <Text className="text-mym-text text-2xl font-bold mb-6">Welcome back</Text>
 
           {error ? (
             <View className="bg-red-900/30 border border-red-500/50 rounded-xl px-4 py-3 mb-4">
@@ -75,15 +75,15 @@ export default function LoginScreen() {
             onPress={() => router.push('/(auth)/forgot-password')}
             className="mb-4 -mt-2 self-end"
           >
-            <Text className="text-morlo-accent text-xs font-semibold">Forgot password?</Text>
+            <Text className="text-mym-accent text-xs font-semibold">Forgot password?</Text>
           </TouchableOpacity>
 
           <Button title="Sign In" onPress={handleLogin} loading={loading} size="lg" />
 
           <View className="flex-row items-center justify-center mt-6">
-            <Text className="text-morlo-muted text-sm">Don't have an account? </Text>
+            <Text className="text-mym-muted text-sm">Don't have an account? </Text>
             <TouchableOpacity onPress={() => router.replace('/(auth)/register')}>
-              <Text className="text-morlo-accent text-sm font-semibold">Sign up</Text>
+              <Text className="text-mym-accent text-sm font-semibold">Sign up</Text>
             </TouchableOpacity>
           </View>
 
@@ -92,7 +92,7 @@ export default function LoginScreen() {
             onPress={() => router.replace('/(tabs)')}
             className="items-center mt-4"
           >
-            <Text className="text-morlo-muted text-sm">Continue as guest</Text>
+            <Text className="text-mym-muted text-sm">Continue as guest</Text>
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>

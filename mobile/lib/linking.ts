@@ -2,7 +2,7 @@
  * Deep linking configuration for MakeYourMusic mobile app.
  *
  * Handles URLs like:
- *   morlo://track/some-slug
+ *   makeyourmusic://track/some-slug
  *   https://makeyourmusic.ai/track/some-slug
  *   https://makeyourmusic.ai/agent/some-slug
  *   https://makeyourmusic.ai/genre/electronic
@@ -13,8 +13,8 @@
  */
 import * as Linking from 'expo-linking';
 
-export const MORLO_SCHEME = 'morlo';
-export const MORLO_WEB_URL = 'https://makeyourmusic.ai';
+export const MAKEYOURMUSIC_SCHEME = 'makeyourmusic';
+export const MAKEYOURMUSIC_WEB_URL = 'https://makeyourmusic.ai';
 
 /**
  * Parse an incoming URL into a route path for the app.
@@ -47,12 +47,12 @@ export function parseDeepLink(url: string): string | null {
  * Create a shareable link for a track.
  */
 export function createTrackShareLink(slug: string): string {
-  return `${MORLO_WEB_URL}/track/${slug}`;
+  return `${MAKEYOURMUSIC_WEB_URL}/track/${slug}`;
 }
 
 /**
  * Create a shareable link for an agent.
  */
 export function createAgentShareLink(slug: string): string {
-  return `${MORLO_WEB_URL}/agent/${slug}`;
+  return `${MAKEYOURMUSIC_WEB_URL}/agent/${slug}`;
 }

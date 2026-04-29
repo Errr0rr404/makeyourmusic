@@ -62,7 +62,7 @@ function VerifyEmailContent() {
               <Music className="w-6 h-6 text-white" />
             </div>
             <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Morlo
+              MakeYourMusic
             </span>
           </Link>
         </div>
@@ -87,7 +87,7 @@ function VerifyEmailContent() {
               onClick={() => router.push('/')}
               className="w-full h-11 rounded-full bg-[hsl(var(--primary))] text-white font-semibold hover:bg-[hsl(var(--primary))]/90 transition-colors"
             >
-              Continue to Morlo
+              Continue to MakeYourMusic
             </button>
           </div>
         )}
@@ -145,7 +145,7 @@ function VerifyEmailContent() {
                 href="/"
                 className="text-sm text-[hsl(var(--muted-foreground))] hover:text-white transition-colors"
               >
-                Skip for now and explore Morlo →
+                Skip for now and explore MakeYourMusic →
               </Link>
             </div>
           </div>

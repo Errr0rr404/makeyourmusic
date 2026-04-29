@@ -33,7 +33,7 @@ function AuthHydrator({ children }: { children: React.ReactNode }) {
 export function AppProviders({ children }: { children: React.ReactNode }) {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark" storageKey="morlo-theme">
+      <ThemeProvider defaultTheme="dark" storageKey="makeyourmusic-theme">
         <AuthHydrator>
           <ConfirmProvider>
             {children}

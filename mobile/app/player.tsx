@@ -159,7 +159,7 @@ export default function FullScreenPlayer() {
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SwipeableDismiss onDismiss={() => router.back()}>
-      <SafeAreaView className="flex-1 bg-morlo-bg">
+      <SafeAreaView className="flex-1 bg-mym-bg">
         <View className="flex-1 px-6">
           {/* Header */}
           <View className="flex-row items-center justify-between py-4">
@@ -167,7 +167,7 @@ export default function FullScreenPlayer() {
               <ChevronDown size={28} color="#fafafa" />
             </TouchableOpacity>
             <View className="items-center">
-              <Text className="text-morlo-muted text-sm font-medium">Now Playing</Text>
+              <Text className="text-mym-muted text-sm font-medium">Now Playing</Text>
               {playbackSpeed !== 1 && (
                 <Text className="text-violet-400 text-[10px] font-semibold mt-0.5">
                   {playbackSpeed}x speed
@@ -208,7 +208,7 @@ export default function FullScreenPlayer() {
 
           {/* Cover Art */}
           <View className="flex-1 items-center justify-center">
-            <View className="w-72 h-72 rounded-3xl overflow-hidden bg-morlo-card shadow-2xl">
+            <View className="w-72 h-72 rounded-3xl overflow-hidden bg-mym-card shadow-2xl">
               {currentTrack.coverArt ? (
                 <Image
                   source={{ uri: currentTrack.coverArt }}
@@ -217,7 +217,7 @@ export default function FullScreenPlayer() {
                   transition={300}
                 />
               ) : (
-                <View className="flex-1 items-center justify-center bg-morlo-surface">
+                <View className="flex-1 items-center justify-center bg-mym-surface">
                   <Text className="text-7xl">🎵</Text>
                 </View>
               )}
@@ -228,14 +228,14 @@ export default function FullScreenPlayer() {
           <View className="mt-6">
             <View className="flex-row items-center justify-between">
               <View className="flex-1 mr-4">
-                <Text className="text-morlo-text text-xl font-bold" numberOfLines={1}>
+                <Text className="text-mym-text text-xl font-bold" numberOfLines={1}>
                   {currentTrack.title}
                 </Text>
                 <TouchableOpacity onPress={() => {
                   router.dismiss();
                   router.push(`/agent/${currentTrack.agent.slug}`);
                 }}>
-                  <Text className="text-morlo-accent text-base mt-1" numberOfLines={1}>
+                  <Text className="text-mym-accent text-base mt-1" numberOfLines={1}>
                     {currentTrack.agent.name}
                   </Text>
                 </TouchableOpacity>
@@ -272,10 +272,10 @@ export default function FullScreenPlayer() {
                 onValueChange={setProgress}
               />
               <View className="flex-row justify-between mt-1">
-                <Text className="text-morlo-muted text-xs">
+                <Text className="text-mym-muted text-xs">
                   {formatDuration(Math.floor(progress))}
                 </Text>
-                <Text className="text-morlo-muted text-xs">
+                <Text className="text-mym-muted text-xs">
                   {formatDuration(Math.floor(duration))}
                 </Text>
               </View>
@@ -293,7 +293,7 @@ export default function FullScreenPlayer() {
 
               <TouchableOpacity
                 onPress={handleTogglePlay}
-                className="bg-morlo-accent rounded-full w-16 h-16 items-center justify-center"
+                className="bg-mym-accent rounded-full w-16 h-16 items-center justify-center"
               >
                 {isPlaying ? (
                   <Pause size={28} color="#fff" fill="#fff" />

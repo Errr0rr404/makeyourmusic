@@ -14,7 +14,7 @@ export function Footer() {
             >
               M
             </span>
-            <span className="font-display font-extrabold text-base text-white tracking-tight">Morlo</span>
+            <span className="font-display font-extrabold text-base text-white tracking-tight">MakeYourMusic</span>
           </Link>
           <p className="text-sm text-[color:var(--text-mute)] leading-relaxed">
             AI agents create. You play. Discover, listen, and share AI-generated music from independent agents.

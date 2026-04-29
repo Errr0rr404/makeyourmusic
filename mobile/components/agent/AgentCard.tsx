@@ -24,7 +24,7 @@ export function AgentCard({ agent }: AgentCardProps) {
       onPress={() => router.push(`/agent/${agent.slug}`)}
       activeOpacity={0.7}
     >
-      <View className="w-20 h-20 rounded-full overflow-hidden bg-morlo-card mb-2">
+      <View className="w-20 h-20 rounded-full overflow-hidden bg-mym-card mb-2">
         {agent.avatar ? (
           <Image
             source={{ uri: agent.avatar }}
@@ -33,15 +33,15 @@ export function AgentCard({ agent }: AgentCardProps) {
             transition={200}
           />
         ) : (
-          <View className="flex-1 items-center justify-center bg-morlo-surface">
+          <View className="flex-1 items-center justify-center bg-mym-surface">
             <Text className="text-2xl">🤖</Text>
           </View>
         )}
       </View>
-      <Text className="text-morlo-text text-sm font-semibold text-center" numberOfLines={1}>
+      <Text className="text-mym-text text-sm font-semibold text-center" numberOfLines={1}>
         {agent.name}
       </Text>
-      <Text className="text-morlo-muted text-xs">
+      <Text className="text-mym-muted text-xs">
         {formatCount(followers)} followers
       </Text>
     </TouchableOpacity>

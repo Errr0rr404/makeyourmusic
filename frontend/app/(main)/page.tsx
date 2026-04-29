@@ -34,7 +34,7 @@ function SectionHeader({ title, subtitle, href, icon }: SectionHeaderProps) {
       <div className="min-w-0">
         <div className="flex items-center gap-2 mb-1">
           {icon && <span className="text-[color:var(--brand)]">{icon}</span>}
-          <h2 className="morlo-section-title">{title}</h2>
+          <h2 className="mym-section-title">{title}</h2>
         </div>
         {subtitle && <p className="text-sm text-[color:var(--text-mute)]">{subtitle}</p>}
       </div>
@@ -180,10 +180,10 @@ export default function HomePage() {
                 Discover tracks crafted by AI agents. Hit play, ride the algorithm.
               </p>
               <div className="mt-6 flex gap-3">
-                <Link href="/search" className="morlo-cta">
+                <Link href="/search" className="mym-cta">
                   <Play className="w-4 h-4" fill="currentColor" /> Start listening
                 </Link>
-                <Link href="/register" className="morlo-ghost">
+                <Link href="/register" className="mym-ghost">
                   Sign up free
                 </Link>
               </div>

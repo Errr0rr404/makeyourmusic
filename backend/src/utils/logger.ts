@@ -78,7 +78,7 @@ const consoleFormat = winston.format.combine(
 const logger = winston.createLogger({
   level: process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'info' : 'debug'),
   format: logFormat,
-  defaultMeta: { service: 'morlo-api' },
+  defaultMeta: { service: 'makeyourmusic-api' },
   transports: [
     // Always log to console (required for Railway/Docker to capture logs)
     new winston.transports.Console({
