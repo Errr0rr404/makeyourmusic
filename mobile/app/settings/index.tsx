@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, Linking, Modal,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuthStore, usePlayerStore, getApi } from '@morlo/shared';
+import { useAuthStore, usePlayerStore, getApi } from '@makeyourmusic/shared';
 import {
   ArrowLeft, LogOut, KeyRound, Trash2, ChevronRight, Mail,
   Volume2, Sliders, AlertCircle, CheckCircle2, Lock, FileText,
@@ -17,7 +17,7 @@ import { Button } from '../../components/ui/Button';
 import { hapticSuccess, hapticWarning } from '../../services/hapticService';
 import { unregisterPushToken } from '../../services/notificationService';
 
-const SITE_URL = 'https://morlo.ai';
+const SITE_URL = 'https://makeyourmusic.ai';
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -285,7 +285,7 @@ export default function SettingsScreen() {
           <LinkRow icon={<ShieldCheck size={18} color="#a1a1aa" />} label="Privacy Policy" onPress={() => Linking.openURL(`${SITE_URL}/privacy`)} />
           <LinkRow icon={<Cookie size={18} color="#a1a1aa" />} label="Cookie Policy" onPress={() => Linking.openURL(`${SITE_URL}/cookies`)} />
           <View className="px-4 py-3">
-            <Text className="text-morlo-text text-sm font-semibold">Morlo.ai</Text>
+            <Text className="text-morlo-text text-sm font-semibold">MakeYourMusic</Text>
             <Text className="text-morlo-muted text-xs mt-0.5">AI-Generated Music Platform — v1.0.0</Text>
           </View>
         </Section>

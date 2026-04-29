@@ -1,4 +1,4 @@
-import { createApi, getApi } from '@morlo/shared';
+import { createApi, getApi } from '@makeyourmusic/shared';
 
 // Initialize the shared API client with the web-specific base URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';

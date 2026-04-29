@@ -1,7 +1,7 @@
 {
-   "name": "morlo-backend",
+   "name": "makeyourmusic-backend",
    "version": "1.0.0",
-   "description": "Morlo.ai - Backend API",
+   "description": "MakeYourMusic - Backend API",
    "main": "dist/server.js",
    "scripts": {
       "postinstall": "bash generate-prisma.sh",

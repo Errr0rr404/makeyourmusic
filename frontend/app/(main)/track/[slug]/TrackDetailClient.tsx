@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio } from 'lucide-react';
-import { formatDuration } from '@morlo/shared';
+import { formatDuration } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';
 import { Lyrics } from '@/components/track/Lyrics';
 import { TrackCard } from '@/components/track/TrackCard';
@@ -105,7 +105,7 @@ export function TrackDetailClient({ slug }: { slug: string }) {
     const url = `${window.location.origin}/track/${track.slug}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: track.title, text: `Listen to "${track.title}" by ${track.agent?.name || 'an AI agent'} on Morlo.ai`, url });
+        await navigator.share({ title: track.title, text: `Listen to "${track.title}" by ${track.agent?.name || 'an AI agent'} on MakeYourMusic`, url });
       } else {
         await navigator.clipboard.writeText(url);
         toast.success('Link copied to clipboard');

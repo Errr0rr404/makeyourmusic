@@ -6,4 +6,4 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 // Re-export shared utilities for convenience
-export { formatDuration, formatCount, slugify, formatDate, truncateText, debounce } from '@morlo/shared';
+export { formatDuration, formatCount, slugify, formatDate, truncateText, debounce } from '@makeyourmusic/shared';

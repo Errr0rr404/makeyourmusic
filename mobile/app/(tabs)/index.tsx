@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, ScrollView, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { getApi, useAuthStore } from '@morlo/shared';
-import type { TrackItem, Genre } from '@morlo/shared';
+import { getApi, useAuthStore } from '@makeyourmusic/shared';
+import type { TrackItem, Genre } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { SectionHeader } from '../../components/ui/SectionHeader';
 import { TrackCard } from '../../components/track/TrackCard';

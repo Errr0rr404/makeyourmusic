@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { Play, Heart, X, Music2 } from 'lucide-react';
 import { usePlayerStore, TrackItem } from '@/lib/store/playerStore';
-import { formatDuration, formatCount } from '@morlo/shared';
+import { formatDuration, formatCount } from '@makeyourmusic/shared';
 
 interface TrackRowProps {
   track: TrackItem & {

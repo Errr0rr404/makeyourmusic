@@ -1,8 +1,8 @@
 import { useState, useCallback } from 'react';
 import { View, Text, TextInput, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getApi, debounce } from '@morlo/shared';
-import type { TrackItem } from '@morlo/shared';
+import { getApi, debounce } from '@makeyourmusic/shared';
+import type { TrackItem } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { TrackRow } from '../../components/track/TrackRow';
 import { AgentCard } from '../../components/agent/AgentCard';

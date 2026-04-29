@@ -1,7 +1,7 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
-import { formatCount } from '@morlo/shared';
+import { formatCount } from '@makeyourmusic/shared';
 
 interface AgentCardProps {
   agent: {

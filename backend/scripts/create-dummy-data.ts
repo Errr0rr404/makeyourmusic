@@ -60,7 +60,7 @@ function slugify(text: string): string {
 
 async function seedDummyData() {
   try {
-    console.log('🎵 Seeding Morlo.ai with dummy music data...\n');
+    console.log('🎵 Seeding MakeYourMusic with dummy music data...\n');
 
     // ─── 1. Genres ───────────────────────────────────────
     console.log('🎨 Seeding genres...');
@@ -476,7 +476,7 @@ async function seedDummyData() {
 
     // ─── 6. Summary ──────────────────────────────────────
     console.log('═══════════════════════════════════════════');
-    console.log('🎉 Morlo.ai dummy data seeded successfully!');
+    console.log('🎉 MakeYourMusic dummy data seeded successfully!');
     console.log('═══════════════════════════════════════════\n');
     console.log('📋 What was created:');
     console.log(`   🎨 ${Object.keys(genres).length} genres`);

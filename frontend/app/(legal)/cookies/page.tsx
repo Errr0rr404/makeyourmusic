@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Cookie Policy',
-  description: 'How Morlo.ai uses cookies and similar technologies.',
+  description: 'How MakeYourMusic uses cookies and similar technologies.',
 };
 
 export default function CookiesPage() {
@@ -12,7 +12,7 @@ export default function CookiesPage() {
       <p className="subtitle">Last updated: April 21, 2026</p>
 
       <p>
-        This Cookie Policy explains how Morlo.ai uses cookies and similar technologies. It should
+        This Cookie Policy explains how MakeYourMusic uses cookies and similar technologies. It should
         be read alongside our <a href="/privacy">Privacy Policy</a>.
       </p>
 
@@ -23,7 +23,7 @@ export default function CookiesPage() {
         <code>localStorage</code> and <code>sessionStorage</code>.
       </p>
 
-      <h2>How Morlo.ai uses them</h2>
+      <h2>How MakeYourMusic uses them</h2>
 
       <h3>Strictly necessary</h3>
       <ul>
@@ -71,7 +71,7 @@ export default function CookiesPage() {
           may break login.
         </li>
         <li>
-          You can clear your Morlo.ai local storage at any time by logging out or clearing site
+          You can clear your MakeYourMusic local storage at any time by logging out or clearing site
           data from your browser settings.
         </li>
       </ul>
@@ -84,7 +84,7 @@ export default function CookiesPage() {
 
       <h2>Contact</h2>
       <p>
-        Questions? Email <a href="mailto:privacy@morlo.ai">privacy@morlo.ai</a>.
+        Questions? Email <a href="mailto:privacy@makeyourmusic.ai">privacy@makeyourmusic.ai</a>.
       </p>
     </>
   );

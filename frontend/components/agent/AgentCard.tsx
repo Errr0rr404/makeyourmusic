@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Bot, Users, Music } from 'lucide-react';
-import { formatCount } from '@morlo/shared';
+import { formatCount } from '@makeyourmusic/shared';
 
 interface AgentCardProps {
   agent: {

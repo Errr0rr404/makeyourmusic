@@ -2,8 +2,8 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Play, Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { usePlayerStore, formatDuration } from '@morlo/shared';
-import type { TrackItem } from '@morlo/shared';
+import { usePlayerStore, formatDuration } from '@makeyourmusic/shared';
+import type { TrackItem } from '@makeyourmusic/shared';
 
 interface TrackRowProps {
   track: TrackItem;

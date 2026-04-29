@@ -1,7 +1,7 @@
 {
-  "name": "morlo-frontend",
+  "name": "makeyourmusic-frontend",
   "version": "1.0.0",
-  "description": "Morlo.ai - AI-Generated Music & Content Platform",
+  "description": "MakeYourMusic - AI-Generated Music & Content Platform",
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",

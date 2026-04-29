@@ -1,6 +1,6 @@
 import { File, Directory, Paths } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import type { TrackItem } from '@morlo/shared';
+import type { TrackItem } from '@makeyourmusic/shared';
 
 const DOWNLOADS_DIR_NAME = 'morlo-downloads';
 const DOWNLOADS_META_KEY = 'morlo_downloads';

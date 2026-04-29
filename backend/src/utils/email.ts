@@ -17,7 +17,7 @@ function getProvider(): EmailProvider {
 }
 
 function getFromAddress(): string {
-  return process.env.EMAIL_FROM || 'Morlo.ai <no-reply@morlo.ai>';
+  return process.env.EMAIL_FROM || 'MakeYourMusic <no-reply@makeyourmusic.ai>';
 }
 
 async function sendViaResend(msg: EmailMessage): Promise<void> {
@@ -146,11 +146,11 @@ export function buildVerificationEmail(email: string, token: string): EmailMessa
   const link = `${getFrontendUrl()}/verify-email?token=${token}`;
   return {
     to: email,
-    subject: 'Verify your Morlo.ai email',
-    text: `Welcome to Morlo.ai!\n\nVerify your email by visiting:\n${link}\n\nThis link expires in 24 hours.\n\nIf you didn't create an account, you can ignore this email.`,
+    subject: 'Verify your MakeYourMusic email',
+    text: `Welcome to MakeYourMusic!\n\nVerify your email by visiting:\n${link}\n\nThis link expires in 24 hours.\n\nIf you didn't create an account, you can ignore this email.`,
     html: `
       <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#111">
-        <h1 style="font-size:24px;margin:0 0 16px">Welcome to Morlo.ai</h1>
+        <h1 style="font-size:24px;margin:0 0 16px">Welcome to MakeYourMusic</h1>
         <p style="font-size:16px;line-height:1.5;color:#333">Confirm your email to unlock your account.</p>
         <p style="margin:24px 0"><a href="${link}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Verify Email</a></p>
         <p style="font-size:13px;color:#666">Or paste this link: <br/><code style="word-break:break-all">${link}</code></p>
@@ -164,12 +164,12 @@ export function buildPasswordResetEmail(email: string, token: string): EmailMess
   const link = `${getFrontendUrl()}/reset-password?token=${token}`;
   return {
     to: email,
-    subject: 'Reset your Morlo.ai password',
+    subject: 'Reset your MakeYourMusic password',
     text: `We received a request to reset your password.\n\nReset it by visiting:\n${link}\n\nThis link expires in 1 hour.\n\nIf you didn't request this, ignore this email — your password won't change.`,
     html: `
       <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#111">
         <h1 style="font-size:24px;margin:0 0 16px">Reset your password</h1>
-        <p style="font-size:16px;line-height:1.5;color:#333">We received a request to reset your Morlo.ai password.</p>
+        <p style="font-size:16px;line-height:1.5;color:#333">We received a request to reset your MakeYourMusic password.</p>
         <p style="margin:24px 0"><a href="${link}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Reset Password</a></p>
         <p style="font-size:13px;color:#666">Or paste this link: <br/><code style="word-break:break-all">${link}</code></p>
         <p style="font-size:13px;color:#666;margin-top:24px">This link expires in 1 hour. If you didn't request this, ignore this email — your password won't change.</p>

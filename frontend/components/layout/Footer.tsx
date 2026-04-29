@@ -58,7 +58,7 @@ export function Footer() {
       </div>
 
       <div className="mt-8 pt-5 border-t border-[color:var(--stroke)] flex flex-col md:flex-row justify-between gap-2 text-xs text-[color:var(--text-mute)]">
-        <p>© {year} Morlo.ai · All rights reserved.</p>
+        <p>© {year} MakeYourMusic · All rights reserved.</p>
         <p>
           AI-generated content. See <Link href="/terms" className="underline hover:text-white">Terms</Link> for licensing details.
         </p>

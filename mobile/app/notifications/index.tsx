@@ -4,7 +4,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useAuthStore, getApi } from '@morlo/shared';
+import { useAuthStore, getApi } from '@makeyourmusic/shared';
 import {
   ArrowLeft, Bell, Heart, UserPlus, MessageSquare, Music, Check,
   Trash2, Lock, AlertCircle,

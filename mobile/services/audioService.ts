@@ -8,9 +8,9 @@ import TrackPlayer, {
   useProgress,
   useActiveTrack,
 } from 'react-native-track-player';
-import { usePlayerStore } from '@morlo/shared';
-import type { TrackItem } from '@morlo/shared';
-import { getApi } from '@morlo/shared';
+import { usePlayerStore } from '@makeyourmusic/shared';
+import type { TrackItem } from '@makeyourmusic/shared';
+import { getApi } from '@makeyourmusic/shared';
 import { getLocalUri } from './downloadService';
 
 let isInitialized = false;

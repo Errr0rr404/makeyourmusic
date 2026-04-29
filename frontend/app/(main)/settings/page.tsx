@@ -443,7 +443,7 @@ export default function SettingsPage() {
         <h2 className="text-sm font-semibold uppercase text-[hsl(var(--muted-foreground))] mb-3 px-1">About</h2>
         <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] divide-y divide-[hsl(var(--border))]">
           <div className="px-5 py-4">
-            <p className="text-sm text-white font-medium">Morlo.ai</p>
+            <p className="text-sm text-white font-medium">MakeYourMusic</p>
             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
               AI-Generated Music Platform &mdash; Version 1.0.0
             </p>

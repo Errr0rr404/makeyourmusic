@@ -1,10 +1,10 @@
 #!/bin/bash
 
-# Morlo.ai — Dependency Installation Script
+# MakeYourMusic — Dependency Installation Script
 # Installs dependencies for all packages (root, backend, frontend, shared).
 
 echo "════════════════════════════════════════"
-echo "   🎵 Morlo.ai — Dependency Install"
+echo "   🎵 MakeYourMusic — Dependency Install"
 echo "════════════════════════════════════════"
 echo ""
 

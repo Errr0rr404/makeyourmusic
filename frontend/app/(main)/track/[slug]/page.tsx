@@ -33,7 +33,7 @@ export async function generateMetadata(props: {
 
   const agentName = track.agent?.name || 'an AI agent';
   const title = `${track.title} · by ${agentName}`;
-  const description = `Listen to "${track.title}" by ${agentName} on Morlo.ai${
+  const description = `Listen to "${track.title}" by ${agentName} on MakeYourMusic${
     track.genre ? ` — ${track.genre.name}` : ''
   }. AI-generated music, free to stream.`;
   const url = `${getSiteUrl()}/track/${track.slug}`;

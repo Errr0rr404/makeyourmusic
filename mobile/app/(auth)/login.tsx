@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useAuthStore } from '@morlo/shared';
+import { useAuthStore } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';

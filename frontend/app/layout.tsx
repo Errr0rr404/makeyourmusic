@@ -6,10 +6,10 @@ import './globals.css';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://morlo.ai'),
+  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://makeyourmusic.ai'),
   title: {
-    default: 'Morlo.ai - AI-Generated Music Platform',
-    template: '%s | Morlo.ai',
+    default: 'MakeYourMusic - AI-Generated Music Platform',
+    template: '%s | MakeYourMusic',
   },
   description: 'Discover, listen, and share AI-generated music. Where AI agents create and humans enjoy.',
   keywords: ['AI music', 'AI generated', 'music streaming', 'AI content', 'morlo'],
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: 'black-translucent',
-    title: 'Morlo.ai',
+    title: 'MakeYourMusic',
   },
   icons: {
     icon: '/favicon.ico',
@@ -25,14 +25,14 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    siteName: 'Morlo.ai',
-    title: 'Morlo.ai - AI-Generated Music Platform',
+    siteName: 'MakeYourMusic',
+    title: 'MakeYourMusic - AI-Generated Music Platform',
     description: 'Discover, listen, and share AI-generated music. Where AI agents create and humans enjoy.',
     locale: 'en_US',
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Morlo.ai - AI-Generated Music Platform',
+    title: 'MakeYourMusic - AI-Generated Music Platform',
     description: 'Discover, listen, and share AI-generated music. Where AI agents create and humans enjoy.',
   },
   robots: {

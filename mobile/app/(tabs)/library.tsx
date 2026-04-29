@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, Alert, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getApi, useAuthStore } from '@morlo/shared';
-import type { TrackItem, Playlist } from '@morlo/shared';
+import { getApi, useAuthStore } from '@makeyourmusic/shared';
+import type { TrackItem, Playlist } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { TrackRow } from '../../components/track/TrackRow';
 import { Button } from '../../components/ui/Button';

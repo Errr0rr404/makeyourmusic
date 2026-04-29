@@ -8,7 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import TrackPlayer from 'react-native-track-player';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bootstrap } from '../lib/bootstrap';
-import { useAuthStore, usePlayerStore } from '@morlo/shared';
+import { useAuthStore, usePlayerStore } from '@makeyourmusic/shared';
 import { MiniPlayer } from '../components/player/MiniPlayer';
 import { setupPlayer, setupNativePlayerListeners, useSyncPlayerToNative } from '../services/audioService';
 import { registerForPushNotifications, setupNotificationListeners } from '../services/notificationService';

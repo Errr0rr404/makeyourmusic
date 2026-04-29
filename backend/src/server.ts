@@ -119,7 +119,7 @@ if (process.env.NODE_ENV !== 'test') {
   }
 
   const server = app.listen(PORT, '0.0.0.0', () => {
-    logger.info('Morlo.ai API started', {
+    logger.info('MakeYourMusic API started', {
       port: PORT,
       environment: process.env.NODE_ENV || 'development',
       cors: allowedOrigins,

@@ -1,7 +1,7 @@
 {
-  "name": "morlo",
+  "name": "makeyourmusic",
   "version": "1.0.0",
-  "description": "Morlo.ai - AI-Generated Content Platform",
+  "description": "MakeYourMusic - AI-Generated Content Platform",
   "private": true,
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",

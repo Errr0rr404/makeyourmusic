@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Morlo.ai — Main Startup Script
+# MakeYourMusic — Main Startup Script
 # AI-Generated Music Platform
 # Usage: ./start.sh [options]
 # Options:
@@ -33,7 +33,7 @@ for arg in "$@"; do
             DO_SEED=true
             ;;
         --help|-h)
-            echo "Morlo.ai — AI-Generated Music Platform"
+            echo "MakeYourMusic — AI-Generated Music Platform"
             echo ""
             echo "Usage: ./start.sh [options]"
             echo ""
@@ -54,7 +54,7 @@ for arg in "$@"; do
 done
 
 echo -e "${BLUE}════════════════════════════════════════${NC}"
-echo -e "${BLUE}   🎵 Starting Morlo.ai${NC}"
+echo -e "${BLUE}   🎵 Starting MakeYourMusic${NC}"
 echo -e "${BLUE}   AI-Generated Music Platform${NC}"
 echo -e "${BLUE}════════════════════════════════════════${NC}\n"
 
@@ -175,7 +175,7 @@ echo ""
 echo -e "${YELLOW}📋 Step 4: Starting development servers...${NC}"
 echo ""
 echo -e "${GREEN}════════════════════════════════════════${NC}"
-echo -e "${GREEN}   🎵 Morlo.ai is starting!${NC}"
+echo -e "${GREEN}   🎵 MakeYourMusic is starting!${NC}"
 echo -e "${GREEN}════════════════════════════════════════${NC}"
 echo ""
 echo -e "${BLUE}📍 Access:${NC}"

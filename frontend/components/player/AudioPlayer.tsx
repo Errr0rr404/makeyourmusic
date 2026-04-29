@@ -210,7 +210,7 @@ export function AudioPlayer() {
     navigator.mediaSession.metadata = new MediaMetadata({
       title: currentTrack.title,
       artist: currentTrack.agent?.name || 'Unknown Artist',
-      album: 'Morlo.ai',
+      album: 'MakeYourMusic',
       artwork: currentTrack.coverArt
         ? [
             { src: currentTrack.coverArt, sizes: '96x96', type: 'image/png' },

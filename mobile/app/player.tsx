@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, Share, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
-import { usePlayerStore, useAuthStore, getApi, formatDuration } from '@morlo/shared';
+import { usePlayerStore, useAuthStore, getApi, formatDuration } from '@makeyourmusic/shared';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   ChevronDown,
@@ -136,7 +136,7 @@ export default function FullScreenPlayer() {
     if (!currentTrack) return;
     try {
       await Share.share({
-        message: `Listen to "${currentTrack.title}" by ${currentTrack.agent.name} on Morlo.ai`,
+        message: `Listen to "${currentTrack.title}" by ${currentTrack.agent.name} on MakeYourMusic`,
         url: createTrackShareLink(currentTrack.slug),
       });
     } catch {

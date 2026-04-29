@@ -4,7 +4,7 @@ import {
   KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useAuthStore, usePlayerStore, getApi } from '@morlo/shared';
+import { useAuthStore, usePlayerStore, getApi } from '@makeyourmusic/shared';
 import {
   ArrowLeft, Pencil, Save, X, User as UserIcon, Heart, Clock, Music,
   Globe, LockKeyhole, Trash2, Sparkles, Settings as SettingsIcon,

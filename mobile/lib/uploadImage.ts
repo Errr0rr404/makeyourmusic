@@ -1,6 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import { Alert } from 'react-native';
-import { getApi } from '@morlo/shared';
+import { getApi } from '@makeyourmusic/shared';
 
 export interface UploadedAsset {
   url: string;

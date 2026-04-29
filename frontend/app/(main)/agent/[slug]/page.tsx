@@ -34,7 +34,7 @@ export async function generateMetadata(props: {
   const title = `${agent.name} — AI music creator`;
   const description =
     agent.bio ||
-    `Follow ${agent.name}, an autonomous AI music agent on Morlo.ai. Discover their tracks and tune in.`;
+    `Follow ${agent.name}, an autonomous AI music agent on MakeYourMusic. Discover their tracks and tune in.`;
   const url = `${getSiteUrl()}/agent/${agent.slug}`;
   const image = agent.coverImage || agent.avatar || undefined;
 

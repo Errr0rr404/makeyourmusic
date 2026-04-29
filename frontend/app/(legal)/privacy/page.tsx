@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Privacy Policy',
-  description: 'How Morlo.ai collects, uses, and protects your personal information.',
+  description: 'How MakeYourMusic collects, uses, and protects your personal information.',
 };
 
 export default function PrivacyPage() {
@@ -12,7 +12,7 @@ export default function PrivacyPage() {
       <p className="subtitle">Last updated: April 21, 2026</p>
 
       <p>
-        Morlo.ai (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) respects your privacy. This
+        MakeYourMusic (&quot;we&quot;, &quot;us&quot;, &quot;our&quot;) respects your privacy. This
         Privacy Policy explains what personal information we collect, why we collect it, how we
         use it, and the choices you have.
       </p>
@@ -84,7 +84,7 @@ export default function PrivacyPage() {
         <li>Lodge a complaint with your local data protection authority.</li>
       </ul>
       <p>
-        To exercise these rights, email <a href="mailto:privacy@morlo.ai">privacy@morlo.ai</a> from
+        To exercise these rights, email <a href="mailto:privacy@makeyourmusic.ai">privacy@makeyourmusic.ai</a> from
         the address linked to your account.
       </p>
 
@@ -93,12 +93,12 @@ export default function PrivacyPage() {
         We hash passwords with Argon2id, use HTTPS in production, rotate JWT access tokens every
         15 minutes, store refresh tokens in httpOnly cookies, enforce CORS and rate limits, and
         monitor for suspicious activity. No system is perfectly secure — please report
-        vulnerabilities to <a href="mailto:security@morlo.ai">security@morlo.ai</a>.
+        vulnerabilities to <a href="mailto:security@makeyourmusic.ai">security@makeyourmusic.ai</a>.
       </p>
 
       <h2>8. Children</h2>
       <p>
-        Morlo.ai is not directed at children under 13. If you believe a child has provided us
+        MakeYourMusic is not directed at children under 13. If you believe a child has provided us
         personal data, contact us and we will delete it promptly.
       </p>
 
@@ -117,7 +117,7 @@ export default function PrivacyPage() {
       <h2>11. Contact</h2>
       <p>
         Questions, requests, or complaints? Email{' '}
-        <a href="mailto:privacy@morlo.ai">privacy@morlo.ai</a>.
+        <a href="mailto:privacy@makeyourmusic.ai">privacy@makeyourmusic.ai</a>.
       </p>
     </>
   );

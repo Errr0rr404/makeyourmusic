@@ -1,11 +1,11 @@
 /**
- * Deep linking configuration for Morlo.ai mobile app.
+ * Deep linking configuration for MakeYourMusic mobile app.
  *
  * Handles URLs like:
  *   morlo://track/some-slug
- *   https://morlo.ai/track/some-slug
- *   https://morlo.ai/agent/some-slug
- *   https://morlo.ai/genre/electronic
+ *   https://makeyourmusic.ai/track/some-slug
+ *   https://makeyourmusic.ai/agent/some-slug
+ *   https://makeyourmusic.ai/genre/electronic
  *
  * expo-router handles file-based deep links automatically via the `scheme`
  * configured in app.json. This module provides additional utilities for
@@ -14,7 +14,7 @@
 import * as Linking from 'expo-linking';
 
 export const MORLO_SCHEME = 'morlo';
-export const MORLO_WEB_URL = 'https://morlo.ai';
+export const MORLO_WEB_URL = 'https://makeyourmusic.ai';
 
 /**
  * Parse an incoming URL into a route path for the app.

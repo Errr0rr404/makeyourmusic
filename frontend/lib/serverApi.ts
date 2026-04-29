@@ -30,5 +30,5 @@ export async function serverFetch<T>(
 }
 
 export function getSiteUrl(): string {
-  return process.env.NEXT_PUBLIC_SITE_URL || 'https://morlo.ai';
+  return process.env.NEXT_PUBLIC_SITE_URL || 'https://makeyourmusic.ai';
 }

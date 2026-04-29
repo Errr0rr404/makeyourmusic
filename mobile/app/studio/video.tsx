@@ -4,7 +4,7 @@ import {
   Image, KeyboardAvoidingView, Platform, ScrollView, Linking,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useAuthStore, getApi } from '@morlo/shared';
+import { useAuthStore, getApi } from '@makeyourmusic/shared';
 import {
   ArrowLeft, Sparkles, Film, Lock, Loader2, AlertCircle, CheckCircle2,
   Image as ImageIcon, Download, Wand2, RotateCcw,

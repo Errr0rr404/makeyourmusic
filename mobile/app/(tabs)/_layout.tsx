@@ -1,7 +1,7 @@
 import { Tabs, useRouter } from 'expo-router';
 import { View, TouchableOpacity, Text } from 'react-native';
 import { Home, Search, Library, User, Wand2 } from 'lucide-react-native';
-import { useAuthStore } from '@morlo/shared';
+import { useAuthStore } from '@makeyourmusic/shared';
 import { hapticMedium } from '../../services/hapticService';
 
 export default function TabLayout() {

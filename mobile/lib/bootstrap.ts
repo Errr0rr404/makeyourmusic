@@ -1,5 +1,5 @@
 import Constants from 'expo-constants';
-import { setStorageAdapter, createApi } from '@morlo/shared';
+import { setStorageAdapter, createApi } from '@makeyourmusic/shared';
 import { SecureStorageAdapter } from './secureStorage';
 
 const PROD_API_URL = 'https://morlo-production.up.railway.app/api';

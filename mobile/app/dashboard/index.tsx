@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, FlatList, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
-import { getApi, useAuthStore, formatCount } from '@morlo/shared';
+import { getApi, useAuthStore, formatCount } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';

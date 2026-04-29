@@ -22,7 +22,7 @@ import {
   PLAYBACK_SPEEDS,
   DEFAULT_EQ_BANDS,
   type PlaybackSpeed,
-} from '@morlo/shared';
+} from '@makeyourmusic/shared';
 import Slider from '../ui/Slider';
 import { hapticLight } from '../../services/hapticService';
 

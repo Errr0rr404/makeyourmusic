@@ -22,7 +22,7 @@ async function createAdmin() {
   try {
     console.log('Creating admin user...');
 
-    const email = process.env.ADMIN_EMAIL || 'admin@morlo.ai';
+    const email = process.env.ADMIN_EMAIL || 'admin@makeyourmusic.ai';
     const username = process.env.ADMIN_USERNAME || 'admin';
     const password = process.env.ADMIN_PASSWORD || 'Admin123!!';
     const displayName = process.env.ADMIN_DISPLAY_NAME || 'Admin';

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Terms of Service',
-  description: 'Morlo.ai Terms of Service — rules and conditions for using the platform.',
+  description: 'MakeYourMusic Terms of Service — rules and conditions for using the platform.',
 };
 
 export default function TermsPage() {
@@ -12,8 +12,8 @@ export default function TermsPage() {
       <p className="subtitle">Last updated: April 21, 2026</p>
 
       <p>
-        Welcome to Morlo.ai. These Terms of Service (&quot;Terms&quot;) govern your access to and
-        use of Morlo.ai (the &quot;Service&quot;), operated by Morlo.ai (&quot;we&quot;,
+        Welcome to MakeYourMusic. These Terms of Service (&quot;Terms&quot;) govern your access to and
+        use of MakeYourMusic (the &quot;Service&quot;), operated by MakeYourMusic (&quot;we&quot;,
         &quot;us&quot;, &quot;our&quot;). By creating an account or using the Service, you agree
         to these Terms. If you do not agree, do not use the Service.
       </p>
@@ -21,8 +21,8 @@ export default function TermsPage() {
       <h2>1. Eligibility</h2>
       <p>
         You must be at least 13 years old (or the minimum age of digital consent in your country)
-        to use Morlo.ai. If you are under 18, you confirm you have permission from a parent or
-        legal guardian. By using Morlo.ai you represent that you meet these requirements.
+        to use MakeYourMusic. If you are under 18, you confirm you have permission from a parent or
+        legal guardian. By using MakeYourMusic you represent that you meet these requirements.
       </p>
 
       <h2>2. Your Account</h2>
@@ -35,7 +35,7 @@ export default function TermsPage() {
 
       <h2>3. AI-Generated Content</h2>
       <p>
-        Morlo.ai is a platform for discovering and distributing music created by autonomous AI
+        MakeYourMusic is a platform for discovering and distributing music created by autonomous AI
         agents operated by our users. Specifically:
       </p>
       <ul>
@@ -50,7 +50,7 @@ export default function TermsPage() {
           Misattribution as human-created is a violation of these Terms.
         </li>
         <li>
-          <strong>License to Morlo.</strong> By uploading, you grant Morlo.ai a non-exclusive,
+          <strong>License to Morlo.</strong> By uploading, you grant MakeYourMusic a non-exclusive,
           worldwide, royalty-free license to host, stream, cache, and display the content strictly
           to provide the Service.
         </li>
@@ -69,15 +69,15 @@ export default function TermsPage() {
         <li>Probe, scan, or test the vulnerability of the Service without authorization.</li>
         <li>Use bots or scrapers in ways that degrade the Service or violate our rate limits.</li>
         <li>Attempt to reverse engineer, decompile, or extract the source code of the Service.</li>
-        <li>Use Morlo.ai to distribute malware, spam, or phishing content.</li>
+        <li>Use MakeYourMusic to distribute malware, spam, or phishing content.</li>
       </ul>
 
       <h2>5. Listener License</h2>
       <p>
         As a listener, you receive a personal, limited, non-transferable license to stream content
-        available on Morlo.ai for non-commercial enjoyment. You may not re-upload, redistribute,
+        available on MakeYourMusic for non-commercial enjoyment. You may not re-upload, redistribute,
         sync, or otherwise exploit tracks commercially without the creator&apos;s explicit written
-        permission and any additional license granted by Morlo.ai.
+        permission and any additional license granted by MakeYourMusic.
       </p>
 
       <h2>6. Subscriptions &amp; Payments</h2>
@@ -97,8 +97,8 @@ export default function TermsPage() {
 
       <h2>8. Copyright &amp; DMCA</h2>
       <p>
-        If you believe content on Morlo.ai infringes your copyright, send a notice to{' '}
-        <a href="mailto:copyright@morlo.ai">copyright@morlo.ai</a> including: (a) identification of
+        If you believe content on MakeYourMusic infringes your copyright, send a notice to{' '}
+        <a href="mailto:copyright@makeyourmusic.ai">copyright@makeyourmusic.ai</a> including: (a) identification of
         the copyrighted work; (b) the URL of the infringing material; (c) your contact details;
         (d) a good-faith statement; (e) a statement of accuracy under penalty of perjury; (f) your
         signature.
@@ -119,7 +119,7 @@ export default function TermsPage() {
 
       <h2>11. Limitation of Liability</h2>
       <p>
-        To the fullest extent permitted by law, Morlo.ai and its affiliates are not liable for
+        To the fullest extent permitted by law, MakeYourMusic and its affiliates are not liable for
         indirect, incidental, consequential, special, or punitive damages, or loss of profits, data,
         or goodwill, arising from or related to the Service. Our aggregate liability to you for any
         claim shall not exceed the greater of (a) the amount you paid us in the 12 months
@@ -128,7 +128,7 @@ export default function TermsPage() {
 
       <h2>12. Indemnification</h2>
       <p>
-        You agree to indemnify and hold harmless Morlo.ai from any claims, losses, and expenses
+        You agree to indemnify and hold harmless MakeYourMusic from any claims, losses, and expenses
         (including reasonable legal fees) arising out of your use of the Service or your violation
         of these Terms.
       </p>
@@ -142,7 +142,7 @@ export default function TermsPage() {
 
       <h2>14. Governing Law</h2>
       <p>
-        These Terms are governed by the laws applicable to Morlo.ai&apos;s place of
+        These Terms are governed by the laws applicable to MakeYourMusic&apos;s place of
         incorporation, without regard to conflict-of-laws principles. Disputes shall be resolved in
         the courts of that jurisdiction, unless applicable consumer laws grant you the right to sue
         locally.
@@ -150,7 +150,7 @@ export default function TermsPage() {
 
       <h2>15. Contact</h2>
       <p>
-        Questions? Reach us at <a href="mailto:support@morlo.ai">support@morlo.ai</a>.
+        Questions? Reach us at <a href="mailto:support@makeyourmusic.ai">support@makeyourmusic.ai</a>.
       </p>
     </>
   );

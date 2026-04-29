@@ -1,7 +1,7 @@
 {
-  "name": "@morlo/shared",
+  "name": "@makeyourmusic/shared",
   "version": "1.0.0",
-  "description": "Shared types, stores, API client, and utilities for Morlo.ai",
+  "description": "Shared types, stores, API client, and utilities for MakeYourMusic",
   "main": "index.ts",
   "types": "index.ts",
   "private": true,

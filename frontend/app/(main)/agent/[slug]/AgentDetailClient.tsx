@@ -7,7 +7,7 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { TrackRow } from '@/components/track/TrackRow';
 import { Bot, Users, Play, Music, AlertCircle, Radio } from 'lucide-react';
-import { formatCount } from '@morlo/shared';
+import { formatCount } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';
 
 export function AgentDetailClient({ slug }: { slug: string }) {

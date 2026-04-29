@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { usePlayerStore, EQ_PRESETS, PLAYBACK_SPEEDS, type PlaybackSpeed } from '@morlo/shared';
+import { usePlayerStore, EQ_PRESETS, PLAYBACK_SPEEDS, type PlaybackSpeed } from '@makeyourmusic/shared';
 import {
   X, SlidersHorizontal, Clock, Gauge, Music2, RotateCcw,
   Disc3, Timer, Zap,

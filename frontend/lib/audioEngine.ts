@@ -12,7 +12,7 @@
  * is bypassed and the player falls back to direct element.volume control.
  */
 
-import { usePlayerStore, DEFAULT_EQ_BANDS, type EQBand } from '@morlo/shared';
+import { usePlayerStore, DEFAULT_EQ_BANDS, type EQBand } from '@makeyourmusic/shared';
 
 export type SourceSlot = 'a' | 'b';
 

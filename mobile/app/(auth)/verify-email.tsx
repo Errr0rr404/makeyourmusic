@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { getApi, useAuthStore } from '@morlo/shared';
+import { getApi, useAuthStore } from '@makeyourmusic/shared';
 import { Mail, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';

@@ -2,7 +2,7 @@ import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
 import { Play, Pause, SkipForward } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { usePlayerStore } from '@morlo/shared';
+import { usePlayerStore } from '@makeyourmusic/shared';
 
 export function MiniPlayer() {
   const router = useRouter();

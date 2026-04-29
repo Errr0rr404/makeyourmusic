@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Morlo.ai — Production Build Script
+# MakeYourMusic — Production Build Script
 # Builds backend (TypeScript) and frontend (Next.js) for deployment.
 
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo "  Morlo.ai — Production Build"
+echo "  MakeYourMusic — Production Build"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
 # Generate Prisma client

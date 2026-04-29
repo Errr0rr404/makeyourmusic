@@ -28,7 +28,7 @@
           }
         ]
       },
-      "associatedDomains": ["applinks:morlo.ai"],
+      "associatedDomains": ["applinks:makeyourmusic.ai"],
       "config": {
         "usesNonExemptEncryption": false
       }
@@ -47,17 +47,17 @@
           "data": [
             {
               "scheme": "https",
-              "host": "morlo.ai",
+              "host": "makeyourmusic.ai",
               "pathPrefix": "/track"
             },
             {
               "scheme": "https",
-              "host": "morlo.ai",
+              "host": "makeyourmusic.ai",
               "pathPrefix": "/agent"
             },
             {
               "scheme": "https",
-              "host": "morlo.ai",
+              "host": "makeyourmusic.ai",
               "pathPrefix": "/genre"
             }
           ],

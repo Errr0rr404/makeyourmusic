@@ -1,5 +1,5 @@
 import * as SecureStore from 'expo-secure-store';
-import type { StorageAdapter } from '@morlo/shared';
+import type { StorageAdapter } from '@makeyourmusic/shared';
 
 /**
  * Expo SecureStore adapter for the shared StorageAdapter interface.

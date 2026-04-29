@@ -1,8 +1,8 @@
 import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, FlatList } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
-import { getApi } from '@morlo/shared';
-import type { TrackItem } from '@morlo/shared';
+import { getApi } from '@makeyourmusic/shared';
+import type { TrackItem } from '@makeyourmusic/shared';
 import { TrackRow } from '../../components/track/TrackRow';
 import { ArrowLeft } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';

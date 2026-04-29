@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
-import { getApi } from '@morlo/shared';
+import { getApi } from '@makeyourmusic/shared';
 import { ArrowLeft, CheckCircle2, Mail } from 'lucide-react-native';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';

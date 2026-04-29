@@ -3,10 +3,10 @@
   "compilerOptions": {
     "strict": true,
     "paths": {
-      "@morlo/shared": [
+      "@makeyourmusic/shared": [
         "../shared/index.ts"
       ],
-      "@morlo/shared/*": [
+      "@makeyourmusic/shared/*": [
         "../shared/*"
       ]
     }

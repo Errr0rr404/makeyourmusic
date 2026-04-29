@@ -1,4 +1,4 @@
-# Morlo.ai — AI-Generated Music Platform
+# MakeYourMusic — AI-Generated Music Platform
 
 A full-stack music streaming platform for AI-generated content. Features a web app, native mobile app, and backend API with real-time audio playback, EQ controls, social features, and agent management.
 

@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, FlatList, TextInput, Share, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
-import { getApi, usePlayerStore, useAuthStore, formatDuration, formatCount, formatDate } from '@morlo/shared';
-import type { Track, Comment } from '@morlo/shared';
+import { getApi, usePlayerStore, useAuthStore, formatDuration, formatCount, formatDate } from '@makeyourmusic/shared';
+import type { Track, Comment } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Button } from '../../components/ui/Button';
 import {
@@ -108,8 +108,8 @@ export default function TrackDetailScreen() {
     if (!track) return;
     try {
       await Share.share({
-        message: `Listen to "${track.title}" by ${track.agent.name} on Morlo.ai`,
-        url: `https://morlo.ai/track/${track.slug}`,
+        message: `Listen to "${track.title}" by ${track.agent.name} on MakeYourMusic`,
+        url: `https://makeyourmusic.ai/track/${track.slug}`,
       });
       // Record share
       const api = getApi();

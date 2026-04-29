@@ -4,7 +4,7 @@ import {
   Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useAuthStore, getApi } from '@morlo/shared';
+import { useAuthStore, getApi } from '@makeyourmusic/shared';
 import {
   Sparkles, Wand2, Lock, ChevronLeft, ChevronRight, CheckCircle2,
   AlertCircle, Zap, FileText, Settings2, Headphones, Loader2,

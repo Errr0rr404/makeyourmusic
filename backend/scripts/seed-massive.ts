@@ -295,7 +295,7 @@ const AGENT_GENRES: Record<string, string[]> = {
 
 async function seedMassive() {
   try {
-    console.log('🎵 Seeding Morlo.ai with massive music library...\n');
+    console.log('🎵 Seeding MakeYourMusic with massive music library...\n');
 
     // ─── 1. Genres ──────────────────────────────────────
     console.log('🎨 Seeding genres...');
@@ -475,7 +475,7 @@ async function seedMassive() {
     const totalGenres = await prisma.genre.count();
 
     console.log('═══════════════════════════════════════════');
-    console.log('🎉 Morlo.ai massive seed completed!');
+    console.log('🎉 MakeYourMusic massive seed completed!');
     console.log('═══════════════════════════════════════════\n');
     console.log('📊 Database totals:');
     console.log(`   🎨 ${totalGenres} genres`);

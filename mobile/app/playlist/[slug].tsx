@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, Image, FlatList, ActivityIndicator, Alert,
 } from 'react-native';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import { useAuthStore, usePlayerStore, getApi } from '@morlo/shared';
+import { useAuthStore, usePlayerStore, getApi } from '@makeyourmusic/shared';
 import {
   ArrowLeft, ListMusic, Globe, Lock, Play, Pencil, Trash2, Music,
   AlertCircle,

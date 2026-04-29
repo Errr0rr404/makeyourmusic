@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 // Audio preview cleanup on blur uses the Audio import below
-import { useAuthStore, getApi } from '@morlo/shared';
+import { useAuthStore, getApi } from '@makeyourmusic/shared';
 import {
   ArrowLeft, Sparkles, Wand2, Clock, CheckCircle2, AlertCircle, XCircle,
   Play, Pause, Globe, LockKeyhole, Trash2, Upload, RefreshCw, Lock,
