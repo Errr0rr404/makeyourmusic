@@ -25,6 +25,7 @@ export const authenticate = async (req: RequestWithUser, res: Response, next: Ne
       email: decoded.email,
       role: decoded.role as UserRole,
       sessionId: decoded.sessionId,
+      tv: decoded.tv,
     };
 
     next();

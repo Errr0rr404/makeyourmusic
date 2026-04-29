@@ -78,12 +78,18 @@ export default function CreateScreen() {
     };
   }, []);
 
-  // Pause audio + polling when the screen loses focus (user swipes modal away)
+  // Pause audio + cancel polling when the screen loses focus (user swipes the
+  // modal away). The full unmount cleanup also clears these, but blur fires
+  // before unmount and stops generations from quietly polling in the background.
   useFocusEffect(
     useCallback(() => {
       return () => {
         if (previewSound.current) {
           previewSound.current.pauseAsync?.().catch(() => {});
+        }
+        if (pollTimer.current) {
+          clearTimeout(pollTimer.current);
+          pollTimer.current = null;
         }
       };
     }, [])
@@ -231,7 +237,10 @@ export default function CreateScreen() {
     setPlayingPreview(true);
   };
 
+  const [uploadingCover, setUploadingCover] = useState(false);
   const uploadCover = async () => {
+    if (uploadingCover) return;
+    setUploadingCover(true);
     try {
       const asset = await pickAndUploadImage({ aspect: [1, 1], quality: 0.9 });
       if (asset?.url) {
@@ -240,6 +249,8 @@ export default function CreateScreen() {
       }
     } catch (err: any) {
       Alert.alert('Upload failed', err?.message || 'Could not upload cover');
+    } finally {
+      setUploadingCover(false);
     }
   };
 
@@ -330,6 +341,7 @@ export default function CreateScreen() {
               setPublishGenreId={setPublishGenreId}
               publishCover={publishCover}
               uploadCover={uploadCover}
+              uploadingCover={uploadingCover}
               publishPublic={publishPublic}
               setPublishPublic={setPublishPublic}
               publishing={publishing}
@@ -716,7 +728,7 @@ function GenerateStep({ generation, error, onRetry, onStartOver, onBack }: any) 
 function PublishStep({
   generation, title, setTitle, agents, genres,
   publishAgentId, setPublishAgentId, publishGenreId, setPublishGenreId,
-  publishCover, uploadCover, publishPublic, setPublishPublic,
+  publishCover, uploadCover, uploadingCover, publishPublic, setPublishPublic,
   publishing, playingPreview, togglePreview, onPublish, onStartOver,
 }: any) {
   useEffect(() => {
@@ -769,9 +781,16 @@ function PublishStep({
         <Text className="text-mym-text text-sm font-semibold mb-2">Cover art</Text>
         <TouchableOpacity
           onPress={uploadCover}
+          disabled={uploadingCover}
           className="w-28 h-28 rounded-xl bg-mym-surface border-2 border-dashed border-mym-border items-center justify-center mb-4 overflow-hidden"
+          style={uploadingCover ? { opacity: 0.6 } : undefined}
         >
-          {publishCover ? (
+          {uploadingCover ? (
+            <View className="items-center">
+              <ActivityIndicator size="small" color="#8b5cf6" />
+              <Text className="text-mym-muted text-xs mt-2">Uploading…</Text>
+            </View>
+          ) : publishCover ? (
             <Image source={{ uri: publishCover }} className="w-full h-full" />
           ) : (
             <View className="items-center">

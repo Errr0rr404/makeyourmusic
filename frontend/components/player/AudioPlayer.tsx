@@ -511,6 +511,10 @@ export function AudioPlayer() {
                 max={duration || 0}
                 value={progress}
                 onChange={handleSeek}
+                aria-label="Seek"
+                aria-valuemin={0}
+                aria-valuemax={duration || 0}
+                aria-valuenow={progress}
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
@@ -580,6 +584,7 @@ export function AudioPlayer() {
               step={0.01}
               value={volume}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
+              aria-label="Volume"
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
             />
           </div>

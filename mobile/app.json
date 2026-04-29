@@ -59,6 +59,11 @@
               "scheme": "https",
               "host": "makeyourmusic.ai",
               "pathPrefix": "/genre"
+            },
+            {
+              "scheme": "https",
+              "host": "makeyourmusic.ai",
+              "pathPrefix": "/playlist"
             }
           ],
           "category": ["BROWSABLE", "DEFAULT"]

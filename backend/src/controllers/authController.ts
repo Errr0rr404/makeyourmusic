@@ -99,7 +99,7 @@ export const register = async (req: RequestWithUser, res: Response) => {
       },
       select: {
         id: true, email: true, username: true, displayName: true, role: true, avatar: true,
-        emailVerified: true,
+        emailVerified: true, tokenVersion: true,
       },
     });
 
@@ -109,6 +109,7 @@ export const register = async (req: RequestWithUser, res: Response) => {
       userId: user.id,
       email: user.email,
       role: user.role,
+      tv: user.tokenVersion,
     });
 
     res.cookie('refreshToken', refreshToken, {
@@ -118,7 +119,8 @@ export const register = async (req: RequestWithUser, res: Response) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.status(201).json({ user, accessToken });
+    const { tokenVersion: _tv, ...safeUser } = user;
+    res.status(201).json({ user: safeUser, accessToken });
   } catch (error) {
     logger.error('Registration error', { error: (error as Error).message });
     res.status(500).json({ error: 'Registration failed' });
@@ -138,7 +140,7 @@ export const login = async (req: RequestWithUser, res: Response) => {
       where: { email },
       select: {
         id: true, email: true, username: true, displayName: true, role: true, avatar: true,
-        passwordHash: true, emailVerified: true,
+        passwordHash: true, emailVerified: true, tokenVersion: true,
       },
     });
 
@@ -153,12 +155,13 @@ export const login = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const { passwordHash: _, ...safeUser } = user;
+    const { passwordHash: _, tokenVersion: _tv, ...safeUser } = user;
 
     const { accessToken, refreshToken } = await generateTokenPair({
       userId: user.id,
       email: user.email,
       role: user.role,
+      tv: user.tokenVersion,
     });
 
     res.cookie('refreshToken', refreshToken, {
@@ -231,7 +234,22 @@ export const updateProfile = async (req: RequestWithUser, res: Response) => {
   }
 };
 
-export const logout = async (_req: RequestWithUser, res: Response) => {
+export const logout = async (req: RequestWithUser, res: Response) => {
+  // If authenticated, bump tokenVersion to invalidate ALL outstanding refresh tokens
+  // for this user (covers stolen-cookie scenario).
+  if (req.user?.userId) {
+    try {
+      await prisma.user.update({
+        where: { id: req.user.userId },
+        data: { tokenVersion: { increment: 1 } },
+      });
+    } catch (error) {
+      logger.warn('Failed to bump tokenVersion on logout', {
+        userId: req.user.userId,
+        error: (error as Error).message,
+      });
+    }
+  }
   res.clearCookie('refreshToken');
   res.json({ message: 'Logged out successfully' });
 };
@@ -248,7 +266,7 @@ export const refresh = async (req: RequestWithUser, res: Response) => {
 
     const user = await prisma.user.findUnique({
       where: { id: decoded.userId },
-      select: { id: true, email: true, role: true },
+      select: { id: true, email: true, role: true, tokenVersion: true },
     });
 
     if (!user) {
@@ -256,10 +274,18 @@ export const refresh = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
+    // Reject if the token's version is stale (user logged out / changed password)
+    if (typeof decoded.tv === 'number' && decoded.tv !== user.tokenVersion) {
+      res.clearCookie('refreshToken');
+      res.status(401).json({ error: 'Token revoked' });
+      return;
+    }
+
     const { accessToken, refreshToken } = await generateTokenPair({
       userId: user.id,
       email: user.email,
       role: user.role,
+      tv: user.tokenVersion,
     });
 
     res.cookie('refreshToken', refreshToken, {
@@ -354,6 +380,7 @@ export const resetPassword = async (req: RequestWithUser, res: Response) => {
         passwordHash,
         passwordResetToken: null,
         passwordResetExpires: null,
+        tokenVersion: { increment: 1 },
       },
     });
 
@@ -480,7 +507,10 @@ export const changePassword = async (req: RequestWithUser, res: Response) => {
 
     await prisma.user.update({
       where: { id: user.id },
-      data: { passwordHash },
+      data: {
+        passwordHash,
+        tokenVersion: { increment: 1 },
+      },
     });
 
     res.json({ message: 'Password changed successfully' });

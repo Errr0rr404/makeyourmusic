@@ -90,6 +90,10 @@ export function PlayerSettings() {
   } = usePlayerStore();
 
   const [activeTab, setActiveTab] = useState<'eq' | 'speed' | 'timer' | 'more'>('eq');
+  // Force re-render once per second while a sleep timer is running so the
+  // countdown actually updates. Using a counter avoids reading Date.now() in
+  // the initial render path.
+  const [, setNowTick] = useState(0);
   const panelRef = useRef<HTMLDivElement>(null);
 
   // Close panel on Escape
@@ -100,6 +104,13 @@ export function PlayerSettings() {
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
   }, [showSettings, toggleSettings]);
+
+  // Tick the timer display at 1 Hz while the panel is open and a timer is set
+  useEffect(() => {
+    if (!showSettings || !sleepTimerEnd) return;
+    const id = window.setInterval(() => setNowTick((n) => n + 1), 1000);
+    return () => window.clearInterval(id);
+  }, [showSettings, sleepTimerEnd]);
 
   // Click outside to close
   useEffect(() => {

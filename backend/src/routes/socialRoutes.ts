@@ -6,6 +6,7 @@ import {
   shareTrack,
 } from '../controllers/socialController';
 import { authenticate, optionalAuth } from '../middleware/auth';
+import { commentLimiter } from '../middleware/rateLimiter';
 import { createCommentRules, createPlaylistRules, validateRequest } from '../middleware/validation';
 
 const router = Router();
@@ -17,10 +18,10 @@ router.get('/likes', authenticate as any, getLikedTracks as any);
 // Follows
 router.post('/follows/:agentId', authenticate as any, toggleFollow as any);
 
-// Comments
+// Comments — per-user limiter prevents a single account from spamming across tracks
 router.get('/comments/:trackId', getComments as any);
-router.post('/comments/:trackId', authenticate as any, createCommentRules, validateRequest, createComment as any);
-router.patch('/comments/:id', authenticate as any, createCommentRules, validateRequest, updateComment as any);
+router.post('/comments/:trackId', authenticate as any, commentLimiter, createCommentRules, validateRequest, createComment as any);
+router.patch('/comments/:id', authenticate as any, commentLimiter, createCommentRules, validateRequest, updateComment as any);
 router.delete('/comments/:id', authenticate as any, deleteComment as any);
 
 // Playlists

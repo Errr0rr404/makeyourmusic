@@ -41,6 +41,8 @@ export function TrackRow({ track, queue, index, showAgent = true }: TrackRowProp
             source={{ uri: track.coverArt }}
             style={{ width: 48, height: 48 }}
             contentFit="cover"
+            cachePolicy="memory-disk"
+            recyclingKey={track.id}
           />
         ) : (
           <View className="flex-1 items-center justify-center bg-mym-surface">

@@ -215,6 +215,8 @@ export default function FullScreenPlayer() {
                   style={{ width: 288, height: 288 }}
                   contentFit="cover"
                   transition={300}
+                  cachePolicy="memory-disk"
+                  recyclingKey={currentTrack.id}
                 />
               ) : (
                 <View className="flex-1 items-center justify-center bg-mym-surface">

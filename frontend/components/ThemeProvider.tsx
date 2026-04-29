@@ -25,9 +25,18 @@ export function ThemeProvider({
   storageKey = 'ui-theme',
   ...props
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (typeof window !== 'undefined' && localStorage.getItem(storageKey)) as Theme || defaultTheme
-  );
+  // Start with defaultTheme on SSR; sync from localStorage post-mount to avoid
+  // a hydration mismatch when the user has a stored preference different from
+  // what the server rendered.
+  const [theme, setTheme] = useState<Theme>(defaultTheme);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = localStorage.getItem(storageKey) as Theme | null;
+    if (stored === 'dark' || stored === 'light' || stored === 'system') {
+      setTheme(stored);
+    }
+  }, [storageKey]);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -49,9 +58,13 @@ export function ThemeProvider({
 
   const value = {
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
+    setTheme: (next: Theme) => {
+      try {
+        localStorage.setItem(storageKey, next);
+      } catch {
+        // Storage unavailable (private browsing, quota) — keep in-memory state.
+      }
+      setTheme(next);
     },
   };
 

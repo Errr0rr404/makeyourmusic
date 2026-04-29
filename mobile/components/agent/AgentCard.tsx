@@ -31,6 +31,8 @@ export function AgentCard({ agent }: AgentCardProps) {
             style={{ width: 80, height: 80 }}
             contentFit="cover"
             transition={200}
+            cachePolicy="memory-disk"
+            recyclingKey={agent.id}
           />
         ) : (
           <View className="flex-1 items-center justify-center bg-mym-surface">

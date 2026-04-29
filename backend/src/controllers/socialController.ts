@@ -183,18 +183,33 @@ export const getComments = async (req: RequestWithUser, res: Response) => {
       }
     }
 
-    const comments = await prisma.comment.findMany({
-      where: { trackId, parentId: null },
-      include: {
-        user: { select: { id: true, username: true, displayName: true, avatar: true } },
-        replies: {
-          include: { user: { select: { id: true, username: true, displayName: true, avatar: true } } },
-          orderBy: { createdAt: 'asc' },
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 50);
+    const REPLIES_PER_COMMENT = 25;
+
+    const [comments, total] = await Promise.all([
+      prisma.comment.findMany({
+        where: { trackId, parentId: null },
+        include: {
+          user: { select: { id: true, username: true, displayName: true, avatar: true } },
+          replies: {
+            include: { user: { select: { id: true, username: true, displayName: true, avatar: true } } },
+            orderBy: { createdAt: 'asc' },
+            take: REPLIES_PER_COMMENT,
+          },
+          _count: { select: { replies: true } },
         },
-      },
-      orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.comment.count({ where: { trackId, parentId: null } }),
+    ]);
+
+    res.json({
+      comments,
+      pagination: { page, limit, total, totalPages: Math.ceil(total / limit) },
     });
-    res.json({ comments });
   } catch (error) {
     logger.error('Get comments error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get comments' });

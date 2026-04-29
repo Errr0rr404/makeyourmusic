@@ -34,6 +34,8 @@ export function TrackCard({ track, queue, size = 'md' }: TrackCardProps) {
             style={{ width: '100%', height: '100%' }}
             contentFit="cover"
             transition={200}
+            cachePolicy="memory-disk"
+            recyclingKey={track.id}
           />
         ) : (
           <View className="flex-1 items-center justify-center bg-mym-surface">
@@ -44,6 +46,9 @@ export function TrackCard({ track, queue, size = 'md' }: TrackCardProps) {
           onPress={handlePlay}
           className="absolute bottom-2 right-2 bg-mym-accent rounded-full w-9 h-9 items-center justify-center"
           activeOpacity={0.8}
+          accessibilityLabel={`Play ${track.title}`}
+          accessibilityRole="button"
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Play size={16} color="#fff" fill="#fff" />
         </TouchableOpacity>

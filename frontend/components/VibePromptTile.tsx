@@ -106,8 +106,10 @@ export function VibePromptTile() {
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
+              type="button"
               onClick={() => applySuggestion(s)}
-              className="text-[11px] px-2.5 py-1 rounded-full bg-white/5 text-white/70 hover:bg-white/15 hover:text-white transition-colors"
+              disabled={loading}
+              className="text-[11px] px-2.5 py-1 rounded-full bg-white/5 text-white/70 hover:bg-white/15 hover:text-white transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
               {s}
             </button>

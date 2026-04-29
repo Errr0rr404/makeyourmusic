@@ -202,6 +202,8 @@ export default function TrackDetailScreen() {
                 style={{ width: 256, height: 256 }}
                 contentFit="cover"
                 transition={300}
+                cachePolicy="memory-disk"
+                recyclingKey={track.id}
               />
             ) : (
               <View className="flex-1 items-center justify-center bg-mym-surface">

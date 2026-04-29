@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { toast } from '@/lib/store/toastStore';
 
@@ -42,6 +42,10 @@ export function useKeyboardShortcuts(
     currentTrack, isPlaying, volume, togglePlay, nextTrack, prevTrack,
     setVolume, setProgress, toggleShuffle, toggleRepeat, shuffle, repeat,
   } = usePlayerStore();
+
+  // Remember the volume from before mute so unmute restores it. A ref instead
+  // of a window global avoids polluting global scope and persists per-tab.
+  const prevVolRef = useRef<number>(0.8);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -99,12 +103,11 @@ export function useKeyboardShortcuts(
         case 'M':
           e.preventDefault();
           if (volume > 0) {
-            // Store previous volume and mute
-            (window as any).__mym_prev_vol = volume;
+            prevVolRef.current = volume;
             setVolume(0);
             toast.info('Muted');
           } else {
-            setVolume((window as any).__mym_prev_vol ?? 0.8);
+            setVolume(prevVolRef.current || 0.8);
             toast.info('Unmuted');
           }
           break;

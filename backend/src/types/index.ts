@@ -14,6 +14,7 @@ export interface JWTPayload {
   role: UserRole;
   jti?: string;
   sessionId?: string;
+  tv?: number; // tokenVersion — bumped on logout/password change to invalidate
 }
 
 export interface RequestWithUser extends Request {
@@ -22,5 +23,6 @@ export interface RequestWithUser extends Request {
     email: string;
     role: UserRole;
     sessionId?: string;
+    tv?: number;
   };
 }

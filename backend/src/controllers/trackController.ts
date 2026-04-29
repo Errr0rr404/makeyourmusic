@@ -116,7 +116,12 @@ export const listTracks = async (req: RequestWithUser, res: Response) => {
   try {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 50);
-    const sort = (req.query.sort as string) || 'newest';
+    const VALID_SORTS = ['newest', 'popular', 'liked'] as const;
+    type SortKey = (typeof VALID_SORTS)[number];
+    const rawSort = (req.query.sort as string) || 'newest';
+    const sort: SortKey = (VALID_SORTS as readonly string[]).includes(rawSort)
+      ? (rawSort as SortKey)
+      : 'newest';
     const genreSlug = req.query.genre as string | undefined;
     const agentId = req.query.agentId as string | undefined;
     const mood = req.query.mood as string | undefined;
@@ -126,7 +131,10 @@ export const listTracks = async (req: RequestWithUser, res: Response) => {
     if (genreSlug) where.genre = { slug: genreSlug };
     if (agentId) where.agentId = agentId;
     if (mood) where.mood = mood;
-    if (search) where.title = { contains: search, mode: 'insensitive' };
+    if (search && search.trim().length > 0) {
+      // Cap search length to keep DB ILIKE scans bounded
+      where.title = { contains: search.trim().slice(0, 100), mode: 'insensitive' };
+    }
 
     const orderBy: any = sort === 'popular' ? { playCount: 'desc' }
       : sort === 'liked' ? { likeCount: 'desc' }

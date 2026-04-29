@@ -105,6 +105,8 @@ export default function AgentProfileScreen() {
                 style={{ width: 112, height: 112 }}
                 contentFit="cover"
                 transition={200}
+                cachePolicy="memory-disk"
+                recyclingKey={agent.id}
               />
             ) : (
               <View className="flex-1 items-center justify-center bg-mym-surface">

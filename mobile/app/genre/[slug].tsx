@@ -55,7 +55,7 @@ export default function GenreScreen() {
           ),
         }}
       />
-      <SafeAreaView className="flex-1 bg-mym-bg" edges={[]}>
+      <SafeAreaView className="flex-1 bg-mym-bg" edges={['top']}>
         {loading ? (
           <View className="flex-1 items-center justify-center">
             <ActivityIndicator size="large" color="#8b5cf6" />

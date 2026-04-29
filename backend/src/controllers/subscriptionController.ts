@@ -10,7 +10,26 @@ try {
     const Stripe = require('stripe');
     stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
   }
-} catch {}
+} catch (err) {
+  logger.error('Failed to initialize Stripe SDK', { error: (err as Error).message });
+}
+
+// In production, refuse to even boot if Stripe is configured but the webhook
+// secret is missing — silently accepting unsigned webhooks would let anyone
+// upgrade themselves to PREMIUM by POSTing to /api/subscription/webhook.
+if (
+  process.env.NODE_ENV === 'production' &&
+  process.env.STRIPE_SECRET_KEY &&
+  !process.env.STRIPE_WEBHOOK_SECRET
+) {
+  logger.error(
+    'STRIPE_WEBHOOK_SECRET is required in production when STRIPE_SECRET_KEY is set. ' +
+      'Refusing to start to prevent webhook forgery.'
+  );
+  // Don't throw at import time — let server.ts startup validation handle it,
+  // but mark stripe unusable so checkout/cancel return 503 cleanly.
+  stripe = null;
+}
 
 const PREMIUM_PRICE_ID = process.env.STRIPE_PREMIUM_PRICE_ID || 'price_premium_placeholder';
 
@@ -119,16 +138,24 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
 
     const sig = req.headers['stripe-signature'] as string;
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const isProduction = process.env.NODE_ENV === 'production';
 
     let event;
     if (endpointSecret && sig) {
       try {
         event = stripe.webhooks.constructEvent(req.body, sig, endpointSecret);
-      } catch {
+      } catch (err) {
+        logger.warn('Stripe webhook signature verification failed', {
+          error: (err as Error).message,
+        });
         res.status(400).json({ error: 'Webhook signature verification failed' }); return;
       }
-    } else if (process.env.NODE_ENV === 'production') {
-      logger.warn('Stripe webhook received without signature verification in production');
+    } else if (isProduction) {
+      // Refuse unsigned webhooks in production — even if endpointSecret is unset.
+      logger.error('Stripe webhook received without signature in production', {
+        hasSecret: Boolean(endpointSecret),
+        hasSig: Boolean(sig),
+      });
       res.status(400).json({ error: 'Webhook signature required in production' }); return;
     } else {
       // Allow unsigned webhooks only in development

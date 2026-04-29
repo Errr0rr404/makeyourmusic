@@ -34,6 +34,8 @@ export function MiniPlayer() {
               source={{ uri: currentTrack.coverArt }}
               style={{ width: 44, height: 44 }}
               contentFit="cover"
+              cachePolicy="memory-disk"
+              recyclingKey={currentTrack.id}
             />
           ) : (
             <View className="flex-1 items-center justify-center bg-mym-card">
@@ -53,14 +55,28 @@ export function MiniPlayer() {
         </View>
 
         {/* Controls */}
-        <TouchableOpacity onPress={togglePlay} className="p-2 mr-1" activeOpacity={0.6}>
+        <TouchableOpacity
+          onPress={togglePlay}
+          className="p-2 mr-1"
+          activeOpacity={0.6}
+          accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+          accessibilityRole="button"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           {isPlaying ? (
             <Pause size={22} color="#fafafa" fill="#fafafa" />
           ) : (
             <Play size={22} color="#fafafa" fill="#fafafa" />
           )}
         </TouchableOpacity>
-        <TouchableOpacity onPress={nextTrack} className="p-2" activeOpacity={0.6}>
+        <TouchableOpacity
+          onPress={nextTrack}
+          className="p-2"
+          activeOpacity={0.6}
+          accessibilityLabel="Next track"
+          accessibilityRole="button"
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+        >
           <SkipForward size={20} color="#fafafa" />
         </TouchableOpacity>
       </TouchableOpacity>
