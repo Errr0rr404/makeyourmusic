@@ -3,6 +3,8 @@ import rateLimit from 'express-rate-limit';
 import {
   generateLyrics,
   startMusicGeneration,
+  startMusicCover,
+  generateCoverArt,
   listGenerations,
   getGeneration,
   deleteGeneration,
@@ -39,11 +41,15 @@ router.get('/usage', getUsage as any);
 
 // Music
 router.post('/music', startMusicGeneration as any);
+router.post('/music/cover', startMusicCover as any);
 router.get('/generations', listGenerations as any);
 router.get('/generations/:id', getGeneration as any);
 router.delete('/generations/:id', deleteGeneration as any);
 router.post('/generations/:id/publish', publishGeneration as any);
 router.post('/generations/:id/variation', createVariation as any);
+
+// Cover art (image-01)
+router.post('/cover-art', generateCoverArt as any);
 
 // Video
 router.post('/video', startVideoGeneration as any);

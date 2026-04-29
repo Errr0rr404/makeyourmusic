@@ -108,6 +108,22 @@ export async function minimaxChat(params: {
 
 // ─── Music generation ─────────────────────────────────────
 
+// MiniMax baseResp.status_code values that indicate transient quota / rate-limit
+// problems where retrying with a fallback model is reasonable.
+// Source: MiniMax common error codes (1002 rate limit, 1039 token-rate limit,
+// 1042 daily-quota / model-quota exhausted, 2013 invalid model — used as last
+// signal that a model id has been disabled on the account).
+export const MINIMAX_RATE_LIMIT_CODES = new Set([1002, 1039, 1042, 2013]);
+
+export class MinimaxRateLimitError extends Error {
+  code: number;
+  constructor(code: number, message: string) {
+    super(message);
+    this.code = code;
+    this.name = 'MinimaxRateLimitError';
+  }
+}
+
 export interface MusicGenerationParams {
   prompt?: string;
   lyrics?: string;
@@ -136,7 +152,7 @@ export interface MusicGenerationResult {
 export async function minimaxGenerateMusic(
   params: MusicGenerationParams
 ): Promise<MusicGenerationResult> {
-  const model = params.model || process.env.MINIMAX_MUSIC_MODEL || 'music-2.6-free';
+  const model = params.model || process.env.MINIMAX_MUSIC_MODEL || 'music-2.6';
   const url = buildUrl('/music_generation');
   const body: Record<string, unknown> = {
     model,
@@ -151,7 +167,12 @@ export async function minimaxGenerateMusic(
   if (params.prompt) body.prompt = params.prompt;
   if (params.lyrics) body.lyrics = params.lyrics;
   if (params.isInstrumental != null) body.is_instrumental = params.isInstrumental;
-  if (params.lyricsOptimizer != null) body.lyrics_optimizer = params.lyricsOptimizer;
+  // Auto-generate lyrics when caller didn't supply any and the track has vocals.
+  // Only the music-2.6 family supports this flag.
+  const wantsAutoLyrics =
+    params.lyricsOptimizer ??
+    (!params.lyrics && !params.isInstrumental && !params.audioUrl && !params.audioBase64);
+  if (wantsAutoLyrics && /^music-2\.6/.test(model)) body.lyrics_optimizer = true;
   if (params.audioUrl) body.audio_url = params.audioUrl;
   if (params.audioBase64) body.audio_base64 = params.audioBase64;
 
@@ -165,17 +186,24 @@ export async function minimaxGenerateMusic(
     const errText = await res.text();
     logger.error('MiniMax music generation HTTP error', {
       status: res.status,
+      model,
       body: errText.slice(0, 500),
     });
+    if (res.status === 429) {
+      throw new MinimaxRateLimitError(429, `MiniMax music generation rate-limited (${res.status})`);
+    }
     throw new Error(`MiniMax music generation failed (${res.status})`);
   }
 
   const json = await parseJson<any>(res);
   const baseResp = json?.base_resp;
   if (baseResp && baseResp.status_code !== 0) {
-    throw new Error(
-      `MiniMax music generation error ${baseResp.status_code}: ${baseResp.status_msg || 'unknown'}`
-    );
+    const code = baseResp.status_code as number;
+    const msg = baseResp.status_msg || 'unknown';
+    if (MINIMAX_RATE_LIMIT_CODES.has(code)) {
+      throw new MinimaxRateLimitError(code, `MiniMax music generation error ${code}: ${msg}`);
+    }
+    throw new Error(`MiniMax music generation error ${code}: ${msg}`);
   }
 
   const audio = (json?.data?.audio || json?.data?.audio_url || json?.audio_url) as string | undefined;
@@ -214,6 +242,9 @@ export interface VideoStartParams {
   model?: string;
   firstFrameImage?: string; // base64 or URL for I2V
   subjectReference?: string; // base64 or URL
+  resolution?: '720P' | '768P' | '1080P';
+  duration?: 6 | 10;
+  promptOptimizer?: boolean;
 }
 
 export interface VideoStartResult {
@@ -222,12 +253,18 @@ export interface VideoStartResult {
 }
 
 export async function minimaxStartVideo(params: VideoStartParams): Promise<VideoStartResult> {
-  const model = params.model || process.env.MINIMAX_VIDEO_MODEL || 'video-01';
+  const model = params.model || process.env.MINIMAX_VIDEO_MODEL || 'MiniMax-Hailuo-2.3-Fast';
   const url = buildUrl('/video_generation');
   const body: Record<string, unknown> = {
     model,
     prompt: params.prompt,
   };
+  // Hailuo-02 / Hailuo-2.3 honor resolution + duration; older models ignore them.
+  if (/Hailuo/i.test(model)) {
+    body.resolution = params.resolution || '768P';
+    body.duration = params.duration || 6;
+  }
+  if (params.promptOptimizer != null) body.prompt_optimizer = params.promptOptimizer;
   if (params.firstFrameImage) body.first_frame_image = params.firstFrameImage;
   if (params.subjectReference) body.subject_reference = params.subjectReference;
 
@@ -366,4 +403,98 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
   });
 
   return { lyrics: result.text.trim(), raw: result.raw };
+}
+
+// ─── Image generation (image-01) ──────────────────────────
+
+export type ImageAspectRatio =
+  | '1:1'
+  | '16:9'
+  | '4:3'
+  | '3:2'
+  | '2:3'
+  | '3:4'
+  | '9:16'
+  | '21:9';
+
+export interface ImageGenerationParams {
+  prompt: string;
+  model?: string;
+  aspectRatio?: ImageAspectRatio;
+  n?: number;
+  promptOptimizer?: boolean;
+  responseFormat?: 'url' | 'base64';
+  subjectReference?: Array<{ type: string; image_file: string }>;
+}
+
+export interface GeneratedImage {
+  url?: string;
+  base64?: string;
+}
+
+export interface ImageGenerationResult {
+  images: GeneratedImage[];
+  traceId?: string;
+  raw: unknown;
+}
+
+export async function minimaxGenerateImage(
+  params: ImageGenerationParams
+): Promise<ImageGenerationResult> {
+  const model = params.model || process.env.MINIMAX_IMAGE_MODEL || 'image-01';
+  const url = buildUrl('/image_generation');
+  const responseFormat = params.responseFormat || 'url';
+  const body: Record<string, unknown> = {
+    model,
+    prompt: params.prompt,
+    response_format: responseFormat,
+    aspect_ratio: params.aspectRatio || '1:1',
+    n: Math.min(Math.max(params.n || 1, 1), 9),
+  };
+  if (params.promptOptimizer != null) body.prompt_optimizer = params.promptOptimizer;
+  if (params.subjectReference?.length) body.subject_reference = params.subjectReference;
+
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: buildHeaders(),
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    const errText = await res.text();
+    logger.error('MiniMax image generation HTTP error', {
+      status: res.status,
+      model,
+      body: errText.slice(0, 500),
+    });
+    if (res.status === 429) {
+      throw new MinimaxRateLimitError(429, `MiniMax image generation rate-limited (${res.status})`);
+    }
+    throw new Error(`MiniMax image generation failed (${res.status})`);
+  }
+
+  const json = await parseJson<any>(res);
+  const baseResp = json?.base_resp;
+  if (baseResp && baseResp.status_code !== 0) {
+    const code = baseResp.status_code as number;
+    const msg = baseResp.status_msg || 'unknown';
+    if (MINIMAX_RATE_LIMIT_CODES.has(code)) {
+      throw new MinimaxRateLimitError(code, `MiniMax image generation error ${code}: ${msg}`);
+    }
+    throw new Error(`MiniMax image generation error ${code}: ${msg}`);
+  }
+
+  const data = json?.data || {};
+  const urls: string[] = Array.isArray(data.image_urls) ? data.image_urls : [];
+  const base64s: string[] = Array.isArray(data.image_base64) ? data.image_base64 : [];
+  const images: GeneratedImage[] =
+    urls.length > 0
+      ? urls.map((u) => ({ url: u }))
+      : base64s.map((b) => ({ base64: b }));
+
+  if (images.length === 0) {
+    logger.warn('MiniMax image generation returned no images', { raw: json });
+  }
+
+  return { images, traceId: json?.trace_id, raw: json };
 }

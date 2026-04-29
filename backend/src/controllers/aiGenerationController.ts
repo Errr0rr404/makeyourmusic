@@ -5,18 +5,21 @@ import logger from '../utils/logger';
 import {
   minimaxGenerateLyrics,
   minimaxGenerateMusic,
+  minimaxGenerateImage,
   minimaxStartVideo,
   minimaxQueryVideo,
   minimaxRetrieveFile,
+  MinimaxRateLimitError,
 } from '../utils/minimax';
 import { assertCanGenerate, getDailyUsage } from '../utils/aiUsage';
 import { slugify, uniqueSuffix } from '../utils/slugify';
-import { uploadAudio } from '../utils/cloudinary';
+import { uploadAudio, uploadImageBase64, uploadCoverArt } from '../utils/cloudinary';
 
 const MAX_LYRICS_LEN = 3500;
 const MAX_PROMPT_LEN = 2000;
-const MUSIC_MODEL = () => process.env.MINIMAX_MUSIC_MODEL || 'music-2.6-free';
-const VIDEO_MODEL = () => process.env.MINIMAX_VIDEO_MODEL || 'video-01';
+const MUSIC_MODEL = () => process.env.MINIMAX_MUSIC_MODEL || 'music-2.6';
+const MUSIC_FALLBACK_MODEL = () => process.env.MINIMAX_MUSIC_FALLBACK_MODEL || 'music-2.5';
+const VIDEO_MODEL = () => process.env.MINIMAX_VIDEO_MODEL || 'MiniMax-Hailuo-2.3-Fast';
 const FRESH_TAKE_SUFFIX = (generationId: string) =>
   `Fresh take ${generationId.slice(-8)}: create a new arrangement and do not reuse previous audio.`;
 
@@ -119,13 +122,42 @@ async function processMusicGeneration(generationId: string): Promise<void> {
       data: { status: 'PROCESSING' },
     });
 
-    const result = await minimaxGenerateMusic({
+    const isCover = gen.providerModel === 'music-cover' || !!gen.referenceAudioUrl;
+    const primaryModel =
+      gen.providerModel || (isCover ? 'music-cover' : MUSIC_MODEL());
+    const baseRequest = {
       prompt: providerPromptForGeneration(gen.prompt, generationId),
       lyrics: gen.lyrics || undefined,
       isInstrumental: gen.isInstrumental,
-      model: gen.providerModel || undefined,
-      outputFormat: 'url',
-    });
+      audioUrl: gen.referenceAudioUrl || undefined,
+      outputFormat: 'url' as const,
+    };
+
+    let result;
+    let usedModel = primaryModel;
+    try {
+      result = await minimaxGenerateMusic({ ...baseRequest, model: primaryModel });
+    } catch (err) {
+      // Cover models cannot fall back to text-to-music — only retry T2M models.
+      const fallback = MUSIC_FALLBACK_MODEL();
+      if (
+        err instanceof MinimaxRateLimitError &&
+        !isCover &&
+        fallback &&
+        fallback !== primaryModel
+      ) {
+        logger.warn('MiniMax music primary rate-limited, retrying with fallback', {
+          generationId,
+          primaryModel,
+          fallback,
+          code: err.code,
+        });
+        usedModel = fallback;
+        result = await minimaxGenerateMusic({ ...baseRequest, model: fallback });
+      } else {
+        throw err;
+      }
+    }
     const audioUrl = await audioUrlFromGenerationResult(generationId, result);
 
     await prisma.musicGeneration.update({
@@ -133,6 +165,7 @@ async function processMusicGeneration(generationId: string): Promise<void> {
       data: {
         status: 'COMPLETED',
         audioUrl,
+        providerModel: usedModel,
         durationSec: result.durationSec || gen.durationSec,
         providerTraceId: result.traceId || null,
       },
@@ -168,9 +201,17 @@ export const startMusicGeneration = async (req: RequestWithUser, res: Response) 
       agentId,
     } = req.body || {};
 
-    if (!isInstrumental && (!lyrics || typeof lyrics !== 'string')) {
-      res.status(400).json({ error: 'lyrics are required for non-instrumental tracks' });
-      return;
+    // For vocal tracks the user can either provide lyrics OR a prompt — when
+    // lyrics is empty we let MiniMax auto-generate them via lyrics_optimizer.
+    if (!isInstrumental) {
+      const hasLyrics = typeof lyrics === 'string' && lyrics.trim().length > 0;
+      const hasPrompt = typeof prompt === 'string' && prompt.trim().length > 0;
+      if (!hasLyrics && !hasPrompt) {
+        res
+          .status(400)
+          .json({ error: 'either lyrics or prompt is required for vocal tracks' });
+        return;
+      }
     }
     if (lyrics && lyrics.length > MAX_LYRICS_LEN) {
       res.status(400).json({ error: `lyrics must be ${MAX_LYRICS_LEN} characters or less` });
@@ -476,6 +517,200 @@ export const getUsage = async (req: RequestWithUser, res: Response) => {
   }
 };
 
+// ─── Cover art (image-01) ─────────────────────────────────
+
+const ALLOWED_ASPECT_RATIOS = new Set([
+  '1:1',
+  '16:9',
+  '4:3',
+  '3:2',
+  '2:3',
+  '3:4',
+  '9:16',
+  '21:9',
+]);
+
+function buildCoverArtPrompt(input: {
+  title?: string | null;
+  prompt?: string | null;
+  genre?: string | null;
+  mood?: string | null;
+}): string {
+  const bits: string[] = [];
+  if (input.title) bits.push(`title: ${input.title}`);
+  if (input.genre) bits.push(`genre: ${input.genre}`);
+  if (input.mood) bits.push(`mood: ${input.mood}`);
+  if (input.prompt) bits.push(`vibe: ${input.prompt.slice(0, 200)}`);
+  const ctx = bits.join(', ');
+  return (
+    `Square album cover artwork for a song${ctx ? ` (${ctx})` : ''}. ` +
+    `Striking, contemporary, music-streaming poster design. ` +
+    `Bold composition, high contrast, no text, no logos, no watermarks. ` +
+    `Cinematic lighting, rich colors.`
+  );
+}
+
+async function persistMinimaxImage(
+  image: { url?: string; base64?: string },
+  filename: string
+): Promise<string> {
+  // Base64: round-trip through Cloudinary (handles data-uri prefix internally).
+  if (image.base64) {
+    const dataUri = image.base64.startsWith('data:')
+      ? image.base64
+      : `data:image/png;base64,${image.base64}`;
+    const uploaded = await uploadImageBase64(dataUri, 'covers');
+    return uploaded.secure_url;
+  }
+  if (image.url) {
+    if (!hasCloudinaryCredentials()) {
+      // Provider URLs from MiniMax are temporary, but without Cloudinary we
+      // have no choice — surface them as-is and let the caller decide.
+      return image.url;
+    }
+    const res = await fetch(image.url);
+    if (!res.ok) throw new Error(`failed to download generated image (${res.status})`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length === 0) throw new Error('generated image was empty');
+    const uploaded = await uploadCoverArt(buffer, filename);
+    return uploaded.secure_url;
+  }
+  throw new Error('image generation returned no image data');
+}
+
+export const generateCoverArt = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+
+    const { prompt, title, genre, mood, aspectRatio } = req.body || {};
+    const promptText =
+      typeof prompt === 'string' && prompt.trim().length > 0
+        ? prompt.trim()
+        : buildCoverArtPrompt({ title, prompt: null, genre, mood });
+    if (promptText.length > MAX_PROMPT_LEN) {
+      res
+        .status(400)
+        .json({ error: `prompt must be ${MAX_PROMPT_LEN} characters or less` });
+      return;
+    }
+    const ratio =
+      typeof aspectRatio === 'string' && ALLOWED_ASPECT_RATIOS.has(aspectRatio)
+        ? (aspectRatio as any)
+        : '1:1';
+
+    const result = await minimaxGenerateImage({
+      prompt: promptText,
+      aspectRatio: ratio,
+      n: 1,
+      promptOptimizer: true,
+      responseFormat: 'url',
+    });
+    const first = result.images[0];
+    if (!first) {
+      res.status(502).json({ error: 'Image provider returned no images' });
+      return;
+    }
+    const url = await persistMinimaxImage(first, `cover-${req.user.userId}-${Date.now()}`);
+    res.json({ coverArt: url, prompt: promptText });
+  } catch (error) {
+    if (error instanceof MinimaxRateLimitError) {
+      res.status(429).json({ error: 'Image generation quota exhausted, try later' });
+      return;
+    }
+    logger.error('Generate cover art error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to generate cover art' });
+  }
+};
+
+// ─── Music cover (audio-to-audio) ─────────────────────────
+
+const COVER_PROMPT_MIN = 10;
+const COVER_PROMPT_MAX = 300;
+
+export const startMusicCover = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    const usage = await assertCanGenerate(req.user.userId);
+
+    const { title, prompt, lyrics, referenceAudioUrl, agentId, genre, mood } =
+      req.body || {};
+
+    if (
+      !referenceAudioUrl ||
+      typeof referenceAudioUrl !== 'string' ||
+      !/^https?:\/\//i.test(referenceAudioUrl)
+    ) {
+      res.status(400).json({ error: 'referenceAudioUrl (https URL) is required' });
+      return;
+    }
+    if (!prompt || typeof prompt !== 'string' || prompt.trim().length < COVER_PROMPT_MIN) {
+      res
+        .status(400)
+        .json({ error: `prompt is required (min ${COVER_PROMPT_MIN} characters)` });
+      return;
+    }
+    if (prompt.length > COVER_PROMPT_MAX) {
+      res
+        .status(400)
+        .json({ error: `prompt must be ${COVER_PROMPT_MAX} characters or less` });
+      return;
+    }
+    if (lyrics && typeof lyrics === 'string' && lyrics.length > MAX_LYRICS_LEN) {
+      res.status(400).json({ error: `lyrics must be ${MAX_LYRICS_LEN} characters or less` });
+      return;
+    }
+
+    if (agentId) {
+      const agent = await prisma.aiAgent.findUnique({
+        where: { id: agentId },
+        select: { id: true, ownerId: true },
+      });
+      if (!agent || agent.ownerId !== req.user.userId) {
+        res.status(403).json({ error: 'You do not own this agent' });
+        return;
+      }
+    }
+
+    const generation = await prisma.musicGeneration.create({
+      data: {
+        userId: req.user.userId,
+        agentId: typeof agentId === 'string' ? agentId : null,
+        title: typeof title === 'string' ? title.slice(0, 200) : null,
+        prompt: prompt.trim(),
+        lyrics: typeof lyrics === 'string' ? lyrics : null,
+        genre: typeof genre === 'string' ? genre.slice(0, 50) : null,
+        mood: typeof mood === 'string' ? mood.slice(0, 50) : null,
+        isInstrumental: false,
+        referenceAudioUrl,
+        provider: 'minimax',
+        providerModel: 'music-cover',
+        status: 'PENDING',
+      },
+    });
+
+    void processMusicGeneration(generation.id);
+
+    res.status(202).json({ generation, usage: { ...usage, remaining: usage.remaining - 1 } });
+  } catch (error) {
+    const statusCode = (error as any).statusCode;
+    if (statusCode === 429) {
+      res.status(429).json({
+        error: (error as Error).message,
+        usage: (error as any).usage,
+      });
+      return;
+    }
+    logger.error('Start music cover error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to start music cover' });
+  }
+};
+
 // ─── Video generation (async) ─────────────────────────────
 
 async function pollVideoGeneration(generationId: string, providerJobId: string): Promise<void> {
@@ -539,7 +774,7 @@ export const startVideoGeneration = async (req: RequestWithUser, res: Response) 
     }
     const usage = await assertCanGenerate(req.user.userId);
 
-    const { title, prompt, imageRefUrl } = req.body || {};
+    const { title, prompt, imageRefUrl, resolution, duration } = req.body || {};
     if (!prompt || typeof prompt !== 'string' || prompt.trim().length === 0) {
       res.status(400).json({ error: 'prompt is required' });
       return;
@@ -548,6 +783,9 @@ export const startVideoGeneration = async (req: RequestWithUser, res: Response) 
       res.status(400).json({ error: `prompt must be ${MAX_PROMPT_LEN} characters or less` });
       return;
     }
+    const validResolutions = new Set(['720P', '768P', '1080P']);
+    const reqResolution = validResolutions.has(resolution) ? (resolution as any) : '768P';
+    const reqDuration = duration === 10 ? 10 : 6;
 
     const gen = await prisma.videoGeneration.create({
       data: {
@@ -565,6 +803,8 @@ export const startVideoGeneration = async (req: RequestWithUser, res: Response) 
       const start = await minimaxStartVideo({
         prompt,
         firstFrameImage: typeof imageRefUrl === 'string' ? imageRefUrl : undefined,
+        resolution: reqResolution,
+        duration: reqDuration,
       });
       await prisma.videoGeneration.update({
         where: { id: gen.id },
