@@ -17,7 +17,10 @@ export const securityHeaders = helmet({
       // Audio/video streamed from Cloudinary or any HTTPS source. blob: lets
       // us play locally-decoded audio (e.g. crossfade buffer swaps).
       mediaSrc: ["'self'", 'https:', 'blob:', 'data:'],
-      frameSrc: ["'none'", 'https://js.stripe.com'], // Allow Stripe iframes
+      // CSP `'none'` must appear alone — combining it with a URL is invalid
+      // (some browsers fall back to ignoring the URL). frameAncestors below
+      // is what actually prevents the API from being embedded.
+      frameSrc: ['https://js.stripe.com', 'https://hooks.stripe.com'],
       frameAncestors: ["'none'"], // Prevent embedding in frames
       upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null, // Force HTTPS in production
     },
