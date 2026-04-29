@@ -82,8 +82,17 @@ export default function CreatePage() {
   const [publishPublic, setPublishPublic] = useState(true);
   const [publishing, setPublishing] = useState(false);
 
-  // Polling ref must be declared at top-level before any early return (rules-of-hooks)
+  // Polling refs must be declared at top-level before any early return (rules-of-hooks)
   const pollRef = useRef<number | null>(null);
+  const activeGenerationIdRef = useRef<string | null>(null);
+
+  const stopPolling = () => {
+    if (pollRef.current) {
+      window.clearTimeout(pollRef.current);
+      pollRef.current = null;
+    }
+    activeGenerationIdRef.current = null;
+  };
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -98,6 +107,7 @@ export default function CreatePage() {
         window.clearTimeout(pollRef.current);
         pollRef.current = null;
       }
+      activeGenerationIdRef.current = null;
     };
   }, []);
 
@@ -145,18 +155,14 @@ export default function CreatePage() {
   };
 
   // ─── Step 4: Generate music ────────────────────────────
-  const stopPolling = () => {
-    if (pollRef.current) {
-      window.clearTimeout(pollRef.current);
-      pollRef.current = null;
-    }
-  };
-
   const pollGeneration = (id: string) => {
+    activeGenerationIdRef.current = id;
     const tick = async () => {
+      if (activeGenerationIdRef.current !== id) return;
       try {
         const res = await api.get(`/ai/generations/${id}`);
         const g: Generation = res.data.generation;
+        if (activeGenerationIdRef.current !== id) return;
         setGeneration(g);
         if (g.status === 'COMPLETED' || g.status === 'FAILED') {
           stopPolling();
@@ -170,6 +176,7 @@ export default function CreatePage() {
       } catch {
         // transient — keep polling
       }
+      if (activeGenerationIdRef.current !== id) return;
       pollRef.current = window.setTimeout(tick, 3000);
     };
     tick();
@@ -182,9 +189,17 @@ export default function CreatePage() {
       return;
     }
     setGenError('');
+    stopPolling();
+    setGeneration(null);
     setStep('generate');
     try {
-      const prompt = [genre, mood, style].filter(Boolean).join(', ') || undefined;
+      const prompt = [
+        genre ? `Genre: ${genre}` : '',
+        mood ? `Mood: ${mood}` : '',
+        style ? `Style notes: ${style}` : '',
+        idea.trim() ? `Song concept: ${idea.trim()}` : '',
+        title.trim() ? `Working title: ${title.trim()}` : '',
+      ].filter(Boolean).join('\n') || undefined;
       const res = await api.post('/ai/music', {
         title,
         prompt,
@@ -195,6 +210,7 @@ export default function CreatePage() {
         isInstrumental,
       });
       const g: Generation = res.data.generation;
+      activeGenerationIdRef.current = g.id;
       setGeneration(g);
       if (res.data.usage) setUsage(res.data.usage);
       pollGeneration(g.id);
@@ -845,7 +861,7 @@ function PublishStep({
 
       {/* Audio preview */}
       <div className="p-4 rounded-lg bg-[hsl(var(--secondary))] border border-[hsl(var(--border))]">
-        <audio controls src={generation.audioUrl!} className="w-full">
+        <audio key={generation.id} controls src={generation.audioUrl!} className="w-full">
           Your browser does not support audio playback.
         </audio>
         {generation.durationSec && (

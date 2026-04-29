@@ -168,7 +168,7 @@ export async function minimaxGenerateMusic(
     );
   }
 
-  const audio = json?.data?.audio as string | undefined;
+  const audio = (json?.data?.audio || json?.data?.audio_url || json?.audio_url) as string | undefined;
   let audioUrl: string | undefined;
   let audioHex: string | undefined;
 
@@ -180,10 +180,18 @@ export async function minimaxGenerateMusic(
     }
   }
 
+  const rawDuration = json?.extra_info?.music_duration;
+  const durationSec =
+    typeof rawDuration === 'number'
+      ? rawDuration > 1000
+        ? Math.round(rawDuration / 1000)
+        : rawDuration
+      : undefined;
+
   return {
     audioUrl,
     audioHex,
-    durationSec: json?.extra_info?.music_duration,
+    durationSec,
     traceId: json?.trace_id,
     raw: json,
   };

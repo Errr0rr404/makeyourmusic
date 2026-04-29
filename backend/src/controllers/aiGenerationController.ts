@@ -11,11 +11,70 @@ import {
 } from '../utils/minimax';
 import { assertCanGenerate, getDailyUsage } from '../utils/aiUsage';
 import { slugify, uniqueSuffix } from '../utils/slugify';
+import { uploadAudio } from '../utils/cloudinary';
 
 const MAX_LYRICS_LEN = 3500;
 const MAX_PROMPT_LEN = 2000;
 const MUSIC_MODEL = () => process.env.MINIMAX_MUSIC_MODEL || 'music-2.6-free';
 const VIDEO_MODEL = () => process.env.MINIMAX_VIDEO_MODEL || 'video-01';
+const FRESH_TAKE_SUFFIX = (generationId: string) =>
+  `Fresh take ${generationId.slice(-8)}: create a new arrangement and do not reuse previous audio.`;
+
+function providerPromptForGeneration(prompt: string | null, generationId: string): string {
+  const suffix = FRESH_TAKE_SUFFIX(generationId);
+  const base = (prompt || '').trim();
+  if (!base) return suffix;
+  const maxBaseLength = Math.max(0, MAX_PROMPT_LEN - suffix.length - 1);
+  return `${base.slice(0, maxBaseLength)}\n${suffix}`;
+}
+
+function hasCloudinaryCredentials(): boolean {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+  );
+}
+
+async function persistProviderAudioUrl(url: string, generationId: string): Promise<string> {
+  if (!hasCloudinaryCredentials()) return url;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`download failed (${res.status})`);
+    const audio = Buffer.from(await res.arrayBuffer());
+    if (audio.length === 0) throw new Error('downloaded audio was empty');
+    const uploaded = await uploadAudio(audio, `generation-${generationId}-${Date.now()}`);
+    return uploaded.secure_url;
+  } catch (error) {
+    logger.warn('Could not persist MiniMax audio URL; falling back to provider URL', {
+      generationId,
+      error: (error as Error).message,
+    });
+    return url;
+  }
+}
+
+async function audioUrlFromGenerationResult(
+  generationId: string,
+  result: Awaited<ReturnType<typeof minimaxGenerateMusic>>
+): Promise<string> {
+  if (result.audioUrl) {
+    return persistProviderAudioUrl(result.audioUrl, generationId);
+  }
+
+  if (result.audioHex) {
+    if (!hasCloudinaryCredentials()) {
+      throw new Error('MiniMax returned hex audio, but Cloudinary credentials are not configured');
+    }
+    const audio = Buffer.from(result.audioHex, 'hex');
+    if (audio.length === 0) throw new Error('MiniMax returned empty audio');
+    const uploaded = await uploadAudio(audio, `generation-${generationId}-${Date.now()}`);
+    return uploaded.secure_url;
+  }
+
+  throw new Error('MiniMax completed without audio output');
+}
 
 // ─── Lyrics (synchronous, fast) ───────────────────────────
 
@@ -64,18 +123,19 @@ async function processMusicGeneration(generationId: string): Promise<void> {
     });
 
     const result = await minimaxGenerateMusic({
-      prompt: gen.prompt || undefined,
+      prompt: providerPromptForGeneration(gen.prompt, generationId),
       lyrics: gen.lyrics || undefined,
       isInstrumental: gen.isInstrumental,
       model: gen.providerModel || undefined,
       outputFormat: 'url',
     });
+    const audioUrl = await audioUrlFromGenerationResult(generationId, result);
 
     await prisma.musicGeneration.update({
       where: { id: generationId },
       data: {
         status: 'COMPLETED',
-        audioUrl: result.audioUrl || null,
+        audioUrl,
         durationSec: result.durationSec || gen.durationSec,
         providerTraceId: result.traceId || null,
       },

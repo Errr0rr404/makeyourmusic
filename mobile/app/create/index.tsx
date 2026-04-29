@@ -68,12 +68,15 @@ export default function CreateScreen() {
   const [publishing, setPublishing] = useState(false);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const activeGenerationIdRef = useRef<string | null>(null);
   const previewSound = useRef<any>(null);
+  const previewAudioUrlRef = useRef<string | null>(null);
   const [playingPreview, setPlayingPreview] = useState(false);
 
   useEffect(() => {
     return () => {
       if (pollTimer.current) clearTimeout(pollTimer.current);
+      activeGenerationIdRef.current = null;
       if (previewSound.current) previewSound.current.unloadAsync?.();
     };
   }, []);
@@ -86,11 +89,13 @@ export default function CreateScreen() {
       return () => {
         if (previewSound.current) {
           previewSound.current.pauseAsync?.().catch(() => {});
+          setPlayingPreview(false);
         }
         if (pollTimer.current) {
           clearTimeout(pollTimer.current);
           pollTimer.current = null;
         }
+        activeGenerationIdRef.current = null;
       };
     }, [])
   );
@@ -137,12 +142,20 @@ export default function CreateScreen() {
   };
 
   const pollGeneration = (id: string) => {
+    activeGenerationIdRef.current = id;
     const tick = async () => {
+      if (activeGenerationIdRef.current !== id) return;
       try {
         const res = await getApi().get(`/ai/generations/${id}`);
         const g: Generation = res.data.generation;
+        if (activeGenerationIdRef.current !== id) return;
         setGeneration(g);
         if (g.status === 'COMPLETED' || g.status === 'FAILED') {
+          activeGenerationIdRef.current = null;
+          if (pollTimer.current) {
+            clearTimeout(pollTimer.current);
+            pollTimer.current = null;
+          }
           if (g.status === 'FAILED') setGenError(g.errorMessage || 'Generation failed');
           else setStep('publish');
           return;
@@ -150,6 +163,7 @@ export default function CreateScreen() {
       } catch {
         /* transient */
       }
+      if (activeGenerationIdRef.current !== id) return;
       pollTimer.current = setTimeout(tick, 3000);
     };
     tick();
@@ -162,9 +176,27 @@ export default function CreateScreen() {
       return;
     }
     setGenError('');
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
+    activeGenerationIdRef.current = null;
+    if (previewSound.current) {
+      await previewSound.current.unloadAsync?.().catch(() => {});
+      previewSound.current = null;
+      previewAudioUrlRef.current = null;
+      setPlayingPreview(false);
+    }
+    setGeneration(null);
     setStep('generate');
     try {
-      const prompt = [genre, mood, style].filter(Boolean).join(', ') || undefined;
+      const prompt = [
+        genre ? `Genre: ${genre}` : '',
+        mood ? `Mood: ${mood}` : '',
+        style ? `Style notes: ${style}` : '',
+        idea.trim() ? `Song concept: ${idea.trim()}` : '',
+        title.trim() ? `Working title: ${title.trim()}` : '',
+      ].filter(Boolean).join('\n') || undefined;
       const res = await getApi().post('/ai/music', {
         title,
         prompt,
@@ -175,6 +207,7 @@ export default function CreateScreen() {
         isInstrumental,
       });
       const g: Generation = res.data.generation;
+      activeGenerationIdRef.current = g.id;
       setGeneration(g);
       if (res.data.usage) setUsage(res.data.usage);
       pollGeneration(g.id);
@@ -214,6 +247,14 @@ export default function CreateScreen() {
 
   const startOver = () => {
     if (pollTimer.current) clearTimeout(pollTimer.current);
+    pollTimer.current = null;
+    activeGenerationIdRef.current = null;
+    if (previewSound.current) {
+      previewSound.current.unloadAsync?.().catch(() => {});
+      previewSound.current = null;
+      previewAudioUrlRef.current = null;
+      setPlayingPreview(false);
+    }
     setGeneration(null);
     setGenError('');
     setStep('idea');
@@ -226,9 +267,15 @@ export default function CreateScreen() {
       setPlayingPreview(false);
       return;
     }
+    if (previewSound.current && previewAudioUrlRef.current !== generation.audioUrl) {
+      await previewSound.current.unloadAsync?.().catch(() => {});
+      previewSound.current = null;
+      previewAudioUrlRef.current = null;
+    }
     if (!previewSound.current) {
       const { sound } = await Audio.Sound.createAsync({ uri: generation.audioUrl });
       previewSound.current = sound;
+      previewAudioUrlRef.current = generation.audioUrl;
       sound.setOnPlaybackStatusUpdate((status: any) => {
         if (status.didJustFinish) setPlayingPreview(false);
       });
