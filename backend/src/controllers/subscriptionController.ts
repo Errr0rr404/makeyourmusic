@@ -120,10 +120,11 @@ export const cancelSubscription = async (req: RequestWithUser, res: Response) =>
       });
     }
 
-    await prisma.subscription.update({
-      where: { userId: req.user.userId },
-      data: { status: 'CANCELLED' },
-    });
+    // Don't flip status to CANCELLED here — the user paid for the current
+    // period and keeps PREMIUM access until it ends. Stripe will fire
+    // `customer.subscription.deleted` at period end; that handler downgrades
+    // them to FREE/EXPIRED. Locally marking CANCELLED now caused users to
+    // lose access while still being billed.
 
     res.json({ message: 'Subscription will be cancelled at end of billing period' });
   } catch (error) {
@@ -166,15 +167,77 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
       case 'checkout.session.completed': {
         const session = event.data.object;
         const userId = session.metadata?.userId;
-        if (userId) {
+        if (!userId) {
+          logger.warn('checkout.session.completed missing metadata.userId', {
+            sessionId: session.id,
+          });
+          break;
+        }
+
+        // Pull the real subscription from Stripe so currentPeriodEnd matches
+        // the actual billing cycle (monthly vs annual etc) instead of a
+        // hardcoded 30 days.
+        let periodStart: Date | null = null;
+        let periodEnd: Date | null = null;
+        if (session.subscription && stripe) {
+          try {
+            const sub = await stripe.subscriptions.retrieve(session.subscription);
+            if (typeof sub.current_period_start === 'number') {
+              periodStart = new Date(sub.current_period_start * 1000);
+            }
+            if (typeof sub.current_period_end === 'number') {
+              periodEnd = new Date(sub.current_period_end * 1000);
+            }
+          } catch (err) {
+            logger.warn('Failed to retrieve Stripe subscription for period dates', {
+              sessionId: session.id,
+              subId: session.subscription,
+              error: (err as Error).message,
+            });
+          }
+        }
+
+        await prisma.subscription.upsert({
+          where: { userId },
+          update: {
+            tier: 'PREMIUM',
+            status: 'ACTIVE',
+            stripeSubId: session.subscription,
+            currentPeriodStart: periodStart,
+            currentPeriodEnd: periodEnd,
+          },
+          create: {
+            userId,
+            tier: 'PREMIUM',
+            status: 'ACTIVE',
+            stripeSubId: session.subscription,
+            stripeCustomerId: session.customer,
+            currentPeriodStart: periodStart,
+            currentPeriodEnd: periodEnd,
+          },
+        });
+        break;
+      }
+
+      case 'customer.subscription.updated': {
+        // Keep currentPeriodEnd fresh as Stripe rolls the billing cycle.
+        const sub = event.data.object;
+        const subscription = await prisma.subscription.findUnique({
+          where: { stripeSubId: sub.id },
+        });
+        if (subscription) {
           await prisma.subscription.update({
-            where: { userId },
+            where: { id: subscription.id },
             data: {
-              tier: 'PREMIUM',
-              status: 'ACTIVE',
-              stripeSubId: session.subscription,
-              currentPeriodStart: new Date(),
-              currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+              currentPeriodStart:
+                typeof sub.current_period_start === 'number'
+                  ? new Date(sub.current_period_start * 1000)
+                  : subscription.currentPeriodStart,
+              currentPeriodEnd:
+                typeof sub.current_period_end === 'number'
+                  ? new Date(sub.current_period_end * 1000)
+                  : subscription.currentPeriodEnd,
+              status: sub.status === 'past_due' ? 'PAST_DUE' : subscription.status,
             },
           });
         }

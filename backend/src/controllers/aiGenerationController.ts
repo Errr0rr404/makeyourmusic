@@ -37,22 +37,19 @@ function hasCloudinaryCredentials(): boolean {
 }
 
 async function persistProviderAudioUrl(url: string, generationId: string): Promise<string> {
+  // No Cloudinary configured: keep the provider URL. The admin opted into this
+  // tradeoff (provider URLs from MiniMax expire — typically within hours).
   if (!hasCloudinaryCredentials()) return url;
 
-  try {
-    const res = await fetch(url);
-    if (!res.ok) throw new Error(`download failed (${res.status})`);
-    const audio = Buffer.from(await res.arrayBuffer());
-    if (audio.length === 0) throw new Error('downloaded audio was empty');
-    const uploaded = await uploadAudio(audio, `generation-${generationId}-${Date.now()}`);
-    return uploaded.secure_url;
-  } catch (error) {
-    logger.warn('Could not persist MiniMax audio URL; falling back to provider URL', {
-      generationId,
-      error: (error as Error).message,
-    });
-    return url;
-  }
+  // Cloudinary IS configured: any failure here is a real failure. Returning
+  // the provider URL anyway would silently produce tracks that 404 once the
+  // upstream URL expires.
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`failed to download provider audio (${res.status})`);
+  const audio = Buffer.from(await res.arrayBuffer());
+  if (audio.length === 0) throw new Error('provider audio download was empty');
+  const uploaded = await uploadAudio(audio, `generation-${generationId}-${Date.now()}`);
+  return uploaded.secure_url;
 }
 
 async function audioUrlFromGenerationResult(

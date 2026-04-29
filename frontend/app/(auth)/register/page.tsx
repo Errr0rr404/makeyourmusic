@@ -117,9 +117,9 @@ export default function RegisterPage() {
             />
             <span>
               I agree to the{' '}
-              <Link href="/terms" className="text-[color:var(--brand)] hover:underline" target="_blank">Terms</Link>{' '}
+              <Link href="/terms" className="text-[color:var(--brand)] hover:underline" target="_blank" rel="noopener noreferrer">Terms</Link>{' '}
               and{' '}
-              <Link href="/privacy" className="text-[color:var(--brand)] hover:underline" target="_blank">Privacy Policy</Link>.
+              <Link href="/privacy" className="text-[color:var(--brand)] hover:underline" target="_blank" rel="noopener noreferrer">Privacy Policy</Link>.
             </span>
           </label>
 

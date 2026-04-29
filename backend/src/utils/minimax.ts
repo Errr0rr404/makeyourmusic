@@ -247,6 +247,12 @@ export async function minimaxStartVideo(params: VideoStartParams): Promise<Video
   }
 
   const json = await parseJson<any>(res);
+  const baseResp = json?.base_resp;
+  if (baseResp && baseResp.status_code !== 0) {
+    throw new Error(
+      `MiniMax video start error ${baseResp.status_code}: ${baseResp.status_msg || 'unknown'}`
+    );
+  }
   const taskId = json?.task_id || json?.data?.task_id;
   if (!taskId) {
     throw new Error('MiniMax did not return a video task_id');
@@ -279,6 +285,12 @@ export async function minimaxQueryVideo(taskId: string): Promise<VideoStatusResu
   }
 
   const json = await parseJson<any>(res);
+  const baseResp = json?.base_resp;
+  if (baseResp && baseResp.status_code !== 0) {
+    throw new Error(
+      `MiniMax video query error ${baseResp.status_code}: ${baseResp.status_msg || 'unknown'}`
+    );
+  }
   return {
     status: (json?.status || json?.data?.status) as VideoTaskStatus,
     fileId: json?.file_id || json?.data?.file_id,
@@ -298,6 +310,12 @@ export async function minimaxRetrieveFile(fileId: string): Promise<{ downloadUrl
     throw new Error(`MiniMax file retrieve failed (${res.status})`);
   }
   const json = await parseJson<any>(res);
+  const baseResp = json?.base_resp;
+  if (baseResp && baseResp.status_code !== 0) {
+    throw new Error(
+      `MiniMax file retrieve error ${baseResp.status_code}: ${baseResp.status_msg || 'unknown'}`
+    );
+  }
   const downloadUrl: string | undefined = json?.file?.download_url || json?.data?.download_url;
   if (!downloadUrl) {
     throw new Error('MiniMax file retrieve returned no download_url');
