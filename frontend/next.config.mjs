@@ -13,13 +13,13 @@ const nextConfig = {
   // Enable React strict mode
   reactStrictMode: true,
 
-  // Proxy /api requests to the backend server in development
-  // In production (Netlify), the [[redirects]] in netlify.toml handles this
+  // Proxy /api requests to the backend so the browser sees a single origin.
+  // This is required on Railway (frontend and api are on different *.up.railway.app
+  // subdomains, which the Public Suffix List treats as separate sites — so a
+  // cross-site Set-Cookie from the api would be dropped, and middleware on the
+  // frontend domain could never read the refreshToken cookie).
   async rewrites() {
-    if (process.env.NODE_ENV === 'production') {
-      return [];
-    }
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+    const backendUrl = process.env.INTERNAL_API_URL || 'http://localhost:3001/api';
     return [
       {
         source: '/api/:path*',
