@@ -22,28 +22,21 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Normalize DATABASE_URL to use verify-full SSL mode (fixes deprecation warning)
+// Normalize DATABASE_URL — silence deprecation warnings for SSL mode aliases.
+// We DO NOT add an sslmode if one isn't present: managed providers (e.g.
+// Railway's private postgres at *.railway.internal) negotiate SSL through
+// other means and adding verify-full breaks the connection.
 function normalizeDatabaseUrl(url: string): string {
   if (!url) return url;
-  
-  // Replace deprecated SSL modes with verify-full
-  const deprecatedModes = ['prefer', 'require', 'verify-ca'];
+
   let normalizedUrl = url;
-  
+  const deprecatedModes = ['prefer', 'verify-ca'];
   for (const mode of deprecatedModes) {
-    // Replace sslmode=prefer, sslmode=require, sslmode=verify-ca with sslmode=verify-full
     const regex = new RegExp(`([?&])sslmode=${mode}(&|$)`, 'gi');
     if (regex.test(normalizedUrl)) {
       normalizedUrl = normalizedUrl.replace(regex, `$1sslmode=verify-full$2`);
     }
   }
-  
-  // If no sslmode is specified, add verify-full for security
-  if (!normalizedUrl.includes('sslmode=')) {
-    const separator = normalizedUrl.includes('?') ? '&' : '?';
-    normalizedUrl = `${normalizedUrl}${separator}sslmode=verify-full`;
-  }
-  
   return normalizedUrl;
 }
 
@@ -55,9 +48,6 @@ if (!databaseUrl) {
   );
 }
 
-// Normalize SSL mode to silence deprecation warnings
-databaseUrl = normalizeDatabaseUrl(databaseUrl);
-
 // Validate that DATABASE_URL is a standard PostgreSQL connection string
 if (!databaseUrl.startsWith('postgresql://') && !databaseUrl.startsWith('postgres://')) {
   throw new Error(
@@ -65,34 +55,30 @@ if (!databaseUrl.startsWith('postgresql://') && !databaseUrl.startsWith('postgre
   );
 }
 
-// Prisma 7 requires using an adapter for database connections
-// The adapter handles the connection string from environment
+// Normalize SSL mode and write back so PrismaClient (which reads env) uses it.
+process.env.DATABASE_URL = normalizeDatabaseUrl(databaseUrl);
+
 const getPrismaClient = (): PrismaClient => {
   if (globalForPrisma.prisma) {
     return globalForPrisma.prisma;
   }
 
-  // Note: PrismaPg adapter is available but not used in this configuration
-  // const adapter = new PrismaPg({ connectionString: databaseUrl });
-
   const prisma = new PrismaClient({
-    // @ts-ignore - adapter may not be available in all Prisma versions
-    // adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
-  }) as any;
-
-  // Suppress Prisma error logs for known schema mismatches during development/tests
-  prisma.$on('error', (event: any) => {
-    if (event.message && (
-      event.message.includes('does not exist in the current database') ||
-      event.message.includes('storeConfig')
-    )) {
-      return; // Suppress known schema mismatch errors
-    }
-    if (process.env.NODE_ENV !== 'test') {
-      logger.error('[Prisma Error]', { message: event.message, target: event.target });
-    }
   });
+
+  (prisma as unknown as { $on: (e: string, cb: (ev: { message?: string; target?: string }) => void) => void })
+    .$on('error', (event) => {
+      if (event.message && (
+        event.message.includes('does not exist in the current database') ||
+        event.message.includes('storeConfig')
+      )) {
+        return;
+      }
+      if (process.env.NODE_ENV !== 'test') {
+        logger.error('[Prisma Error]', { message: event.message, target: event.target });
+      }
+    });
 
   if (process.env.NODE_ENV !== 'production') {
     globalForPrisma.prisma = prisma;
@@ -102,5 +88,3 @@ const getPrismaClient = (): PrismaClient => {
 };
 
 export const prisma = getPrismaClient();
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;

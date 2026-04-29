@@ -22,37 +22,39 @@ async function createAdmin() {
   try {
     console.log('Creating admin user...');
 
-    const email = 'admin@gmail.com';
-    const password = 'Admin123!!';
-    const name = 'Admin User';
+    const email = process.env.ADMIN_EMAIL || 'admin@morlo.ai';
+    const username = process.env.ADMIN_USERNAME || 'admin';
+    const password = process.env.ADMIN_PASSWORD || 'Admin123!!';
+    const displayName = process.env.ADMIN_DISPLAY_NAME || 'Admin';
 
-    // Hash password with argon2id (same as auth controller)
     const passwordHash = await argon2.hash(password, { type: argon2.argon2id, memoryCost: 65536, timeCost: 3, parallelism: 4 });
 
-    // Create or update admin user
     const admin = await prisma.user.upsert({
       where: { email },
       update: {
         passwordHash,
-        name,
+        displayName,
         role: 'ADMIN',
+        emailVerified: true,
       },
       create: {
         email,
+        username,
         passwordHash,
-        name,
+        displayName,
         role: 'ADMIN',
+        emailVerified: true,
       },
     });
 
     console.log('✅ Admin user created successfully!');
-    console.log('📧 Email:', admin.email);
-    console.log('👤 Name:', admin.name);
-    console.log('🔐 Role:', admin.role);
+    console.log('📧 Email:    ', admin.email);
+    console.log('👤 Username: ', admin.username);
+    console.log('🔐 Role:     ', admin.role);
     console.log('\n🔑 Login Credentials:');
-    console.log('   Email: admin@gmail.com');
-    console.log('   Password: Admin123!!');
-    console.log('\n⚠️  Please keep these credentials secure!');
+    console.log(`   Email:    ${email}`);
+    console.log(`   Password: ${password}`);
+    console.log('\n⚠️  Override defaults via ADMIN_EMAIL / ADMIN_USERNAME / ADMIN_PASSWORD env vars for production.');
   } catch (error) {
     console.error('❌ Error creating admin user:', error);
     process.exit(1);

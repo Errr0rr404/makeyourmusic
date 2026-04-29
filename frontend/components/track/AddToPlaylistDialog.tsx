@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, Plus, ListMusic, Loader2, CheckCircle2, AlertCircle, Globe, Lock } from 'lucide-react';
+import { X, Plus, ListMusic, Loader2, AlertCircle, Globe, Lock } from 'lucide-react';
 import api from '@/lib/api';
 import { toast } from '@/lib/store/toastStore';
 import { useAuthStore } from '@/lib/store/authStore';

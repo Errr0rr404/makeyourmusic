@@ -2,6 +2,13 @@ import { Request, Response, NextFunction } from 'express';
 import { body, validationResult, query } from 'express-validator';
 import validator from 'validator';
 
+// Prisma uses cuid() for IDs (not UUID). Accept both so the validator works
+// regardless of the underlying ID strategy: 24/25-char cuid, 26-char cuid2,
+// or 36-char UUID.
+const ID_REGEX = /^(?:[a-z0-9]{20,32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
+const isCuidOrUuid = (value: unknown): boolean =>
+  typeof value === 'string' && ID_REGEX.test(value);
+
 // Password strength validation
 export const validatePassword = (password: string): { valid: boolean; message?: string } => {
   if (password.length < 8) {
@@ -60,7 +67,14 @@ const DISPLAY_TEXT_FIELDS = [
   // Music platform display text fields
   'name', 'title', 'description', 'bio', 'content',
   'displayName', 'aiPrompt', 'aiModel', 'mood',
-  'reason', 'notes', 'message',
+  'reason', 'notes', 'message', 'lyrics', 'prompt', 'idea',
+];
+
+// URL fields — escaping these turns slashes into &#x2F; and breaks isURL().
+// Trim only; downstream isURL() validators handle correctness.
+const URL_FIELDS = [
+  'audioUrl', 'coverArt', 'avatar', 'videoUrl', 'videoThumbnail',
+  'imageRefUrl', 'referenceAudioUrl', 'coverImage', 'thumbnail', 'url',
 ];
 
 // Trim-only sanitization for display text (no HTML escaping)
@@ -91,6 +105,10 @@ export const sanitizeBody = (req: Request, _res: Response, next: NextFunction): 
       if (typeof obj === 'string') {
         // For display text fields, only trim (no HTML escaping)
         if (parentKey && DISPLAY_TEXT_FIELDS.includes(parentKey)) {
+          return trimOnly(obj);
+        }
+        // URL fields must stay raw — escaping breaks isURL() validation.
+        if (parentKey && URL_FIELDS.includes(parentKey)) {
           return trimOnly(obj);
         }
         // For other strings, use full sanitization
@@ -210,10 +228,10 @@ export const resendVerificationRules = [
 export const createTrackRules = [
   body('title').trim().notEmpty().withMessage('Title is required').isLength({ max: 200 }).withMessage('Title max 200 characters'),
   body('audioUrl').trim().isURL().withMessage('Audio URL must be a valid URL'),
-  body('agentId').isUUID().withMessage('Agent ID must be a valid UUID'),
+  body('agentId').custom(isCuidOrUuid).withMessage('Invalid agent ID'),
   body('coverArt').optional().trim().isURL().withMessage('Cover art must be a valid URL'),
   body('duration').optional().isInt({ min: 1, max: 36000 }).withMessage('Duration must be 1-36000 seconds'),
-  body('genreId').optional().isUUID().withMessage('Genre ID must be a valid UUID'),
+  body('genreId').optional().custom(isCuidOrUuid).withMessage('Invalid genre ID'),
   body('mood').optional().trim().isLength({ max: 50 }).withMessage('Mood max 50 characters'),
   body('aiModel').optional().trim().isLength({ max: 100 }).withMessage('AI model max 100 characters'),
   body('aiPrompt').optional().trim().isLength({ max: 2000 }).withMessage('AI prompt max 2000 characters'),
@@ -244,7 +262,7 @@ export const updateAgentRules = [
 
 export const createCommentRules = [
   body('content').trim().notEmpty().withMessage('Comment is required').isLength({ max: 2000 }).withMessage('Comment max 2000 characters'),
-  body('parentId').optional().isUUID().withMessage('Parent ID must be a valid UUID'),
+  body('parentId').optional().custom(isCuidOrUuid).withMessage('Invalid parent ID'),
 ];
 
 export const createPlaylistRules = [

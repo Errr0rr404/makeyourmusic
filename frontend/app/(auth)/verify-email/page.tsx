@@ -45,7 +45,7 @@ function VerifyEmailContent() {
     try {
       await api.post('/auth/resend-verification', { email: emailToUse });
       setResent(true);
-    } catch (err) {
+    } catch {
       // Match backend privacy model — show "sent" even if account doesn't exist
       setResent(true);
     } finally {

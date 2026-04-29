@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Music, Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -49,93 +49,93 @@ export default function RegisterPage() {
 
   const updateForm = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
 
+  const inputCls =
+    'w-full h-11 px-4 rounded-lg bg-white/[0.04] text-white border border-[color:var(--stroke)] focus:border-[color:var(--brand)] focus:outline-none transition-colors';
+  const labelCls = 'block text-xs font-bold uppercase tracking-wider text-[color:var(--text-mute)] mb-1.5';
+
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[hsl(var(--background))] px-4 py-8">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 relative">
+      <div className="morlo-aurora" />
+      <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
-          <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <Music className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              Morlo
+          <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
+            <span
+              className="w-10 h-10 rounded-xl flex items-center justify-center font-display font-extrabold text-white text-xl"
+              style={{ background: 'var(--aurora)' }}
+            >
+              M
             </span>
+            <span className="font-display font-extrabold text-2xl text-white tracking-tight">Morlo</span>
           </Link>
-          <h1 className="text-2xl font-bold text-white">Create your account</h1>
-          <p className="text-[hsl(var(--muted-foreground))] mt-1">Start discovering AI-generated content</p>
+          <h1 className="font-display font-extrabold text-3xl text-white tracking-tight">Create your account</h1>
+          <p className="text-[color:var(--text-mute)] mt-1.5 text-sm">Start discovering AI-generated music.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4 morlo-panel p-6">
           {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+            <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm">
               {error}
             </div>
           )}
 
           <div>
-            <label className="block text-sm font-medium text-[hsl(var(--muted-foreground))] mb-1.5">Email</label>
+            <label className={labelCls}>Email</label>
             <input type="email" value={form.email} onChange={(e) => updateForm('email', e.target.value)} required
-              className="w-full h-11 px-4 rounded-lg bg-[hsl(var(--secondary))] text-white border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" placeholder="you@example.com" />
+              className={inputCls} placeholder="you@example.com" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[hsl(var(--muted-foreground))] mb-1.5">Username</label>
+            <label className={labelCls}>Username</label>
             <input type="text" value={form.username} onChange={(e) => updateForm('username', e.target.value)} required
-              className="w-full h-11 px-4 rounded-lg bg-[hsl(var(--secondary))] text-white border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" placeholder="coollistener42" />
+              className={inputCls} placeholder="coollistener42" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[hsl(var(--muted-foreground))] mb-1.5">Display Name <span className="text-[hsl(var(--muted-foreground))]/60">(optional)</span></label>
+            <label className={labelCls}>Display name <span className="text-[color:var(--text-faint)] normal-case font-normal tracking-normal">(optional)</span></label>
             <input type="text" value={form.displayName} onChange={(e) => updateForm('displayName', e.target.value)}
-              className="w-full h-11 px-4 rounded-lg bg-[hsl(var(--secondary))] text-white border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" placeholder="Your display name" />
+              className={inputCls} placeholder="Your display name" />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[hsl(var(--muted-foreground))] mb-1.5">Password</label>
+            <label className={labelCls}>Password</label>
             <div className="relative">
               <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => updateForm('password', e.target.value)} required
-                className="w-full h-11 px-4 pr-11 rounded-lg bg-[hsl(var(--secondary))] text-white border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" placeholder="Min 8 characters" />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]">
+                className={`${inputCls} pr-11`} placeholder="Min 8 chars · upper, lower, number" />
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-mute)] hover:text-white">
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[hsl(var(--muted-foreground))] mb-1.5">Confirm Password</label>
+            <label className={labelCls}>Confirm password</label>
             <input type="password" value={form.confirmPassword} onChange={(e) => updateForm('confirmPassword', e.target.value)} required
-              className="w-full h-11 px-4 rounded-lg bg-[hsl(var(--secondary))] text-white border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" placeholder="Confirm your password" />
+              className={inputCls} placeholder="Confirm your password" />
           </div>
 
-          <label className="flex items-start gap-2.5 text-sm text-[hsl(var(--muted-foreground))] cursor-pointer">
+          <label className="flex items-start gap-2.5 text-xs text-[color:var(--text-soft)] cursor-pointer">
             <input
               type="checkbox"
               checked={acceptTerms}
               onChange={(e) => setAcceptTerms(e.target.checked)}
-              className="mt-0.5 w-4 h-4 rounded border-[hsl(var(--border))] bg-[hsl(var(--secondary))] accent-[hsl(var(--primary))]"
+              className="mt-0.5 w-4 h-4 rounded accent-[color:var(--brand)]"
             />
             <span>
               I agree to the{' '}
-              <Link href="/terms" className="text-[hsl(var(--accent))] hover:underline" target="_blank">
-                Terms of Service
-              </Link>{' '}
+              <Link href="/terms" className="text-[color:var(--brand)] hover:underline" target="_blank">Terms</Link>{' '}
               and{' '}
-              <Link href="/privacy" className="text-[hsl(var(--accent))] hover:underline" target="_blank">
-                Privacy Policy
-              </Link>
-              .
+              <Link href="/privacy" className="text-[color:var(--brand)] hover:underline" target="_blank">Privacy Policy</Link>.
             </span>
           </label>
 
-          <button type="submit" disabled={isLoading || !acceptTerms}
-            className="w-full h-11 rounded-full bg-[hsl(var(--primary))] text-white font-semibold hover:bg-[hsl(var(--primary))]/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-            {isLoading ? 'Creating account...' : 'Sign Up'}
+          <button type="submit" disabled={isLoading || !acceptTerms} className="morlo-cta w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed">
+            {isLoading ? 'Creating account…' : 'Sign up'}
           </button>
         </form>
 
-        <p className="text-center mt-6 text-sm text-[hsl(var(--muted-foreground))]">
+        <p className="text-center mt-6 text-sm text-[color:var(--text-mute)]">
           Already have an account?{' '}
-          <Link href="/login" className="text-[hsl(var(--accent))] hover:underline font-medium">Log in</Link>
+          <Link href="/login" className="text-[color:var(--brand)] hover:underline font-semibold">Log in</Link>
         </p>
       </div>
     </div>

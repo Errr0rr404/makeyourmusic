@@ -407,7 +407,7 @@ export function AudioPlayer() {
       </AnimatePresence>
       <KeyboardShortcutsDialog open={showShortcutsHelp} onClose={() => setShowShortcutsHelp(false)} />
 
-      <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[hsl(var(--card))] border-t border-[hsl(var(--border))] z-50 flex items-center px-4">
+      <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[color:var(--bg-elev-1)] border-t border-[color:var(--stroke)] z-50 flex items-center gap-4 px-4 md:px-6">
         <audio
           ref={audioARef}
           onTimeUpdate={() => { if (activeSlotRef.current === 'a') handleTimeUpdate(); }}
@@ -426,22 +426,30 @@ export function AudioPlayer() {
         />
 
         {/* Track Info */}
-        <div className="flex items-center gap-3 w-auto sm:w-[240px] min-w-0 sm:min-w-[180px]">
-          <div className="w-12 h-12 rounded-md overflow-hidden bg-[hsl(var(--secondary))] flex-shrink-0">
+        <div className="flex items-center gap-3 w-auto sm:w-[260px] min-w-0">
+          <div className="relative w-14 h-14 rounded-md overflow-hidden bg-[color:var(--bg-elev-3)] flex-shrink-0 shadow-lg shadow-black/40">
             {currentTrack.coverArt ? (
               <img src={currentTrack.coverArt} alt={currentTrack.title} className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center">
-                <ListMusic className="w-6 h-6 text-[hsl(var(--muted-foreground))]" />
+              <div className="w-full h-full flex items-center justify-center"
+                   style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.3), rgba(217,70,239,0.3))' }}>
+                <ListMusic className="w-5 h-5 text-white/70" />
               </div>
+            )}
+            {isPlaying && (
+              <span className="absolute bottom-1 right-1 inline-flex gap-[2px] items-end px-1 py-0.5 rounded-sm bg-black/60">
+                <span className="eq-bar" style={{ width: 2, height: 8 }} />
+                <span className="eq-bar" style={{ width: 2, height: 8 }} />
+                <span className="eq-bar" style={{ width: 2, height: 8 }} />
+              </span>
             )}
           </div>
           <div className="min-w-0">
-            <Link href={`/track/${currentTrack.slug}`} className="text-sm font-medium text-white truncate block hover:underline">
+            <Link href={`/track/${currentTrack.slug}`} className="text-sm font-semibold text-white truncate block hover:underline">
               {currentTrack.title}
             </Link>
             {currentTrack.agent && (
-              <Link href={`/agent/${currentTrack.agent.slug}`} className="text-xs text-[hsl(var(--muted-foreground))] truncate block hover:underline">
+              <Link href={`/agent/${currentTrack.agent.slug}`} className="text-xs text-[color:var(--text-mute)] truncate block hover:underline hover:text-white">
                 {currentTrack.agent.name}
               </Link>
             )}
@@ -449,30 +457,53 @@ export function AudioPlayer() {
         </div>
 
         {/* Player Controls */}
-        <div className="flex-1 flex flex-col items-center max-w-[600px] mx-auto">
-          <div className="flex items-center gap-2 sm:gap-4 mb-1">
-            <button onClick={toggleShuffle} aria-label={shuffle ? 'Disable shuffle' : 'Enable shuffle'} className={`p-1 hidden sm:block transition-colors ${shuffle ? 'text-[hsl(var(--accent))]' : 'text-[hsl(var(--muted-foreground))] hover:text-white'}`}>
+        <div className="flex-1 flex flex-col items-center max-w-[640px] mx-auto">
+          <div className="flex items-center gap-3 sm:gap-5 mb-1.5">
+            <button
+              onClick={toggleShuffle}
+              aria-label={shuffle ? 'Disable shuffle' : 'Enable shuffle'}
+              className={`p-1 hidden sm:block transition-colors ${
+                shuffle ? 'text-[color:var(--brand)]' : 'text-[color:var(--text-mute)] hover:text-white'
+              }`}
+            >
               <Shuffle className="w-4 h-4" />
             </button>
-            <button onClick={prevTrack} aria-label="Previous track" className="p-1 text-[hsl(var(--muted-foreground))] hover:text-white transition-colors">
-              <SkipBack className="w-5 h-5" />
+            <button onClick={prevTrack} aria-label="Previous track" className="p-1 text-[color:var(--text-soft)] hover:text-white transition-colors">
+              <SkipBack className="w-5 h-5" fill="currentColor" />
             </button>
-            <button onClick={togglePlay} aria-label={isPlaying ? 'Pause' : 'Play'} className="w-10 h-10 sm:w-9 sm:h-9 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform">
-              {isPlaying ? <Pause className="w-5 h-5 text-black" /> : <Play className="w-5 h-5 text-black ml-0.5" />}
+            <button
+              onClick={togglePlay}
+              aria-label={isPlaying ? 'Pause' : 'Play'}
+              className="w-10 h-10 rounded-full bg-white flex items-center justify-center hover:scale-105 transition-transform shadow-lg shadow-black/40"
+            >
+              {isPlaying ? (
+                <Pause className="w-5 h-5 text-black" fill="currentColor" />
+              ) : (
+                <Play className="w-5 h-5 text-black ml-0.5" fill="currentColor" />
+              )}
             </button>
-            <button onClick={nextTrack} aria-label="Next track" className="p-1 text-[hsl(var(--muted-foreground))] hover:text-white transition-colors">
-              <SkipForward className="w-5 h-5" />
+            <button onClick={nextTrack} aria-label="Next track" className="p-1 text-[color:var(--text-soft)] hover:text-white transition-colors">
+              <SkipForward className="w-5 h-5" fill="currentColor" />
             </button>
-            <button onClick={toggleRepeat} aria-label={`Repeat: ${repeat}`} className={`p-1 hidden sm:block transition-colors ${repeat !== 'none' ? 'text-[hsl(var(--accent))]' : 'text-[hsl(var(--muted-foreground))] hover:text-white'}`}>
+            <button
+              onClick={toggleRepeat}
+              aria-label={`Repeat: ${repeat}`}
+              className={`p-1 hidden sm:block transition-colors ${
+                repeat !== 'none' ? 'text-[color:var(--brand)]' : 'text-[color:var(--text-mute)] hover:text-white'
+              }`}
+            >
               {repeat === 'one' ? <Repeat1 className="w-4 h-4" /> : <Repeat className="w-4 h-4" />}
             </button>
           </div>
 
           <div className="flex items-center gap-2 w-full">
-            <span className="text-xs text-[hsl(var(--muted-foreground))] w-10 text-right">{formatTime(progress)}</span>
+            <span className="text-[11px] tabular-nums text-[color:var(--text-mute)] w-10 text-right">{formatTime(progress)}</span>
             <div className="flex-1 relative group">
-              <div className="h-1 rounded-full bg-[hsl(var(--secondary))]">
-                <div className="h-full rounded-full bg-white group-hover:bg-[hsl(var(--accent))] transition-colors" style={{ width: `${progressPercent}%` }} />
+              <div className="h-1 rounded-full bg-white/10">
+                <div
+                  className="h-full rounded-full bg-white group-hover:bg-[color:var(--brand)] transition-colors"
+                  style={{ width: `${progressPercent}%` }}
+                />
               </div>
               <input
                 type="range"
@@ -483,23 +514,23 @@ export function AudioPlayer() {
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
-            <span className="text-xs text-[hsl(var(--muted-foreground))] w-10">{formatTime(duration)}</span>
+            <span className="text-[11px] tabular-nums text-[color:var(--text-mute)] w-10">{formatTime(duration)}</span>
           </div>
         </div>
 
-        <div className="hidden sm:flex items-center gap-2 w-[200px] justify-end">
+        <div className="hidden sm:flex items-center gap-1.5 w-[200px] justify-end">
           <button
             onClick={toggleQueue}
             aria-label="Queue"
-            className={`p-1.5 rounded-md transition-colors relative ${
+            className={`p-2 rounded-md transition-colors relative ${
               showQueue
-                ? 'text-[hsl(var(--accent))] bg-[hsl(var(--accent)/0.15)]'
-                : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-[hsl(var(--secondary))]'
+                ? 'text-[color:var(--brand)] bg-[color:var(--brand-soft)]'
+                : 'text-[color:var(--text-mute)] hover:text-white hover:bg-white/[0.06]'
             }`}
           >
             <ListOrdered className="w-4 h-4" />
             {queue.length > 1 && !showQueue && (
-              <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-[hsl(var(--accent))] text-white rounded-full w-4 h-4 flex items-center justify-center">
+              <span className="absolute -top-1 -right-1 text-[9px] font-bold bg-[color:var(--brand)] text-white rounded-full min-w-4 h-4 px-1 flex items-center justify-center">
                 {queue.length}
               </span>
             )}
@@ -508,32 +539,39 @@ export function AudioPlayer() {
           <button
             onClick={toggleSettings}
             aria-label="Audio settings"
-            className={`p-1.5 rounded-md transition-colors relative ${
+            className={`p-2 rounded-md transition-colors relative ${
               showSettings
-                ? 'text-[hsl(var(--accent))] bg-[hsl(var(--accent)/0.15)]'
+                ? 'text-[color:var(--brand)] bg-[color:var(--brand-soft)]'
                 : hasActiveSettings
-                  ? 'text-[hsl(var(--accent))] hover:bg-[hsl(var(--secondary))]'
-                  : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-[hsl(var(--secondary))]'
+                  ? 'text-[color:var(--brand)] hover:bg-white/[0.06]'
+                  : 'text-[color:var(--text-mute)] hover:text-white hover:bg-white/[0.06]'
             }`}
           >
             <SlidersHorizontal className="w-4 h-4" />
             {hasActiveSettings && !showSettings && (
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[hsl(var(--accent))]" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-[color:var(--brand)]" />
             )}
           </button>
 
           {playbackSpeed !== 1 && (
-            <span className="text-[10px] font-semibold text-[hsl(var(--accent))] bg-[hsl(var(--accent)/0.15)] px-1.5 py-0.5 rounded-md">
-              {playbackSpeed}x
+            <span className="text-[10px] font-bold text-[color:var(--brand)] bg-[color:var(--brand-soft)] px-1.5 py-0.5 rounded-md">
+              {playbackSpeed}×
             </span>
           )}
 
-          <button onClick={() => setVolume(volume === 0 ? 0.8 : 0)} aria-label={volume === 0 ? 'Unmute' : 'Mute'} className="p-1 text-[hsl(var(--muted-foreground))] hover:text-white transition-colors">
-            {volume === 0 ? <VolumeX className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
+          <button
+            onClick={() => setVolume(volume === 0 ? 0.8 : 0)}
+            aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+            className="p-1.5 text-[color:var(--text-mute)] hover:text-white transition-colors"
+          >
+            {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
           </button>
-          <div className="w-20 relative group">
-            <div className="h-1 rounded-full bg-[hsl(var(--secondary))]">
-              <div className="h-full rounded-full bg-white group-hover:bg-[hsl(var(--accent))] transition-colors" style={{ width: `${volume * 100}%` }} />
+          <div className="w-24 relative group">
+            <div className="h-1 rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-white group-hover:bg-[color:var(--brand)] transition-colors"
+                style={{ width: `${volume * 100}%` }}
+              />
             </div>
             <input
               type="range"
@@ -552,8 +590,8 @@ export function AudioPlayer() {
           aria-label="Audio settings"
           className={`sm:hidden p-2 ml-2 transition-colors ${
             showSettings || hasActiveSettings
-              ? 'text-[hsl(var(--accent))]'
-              : 'text-[hsl(var(--muted-foreground))]'
+              ? 'text-[color:var(--brand)]'
+              : 'text-[color:var(--text-mute)]'
           }`}
         >
           <SlidersHorizontal className="w-5 h-5" />

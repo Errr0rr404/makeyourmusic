@@ -2,10 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
-
-function slugify(text: string): string {
-  return text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
-}
+import { slugify, uniqueSuffix } from '../utils/slugify';
 
 export const createTrack = async (req: RequestWithUser, res: Response) => {
   try {
@@ -27,7 +24,7 @@ export const createTrack = async (req: RequestWithUser, res: Response) => {
 
     let slug = slugify(title);
     const existingSlug = await prisma.track.findUnique({ where: { slug } });
-    if (existingSlug) slug = `${slug}-${Date.now().toString(36)}`;
+    if (existingSlug) slug = `${slug}-${uniqueSuffix()}`;
 
     const parsedDuration = parseInt(duration);
     if (isNaN(parsedDuration) || parsedDuration <= 0) {
@@ -354,27 +351,48 @@ export const deleteTrack = async (req: RequestWithUser, res: Response) => {
   }
 };
 
-export const getTrending = async (_req: RequestWithUser, res: Response) => {
+export const getTrending = async (req: RequestWithUser, res: Response) => {
   try {
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 50);
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
 
-    const trending = await prisma.track.findMany({
+    // Rank by recent play count; do the sort in the DB rather than in memory.
+    const grouped = await prisma.play.groupBy({
+      by: ['trackId'],
+      where: { createdAt: { gte: sevenDaysAgo } },
+      _count: { trackId: true },
+      orderBy: { _count: { trackId: 'desc' } },
+      take: limit * 2,
+    });
+
+    if (grouped.length === 0) {
+      res.json({ tracks: [] });
+      return;
+    }
+
+    const trackIds = grouped.map((g) => g.trackId);
+    const playCounts = new Map(grouped.map((g) => [g.trackId, g._count.trackId]));
+
+    const tracks = await prisma.track.findMany({
       where: {
+        id: { in: trackIds },
         status: 'ACTIVE',
         isPublic: true,
-        plays: { some: { createdAt: { gte: sevenDaysAgo } } },
       },
       include: {
         agent: { select: { id: true, name: true, slug: true, avatar: true } },
         genre: true,
-        _count: { select: { plays: { where: { createdAt: { gte: sevenDaysAgo } } } } },
       },
-      take: 50,
     });
 
-    trending.sort((a, b) => (b._count?.plays ?? 0) - (a._count?.plays ?? 0));
+    // Preserve the DB's play-count order and drop tracks that were filtered out.
+    const ranked = trackIds
+      .map((id) => tracks.find((t) => t.id === id))
+      .filter((t): t is NonNullable<typeof t> => Boolean(t))
+      .map((t) => ({ ...t, recentPlayCount: playCounts.get(t.id) || 0 }))
+      .slice(0, limit);
 
-    res.json({ tracks: trending.slice(0, 20) });
+    res.json({ tracks: ranked });
   } catch (error) {
     logger.error('Get trending error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get trending' });
@@ -390,9 +408,11 @@ export const getHistory = async (req: RequestWithUser, res: Response) => {
     const page = Math.max(1, parseInt(req.query.page as string) || 1);
     const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 50);
 
-    const [plays, total] = await Promise.all([
+    const userId = req.user.userId;
+
+    const [plays, distinctGroups] = await Promise.all([
       prisma.play.findMany({
-        where: { userId: req.user.userId },
+        where: { userId },
         include: {
           track: {
             include: {
@@ -408,14 +428,15 @@ export const getHistory = async (req: RequestWithUser, res: Response) => {
       }),
       prisma.play.groupBy({
         by: ['trackId'],
-        where: { userId: req.user.userId },
-      }).then((groups) => groups.length),
+        where: { userId },
+      }),
     ]);
+    const total = distinctGroups.length;
 
     // Filter out private tracks the user no longer owns (data integrity)
     const visible = plays.filter((p) => {
       if (p.track.isPublic) return true;
-      return p.track.agent.ownerId === req.user!.userId;
+      return p.track.agent.ownerId === userId;
     });
 
     res.json({

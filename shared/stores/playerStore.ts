@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { TrackItem } from '../types';
 import { getApi } from '../api';
+import { getStorage } from '../storage';
 
 // ─── EQ Types ──────────────────────────────────────────────
 
@@ -59,31 +60,16 @@ type PersistedPlayerPrefs = {
 
 const PREFS_STORAGE_KEY = "music4ai-player-prefs-v1";
 
-function loadPlayerPrefs(): Partial<PersistedPlayerPrefs> {
-  try {
-    if (typeof globalThis === "undefined") return {};
-    const ls = (globalThis as any).localStorage;
-    if (!ls) return {};
-    const raw = ls.getItem(PREFS_STORAGE_KEY);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw) as Partial<PersistedPlayerPrefs>;
-    return parsed && typeof parsed === "object" ? parsed : {};
-  } catch {
-    return {};
-  }
-}
+// In-memory copy of persisted prefs; populated by hydratePlayerPrefs() on boot.
+// Writes (persistPlayerPrefs) update this synchronously and flush to storage
+// in the background — so the store stays sync-friendly while still persisting
+// on both web (localStorage) and mobile (SecureStore via the storage adapter).
+let persistedPrefs: Partial<PersistedPlayerPrefs> = {};
 
 function persistPlayerPrefs(update: Partial<PersistedPlayerPrefs>): void {
-  try {
-    if (typeof globalThis === "undefined") return;
-    const ls = (globalThis as any).localStorage;
-    if (!ls) return;
-    const current = loadPlayerPrefs();
-    const next = { ...current, ...update };
-    ls.setItem(PREFS_STORAGE_KEY, JSON.stringify(next));
-  } catch {
-    // Local persistence is best-effort only.
-  }
+  persistedPrefs = { ...persistedPrefs, ...update };
+  // Fire-and-forget async persistence.
+  void getStorage().setItem(PREFS_STORAGE_KEY, JSON.stringify(persistedPrefs));
 }
 
 // ─── Player State ──────────────────────────────────────────
@@ -154,11 +140,15 @@ export interface PlayerActions {
   toggleSettings: () => void;
   toggleQueue: () => void;
   moveInQueue: (fromIndex: number, toIndex: number) => void;
+  /**
+   * Load persisted prefs (volume, EQ, etc.) from platform storage. Web can
+   * skip calling this (it's cheap and idempotent); mobile must call it on
+   * boot so user prefs carry across app launches.
+   */
+  hydratePrefs: () => Promise<void>;
 }
 
 export type PlayerStore = PlayerState & PlayerActions;
-
-const persistedPrefs = loadPlayerPrefs();
 
 export const usePlayerStore = create<PlayerStore>((set, get) => ({
   currentTrack: null,
@@ -452,4 +442,39 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     const newIdx = s.currentTrack ? newQueue.findIndex((t) => t.id === s.currentTrack!.id) : -1;
     return { queue: newQueue, queueIndex: newIdx };
   }),
+
+  hydratePrefs: async () => {
+    try {
+      const raw = await getStorage().getItem(PREFS_STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as Partial<PersistedPlayerPrefs>;
+      if (!parsed || typeof parsed !== 'object') return;
+
+      persistedPrefs = parsed;
+      // Build the patch with only fields that are actually persisted.
+      // Passing undefined to set() would clobber the in-store defaults.
+      const patch: Partial<PlayerState> = {};
+      if (typeof parsed.volume === 'number') patch.volume = parsed.volume;
+      if (typeof parsed.shuffle === 'boolean') patch.shuffle = parsed.shuffle;
+      if (parsed.repeat === 'none' || parsed.repeat === 'one' || parsed.repeat === 'all') {
+        patch.repeat = parsed.repeat;
+      }
+      if (typeof parsed.autoplay === 'boolean') patch.autoplay = parsed.autoplay;
+      if (parsed.playbackSpeed !== undefined && PLAYBACK_SPEEDS.includes(parsed.playbackSpeed)) {
+        patch.playbackSpeed = parsed.playbackSpeed;
+      }
+      if (typeof parsed.eqEnabled === 'boolean') patch.eqEnabled = parsed.eqEnabled;
+      if (typeof parsed.eqPresetId === 'string') patch.eqPresetId = parsed.eqPresetId;
+      if (
+        Array.isArray(parsed.eqBands) &&
+        parsed.eqBands.length === DEFAULT_EQ_BANDS.length
+      ) {
+        patch.eqBands = parsed.eqBands;
+      }
+      if (typeof parsed.crossfade === 'number') patch.crossfade = parsed.crossfade;
+      if (Object.keys(patch).length > 0) set(patch);
+    } catch {
+      // Non-critical — defaults stay in place.
+    }
+  },
 }));

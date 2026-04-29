@@ -12,26 +12,38 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   const hasPlayer = !!currentTrack;
 
   return (
-    <div className="min-h-screen">
-      {/* Desktop sidebar - hidden on mobile */}
+    <div className="relative min-h-screen">
+      {/* Aurora — Morlo's signature ambient backdrop */}
+      <div className="morlo-aurora" />
+
+      {/* Desktop: floating sidebar to the left */}
       <div className="hidden md:block">
         <Sidebar />
       </div>
-      <Topbar />
-      <main
-        className={
-          hasPlayer
-            ? 'md:ml-[var(--sidebar-width)] mt-16 pb-[calc(var(--player-height)+56px)] md:pb-[var(--player-height)] min-h-[calc(100vh-64px-var(--player-height))]'
-            : 'md:ml-[var(--sidebar-width)] mt-16 pb-14 md:pb-0 min-h-[calc(100vh-64px)]'
-        }
+
+      {/* Main shell — rounded panel like modern Spotify */}
+      <div
+        className="md:pl-[var(--sidebar-width)] relative z-10"
+        style={{
+          paddingBottom: hasPlayer ? `calc(var(--player-height) + 56px)` : '56px',
+        }}
       >
-        <div className="p-4 md:p-6">
-          {children}
+        <div className="md:pr-2 md:py-2">
+          {/* Panel wraps the content visually but does NOT set overflow-hidden
+              so the topbar inside can stick relative to the page scroll. */}
+          <div className="md:morlo-panel">
+            <Topbar />
+            <main
+              className="px-4 md:px-8 pt-4 pb-12"
+              style={{ minHeight: hasPlayer ? `calc(100vh - 64px - var(--player-height))` : `calc(100vh - 64px)` }}
+            >
+              {children}
+            </main>
+            <Footer />
+          </div>
         </div>
-        <div className="md:ml-0">
-          <Footer />
-        </div>
-      </main>
+      </div>
+
       <MobileNav />
       <AudioPlayer />
     </div>

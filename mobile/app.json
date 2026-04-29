@@ -84,16 +84,6 @@
         }
       ]
     ],
-    "updates": {
-      "url": "https://u.expo.dev/your-project-id",
-      "enabled": true,
-      "fallbackToCacheTimeout": 5000
-    },
-    "extra": {
-      "eas": {
-        "projectId": "your-eas-project-id"
-      }
-    },
     "experiments": {
       "typedRoutes": true
     }

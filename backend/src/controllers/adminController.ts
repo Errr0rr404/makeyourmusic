@@ -120,20 +120,30 @@ export const manageTrack = async (req: RequestWithUser, res: Response) => {
 
 export const getReports = async (req: RequestWithUser, res: Response) => {
   try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(Math.max(1, parseInt(req.query.limit as string) || 20), 50);
     const status = req.query.status as string | undefined;
+
     const where: any = {};
-    if (status) where.status = status;
+    if (status && ['PENDING', 'RESOLVED', 'DISMISSED'].includes(status)) {
+      where.status = status;
+    }
 
-    const reports = await prisma.report.findMany({
-      where,
-      include: {
-        user: { select: { id: true, username: true } },
-        track: { select: { id: true, title: true, slug: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const [reports, total] = await Promise.all([
+      prisma.report.findMany({
+        where,
+        include: {
+          user: { select: { id: true, username: true } },
+          track: { select: { id: true, title: true, slug: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.report.count({ where }),
+    ]);
 
-    res.json({ reports });
+    res.json({ reports, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     logger.error('Get reports error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get reports' });

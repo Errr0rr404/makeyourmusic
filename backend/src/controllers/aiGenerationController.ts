@@ -10,20 +10,12 @@ import {
   minimaxRetrieveFile,
 } from '../utils/minimax';
 import { assertCanGenerate, getDailyUsage } from '../utils/aiUsage';
+import { slugify, uniqueSuffix } from '../utils/slugify';
 
 const MAX_LYRICS_LEN = 3500;
 const MAX_PROMPT_LEN = 2000;
 const MUSIC_MODEL = () => process.env.MINIMAX_MUSIC_MODEL || 'music-2.6-free';
 const VIDEO_MODEL = () => process.env.MINIMAX_VIDEO_MODEL || 'video-01';
-
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .replace(/[^\w\s-]/g, '')
-    .replace(/[\s_-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 80);
-}
 
 // ─── Lyrics (synchronous, fast) ───────────────────────────
 
@@ -303,9 +295,9 @@ export const publishGeneration = async (req: RequestWithUser, res: Response) => 
       return;
     }
 
-    let slug = slugify(finalTitle) || `track-${Date.now().toString(36)}`;
+    let slug = slugify(finalTitle, 80) || `track-${uniqueSuffix()}`;
     const existing = await prisma.track.findUnique({ where: { slug } });
-    if (existing) slug = `${slug}-${Date.now().toString(36)}`;
+    if (existing) slug = `${slug}-${uniqueSuffix()}`;
 
     const created = await prisma.$transaction(async (tx) => {
       const track = await tx.track.create({

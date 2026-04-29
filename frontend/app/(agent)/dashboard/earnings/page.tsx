@@ -27,7 +27,7 @@ interface EarningRecord {
 }
 
 export default function EarningsPage() {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [agents, setAgents] = useState<Agent[]>([]);
   const [selectedAgentId, setSelectedAgentId] = useState<string>('');
   const [earnings, setEarnings] = useState<EarningRecord[]>([]);

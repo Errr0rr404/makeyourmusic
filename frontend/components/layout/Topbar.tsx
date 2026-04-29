@@ -1,26 +1,32 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Search, User, LogOut, Settings, ChevronDown } from 'lucide-react';
+import { Search, User, LogOut, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { cn } from '@/lib/utils';
 
 export function Topbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, fetchUser, logout } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    // Only fetch user if we don't already have one loaded
-    if (!user && !isAuthenticated) {
-      fetchUser();
-    }
+    if (!user && !isAuthenticated) fetchUser();
   }, [user, isAuthenticated, fetchUser]);
 
-  // Close user menu on Escape key
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 32);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   useEffect(() => {
     if (!showUserMenu) return;
     const handleEscape = (e: KeyboardEvent) => {
@@ -30,58 +36,86 @@ export function Topbar() {
     return () => document.removeEventListener('keydown', handleEscape);
   }, [showUserMenu]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
       router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
     }
-  };
+  }, [router, searchQuery]);
+
+  const onSearchPage = pathname === '/search';
 
   return (
-    <header className="fixed top-0 left-0 md:left-[var(--sidebar-width)] right-0 h-16 bg-[hsl(var(--background))]/80 backdrop-blur-xl border-b border-[hsl(var(--border))] flex items-center justify-between px-4 md:px-6 z-30">
-      {/* Search Bar */}
-      <form onSubmit={handleSearch} className="flex-1 max-w-lg">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[hsl(var(--muted-foreground))]" />
-          <input
-            type="text"
-            placeholder="Search tracks, agents, genres..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full h-10 pl-10 pr-4 rounded-full bg-[hsl(var(--secondary))] text-sm text-white placeholder:text-[hsl(var(--muted-foreground))] border border-transparent focus:border-[hsl(var(--accent))] focus:outline-none transition-colors"
-          />
-        </div>
-      </form>
+    <header
+      className={cn(
+        'sticky top-0 z-30 flex items-center justify-between gap-4 px-4 md:px-6 h-16 transition-colors',
+        scrolled ? 'morlo-topbar-frost' : 'bg-transparent'
+      )}
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        <button
+          onClick={() => router.back()}
+          aria-label="Go back"
+          className="hidden md:inline-flex w-8 h-8 items-center justify-center rounded-full bg-black/30 text-[color:var(--text-soft)] hover:text-white transition-colors disabled:opacity-50"
+        >
+          <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
+        </button>
+        <button
+          onClick={() => router.forward()}
+          aria-label="Go forward"
+          className="hidden md:inline-flex w-8 h-8 items-center justify-center rounded-full bg-black/30 text-[color:var(--text-soft)] hover:text-white transition-colors"
+        >
+          <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
+        </button>
 
-      {/* Right Section */}
-      <div className="flex items-center gap-3 ml-4">
+        <form onSubmit={handleSearch} className="ml-2 flex-1 max-w-[420px] min-w-[160px]">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[color:var(--text-mute)]" />
+            <input
+              type="text"
+              placeholder={onSearchPage ? 'Search tracks, agents, genres…' : 'Search Morlo'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full h-10 pl-10 pr-4 rounded-full bg-white/[0.06] text-sm text-white placeholder:text-[color:var(--text-mute)] border border-transparent focus:bg-white/[0.1] focus:border-[color:var(--brand)]/50 focus:outline-none transition-colors"
+            />
+          </div>
+        </form>
+      </div>
+
+      <div className="flex items-center gap-2">
         {isAuthenticated ? (
           <>
+            <Link href="/create" className="hidden md:inline-flex morlo-pill">
+              <span className="text-[color:var(--brand)] mr-1">●</span> Create
+            </Link>
             <NotificationBell />
 
-            {/* User Menu */}
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 p-1.5 pr-3 rounded-full hover:bg-white/5 transition-colors"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-black/30 hover:bg-white/[0.08] transition-colors"
+                aria-label="User menu"
               >
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
-                  {user?.displayName?.[0] || user?.username?.[0] || 'U'}
-                </div>
-                <ChevronDown className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
+                <span className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
+                      style={{ background: 'var(--aurora)' }}>
+                  {user?.displayName?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || 'U'}
+                </span>
+                <span className="hidden sm:inline text-xs font-semibold text-white max-w-[100px] truncate">
+                  {user?.displayName || user?.username}
+                </span>
               </button>
 
               {showUserMenu && (
                 <>
                   <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
-                  <div className="absolute right-0 top-12 w-56 bg-[hsl(var(--card))] border border-[hsl(var(--border))] rounded-xl shadow-xl z-50 py-2">
-                    <div className="px-4 py-2 border-b border-[hsl(var(--border))]">
-                      <p className="text-sm font-medium text-white">{user?.displayName || user?.username}</p>
-                      <p className="text-xs text-[hsl(var(--muted-foreground))]">{user?.email}</p>
+                  <div className="absolute right-0 top-12 w-60 bg-[color:var(--bg-elev-1)] border border-[color:var(--stroke)] rounded-xl shadow-2xl shadow-black/40 z-50 py-2 animate-fade-in">
+                    <div className="px-4 py-2 border-b border-[color:var(--stroke)]">
+                      <p className="text-sm font-semibold text-white truncate">{user?.displayName || user?.username}</p>
+                      <p className="text-xs text-[color:var(--text-mute)] truncate">{user?.email}</p>
                     </div>
                     <Link
                       href="/profile"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[color:var(--text-soft)] hover:text-white hover:bg-white/[0.06] transition-colors"
                       onClick={() => setShowUserMenu(false)}
                     >
                       <User className="w-4 h-4" />
@@ -89,7 +123,7 @@ export function Topbar() {
                     </Link>
                     <Link
                       href="/settings"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[color:var(--text-soft)] hover:text-white hover:bg-white/[0.06] transition-colors"
                       onClick={() => setShowUserMenu(false)}
                     >
                       <Settings className="w-4 h-4" />
@@ -97,10 +131,10 @@ export function Topbar() {
                     </Link>
                     <button
                       onClick={() => { setShowUserMenu(false); logout(); }}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-red-400 hover:text-red-300 hover:bg-white/5 transition-colors w-full"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-rose-400 hover:text-rose-300 hover:bg-white/[0.06] transition-colors w-full"
                     >
                       <LogOut className="w-4 h-4" />
-                      Log Out
+                      Log out
                     </button>
                   </div>
                 </>
@@ -108,18 +142,12 @@ export function Topbar() {
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-3">
-            <Link
-              href="/login"
-              className="text-sm font-medium text-[hsl(var(--muted-foreground))] hover:text-white transition-colors px-4 py-2"
-            >
-              Log In
+          <div className="flex items-center gap-2">
+            <Link href="/login" className="text-sm font-semibold text-[color:var(--text-soft)] hover:text-white transition-colors px-3 py-2">
+              Log in
             </Link>
-            <Link
-              href="/register"
-              className="text-sm font-medium text-white bg-[hsl(var(--primary))] hover:bg-[hsl(var(--primary))]/90 px-5 py-2 rounded-full transition-colors"
-            >
-              Sign Up
+            <Link href="/register" className="morlo-cta text-sm">
+              Sign up
             </Link>
           </div>
         )}

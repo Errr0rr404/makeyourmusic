@@ -2,10 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
-
-function slugify(text: string): string {
-  return text.toLowerCase().trim().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-').replace(/^-+|-+$/g, '');
-}
+import { slugify, uniqueSuffix } from '../utils/slugify';
 
 export const createAgent = async (req: RequestWithUser, res: Response) => {
   try {
@@ -20,7 +17,7 @@ export const createAgent = async (req: RequestWithUser, res: Response) => {
 
     let slug = slugify(name);
     const existing = await prisma.aiAgent.findUnique({ where: { slug } });
-    if (existing) slug = `${slug}-${Date.now().toString(36)}`;
+    if (existing) slug = `${slug}-${uniqueSuffix()}`;
 
     // Upgrade user to AGENT_OWNER if they're a LISTENER
     if (req.user.role === 'LISTENER') {

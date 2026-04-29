@@ -8,9 +8,9 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { ImageUpload } from '@/components/upload/ImageUpload';
 import { toast } from 'sonner';
 import {
-  Sparkles, Music, Wand2, Lock, Loader2, ChevronLeft, ChevronRight,
+  Sparkles, Wand2, Lock, Loader2, ChevronLeft, ChevronRight,
   Globe, LockKeyhole, CheckCircle2, AlertCircle, RotateCcw,
-  Zap, FileText, Settings2, Headphones, Clock, Play, Pause,
+  Zap, FileText, Settings2, Headphones, Clock,
   Bot, BookOpen, Flame,
 } from 'lucide-react';
 
@@ -51,7 +51,7 @@ const MOOD_OPTIONS = ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', '
 
 export default function CreatePage() {
   const router = useRouter();
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const [step, setStep] = useState<Step>('idea');
 
   // Form state
@@ -320,7 +320,6 @@ export default function CreatePage() {
             publishing={publishing}
             onPublish={handlePublish}
             onStartOver={handleStartOver}
-            userId={user?.id || ''}
           />
         )}
       </div>
@@ -777,7 +776,7 @@ function PublishStep({
   generation, title, setTitle, agents, genres,
   publishAgentId, setPublishAgentId, publishGenreId, setPublishGenreId,
   publishCover, setPublishCover, publishPublic, setPublishPublic,
-  publishing, onPublish, onStartOver, userId,
+  publishing, onPublish, onStartOver,
 }: {
   generation: Generation; title: string; setTitle: (v: string) => void;
   agents: Agent[]; genres: Genre[];
@@ -786,7 +785,6 @@ function PublishStep({
   publishCover: string; setPublishCover: (v: string) => void;
   publishPublic: boolean; setPublishPublic: (v: boolean) => void;
   publishing: boolean; onPublish: () => void; onStartOver: () => void;
-  userId: string;
 }) {
   // Auto-pick first agent if any
   useEffect(() => {

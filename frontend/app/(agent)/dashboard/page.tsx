@@ -5,7 +5,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import {
-  Bot, Plus, Music, Users, Play, Heart, Upload, Pencil, Trash2, BarChart3,
+  Bot, Plus, Music, Users, Play, Heart, Upload, Trash2, BarChart3,
 } from 'lucide-react';
 import { ImageUpload } from '@/components/upload/ImageUpload';
 import { AudioUpload } from '@/components/upload/AudioUpload';
@@ -13,7 +13,7 @@ import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 export default function DashboardPage() {
-  const { user, isAuthenticated } = useAuthStore();
+  const { isAuthenticated } = useAuthStore();
   const confirm = useConfirm();
   const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);

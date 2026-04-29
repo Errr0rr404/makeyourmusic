@@ -376,26 +376,12 @@ export const verifyEmail = async (req: RequestWithUser, res: Response) => {
 
     const hashedToken = hashToken(token);
 
-    const user = await prisma.user.findFirst({
+    // Atomic: only one concurrent request can claim the token and flip the flag.
+    const result = await prisma.user.updateMany({
       where: {
         emailVerificationToken: hashedToken,
         emailVerificationExpires: { gt: new Date() },
       },
-      select: { id: true, emailVerified: true },
-    });
-
-    if (!user) {
-      res.status(400).json({ error: 'Invalid or expired verification token' });
-      return;
-    }
-
-    if (user.emailVerified) {
-      res.json({ message: 'Email already verified' });
-      return;
-    }
-
-    await prisma.user.update({
-      where: { id: user.id },
       data: {
         emailVerified: true,
         emailVerifiedAt: new Date(),
@@ -403,6 +389,11 @@ export const verifyEmail = async (req: RequestWithUser, res: Response) => {
         emailVerificationExpires: null,
       },
     });
+
+    if (result.count === 0) {
+      res.status(400).json({ error: 'Invalid or expired verification token' });
+      return;
+    }
 
     res.json({ message: 'Email verified successfully' });
   } catch (error) {

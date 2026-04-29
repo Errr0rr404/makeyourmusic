@@ -3,6 +3,7 @@ import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 import { createNotification } from '../utils/notifications';
+import { slugify, uniqueSuffix } from '../utils/slugify';
 
 // ─── Likes ───────────────────────────────────────────────
 
@@ -11,50 +12,55 @@ export const toggleLike = async (req: RequestWithUser, res: Response) => {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
 
     const trackId = req.params.trackId as string;
-    const existing = await prisma.like.findUnique({
-      where: { userId_trackId: { userId: req.user.userId, trackId } },
+    const userId = req.user.userId;
+
+    const track = await prisma.track.findUnique({
+      where: { id: trackId },
+      include: { agent: { select: { id: true, name: true, slug: true, ownerId: true } } },
     });
+    if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
 
-    if (existing) {
-      const track = await prisma.track.findUnique({ where: { id: trackId } });
-      if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
-
-      await prisma.$transaction([
-        prisma.like.delete({ where: { id: existing.id } }),
-        prisma.track.update({ where: { id: trackId }, data: { likeCount: { decrement: 1 } } }),
-        prisma.aiAgent.update({ where: { id: track.agentId }, data: { totalLikes: { decrement: 1 } } }),
-      ]);
-      res.json({ liked: false });
-    } else {
-      const track = await prisma.track.findUnique({
-        where: { id: trackId },
-        include: { agent: { select: { id: true, name: true, slug: true, ownerId: true } } },
+    // Atomic toggle: deleteMany returns count, so a concurrent request can't
+    // make us double-delete or miss a delete. For the like branch, a P2002 from
+    // a concurrent create is treated as idempotent (already liked).
+    let liked: boolean;
+    try {
+      liked = await prisma.$transaction(async (tx) => {
+        const deleted = await tx.like.deleteMany({ where: { userId, trackId } });
+        if (deleted.count > 0) {
+          await tx.track.update({ where: { id: trackId }, data: { likeCount: { decrement: 1 } } });
+          await tx.aiAgent.update({ where: { id: track.agentId }, data: { totalLikes: { decrement: 1 } } });
+          return false;
+        }
+        await tx.like.create({ data: { userId, trackId } });
+        await tx.track.update({ where: { id: trackId }, data: { likeCount: { increment: 1 } } });
+        await tx.aiAgent.update({ where: { id: track.agentId }, data: { totalLikes: { increment: 1 } } });
+        return true;
       });
-      if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
-
-      await prisma.$transaction([
-        prisma.like.create({ data: { userId: req.user.userId, trackId } }),
-        prisma.track.update({ where: { id: trackId }, data: { likeCount: { increment: 1 } } }),
-        prisma.aiAgent.update({ where: { id: track.agentId }, data: { totalLikes: { increment: 1 } } }),
-      ]);
-
-      if (track.agent.ownerId !== req.user.userId) {
-        const liker = await prisma.user.findUnique({
-          where: { id: req.user.userId },
-          select: { displayName: true, username: true },
-        });
-        const name = liker?.displayName || liker?.username || 'Someone';
-        await createNotification({
-          userId: track.agent.ownerId,
-          type: 'TRACK_LIKED',
-          title: 'New like',
-          message: `${name} liked your track "${track.title}"`,
-          data: { trackId: track.id, trackSlug: track.slug, agentSlug: track.agent.slug },
-        });
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2002') {
+        res.json({ liked: true });
+        return;
       }
-
-      res.json({ liked: true });
+      throw e;
     }
+
+    if (liked && track.agent.ownerId !== userId) {
+      const liker = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { displayName: true, username: true },
+      });
+      const name = liker?.displayName || liker?.username || 'Someone';
+      await createNotification({
+        userId: track.agent.ownerId,
+        type: 'TRACK_LIKED',
+        title: 'New like',
+        message: `${name} liked your track "${track.title}"`,
+        data: { trackId: track.id, trackSlug: track.slug, agentSlug: track.agent.slug },
+      });
+    }
+
+    res.json({ liked });
   } catch (error) {
     logger.error('Toggle like error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to toggle like' });
@@ -109,43 +115,47 @@ export const toggleFollow = async (req: RequestWithUser, res: Response) => {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
 
     const agentId = req.params.agentId as string;
+    const userId = req.user.userId;
 
     const agent = await prisma.aiAgent.findUnique({ where: { id: agentId } });
     if (!agent) { res.status(404).json({ error: 'Agent not found' }); return; }
 
-    const existing = await prisma.follow.findUnique({
-      where: { userId_agentId: { userId: req.user.userId, agentId } },
-    });
-
-    if (existing) {
-      await prisma.$transaction([
-        prisma.follow.delete({ where: { id: existing.id } }),
-        prisma.aiAgent.update({ where: { id: agentId }, data: { followerCount: { decrement: 1 } } }),
-      ]);
-      res.json({ following: false });
-    } else {
-      await prisma.$transaction([
-        prisma.follow.create({ data: { userId: req.user.userId, agentId } }),
-        prisma.aiAgent.update({ where: { id: agentId }, data: { followerCount: { increment: 1 } } }),
-      ]);
-
-      if (agent.ownerId !== req.user.userId) {
-        const follower = await prisma.user.findUnique({
-          where: { id: req.user.userId },
-          select: { displayName: true, username: true },
-        });
-        const name = follower?.displayName || follower?.username || 'Someone';
-        await createNotification({
-          userId: agent.ownerId,
-          type: 'NEW_FOLLOWER',
-          title: 'New follower',
-          message: `${name} followed ${agent.name}`,
-          data: { agentId: agent.id, agentSlug: agent.slug, followerId: req.user.userId },
-        });
+    let following: boolean;
+    try {
+      following = await prisma.$transaction(async (tx) => {
+        const deleted = await tx.follow.deleteMany({ where: { userId, agentId } });
+        if (deleted.count > 0) {
+          await tx.aiAgent.update({ where: { id: agentId }, data: { followerCount: { decrement: 1 } } });
+          return false;
+        }
+        await tx.follow.create({ data: { userId, agentId } });
+        await tx.aiAgent.update({ where: { id: agentId }, data: { followerCount: { increment: 1 } } });
+        return true;
+      });
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2002') {
+        res.json({ following: true });
+        return;
       }
-
-      res.json({ following: true });
+      throw e;
     }
+
+    if (following && agent.ownerId !== userId) {
+      const follower = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { displayName: true, username: true },
+      });
+      const name = follower?.displayName || follower?.username || 'Someone';
+      await createNotification({
+        userId: agent.ownerId,
+        type: 'NEW_FOLLOWER',
+        title: 'New follower',
+        message: `${name} followed ${agent.name}`,
+        data: { agentId: agent.id, agentSlug: agent.slug, followerId: userId },
+      });
+    }
+
+    res.json({ following });
   } catch (error) {
     logger.error('Toggle follow error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to toggle follow' });
@@ -316,9 +326,10 @@ export const createPlaylist = async (req: RequestWithUser, res: Response) => {
     const { title, description, isPublic } = req.body;
     if (!title) { res.status(400).json({ error: 'Title is required' }); return; }
 
-    let slug = title.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
+    let slug = slugify(title);
+    if (!slug) slug = `playlist-${uniqueSuffix()}`;
     const existingSlug = await prisma.playlist.findUnique({ where: { slug } });
-    if (existingSlug) slug = `${slug}-${Date.now().toString(36)}`;
+    if (existingSlug) slug = `${slug}-${uniqueSuffix()}`;
 
     const playlist = await prisma.playlist.create({
       data: {
@@ -400,21 +411,41 @@ export const addToPlaylist = async (req: RequestWithUser, res: Response) => {
 
     const playlistId = req.params.playlistId as string;
     const { trackId } = req.body;
+    if (!trackId || typeof trackId !== 'string') {
+      res.status(400).json({ error: 'trackId is required' }); return;
+    }
 
     const playlist = await prisma.playlist.findUnique({ where: { id: playlistId } });
     if (!playlist) { res.status(404).json({ error: 'Playlist not found' }); return; }
     if (playlist.userId !== req.user.userId) { res.status(403).json({ error: 'Not authorized' }); return; }
 
-    const maxPosition = await prisma.playlistTrack.aggregate({
-      where: { playlistId },
-      _max: { position: true },
+    const track = await prisma.track.findUnique({
+      where: { id: trackId },
+      select: { id: true, isPublic: true, agent: { select: { ownerId: true } } },
     });
+    if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
+    if (!track.isPublic && track.agent.ownerId !== req.user.userId) {
+      res.status(404).json({ error: 'Track not found' }); return;
+    }
 
-    const playlistTrack = await prisma.playlistTrack.create({
-      data: { playlistId, trackId, position: (maxPosition._max.position || 0) + 1 },
-    });
-
-    res.status(201).json({ playlistTrack });
+    try {
+      const playlistTrack = await prisma.$transaction(async (tx) => {
+        const maxPosition = await tx.playlistTrack.aggregate({
+          where: { playlistId },
+          _max: { position: true },
+        });
+        return tx.playlistTrack.create({
+          data: { playlistId, trackId, position: (maxPosition._max.position || 0) + 1 },
+        });
+      });
+      res.status(201).json({ playlistTrack });
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2002') {
+        res.status(409).json({ error: 'Track is already in this playlist' });
+        return;
+      }
+      throw e;
+    }
   } catch (error) {
     logger.error('Add to playlist error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to add to playlist' });
@@ -485,16 +516,33 @@ export const deletePlaylist = async (req: RequestWithUser, res: Response) => {
 
 // ─── Share ───────────────────────────────────────────────
 
+const VALID_SHARE_PLATFORMS = ['copy', 'twitter', 'facebook', 'whatsapp', 'telegram', 'email', 'other'];
+
 export const shareTrack = async (req: RequestWithUser, res: Response) => {
   try {
     const trackId = req.params.trackId as string;
-    const { platform } = req.body;
+    const { platform } = req.body || {};
 
-    const track = await prisma.track.findUnique({ where: { id: trackId } });
-    if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
+    const normalizedPlatform =
+      typeof platform === 'string' && VALID_SHARE_PLATFORMS.includes(platform) ? platform : null;
+
+    const track = await prisma.track.findUnique({
+      where: { id: trackId },
+      select: { id: true, isPublic: true, status: true, agent: { select: { ownerId: true } } },
+    });
+    if (!track || track.status !== 'ACTIVE') {
+      res.status(404).json({ error: 'Track not found' });
+      return;
+    }
+    if (!track.isPublic) {
+      if (!req.user || track.agent.ownerId !== req.user.userId) {
+        res.status(404).json({ error: 'Track not found' });
+        return;
+      }
+    }
 
     await prisma.$transaction([
-      prisma.share.create({ data: { trackId, userId: req.user?.userId, platform } }),
+      prisma.share.create({ data: { trackId, userId: req.user?.userId, platform: normalizedPlatform } }),
       prisma.track.update({ where: { id: trackId }, data: { shareCount: { increment: 1 } } }),
     ]);
 

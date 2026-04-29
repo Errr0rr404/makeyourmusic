@@ -5,6 +5,14 @@ const TOKEN_KEY = 'accessToken';
 
 let _apiInstance: AxiosInstance | null = null;
 
+// Callback registered by authStore so the refresh interceptor can push a new
+// access token back into the store. Keeps the api module free of a cyclic
+// import on authStore (which itself imports getApi).
+let _onTokenRefreshed: ((token: string) => void) | null = null;
+export function onTokenRefreshed(cb: (token: string) => void): void {
+  _onTokenRefreshed = cb;
+}
+
 /**
  * Create and configure the shared Axios API client.
  * Call once on app boot with the correct baseURL.
@@ -89,14 +97,11 @@ export function createApi(baseURL: string): AxiosInstance {
                 await storage.setItem(TOKEN_KEY, accessToken);
                 original.headers.Authorization = `Bearer ${accessToken}`;
                 processQueue(null, accessToken);
-                // Update authStore if available (avoid circular import)
+                // Push the refreshed token into authStore (registered via
+                // onTokenRefreshed). No-op if the consumer never registered.
                 try {
-                  const { useAuthStore } = require('./stores/authStore');
-                  const state = useAuthStore.getState();
-                  if (state && typeof state.setAccessToken === 'function') {
-                    state.setAccessToken(accessToken);
-                  }
-                } catch { /* store not available in this context */ }
+                  _onTokenRefreshed?.(accessToken);
+                } catch { /* never let store updates break the request flow */ }
                 return api(original);
               }
             } catch (refreshErr) {

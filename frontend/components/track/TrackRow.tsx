@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { Play, Pause, Heart } from 'lucide-react';
+import { Play, Heart, X, Music2 } from 'lucide-react';
 import { usePlayerStore, TrackItem } from '@/lib/store/playerStore';
 import { formatDuration, formatCount } from '@morlo/shared';
 
@@ -15,80 +15,121 @@ interface TrackRowProps {
   index: number;
   tracks?: TrackItem[];
   onLike?: (trackId: string) => void;
+  onRemove?: (trackId: string) => void;
 }
 
-export function TrackRow({ track, index, tracks, onLike }: TrackRowProps) {
+export function TrackRow({ track, index, tracks, onLike, onRemove }: TrackRowProps) {
   const { currentTrack, isPlaying, playTrack, togglePlay } = usePlayerStore();
   const isCurrentTrack = currentTrack?.id === track.id;
+  const isCurrentlyPlaying = isCurrentTrack && isPlaying;
   const [imgError, setImgError] = useState(false);
 
   const handlePlay = () => {
-    if (isCurrentTrack) {
-      togglePlay();
-    } else {
-      playTrack(track, tracks);
-    }
+    if (isCurrentTrack) togglePlay();
+    else playTrack(track, tracks);
   };
 
   return (
     <div
-      className={`group flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/5 transition-colors ${isCurrentTrack ? 'bg-white/5' : ''}`}
+      className={`group flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+        isCurrentTrack ? 'bg-white/[0.06]' : 'hover:bg-white/[0.04]'
+      }`}
     >
-      {/* Index / Play */}
-      <div className="w-8 text-center flex-shrink-0">
-        <span className={`text-sm group-hover:hidden ${isCurrentTrack ? 'text-[hsl(var(--accent))]' : 'text-[hsl(var(--muted-foreground))]'}`}>
-          {isCurrentTrack && isPlaying ? '♫' : index + 1}
-        </span>
-        <button onClick={handlePlay} aria-label={isCurrentTrack && isPlaying ? 'Pause' : 'Play'} className="hidden group-hover:block text-white">
-          {isCurrentTrack && isPlaying ? <Pause className="w-4 h-4 mx-auto" /> : <Play className="w-4 h-4 mx-auto" />}
-        </button>
+      {/* Index / Play / Equalizer */}
+      <div className="w-7 text-center flex-shrink-0">
+        {isCurrentlyPlaying ? (
+          <button onClick={handlePlay} aria-label="Pause" className="inline-flex items-end gap-0.5 h-3">
+            <span className="eq-bar" />
+            <span className="eq-bar" />
+            <span className="eq-bar" />
+          </button>
+        ) : (
+          <>
+            <span
+              className={`text-sm group-hover:hidden ${
+                isCurrentTrack ? 'text-[color:var(--brand)]' : 'text-[color:var(--text-mute)]'
+              }`}
+            >
+              {index + 1}
+            </span>
+            <button
+              onClick={handlePlay}
+              aria-label={`Play ${track.title}`}
+              className="hidden group-hover:inline-flex text-white"
+            >
+              <Play className="w-4 h-4 mx-auto" fill="currentColor" />
+            </button>
+          </>
+        )}
       </div>
 
       {/* Cover */}
-      <div className="w-10 h-10 rounded overflow-hidden bg-[hsl(var(--secondary))] flex-shrink-0">
+      <div className="w-11 h-11 rounded-md overflow-hidden bg-[color:var(--bg-elev-3)] flex items-center justify-center flex-shrink-0">
         {track.coverArt && !imgError ? (
-          <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" onError={() => setImgError(true)} />
+          <img
+            src={track.coverArt}
+            alt={track.title}
+            className="w-full h-full object-cover"
+            onError={() => setImgError(true)}
+          />
         ) : (
-          <div className="w-full h-full bg-gradient-to-br from-purple-600/20 to-pink-600/20" />
+          <Music2 className="w-4 h-4 text-[color:var(--text-mute)]" />
         )}
       </div>
 
       {/* Title & Agent */}
       <div className="flex-1 min-w-0">
-        <Link href={`/track/${track.slug}`} className={`text-sm font-medium truncate block hover:underline ${isCurrentTrack ? 'text-[hsl(var(--accent))]' : 'text-white'}`}>
+        <Link
+          href={`/track/${track.slug}`}
+          className={`text-sm font-semibold truncate block hover:underline ${
+            isCurrentTrack ? 'text-[color:var(--brand)]' : 'text-white'
+          }`}
+        >
           {track.title}
         </Link>
         {track.agent && (
-          <Link href={`/agent/${track.agent.slug}`} className="text-xs text-[hsl(var(--muted-foreground))] truncate block hover:underline">
+          <Link
+            href={`/agent/${track.agent.slug}`}
+            className="text-xs text-[color:var(--text-mute)] truncate block hover:underline hover:text-white"
+          >
             {track.agent.name}
           </Link>
         )}
       </div>
 
-      {/* Genre */}
       {track.genre && (
-        <span className="text-xs text-[hsl(var(--muted-foreground))] hidden md:block">
-          {track.genre.name}
-        </span>
+        <span className="text-xs text-[color:var(--text-mute)] hidden md:block">{track.genre.name}</span>
       )}
 
-      {/* Plays */}
-      <span className="text-xs text-[hsl(var(--muted-foreground))] w-16 text-right hidden sm:block">
+      <span className="text-xs text-[color:var(--text-mute)] w-16 text-right hidden sm:block">
         {track.playCount ? formatCount(track.playCount) : '—'}
       </span>
 
-      {/* Like */}
       <button
         onClick={() => onLike?.(track.id)}
-        className={`p-1.5 rounded-full transition-colors ${track.isLiked ? 'text-pink-500' : 'text-[hsl(var(--muted-foreground))] opacity-0 group-hover:opacity-100'} hover:text-pink-500`}
+        aria-label={track.isLiked ? 'Unlike' : 'Like'}
+        className={`p-1.5 rounded-full transition-colors ${
+          track.isLiked
+            ? 'text-[color:var(--brand)]'
+            : 'text-[color:var(--text-mute)] opacity-0 group-hover:opacity-100 hover:text-[color:var(--brand)]'
+        }`}
       >
         <Heart className="w-4 h-4" fill={track.isLiked ? 'currentColor' : 'none'} />
       </button>
 
-      {/* Duration */}
-      <span className="text-xs text-[hsl(var(--muted-foreground))] w-12 text-right">
+      <span className="text-xs text-[color:var(--text-mute)] w-12 text-right">
         {formatDuration(track.duration)}
       </span>
+
+      {onRemove && (
+        <button
+          onClick={() => onRemove(track.id)}
+          aria-label="Remove from playlist"
+          className="p-1.5 rounded-full text-[color:var(--text-mute)] opacity-0 group-hover:opacity-100 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      )}
     </div>
   );
 }

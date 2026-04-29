@@ -8,7 +8,7 @@ import api from '@/lib/api';
 import {
   Settings, Volume2, Sliders, LogOut, ChevronRight, Lock,
   AlertCircle, KeyRound, Trash2, Mail, Eye, EyeOff, Loader2, CheckCircle2,
-  Sun, Moon, Monitor, Sparkles, Keyboard as KeyboardIcon,
+  Sun, Moon, Monitor, Sparkles,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -411,7 +411,7 @@ export default function SettingsPage() {
               { key: 'emailCommentAlert' as const, label: 'Comments on your tracks', sub: 'Email me when someone comments' },
               { key: 'emailDigestWeekly' as const, label: 'Weekly digest', sub: 'Stats & highlights every Monday' },
               { key: 'emailMarketing' as const, label: 'Product updates', sub: 'New features, tips, occasional announcements' },
-            ].map((row, i) => {
+            ].map((row) => {
               const value = emailPrefs[row.key];
               return (
                 <div

@@ -12,16 +12,20 @@ import { ErrorBoundary } from './ErrorBoundary';
 import { ToastContainer } from './Toast';
 import { ConfirmProvider } from './ui/ConfirmDialog';
 import { useAuthStore } from '@/lib/store/authStore';
+import { usePlayerStore } from '@/lib/store/playerStore';
 
 function AuthHydrator({ children }: { children: React.ReactNode }) {
-  const hydrate = useAuthStore((s) => s.hydrate);
+  const hydrateAuth = useAuthStore((s) => s.hydrate);
+  const hydratePlayerPrefs = usePlayerStore((s) => s.hydratePrefs);
 
   useEffect(() => {
-    // Hydrate auth state from localStorage on mount.
-    // This instantly sets isAuthenticated=true if a token exists,
+    // Hydrate auth state and player prefs from storage on mount.
+    // For auth: instantly sets isAuthenticated=true if a token exists,
     // so protected pages don't flash the "log in" state.
-    hydrate();
-  }, [hydrate]);
+    // For player: restores volume, EQ, etc. from the last session.
+    hydrateAuth();
+    hydratePlayerPrefs();
+  }, [hydrateAuth, hydratePlayerPrefs]);
 
   return <>{children}</>;
 }

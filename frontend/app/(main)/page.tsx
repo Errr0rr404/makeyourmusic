@@ -4,12 +4,14 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
 import { TrackCard } from '@/components/track/TrackCard';
-import { SplashLoader } from '@/components/SplashLoader';
 import { OnboardingBanner } from '@/components/OnboardingBanner';
 import { VibePromptTile } from '@/components/VibePromptTile';
 import { useAuthStore } from '@/lib/store/authStore';
-import { TrendingUp, Sparkles, Clock, ChevronRight, AlertCircle, Music2, Play, Volume2, Zap, Radio } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import {
+  TrendingUp, Sparkles, Clock, ChevronRight, AlertCircle,
+  Music2, Play, Wand2, Radio, Zap,
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 
 interface Genre {
   id: string;
@@ -17,6 +19,45 @@ interface Genre {
   slug: string;
   color: string | null;
   _count: { tracks: number };
+}
+
+interface SectionHeaderProps {
+  title: string;
+  subtitle?: string;
+  href?: string;
+  icon?: React.ReactNode;
+}
+
+function SectionHeader({ title, subtitle, href, icon }: SectionHeaderProps) {
+  return (
+    <div className="flex items-end justify-between gap-4 mb-5">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 mb-1">
+          {icon && <span className="text-[color:var(--brand)]">{icon}</span>}
+          <h2 className="morlo-section-title">{title}</h2>
+        </div>
+        {subtitle && <p className="text-sm text-[color:var(--text-mute)]">{subtitle}</p>}
+      </div>
+      {href && (
+        <Link
+          href={href}
+          className="hidden sm:inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[color:var(--text-mute)] hover:text-white transition-colors"
+        >
+          See all <ChevronRight className="w-3.5 h-3.5" />
+        </Link>
+      )}
+    </div>
+  );
+}
+
+function CardSkeleton() {
+  return (
+    <div className="p-3 rounded-xl bg-[color:var(--bg-elev-2)]">
+      <div className="aspect-square rounded-lg bg-white/5 mb-3 shimmer" />
+      <div className="h-3.5 w-3/4 rounded bg-white/5 mb-2 shimmer" />
+      <div className="h-3 w-1/2 rounded bg-white/5 shimmer" />
+    </div>
+  );
 }
 
 export default function HomePage() {
@@ -28,13 +69,6 @@ export default function HomePage() {
   const [history, setHistory] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isSplashComplete, setIsSplashComplete] = useState(() => {
-    // Only show splash once per session
-    if (typeof window !== 'undefined') {
-      return sessionStorage.getItem('morlo-splash-shown') === '1';
-    }
-    return false;
-  });
 
   const loadContent = async () => {
     setLoading(true);
@@ -82,146 +116,110 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  const hasContent = trending.length > 0 || latest.length > 0;
   const greetingHour = new Date().getHours();
   const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 18 ? 'Good afternoon' : 'Good evening';
   const displayName = user?.displayName || user?.username || 'there';
 
   return (
-    <div className="space-y-12 pb-20 selection:bg-blue-500/30">
-      <AnimatePresence>
-        {!isSplashComplete && (
-          <SplashLoader
-            logo="/icon.png"
-            appName="Morlo"
-            color="#3b82f6"
-            onComplete={() => {
-              sessionStorage.setItem('morlo-splash-shown', '1');
-              setIsSplashComplete(true);
-            }}
-          />
-        )}
-      </AnimatePresence>
-
-
-      {/* Error Banner */}
+    <div className="space-y-12 pb-12">
       {error && (
-        <div className="flex items-center justify-between gap-3 p-4 bg-red-900/20 border border-red-500/30 rounded-xl">
+        <div className="flex items-center justify-between gap-3 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl">
           <div className="flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
-            <p className="text-sm text-red-400">{error}</p>
+            <AlertCircle className="w-5 h-5 text-rose-400 flex-shrink-0" />
+            <p className="text-sm text-rose-300">{error}</p>
           </div>
           <button
             onClick={loadContent}
-            className="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-200 text-xs font-medium transition-colors"
+            className="px-3 py-1.5 rounded-lg bg-rose-500/20 hover:bg-rose-500/30 text-rose-200 text-xs font-bold transition-colors"
           >
             Retry
           </button>
         </div>
       )}
 
+      {/* Hero */}
+      <section className="relative overflow-hidden rounded-2xl">
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'linear-gradient(135deg, rgba(139,92,246,0.35) 0%, rgba(217,70,239,0.28) 50%, rgba(236,72,153,0.18) 100%)',
+          }}
+        />
+        <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 60%, var(--bg-elev-1) 100%)' }} />
+        <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full"
+             style={{ background: 'radial-gradient(circle, rgba(217,70,239,0.45), transparent 70%)' }} />
+        <div className="relative p-6 md:p-10 lg:p-12">
+          {isAuthenticated ? (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <p className="text-sm font-semibold text-white/70 mb-1">{greeting},</p>
+              <h1 className="font-display font-extrabold tracking-tight text-3xl md:text-5xl text-white">
+                {displayName}.
+              </h1>
+              <p className="mt-3 text-base md:text-lg text-white/75 max-w-xl">
+                Tell us a vibe and we'll build a playlist of AI music — instantly.
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+            >
+              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-[11px] font-bold uppercase tracking-widest text-white">
+                <Zap className="w-3 h-3" /> AI-generated music
+              </span>
+              <h1 className="mt-4 font-display font-extrabold tracking-tighter text-4xl md:text-6xl lg:text-7xl text-white leading-[1.05] max-w-3xl">
+                Sound that <span className="aurora-text">writes itself.</span>
+              </h1>
+              <p className="mt-4 text-base md:text-lg text-white/75 max-w-xl">
+                Discover tracks crafted by AI agents. Hit play, ride the algorithm.
+              </p>
+              <div className="mt-6 flex gap-3">
+                <Link href="/search" className="morlo-cta">
+                  <Play className="w-4 h-4" fill="currentColor" /> Start listening
+                </Link>
+                <Link href="/register" className="morlo-ghost">
+                  Sign up free
+                </Link>
+              </div>
+            </motion.div>
+          )}
+
+          <div className="mt-6 max-w-2xl">
+            <VibePromptTile />
+          </div>
+        </div>
+      </section>
+
       <OnboardingBanner />
 
+      {/* Loading state */}
       {loading ? (
-        <div className="space-y-8 animate-fade-in">
-          <div className="h-8 w-48 bg-white/5 rounded animate-pulse" />
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-            {Array.from({ length: 12 }).map((_, i) => (
-              <div key={i} className="space-y-3">
-                <div className="aspect-square rounded-2xl bg-white/5 animate-pulse" />
-                <div className="h-4 w-3/4 bg-white/5 rounded animate-pulse" />
-                <div className="h-3 w-1/2 bg-white/5 rounded animate-pulse" />
-              </div>
-            ))}
-          </div>
+        <div className="space-y-12">
+          <section>
+            <div className="h-8 w-56 rounded-md bg-white/5 mb-5 shimmer" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+              {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
+            </div>
+          </section>
         </div>
       ) : (
         <>
-          {/* Premium Hero Section */}
-          {!hasContent && (
-            <section className="relative overflow-hidden rounded-[40px] bg-slate-900/40 border border-white/5 p-12 md:p-20 mb-8 backdrop-blur-3xl">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-600/10 via-transparent to-indigo-600/5" />
-              <div className="relative z-10 grid md:grid-cols-2 gap-12 items-center">
-                <div className="space-y-8">
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    className="inline-flex items-center gap-2 bg-white/5 border border-white/10 px-4 py-2 rounded-full text-blue-300 text-[10px] font-black uppercase tracking-widest"
-                  >
-                    <Sparkles size={14} />
-                    Next-Gen Audio Synthesis
-                  </motion.div>
-                  <h1 className="text-7xl font-outfit font-black tracking-tighter leading-none text-white">
-                    Sonics <br /> <span className="bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">Reimagined</span>
-                  </h1>
-                  <p className="text-xl text-white/40 max-w-lg font-medium leading-relaxed">
-                    Experience the world's first autonomous music engine. Morlo orchestrates infinite soundscapes through neural-link architecture.
-                  </p>
-                  <div className="flex gap-4">
-                    <Link
-                      href="/search"
-                      className="btn-action"
-                    >
-                      <Play size={16} className="mr-2" /> Start Listening
-                    </Link>
-                    <Link
-                      href="/register"
-                      className="btn-premium"
-                    >
-                      <Zap size={16} /> Create Account
-                    </Link>
-                  </div>
-                </div>
-                <div className="hidden md:block relative">
-                  <div className="absolute inset-0 bg-blue-500/10 blur-[120px] rounded-full animate-pulse" />
-                  <div className="relative aspect-square glass-card flex items-center justify-center p-12 group">
-                    <div className="relative">
-                      <Music2 size={120} className="text-white/5 animate-pulse group-hover:scale-110 transition-transform" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Volume2 size={40} className="text-blue-500 shadow-[0_0_20px_#3b82f6]" />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-          )}
-
-          {/* Personal greeting + Vibe → Playlist */}
-          {isAuthenticated && (
-            <section className="mb-2">
-              <h1 className="text-3xl md:text-4xl font-outfit font-black text-white tracking-tight">
-                {greeting}, {displayName}
-              </h1>
-              <p className="text-sm text-white/40 mt-1">Tell us a vibe and we'll spin up a playlist of AI music.</p>
-              <div className="mt-5">
-                <VibePromptTile />
-              </div>
-            </section>
-          )}
-
-          {/* Vibe prompt for guests too */}
-          {!isAuthenticated && (
-            <section className="mb-2">
-              <VibePromptTile />
-            </section>
-          )}
-
           {/* Jump back in (history) */}
           {isAuthenticated && history.length > 0 && (
             <section>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <h2 className="text-xl font-outfit font-black text-white uppercase tracking-widest">Jump back in</h2>
-                </div>
-                <Link href="/library?tab=history" className="btn-premium">
-                  History <ChevronRight size={14} />
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+              <SectionHeader
+                title="Jump back in"
+                subtitle="Pick up where you left off"
+                href="/library?tab=history"
+                icon={<Clock className="w-5 h-5" />}
+              />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                 {history.slice(0, 6).map((track) => (
                   <TrackCard key={track.id} track={track} tracks={history} />
                 ))}
@@ -229,22 +227,17 @@ export default function HomePage() {
             </section>
           )}
 
-          {/* Made for You (recommendations) */}
+          {/* Made for You */}
           {isAuthenticated && forYou.length > 0 && (
             <section>
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400">
-                    <Sparkles className="w-4 h-4" />
-                  </div>
-                  <h2 className="text-xl font-outfit font-black text-white uppercase tracking-widest">Made for you</h2>
-                </div>
-                <Link href="/library?tab=foryou" className="btn-premium">
-                  More <ChevronRight size={14} />
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
-                {forYou.slice(0, 12).map((track) => (
+              <SectionHeader
+                title="Made for you"
+                subtitle="Picks shaped by what you love"
+                href="/library?tab=foryou"
+                icon={<Sparkles className="w-5 h-5" />}
+              />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+                {forYou.slice(0, 6).map((track) => (
                   <TrackCard key={track.id} track={track} tracks={forYou} />
                 ))}
               </div>
@@ -254,18 +247,13 @@ export default function HomePage() {
           {/* Trending */}
           {trending.length > 0 && (
             <section>
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <h2 className="text-xl font-outfit font-black tracking-tight text-white uppercase tracking-widest">Trending Now</h2>
-                </div>
-                <Link href="/search?sort=popular" className="btn-premium">
-                  See all <ChevronRight size={14} />
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+              <SectionHeader
+                title="Trending now"
+                subtitle="Most played this week"
+                href="/search?sort=popular"
+                icon={<TrendingUp className="w-5 h-5" />}
+              />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                 {trending.slice(0, 6).map((track) => (
                   <TrackCard key={track.id} track={track} tracks={trending} />
                 ))}
@@ -273,21 +261,16 @@ export default function HomePage() {
             </section>
           )}
 
-          {/* Latest Releases */}
+          {/* Latest */}
           {latest.length > 0 && (
-            <section className="mt-20">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-white/40">
-                    <Clock className="w-4 h-4" />
-                  </div>
-                  <h2 className="text-xl font-outfit font-black tracking-tight text-white uppercase tracking-widest">Latest Releases</h2>
-                </div>
-                <Link href="/search?sort=newest" className="btn-premium">
-                  See all <ChevronRight size={14} />
-                </Link>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-6">
+            <section>
+              <SectionHeader
+                title="Fresh drops"
+                subtitle="Just published by AI agents"
+                href="/search?sort=newest"
+                icon={<Music2 className="w-5 h-5" />}
+              />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
                 {latest.slice(0, 6).map((track) => (
                   <TrackCard key={track.id} track={track} tracks={latest} />
                 ))}
@@ -295,36 +278,60 @@ export default function HomePage() {
             </section>
           )}
 
-          {/* Browse by Genre */}
+          {/* Genres */}
           {genres.length > 0 && (
-            <section className="mt-20">
-              <div className="flex items-center justify-between mb-8">
-                <div className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-blue-500" />
-                  <h2 className="text-xl font-outfit font-black tracking-tight text-white uppercase tracking-widest opacity-40">Sonic Architectures</h2>
-                </div>
+            <section>
+              <SectionHeader
+                title="Browse by mood"
+                subtitle="Genre-curated AI sets"
+                icon={<Radio className="w-5 h-5" />}
+              />
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {genres.map((genre, i) => {
+                  const color = genre.color || '#d946ef';
+                  return (
+                    <Link
+                      key={genre.id}
+                      href={`/genre/${genre.slug}`}
+                      className="group relative h-32 md:h-36 rounded-xl overflow-hidden p-5 flex flex-col justify-between transition-transform hover:-translate-y-0.5"
+                      style={{
+                        background: `linear-gradient(135deg, ${color}88 0%, ${color}22 60%, transparent 100%), var(--bg-elev-2)`,
+                      }}
+                    >
+                      <div
+                        className="absolute -bottom-6 -right-6 w-24 h-24 rounded-lg opacity-50 group-hover:opacity-80 transition-opacity rotate-[18deg]"
+                        style={{ background: color, transform: `rotate(${(i * 22) % 60 - 18}deg)` }}
+                      />
+                      <h3 className="relative font-display font-extrabold text-xl md:text-2xl text-white tracking-tight">
+                        {genre.name}
+                      </h3>
+                      <p className="relative text-[11px] font-bold uppercase tracking-widest text-white/70">
+                        {genre._count.tracks} tracks
+                      </p>
+                    </Link>
+                  );
+                })}
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-                {genres.map((genre) => (
-                  <Link
-                    key={genre.id}
-                    href={`/genre/${genre.slug}`}
-                    className="group relative h-40 rounded-[32px] holographic border border-white/5 transition-all hover:border-white/20 flex flex-col justify-end p-8"
-                  >
-                    <div
-                      className="absolute inset-0 opacity-10 group-hover:opacity-20 transition-opacity"
-                      style={{ background: `radial-gradient(circle at center, ${genre.color || '#3b82f6'}, transparent)` }}
-                    />
-                    <div className="relative z-10">
-                      <h3 className="text-2xl font-outfit font-black text-white mb-1 group-hover:translate-x-1 transition-transform">{genre.name}</h3>
-                      <div className="flex items-center gap-4">
-                        <p className="text-[10px] font-black uppercase text-white/40 tracking-widest">{genre._count.tracks} Tracks</p>
-                        <div className="h-[1px] flex-1 bg-white/5" />
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
+            </section>
+          )}
+
+          {/* CTA for guests */}
+          {!isAuthenticated && (
+            <section className="rounded-2xl p-8 md:p-12 text-center"
+                     style={{ background: 'var(--aurora)' }}>
+              <Wand2 className="w-10 h-10 mx-auto mb-4 text-white" />
+              <h2 className="font-display font-extrabold text-3xl md:text-4xl text-white tracking-tight">
+                Make your own AI track.
+              </h2>
+              <p className="mt-2 text-white/85 max-w-xl mx-auto">
+                Sign up free to spin up agents, generate music, and publish to listeners worldwide.
+              </p>
+              <Link
+                href="/register"
+                className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-black font-bold text-sm hover:bg-white/90 transition-colors"
+              >
+                Create your free account
+              </Link>
             </section>
           )}
         </>

@@ -5,7 +5,7 @@ export * from './types';
 export { type StorageAdapter, WebStorageAdapter, setStorageAdapter, getStorage } from './storage';
 
 // API client
-export { createApi, getApi } from './api';
+export { createApi, getApi, onTokenRefreshed } from './api';
 
 // Stores
 export { usePlayerStore, DEFAULT_EQ_BANDS, EQ_PRESETS, PLAYBACK_SPEEDS } from './stores/playerStore';

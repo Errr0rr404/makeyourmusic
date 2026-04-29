@@ -1,36 +1,60 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
-import { Home, Search, Library, Radio, TrendingUp, Music, Plus, LayoutDashboard, Sparkles, Wand2, Film } from 'lucide-react';
+import {
+  Home, Search, Library, Radio, Plus, LayoutDashboard,
+  Sparkles, Wand2, Film, Heart, ListMusic,
+} from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
 import api from '@/lib/api';
 
-const navItems = [
+const primaryNav = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/search', label: 'Search', icon: Search },
   { href: '/feed', label: 'Feed', icon: Radio },
-  { href: '/library', label: 'Library', icon: Library },
 ];
+
+interface PlaylistRef {
+  id: string;
+  slug: string;
+  title: string;
+  coverArt?: string | null;
+  _count?: { tracks: number };
+}
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const [creatingPlaylist, setCreatingPlaylist] = useState(false);
+  const [playlists, setPlaylists] = useState<PlaylistRef[]>([]);
 
   const isAgentOwner = user?.role === 'AGENT_OWNER' || user?.role === 'ADMIN';
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setPlaylists([]);
+      return;
+    }
+    let cancelled = false;
+    api.get('/social/playlists/mine')
+      .then((res) => {
+        if (cancelled) return;
+        setPlaylists(res.data?.playlists || []);
+      })
+      .catch(() => undefined);
+    return () => { cancelled = true; };
+  }, [isAuthenticated, pathname]);
 
   const handleCreatePlaylist = async () => {
     if (creatingPlaylist) return;
     setCreatingPlaylist(true);
     try {
       const res = await api.post('/social/playlists', { title: 'My Playlist', isPublic: true });
-      if (res.data.playlist?.slug) {
-        router.push('/library');
-      }
+      if (res.data.playlist?.slug) router.push(`/playlist/${res.data.playlist.slug}`);
     } catch (err) {
       console.error('Create playlist error:', err);
     } finally {
@@ -39,130 +63,185 @@ export function Sidebar() {
   };
 
   return (
-    <aside className="fixed left-0 top-0 bottom-[var(--player-height)] w-[var(--sidebar-width)] bg-[hsl(var(--card))] border-r border-[hsl(var(--border))] flex flex-col z-40">
-      {/* Logo */}
-      <div className="p-6">
-        <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-            <Music className="w-5 h-5 text-white" />
+    <aside className="fixed left-0 top-0 bottom-[var(--player-height)] w-[var(--sidebar-width)] z-40 flex flex-col gap-2 p-2">
+      {/* Brand + primary nav panel */}
+      <div className="morlo-panel px-3 py-4 flex flex-col gap-1">
+        <Link href="/" className="flex items-center gap-2.5 px-2 py-2 mb-2">
+          <div className="relative w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center"
+               style={{ background: 'var(--aurora)' }}>
+            <span className="font-display font-extrabold text-white text-lg leading-none">M</span>
           </div>
-          <span className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-            Morlo
-          </span>
+          <div className="flex flex-col leading-tight">
+            <span className="font-display font-extrabold text-base text-white tracking-tight">Morlo</span>
+            <span className="text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-faint)]">AI Music</span>
+          </div>
         </Link>
-      </div>
 
-      {/* Main Navigation */}
-      <nav className="flex-1 px-3">
-        <div className="space-y-1">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                  isActive
-                    ? 'bg-[hsl(var(--accent))] text-white'
-                    : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5'
-                )}
-              >
-                <item.icon className="w-5 h-5" />
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
+        {primaryNav.map((item) => {
+          const isActive = pathname === item.href;
+          const Icon = item.icon;
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-colors',
+                isActive
+                  ? 'bg-white/[0.08] text-white'
+                  : 'text-[color:var(--text-mute)] hover:text-white hover:bg-white/[0.04]'
+              )}
+            >
+              <Icon className="w-[18px] h-[18px]" strokeWidth={2.2} />
+              {item.label}
+            </Link>
+          );
+        })}
 
-        {/* AI Studio (all logged-in users) */}
         {isAuthenticated && (
-          <div className="mt-6 pt-6 border-t border-[hsl(var(--border))]">
-            <p className="px-3 mb-2 text-xs font-semibold uppercase text-[hsl(var(--muted-foreground))]">
-              AI Studio
-            </p>
+          <>
+            <div className="my-2 mx-3 h-px bg-white/[0.06]" />
             <Link
               href="/create"
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-all',
                 pathname === '/create'
-                  ? 'bg-gradient-to-r from-purple-500/30 to-pink-500/30 text-white border border-purple-500/30'
-                  : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5'
+                  ? 'text-white bg-[color:var(--brand-soft)]'
+                  : 'text-[color:var(--text-soft)] hover:text-white hover:bg-white/[0.04]'
               )}
             >
-              <Wand2 className="w-5 h-5 text-purple-400" />
-              Create Music
-              <Sparkles className="w-3 h-3 text-purple-400 ml-auto" />
+              <span className="w-[18px] h-[18px] flex items-center justify-center text-[color:var(--brand)]">
+                <Wand2 className="w-[18px] h-[18px]" strokeWidth={2.2} />
+              </span>
+              Create music
+              <Sparkles className="w-3 h-3 text-[color:var(--brand)] ml-auto" />
             </Link>
             <Link
               href="/studio/video"
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-colors',
                 pathname === '/studio/video'
-                  ? 'bg-[hsl(var(--accent))] text-white'
-                  : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5'
+                  ? 'bg-white/[0.08] text-white'
+                  : 'text-[color:var(--text-mute)] hover:text-white hover:bg-white/[0.04]'
               )}
             >
-              <Film className="w-5 h-5" />
-              Generate Video
+              <Film className="w-[18px] h-[18px]" strokeWidth={2.2} />
+              Generate video
             </Link>
             <Link
               href="/studio/generations"
               className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-colors',
                 pathname === '/studio/generations'
-                  ? 'bg-[hsl(var(--accent))] text-white'
-                  : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5'
+                  ? 'bg-white/[0.08] text-white'
+                  : 'text-[color:var(--text-mute)] hover:text-white hover:bg-white/[0.04]'
               )}
             >
-              <Sparkles className="w-5 h-5" />
-              My Generations
+              <Sparkles className="w-[18px] h-[18px]" strokeWidth={2.2} />
+              My generations
             </Link>
             {isAgentOwner && (
               <Link
                 href="/dashboard"
                 className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                  'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-colors',
                   pathname === '/dashboard'
-                    ? 'bg-[hsl(var(--accent))] text-white'
-                    : 'text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5'
+                    ? 'bg-white/[0.08] text-white'
+                    : 'text-[color:var(--text-mute)] hover:text-white hover:bg-white/[0.04]'
                 )}
               >
-                <LayoutDashboard className="w-5 h-5" />
+                <LayoutDashboard className="w-[18px] h-[18px]" strokeWidth={2.2} />
                 Dashboard
               </Link>
             )}
-          </div>
+          </>
         )}
+      </div>
 
-        {/* Quick Actions */}
-        {isAuthenticated && (
-          <div className="mt-6 pt-6 border-t border-[hsl(var(--border))]">
-            <p className="px-3 mb-2 text-xs font-semibold uppercase text-[hsl(var(--muted-foreground))]">
-              Playlists
-            </p>
+      {/* Library panel */}
+      <div className="morlo-panel flex-1 min-h-0 flex flex-col">
+        <div className="flex items-center justify-between px-4 pt-4 pb-2">
+          <Link
+            href="/library"
+            className="flex items-center gap-2 text-sm font-semibold text-[color:var(--text-soft)] hover:text-white transition-colors"
+          >
+            <Library className="w-[18px] h-[18px]" strokeWidth={2.2} />
+            Your Library
+          </Link>
+          {isAuthenticated && (
             <button
               onClick={handleCreatePlaylist}
               disabled={creatingPlaylist}
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors w-full disabled:opacity-50"
+              aria-label="Create playlist"
+              className="p-1.5 rounded-full text-[color:var(--text-mute)] hover:text-white hover:bg-white/[0.06] transition-colors disabled:opacity-50"
+              title="Create playlist"
             >
-              <Plus className="w-5 h-5" />
-              {creatingPlaylist ? 'Creating...' : 'Create Playlist'}
+              <Plus className="w-4 h-4" strokeWidth={2.4} />
             </button>
-            <Link
-              href="/library"
-              className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors"
-            >
-              <TrendingUp className="w-5 h-5" />
-              Liked Songs
-            </Link>
-          </div>
-        )}
-      </nav>
+          )}
+        </div>
 
-      {/* Footer */}
-      <div className="p-4 text-xs text-[hsl(var(--muted-foreground))]">
-        <p>&copy; {new Date().getFullYear()} Morlo.ai</p>
+        <div className="px-2 pb-2 overflow-y-auto flex-1">
+          {!isAuthenticated ? (
+            <div className="px-4 py-6 text-sm text-[color:var(--text-mute)] leading-relaxed">
+              <p className="text-white font-semibold mb-1">Build your library</p>
+              <p className="mb-3">Like tracks, follow agents, and create playlists.</p>
+              <Link href="/login" className="morlo-cta text-xs">Log in</Link>
+            </div>
+          ) : (
+            <>
+              <Link
+                href="/library?tab=likes"
+                className={cn(
+                  'flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors',
+                  'text-[color:var(--text-soft)] hover:bg-white/[0.04]'
+                )}
+              >
+                <span className="w-10 h-10 rounded-md flex items-center justify-center"
+                      style={{ background: 'linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%)' }}>
+                  <Heart className="w-4 h-4 text-white" fill="currentColor" />
+                </span>
+                <span className="flex flex-col leading-tight min-w-0">
+                  <span className="font-semibold text-white truncate">Liked songs</span>
+                  <span className="text-xs text-[color:var(--text-mute)]">Playlist</span>
+                </span>
+              </Link>
+
+              {playlists.map((pl) => {
+                const isActive = pathname === `/playlist/${pl.slug}`;
+                return (
+                  <Link
+                    key={pl.id}
+                    href={`/playlist/${pl.slug}`}
+                    className={cn(
+                      'flex items-center gap-3 px-2 py-2 rounded-md text-sm transition-colors',
+                      isActive ? 'bg-white/[0.08]' : 'hover:bg-white/[0.04]'
+                    )}
+                  >
+                    <span className="w-10 h-10 rounded-md overflow-hidden bg-[color:var(--bg-elev-3)] flex items-center justify-center flex-shrink-0">
+                      {pl.coverArt ? (
+                        <img src={pl.coverArt} alt={pl.title} className="w-full h-full object-cover" />
+                      ) : (
+                        <ListMusic className="w-4 h-4 text-[color:var(--text-mute)]" />
+                      )}
+                    </span>
+                    <span className="flex flex-col leading-tight min-w-0">
+                      <span className="font-semibold text-white truncate">{pl.title}</span>
+                      <span className="text-xs text-[color:var(--text-mute)] truncate">
+                        Playlist · {pl._count?.tracks ?? 0} tracks
+                      </span>
+                    </span>
+                  </Link>
+                );
+              })}
+
+              {playlists.length === 0 && (
+                <div className="px-2 py-4 text-xs text-[color:var(--text-mute)] leading-relaxed">
+                  No playlists yet. Tap <Plus className="inline w-3 h-3 -mt-0.5" /> to create one.
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
     </aside>
   );

@@ -76,9 +76,10 @@ app.use(
 import { handleWebhook } from './controllers/subscriptionController';
 app.post('/api/subscription/webhook', express.raw({ type: 'application/json' }), handleWebhook as any);
 
-// Body parsing (10MB for JSON, uploads handled separately by multer)
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Body parsing — keep modest since file uploads go through multer (50MB) and
+// don't need this codepath. 1MB is plenty for JSON metadata and form fields.
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(sanitizeBody);
 app.use(cookieParser());
 app.use(performanceMonitor);

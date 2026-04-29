@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
+import { slugify } from '../utils/slugify';
 
 export const listGenres = async (_req: RequestWithUser, res: Response) => {
   try {
@@ -21,7 +22,8 @@ export const createGenre = async (req: RequestWithUser, res: Response) => {
     const { name, color } = req.body;
     if (!name) { res.status(400).json({ error: 'Name is required' }); return; }
 
-    const slug = name.toLowerCase().replace(/[^\w\s-]/g, '').replace(/[\s_-]+/g, '-');
+    const slug = slugify(name);
+    if (!slug) { res.status(400).json({ error: 'Name must contain alphanumeric characters' }); return; }
 
     const existing = await prisma.genre.findUnique({ where: { slug } });
     if (existing) { res.status(409).json({ error: 'Genre with this name already exists' }); return; }

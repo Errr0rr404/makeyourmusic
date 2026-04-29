@@ -2,14 +2,14 @@
 
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { X, GripVertical, Play, Pause, Trash2, ListMusic } from 'lucide-react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { formatDuration } from '@morlo/shared';
 
 export function QueuePanel() {
   const {
     queue, queueIndex, currentTrack, isPlaying,
     showQueue, toggleQueue, playTrack, togglePlay,
-    removeFromQueue, clearQueue, moveInQueue,
+    removeFromQueue, clearQueue,
   } = usePlayerStore();
 
   if (!showQueue || !currentTrack) return null;

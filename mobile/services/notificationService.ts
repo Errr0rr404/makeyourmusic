@@ -59,11 +59,25 @@ export async function registerForPushNotifications(): Promise<string | null> {
     });
   }
 
-  // Get push token
-  const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-  const token = await Notifications.getExpoPushTokenAsync({
-    projectId,
-  });
+  // Get push token. Expo push tokens require a configured EAS projectId —
+  // in Expo Go or a dev build without EAS setup, skip silently so the app
+  // keeps booting. Push is an enhancement, not a launch dependency.
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ||
+    (Constants as unknown as { easConfig?: { projectId?: string } }).easConfig?.projectId;
+
+  if (!projectId) {
+    console.log('Push notifications skipped — no EAS projectId configured');
+    return null;
+  }
+
+  let token: Awaited<ReturnType<typeof Notifications.getExpoPushTokenAsync>>;
+  try {
+    token = await Notifications.getExpoPushTokenAsync({ projectId });
+  } catch (err) {
+    console.log('Failed to get Expo push token:', (err as Error).message);
+    return null;
+  }
 
   // Register token with backend (best-effort; don't break launch if the user
   // isn't logged in or the network is down)

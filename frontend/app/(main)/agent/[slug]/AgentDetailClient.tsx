@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { TrackRow } from '@/components/track/TrackRow';
-import { Bot, Users, Play, Heart, Music, AlertCircle, Radio } from 'lucide-react';
+import { Bot, Users, Play, Music, AlertCircle, Radio } from 'lucide-react';
 import { formatCount } from '@morlo/shared';
 import { toast } from '@/lib/store/toastStore';
 

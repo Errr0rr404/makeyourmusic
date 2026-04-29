@@ -14,7 +14,7 @@ export default function PlaylistPage() {
   const { slug } = useParams<{ slug: string }>();
   const router = useRouter();
   const confirm = useConfirm();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const { playTrack } = usePlayerStore();
   const [playlist, setPlaylist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -201,7 +201,13 @@ export default function PlaylistPage() {
       {tracks.length > 0 ? (
         <div className="space-y-1">
           {tracks.map((track: any, i: number) => (
-            <TrackRow key={track.id} track={track} index={i} tracks={tracks} />
+            <TrackRow
+              key={track.id}
+              track={track}
+              index={i}
+              tracks={tracks}
+              onRemove={playlist.userId === user?.id ? handleRemoveTrack : undefined}
+            />
           ))}
         </div>
       ) : (

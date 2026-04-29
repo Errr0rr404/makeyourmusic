@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getApi } from '../api';
+import { getApi, onTokenRefreshed } from '../api';
 import { getStorage } from '../storage';
 import type { User } from '../types';
 
@@ -114,3 +114,10 @@ export const useAuthStore = create<AuthStore>((set) => ({
     }
   },
 }));
+
+// Sync the access token back into the store whenever the api client silently
+// refreshes it. The api module fires this; the store stays the source of
+// truth for `accessToken`.
+onTokenRefreshed((token) => {
+  useAuthStore.getState().setAccessToken(token);
+});

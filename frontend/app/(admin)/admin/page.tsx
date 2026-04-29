@@ -27,7 +27,7 @@ export default function AdminPage() {
         const [statsRes, usersRes, reportsRes] = await Promise.all([
           api.get('/admin/stats'),
           api.get('/admin/users?limit=50'),
-          api.get('/admin/reports'),
+          api.get('/admin/reports?limit=50'),
         ]);
         setStats(statsRes.data.stats);
         setUsers(usersRes.data.users || []);

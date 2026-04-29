@@ -14,7 +14,9 @@ export const securityHeaders = helmet({
       connectSrc: ["'self'", 'https://api.stripe.com', 'https://*.stripe.com', 'https://*.up.railway.app', 'https://*.railway.app'], // Allow Stripe and Railway
       fontSrc: ["'self'", 'data:', 'https:'],
       objectSrc: ["'none'"],
-      mediaSrc: ["'self'"],
+      // Audio/video streamed from Cloudinary or any HTTPS source. blob: lets
+      // us play locally-decoded audio (e.g. crossfade buffer swaps).
+      mediaSrc: ["'self'", 'https:', 'blob:', 'data:'],
       frameSrc: ["'none'", 'https://js.stripe.com'], // Allow Stripe iframes
       frameAncestors: ["'none'"], // Prevent embedding in frames
       upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null, // Force HTTPS in production

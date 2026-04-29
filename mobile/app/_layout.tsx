@@ -25,6 +25,7 @@ TrackPlayer.registerPlaybackService(() => require('../services/trackPlayerServic
 export default function RootLayout() {
   const router = useRouter();
   const { isLoading, hydrate, fetchUser, isAuthenticated } = useAuthStore();
+  const hydratePlayerPrefs = usePlayerStore((s) => s.hydratePrefs);
   const playerReady = useRef(false);
   const [booted, setBooted] = useState(false);
   const [needsOnboarding, setNeedsOnboarding] = useState(false);
@@ -39,6 +40,7 @@ export default function RootLayout() {
       const [seen] = await Promise.all([
         AsyncStorage.getItem(ONBOARDING_KEY),
         hydrate(),
+        hydratePlayerPrefs(),
         hydrateDownloadCache().catch(() => undefined),
       ]);
       await fetchUser();

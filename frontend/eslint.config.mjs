@@ -14,6 +14,7 @@ const eslintConfig = [
   {
     ignores: [
       ".next/**",
+      ".netlify/**",
       "out/**",
       "build/**",
       "node_modules/**",
