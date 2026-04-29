@@ -23,10 +23,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
 
       {/* Main shell — rounded panel like modern Spotify */}
       <div
-        className="md:pl-[var(--sidebar-width)] relative z-10"
-        style={{
-          paddingBottom: hasPlayer ? `calc(var(--player-height) + 56px)` : '56px',
-        }}
+        className={`md:pl-[var(--sidebar-width)] relative z-10 ${
+          hasPlayer
+            ? 'pb-[calc(var(--player-height)+var(--mobile-nav-height)+24px+env(safe-area-inset-bottom))] md:pb-[calc(var(--player-height)+56px)]'
+            : 'pb-[calc(var(--mobile-nav-height)+24px+env(safe-area-inset-bottom))] md:pb-14'
+        }`}
       >
         <div className="md:pr-2 md:py-2">
           {/* Panel wraps the content visually but does NOT set overflow-hidden

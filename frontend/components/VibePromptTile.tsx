@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import type { Track } from '@makeyourmusic/shared';
 import { Sparkles, Loader2, Wand2, Save, Check, Radio } from 'lucide-react';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -17,12 +18,31 @@ const SUGGESTIONS = [
   'reading sci-fi, ambient and dreamy',
 ];
 
+interface PromptPlaylist {
+  slug: string;
+}
+
+interface PromptResult {
+  title: string;
+  tracks: Track[];
+  playlist: PromptPlaylist | null;
+}
+
+function getApiErrorMessage(err: unknown, fallback: string): string {
+  if (typeof err !== 'object' || err === null || !('response' in err)) {
+    return fallback;
+  }
+
+  const response = (err as { response?: { data?: { error?: unknown } } }).response;
+  return typeof response?.data?.error === 'string' ? response.data.error : fallback;
+}
+
 export function VibePromptTile() {
   const { isAuthenticated } = useAuthStore();
   const { playTrack, appendToQueue } = usePlayerStore();
   const [prompt, setPrompt] = useState('');
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<{ title: string; tracks: any[]; playlist: any | null } | null>(null);
+  const [result, setResult] = useState<PromptResult | null>(null);
   const [saving, setSaving] = useState(false);
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -46,8 +66,8 @@ export function VibePromptTile() {
       // Auto-play the first, queue the rest behind it.
       playTrack(tracks[0], tracks);
       toast.success(`Now playing: ${res.data.title}`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Could not build playlist');
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Could not build playlist'));
     } finally {
       setLoading(false);
     }
@@ -60,8 +80,8 @@ export function VibePromptTile() {
       const res = await api.post('/ai/playlist/from-prompt', { prompt, limit: 20, save: true });
       setResult({ ...result, playlist: res.data.playlist });
       toast.success('Saved to your library');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Save failed');
+    } catch (err: unknown) {
+      toast.error(getApiErrorMessage(err, 'Save failed'));
     } finally {
       setSaving(false);
     }
@@ -72,7 +92,7 @@ export function VibePromptTile() {
   };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-black/30 backdrop-blur-md border border-white/10 p-5 md:p-6">
+    <div className="relative min-w-0 overflow-hidden rounded-2xl bg-black/30 backdrop-blur-md border border-white/10 p-5 md:p-6">
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="w-3.5 h-3.5 text-white" />
         <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-white/80">
@@ -80,13 +100,13 @@ export function VibePromptTile() {
         </span>
       </div>
 
-      <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-2">
+      <form onSubmit={handleSubmit} className="flex w-full min-w-0 flex-col sm:flex-row gap-2">
         <input
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder="e.g. late-night focus, lo-fi with rain…"
           maxLength={500}
-          className="flex-1 h-11 px-4 rounded-full bg-white/10 text-white placeholder:text-white/40 border border-white/10 focus:border-white/40 focus:outline-none text-sm"
+          className="min-w-0 flex-1 h-11 px-4 rounded-full bg-white/10 text-white placeholder:text-white/40 border border-white/10 focus:border-white/40 focus:outline-none text-sm"
         />
         <button
           type="submit"
@@ -102,14 +122,14 @@ export function VibePromptTile() {
       </form>
 
       {!result && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-3 flex min-w-0 gap-1.5 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible">
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => applySuggestion(s)}
               disabled={loading}
-              className="text-[11px] px-2.5 py-1 rounded-full bg-white/5 text-white/70 hover:bg-white/15 hover:text-white transition-colors disabled:opacity-50 disabled:pointer-events-none"
+              className="shrink-0 whitespace-nowrap text-[11px] px-2.5 py-1 rounded-full bg-white/5 text-white/70 hover:bg-white/15 hover:text-white transition-colors disabled:opacity-50 disabled:pointer-events-none"
             >
               {s}
             </button>

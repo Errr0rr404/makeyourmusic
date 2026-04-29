@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import type { AxiosResponse } from 'axios';
+import type { Track } from '@makeyourmusic/shared';
 import api from '@/lib/api';
 import { TrackCard } from '@/components/track/TrackCard';
 import { OnboardingBanner } from '@/components/OnboardingBanner';
@@ -11,7 +13,7 @@ import {
   TrendingUp, Sparkles, Clock, ChevronRight, AlertCircle,
   Music2, Play, Wand2, Radio, Zap,
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 interface Genre {
   id: string;
@@ -62,11 +64,11 @@ function CardSkeleton() {
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAuthStore();
-  const [trending, setTrending] = useState<any[]>([]);
-  const [latest, setLatest] = useState<any[]>([]);
+  const [trending, setTrending] = useState<Track[]>([]);
+  const [latest, setLatest] = useState<Track[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
-  const [forYou, setForYou] = useState<any[]>([]);
-  const [history, setHistory] = useState<any[]>([]);
+  const [forYou, setForYou] = useState<Track[]>([]);
+  const [history, setHistory] = useState<Track[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -74,38 +76,36 @@ export default function HomePage() {
     setLoading(true);
     setError(null);
     try {
-      const baseRequests = [
-        api.get('/tracks/trending'),
-        api.get('/tracks?sort=newest&limit=12'),
-        api.get('/genres'),
-      ];
-      const personalRequests = isAuthenticated
-        ? [
-            api.get('/tracks/recommendations?limit=12'),
-            api.get('/tracks/history?limit=8'),
-          ]
-        : [];
+      const getData = <T,>(result: PromiseSettledResult<AxiosResponse<T>>) =>
+        result.status === 'fulfilled' ? result.value.data : null;
 
-      const settled = await Promise.allSettled([...baseRequests, ...personalRequests]);
-      const fulfilled = (r: PromiseSettledResult<any>) =>
-        r.status === 'fulfilled' ? r.value : null;
+      const [trendingResult, latestResult, genresResult] = await Promise.allSettled([
+        api.get<{ tracks: Track[] }>('/tracks/trending'),
+        api.get<{ tracks: Track[] }>('/tracks?sort=newest&limit=12'),
+        api.get<{ genres: Genre[] }>('/genres'),
+      ]);
 
-      setTrending(fulfilled(settled[0]!)?.data.tracks || []);
-      setLatest(fulfilled(settled[1]!)?.data.tracks || []);
-      setGenres(fulfilled(settled[2]!)?.data.genres || []);
+      setTrending(getData(trendingResult)?.tracks || []);
+      setLatest(getData(latestResult)?.tracks || []);
+      setGenres(getData(genresResult)?.genres || []);
+
       if (isAuthenticated) {
-        setForYou(fulfilled(settled[3]!)?.data.tracks || []);
-        setHistory(fulfilled(settled[4]!)?.data.tracks || []);
+        const [recommendationsResult, historyResult] = await Promise.allSettled([
+          api.get<{ tracks: Track[] }>('/tracks/recommendations?limit=12'),
+          api.get<{ tracks: Track[] }>('/tracks/history?limit=8'),
+        ]);
+        setForYou(getData(recommendationsResult)?.tracks || []);
+        setHistory(getData(historyResult)?.tracks || []);
       } else {
         setForYou([]);
         setHistory([]);
       }
 
-      if (settled.slice(0, 3).every((r) => r.status === 'rejected')) {
+      if ([trendingResult, latestResult, genresResult].every((r) => r.status === 'rejected')) {
         setError('Could not load content. Check your connection and try again.');
       }
-    } catch (err: any) {
-      setError(err.message || 'Failed to load content');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load content');
     } finally {
       setLoading(false);
     }
@@ -142,26 +142,36 @@ export default function HomePage() {
         <div
           className="absolute inset-0"
           style={{
-            background:
-              'linear-gradient(135deg, rgba(139,92,246,0.35) 0%, rgba(217,70,239,0.28) 50%, rgba(236,72,153,0.18) 100%)',
+            background: [
+              'linear-gradient(135deg, rgba(139,92,246,0.38) 0%, rgba(217,70,239,0.24) 48%, rgba(20,184,166,0.14) 100%)',
+              'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 48%)',
+            ].join(', '),
           }}
         />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 60%, var(--bg-elev-1) 100%)' }} />
-        <div className="absolute -top-20 -right-20 w-80 h-80 rounded-full"
-             style={{ background: 'radial-gradient(circle, rgba(217,70,239,0.45), transparent 70%)' }} />
-        <div className="relative p-6 md:p-10 lg:p-12">
+        <div
+          className="absolute inset-0 opacity-[0.18]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(255,255,255,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px)',
+            backgroundSize: '42px 42px',
+            maskImage: 'linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%)',
+          }}
+        />
+        <div className="relative grid gap-8 p-6 md:p-10 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-center lg:p-12">
           {isAuthenticated ? (
             <motion.div
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
+              className="min-w-0"
             >
               <p className="text-sm font-semibold text-white/70 mb-1">{greeting},</p>
               <h1 className="font-display font-extrabold tracking-tight text-3xl md:text-5xl text-white">
                 {displayName}.
               </h1>
               <p className="mt-3 text-base md:text-lg text-white/75 max-w-xl">
-                Tell us a vibe and we'll build a playlist of AI music — instantly.
+                Tell us a vibe and we will build a playlist of AI music — instantly.
               </p>
             </motion.div>
           ) : (
@@ -169,11 +179,12 @@ export default function HomePage() {
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
+              className="min-w-0"
             >
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-[11px] font-bold uppercase tracking-widest text-white">
                 <Zap className="w-3 h-3" /> AI-generated music
               </span>
-              <h1 className="mt-4 font-display font-extrabold tracking-tighter text-4xl md:text-6xl lg:text-7xl text-white leading-[1.05] max-w-3xl">
+              <h1 className="mt-4 font-display font-extrabold tracking-tighter text-[2.6rem] md:text-6xl lg:text-7xl text-white leading-[1.05] max-w-3xl">
                 Sound that <span className="aurora-text">writes itself.</span>
               </h1>
               <p className="mt-4 text-base md:text-lg text-white/75 max-w-xl">
@@ -190,7 +201,58 @@ export default function HomePage() {
             </motion.div>
           )}
 
-          <div className="mt-6 max-w-2xl">
+          <div className="hidden lg:block relative">
+            <div className="rounded-2xl border border-white/15 bg-black/25 p-5 shadow-2xl shadow-black/30 backdrop-blur-md">
+              <div className="flex items-center justify-between mb-5">
+                <div>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">Agent session</p>
+                  <p className="mt-1 text-sm font-bold text-white">Midnight Lo-Fi Engine</p>
+                </div>
+                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-teal-400/15 text-teal-200">
+                  <Radio className="w-4 h-4" />
+                </span>
+              </div>
+
+              <div className="rounded-xl bg-white/[0.06] p-4">
+                <div className="flex items-end gap-1 h-24">
+                  {Array.from({ length: 34 }).map((_, i) => (
+                    <span
+                      key={i}
+                      className="flex-1 rounded-t-sm"
+                      style={{
+                        height: `${24 + ((i * 17) % 68)}%`,
+                        background: i % 5 === 0 ? '#2dd4bf' : i % 3 === 0 ? '#f472b6' : '#a78bfa',
+                        opacity: 0.72,
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {[
+                  ['01', 'Rain on Neon Glass', 'cinematic synthwave'],
+                  ['02', 'Coffee After Orbit', 'mellow jazz'],
+                  ['03', 'Focus Loop 88', 'lo-fi with rain'],
+                ].map(([number, title, mood]) => (
+                  <div key={title} className="flex items-center gap-3 rounded-lg bg-white/[0.055] px-3 py-2.5">
+                    <span className="text-xs tabular-nums text-white/35">{number}</span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-sm font-semibold text-white">{title}</span>
+                      <span className="block truncate text-[11px] text-white/45">{mood}</span>
+                    </span>
+                    <span className="flex gap-0.5">
+                      <span className="eq-bar" />
+                      <span className="eq-bar" />
+                      <span className="eq-bar" />
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <div className="min-w-0 max-w-2xl lg:col-span-2">
             <VibePromptTile />
           </div>
         </div>

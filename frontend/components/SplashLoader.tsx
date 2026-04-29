@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 
 interface SplashLoaderProps {
     logo: string;
@@ -8,17 +8,17 @@ interface SplashLoaderProps {
     color?: string;
 }
 
+const STATUS_MESSAGES = [
+    "Calibrating Neural Pathways...",
+    "Synchronizing Database Nodes...",
+    "Optimizing UX Architecture...",
+    "Establishing Secure Connection...",
+    "Finalizing Interface Elements..."
+];
+
 export const SplashLoader: React.FC<SplashLoaderProps> = ({ logo, appName, onComplete, color = '#3b82f6' }) => {
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState("Initializing Core Systems...");
-
-    const statusMessages = [
-        "Calibrating Neural Pathways...",
-        "Synchronizing Database Nodes...",
-        "Optimizing UX Architecture...",
-        "Establishing Secure Connection...",
-        "Finalizing Interface Elements..."
-    ];
 
     useEffect(() => {
         const timer = setInterval(() => {
@@ -30,9 +30,9 @@ export const SplashLoader: React.FC<SplashLoaderProps> = ({ logo, appName, onCom
                 }
 
                 // Update status message based on progress
-                const messageIndex = Math.floor((prev / 100) * statusMessages.length);
-                if (statusMessages[messageIndex]) {
-                    setStatus(statusMessages[messageIndex]);
+                const messageIndex = Math.floor((prev / 100) * STATUS_MESSAGES.length);
+                if (STATUS_MESSAGES[messageIndex]) {
+                    setStatus(STATUS_MESSAGES[messageIndex]);
                 }
 
                 return prev + 1.5;

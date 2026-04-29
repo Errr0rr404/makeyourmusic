@@ -48,7 +48,7 @@ export function Topbar() {
   return (
     <header
       className={cn(
-        'sticky top-0 z-30 flex items-center justify-between gap-4 px-4 md:px-6 h-16 transition-colors',
+        'sticky top-0 z-30 flex items-center justify-between gap-2 md:gap-4 px-3 sm:px-4 md:px-6 h-16 transition-colors',
         scrolled ? 'mym-topbar-frost' : 'bg-transparent'
       )}
     >
@@ -68,7 +68,7 @@ export function Topbar() {
           <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
         </button>
 
-        <form onSubmit={handleSearch} className="ml-2 flex-1 max-w-[420px] min-w-[160px]">
+        <form onSubmit={handleSearch} className="md:ml-2 flex-1 max-w-[420px] min-w-0 sm:min-w-[160px]">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[color:var(--text-mute)]" />
             <input
@@ -142,11 +142,11 @@ export function Topbar() {
             </div>
           </>
         ) : (
-          <div className="flex items-center gap-2">
-            <Link href="/login" className="text-sm font-semibold text-[color:var(--text-soft)] hover:text-white transition-colors px-3 py-2">
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/login" className="hidden min-[430px]:inline-flex whitespace-nowrap text-sm font-semibold text-[color:var(--text-soft)] hover:text-white transition-colors px-3 py-2">
               Log in
             </Link>
-            <Link href="/register" className="mym-cta text-sm">
+            <Link href="/register" className="mym-cta mym-cta-sm text-sm">
               Sign up
             </Link>
           </div>

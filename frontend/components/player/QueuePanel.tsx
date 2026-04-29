@@ -2,7 +2,7 @@
 
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { X, GripVertical, Play, Pause, Trash2, ListMusic } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { formatDuration } from '@makeyourmusic/shared';
 
 export function QueuePanel() {

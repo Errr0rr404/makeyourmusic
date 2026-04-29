@@ -1,4 +1,5 @@
 @import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
 
 /*  ──────────────────────────────────────────────────────────
     MYM DESIGN SYSTEM
@@ -46,6 +47,7 @@
   --stroke-strong: rgba(255, 255, 255, 0.14);
 
   --player-height: 84px;
+  --mobile-nav-height: 72px;
   --sidebar-width: 264px;
   --shell-gap:     8px;
   --radius-lg:     14px;
@@ -256,6 +258,12 @@ input[type="range"]:focus::-webkit-slider-thumb {
   box-shadow: 0 14px 30px -8px var(--brand-glow);
 }
 .mym-cta:active { transform: translateY(0); }
+
+.mym-cta.mym-cta-sm {
+  min-height: 40px;
+  padding: 8px 16px;
+  white-space: nowrap;
+}
 
 .mym-ghost {
   display: inline-flex;

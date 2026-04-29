@@ -7,7 +7,7 @@ import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
   Shuffle, Repeat, Repeat1, ListMusic, SlidersHorizontal, ListOrdered,
 } from 'lucide-react';
-import { AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'motion/react';
 import api from '@/lib/api';
 import { audioEngine } from '@/lib/audioEngine';
 import { PlayerSettings } from './PlayerSettings';

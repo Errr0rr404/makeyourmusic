@@ -1,7 +1,7 @@
 'use client';
 
 import { useToastStore } from '@/lib/store/toastStore';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'motion/react';
 import { X, CheckCircle2, AlertCircle, Info, AlertTriangle } from 'lucide-react';
 
 const iconMap = {
