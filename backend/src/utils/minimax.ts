@@ -89,6 +89,16 @@ export async function minimaxChat(params: {
   }
 
   const json = await parseJson<any>(res);
+  const baseResp = json?.base_resp;
+  if (baseResp && baseResp.status_code !== 0) {
+    logger.error('MiniMax chat returned error', {
+      code: baseResp.status_code,
+      msg: baseResp.status_msg,
+    });
+    throw new Error(
+      `MiniMax chat error ${baseResp.status_code}: ${baseResp.status_msg || 'unknown'}`
+    );
+  }
   const text: string = json?.choices?.[0]?.message?.content ?? '';
   if (!text) {
     logger.warn('MiniMax chat returned no content', { raw: json });
@@ -331,7 +341,9 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
       { role: 'system', content: system },
       { role: 'user', content: user },
     ],
-    maxTokens: 1200,
+    // Higher cap to leave room for reasoning models (e.g. MiniMax-M2) that
+    // emit a chain-of-thought before the final lyrics.
+    maxTokens: 4000,
     temperature: 0.85,
   });
 
