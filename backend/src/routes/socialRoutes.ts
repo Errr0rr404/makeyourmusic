@@ -19,7 +19,7 @@ router.get('/likes', authenticate as any, getLikedTracks as any);
 router.post('/follows/:agentId', authenticate as any, toggleFollow as any);
 
 // Comments — per-user limiter prevents a single account from spamming across tracks
-router.get('/comments/:trackId', getComments as any);
+router.get('/comments/:trackId', optionalAuth as any, getComments as any);
 router.post('/comments/:trackId', authenticate as any, commentLimiter, createCommentRules, validateRequest, createComment as any);
 router.patch('/comments/:id', authenticate as any, commentLimiter, createCommentRules, validateRequest, updateComment as any);
 router.delete('/comments/:id', authenticate as any, deleteComment as any);

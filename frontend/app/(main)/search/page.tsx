@@ -6,6 +6,27 @@ import api from '@/lib/api';
 import { TrackCard } from '@/components/track/TrackCard';
 import { AgentCard } from '@/components/agent/AgentCard';
 import { Search, AlertCircle } from 'lucide-react';
+import type { Agent, Track } from '@makeyourmusic/shared';
+
+function getSearchError(err: unknown): string {
+  if (typeof err !== 'object' || err === null || !('response' in err)) {
+    return 'Search failed. Please try again.';
+  }
+  const response = (err as { response?: { data?: { error?: unknown } } }).response;
+  return typeof response?.data?.error === 'string'
+    ? response.data.error
+    : 'Search failed. Please try again.';
+}
+
+function isAbortError(err: unknown): boolean {
+  return (
+    typeof err === 'object' &&
+    err !== null &&
+    'name' in err &&
+    ((err as { name?: unknown }).name === 'CanceledError' ||
+      (err as { name?: unknown }).name === 'AbortError')
+  );
+}
 
 interface GenreOption {
   id: string;
@@ -19,12 +40,13 @@ function SearchContent() {
   const sort = searchParams.get('sort') || 'newest';
   const genre = searchParams.get('genre') || '';
 
-  const [tracks, setTracks] = useState<any[]>([]);
-  const [agents, setAgents] = useState<any[]>([]);
+  const [tracks, setTracks] = useState<Track[]>([]);
+  const [agents, setAgents] = useState<Agent[]>([]);
   const [genres, setGenres] = useState<GenreOption[]>([]);
   const [tab, setTab] = useState<'tracks' | 'agents'>('tracks');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   // Fetch genres once
@@ -50,9 +72,9 @@ function SearchContent() {
           setTracks(tracksRes.data.tracks || []);
           setAgents(agentsRes.data.agents || []);
         }
-      } catch (err: any) {
-        if (err?.name === 'CanceledError' || err?.name === 'AbortError') return;
-        setError(err.response?.data?.error || 'Search failed. Please try again.');
+      } catch (err: unknown) {
+        if (isAbortError(err)) return;
+        setError(getSearchError(err));
       }
       if (!controller.signal.aborted) {
         setLoading(false);
@@ -60,7 +82,7 @@ function SearchContent() {
     }
     search();
     return () => controller.abort();
-  }, [q, sort, genre]);
+  }, [q, sort, genre, retryNonce]);
 
   return (
     <div className="animate-fade-in">
@@ -134,7 +156,7 @@ function SearchContent() {
         <div className="text-center py-20">
           <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
           <p className="text-red-400 mb-4">{error}</p>
-          <button onClick={() => { setLoading(true); setError(null); }} className="text-[hsl(var(--accent))] hover:underline">
+          <button onClick={() => setRetryNonce((n) => n + 1)} className="text-[hsl(var(--accent))] hover:underline">
             Retry
           </button>
         </div>

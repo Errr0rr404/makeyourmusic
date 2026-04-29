@@ -565,16 +565,17 @@ export const getRecommendations = async (req: RequestWithUser, res: Response) =>
       ...likedTracks.map((l) => l.track.agentId),
       ...followedAgents.map((f) => f.agentId),
     ])];
+    const personalizationFilters = [
+      ...(genreIds.length > 0 ? [{ genreId: { in: genreIds } }] : []),
+      ...(agentIds.length > 0 ? [{ agentId: { in: agentIds } }] : []),
+    ];
 
     const recommended = await prisma.track.findMany({
       where: {
         status: 'ACTIVE',
         isPublic: true,
         id: { notIn: likedTrackIds },
-        OR: [
-          ...(genreIds.length > 0 ? [{ genreId: { in: genreIds } }] : []),
-          ...(agentIds.length > 0 ? [{ agentId: { in: agentIds } }] : []),
-        ],
+        ...(personalizationFilters.length > 0 ? { OR: personalizationFilters } : {}),
       },
       include: {
         agent: { select: { id: true, name: true, slug: true, avatar: true } },

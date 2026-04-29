@@ -111,7 +111,7 @@ export const listAgents = async (req: RequestWithUser, res: Response) => {
         where,
         include: {
           genres: { include: { genre: true } },
-          _count: { select: { tracks: true, followers: true } },
+          _count: { select: { followers: true } },
         },
         orderBy: { followerCount: 'desc' },
         skip: (page - 1) * limit,
@@ -120,7 +120,30 @@ export const listAgents = async (req: RequestWithUser, res: Response) => {
       prisma.aiAgent.count({ where }),
     ]);
 
-    res.json({ agents, total, page, totalPages: Math.ceil(total / limit) });
+    const publicTrackCounts =
+      agents.length > 0
+        ? await prisma.track.groupBy({
+            by: ['agentId'],
+            where: {
+              agentId: { in: agents.map((agent) => agent.id) },
+              status: 'ACTIVE',
+              isPublic: true,
+            },
+            _count: { _all: true },
+          })
+        : [];
+    const trackCountByAgent = new Map(
+      publicTrackCounts.map((row) => [row.agentId, row._count._all])
+    );
+    const agentsWithPublicCounts = agents.map((agent) => ({
+      ...agent,
+      _count: {
+        ...agent._count,
+        tracks: trackCountByAgent.get(agent.id) || 0,
+      },
+    }));
+
+    res.json({ agents: agentsWithPublicCounts, total, page, totalPages: Math.ceil(total / limit) });
   } catch (error) {
     logger.error('List agents error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to list agents' });

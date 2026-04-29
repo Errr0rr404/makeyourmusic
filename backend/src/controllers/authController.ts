@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Response, type CookieOptions } from 'express';
 import crypto from 'crypto';
 import argon2 from 'argon2';
 import { prisma } from '../utils/db';
@@ -9,6 +9,25 @@ import { sendEmail, buildVerificationEmail, buildPasswordResetEmail } from '../u
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+const REFRESH_TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+const refreshCookieOptions = (): CookieOptions => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'lax',
+  path: '/',
+});
+
+function setRefreshTokenCookie(res: Response, refreshToken: string): void {
+  res.cookie('refreshToken', refreshToken, {
+    ...refreshCookieOptions(),
+    maxAge: REFRESH_TOKEN_MAX_AGE_MS,
+  });
+}
+
+function clearRefreshTokenCookie(res: Response): void {
+  res.clearCookie('refreshToken', refreshCookieOptions());
+}
 
 function generateToken(): string {
   return crypto.randomBytes(32).toString('hex');
@@ -112,12 +131,7 @@ export const register = async (req: RequestWithUser, res: Response) => {
       tv: user.tokenVersion,
     });
 
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshTokenCookie(res, refreshToken);
 
     const { tokenVersion: _tv, ...safeUser } = user;
     res.status(201).json({ user: safeUser, accessToken });
@@ -164,12 +178,7 @@ export const login = async (req: RequestWithUser, res: Response) => {
       tv: user.tokenVersion,
     });
 
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshTokenCookie(res, refreshToken);
 
     res.json({ user: safeUser, accessToken });
   } catch (error) {
@@ -235,22 +244,42 @@ export const updateProfile = async (req: RequestWithUser, res: Response) => {
 };
 
 export const logout = async (req: RequestWithUser, res: Response) => {
-  // If authenticated, bump tokenVersion to invalidate ALL outstanding refresh tokens
-  // for this user (covers stolen-cookie scenario).
-  if (req.user?.userId) {
+  // Bump tokenVersion to invalidate outstanding refresh tokens. If the access
+  // token is expired, fall back to the httpOnly refresh cookie so logout still
+  // revokes the session instead of only clearing this browser's cookie.
+  let userId = req.user?.userId;
+  if (!userId) {
+    const refreshTokenCookie = req.cookies?.refreshToken;
+    if (refreshTokenCookie) {
+      try {
+        const decoded = await verifyRefreshToken(refreshTokenCookie);
+        const user = await prisma.user.findUnique({
+          where: { id: decoded.userId },
+          select: { id: true, tokenVersion: true },
+        });
+        if (user && (typeof decoded.tv !== 'number' || decoded.tv === user.tokenVersion)) {
+          userId = user.id;
+        }
+      } catch {
+        // Invalid/expired refresh cookie — still clear it below.
+      }
+    }
+  }
+
+  if (userId) {
     try {
       await prisma.user.update({
-        where: { id: req.user.userId },
+        where: { id: userId },
         data: { tokenVersion: { increment: 1 } },
       });
     } catch (error) {
       logger.warn('Failed to bump tokenVersion on logout', {
-        userId: req.user.userId,
+        userId,
         error: (error as Error).message,
       });
     }
   }
-  res.clearCookie('refreshToken');
+  clearRefreshTokenCookie(res);
   res.json({ message: 'Logged out successfully' });
 };
 
@@ -276,7 +305,7 @@ export const refresh = async (req: RequestWithUser, res: Response) => {
 
     // Reject if the token's version is stale (user logged out / changed password)
     if (typeof decoded.tv === 'number' && decoded.tv !== user.tokenVersion) {
-      res.clearCookie('refreshToken');
+      clearRefreshTokenCookie(res);
       res.status(401).json({ error: 'Token revoked' });
       return;
     }
@@ -288,15 +317,11 @@ export const refresh = async (req: RequestWithUser, res: Response) => {
       tv: user.tokenVersion,
     });
 
-    res.cookie('refreshToken', refreshToken, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshTokenCookie(res, refreshToken);
 
     res.json({ accessToken });
   } catch {
+    clearRefreshTokenCookie(res);
     res.status(401).json({ error: 'Invalid refresh token' });
   }
 };
@@ -622,7 +647,7 @@ export const deleteAccount = async (req: RequestWithUser, res: Response) => {
 
     await prisma.user.delete({ where: { id: user.id } });
 
-    res.clearCookie('refreshToken');
+    clearRefreshTokenCookie(res);
     res.json({ message: 'Account deleted' });
   } catch (error) {
     logger.error('Delete account error', { error: (error as Error).message });

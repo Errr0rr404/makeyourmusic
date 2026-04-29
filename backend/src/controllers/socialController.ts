@@ -248,6 +248,21 @@ export const createComment = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
+    if (parentId) {
+      const parent = await prisma.comment.findUnique({
+        where: { id: parentId },
+        select: { trackId: true, parentId: true },
+      });
+      if (!parent || parent.trackId !== trackId) {
+        res.status(400).json({ error: 'Parent comment does not belong to this track' });
+        return;
+      }
+      if (parent.parentId) {
+        res.status(400).json({ error: 'Replies can only be added to top-level comments' });
+        return;
+      }
+    }
+
     const comment = await prisma.comment.create({
       data: { content: trimmed, userId: req.user.userId, trackId, parentId },
       include: { user: { select: { id: true, username: true, displayName: true, avatar: true } } },

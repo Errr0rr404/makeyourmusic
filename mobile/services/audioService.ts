@@ -14,6 +14,7 @@ import { getApi } from '@makeyourmusic/shared';
 import { getLocalUri } from './downloadService';
 
 let isInitialized = false;
+let playRecordedForTrackId: string | null = null;
 
 /**
  * Initialize react-native-track-player with capabilities.
@@ -101,6 +102,7 @@ export function useSyncPlayerToNative() {
         if (idx >= 0) {
           await TrackPlayer.skip(idx);
         }
+        playRecordedForTrackId = null;
       } catch (err) {
         console.error('syncQueue error:', err);
       }
@@ -165,32 +167,19 @@ export function setupNativePlayerListeners() {
             queueIndex: queue.indexOf(match),
             progress: 0,
           });
+          playRecordedForTrackId = null;
         }
       }
     },
   );
 
-  // Track play counts
+  // Native playback state
   const playbackSub = TrackPlayer.addEventListener(
     Event.PlaybackState,
-    async (event) => {
+    (event) => {
       const state = event.state;
       if (state === State.Playing) {
         store.setState({ isPlaying: true });
-
-        // Record play on the backend using track ID
-        const currentTrack = store.getState().currentTrack;
-        if (currentTrack) {
-          try {
-            const api = getApi();
-            await api.post(`/tracks/${currentTrack.id}/play`, {
-              durationPlayed: 0,
-              completed: false,
-            });
-          } catch {
-            // silent fail
-          }
-        }
       } else if (state === State.Paused) {
         store.setState({ isPlaying: false });
       }
@@ -205,6 +194,24 @@ export function setupNativePlayerListeners() {
         progress: event.position,
         duration: event.duration,
       });
+
+      const currentTrack = store.getState().currentTrack;
+      if (!currentTrack || playRecordedForTrackId === currentTrack.id) return;
+
+      const completionThreshold = event.duration > 0
+        ? Math.max(1, Math.min(30, event.duration - 1))
+        : 30;
+      if (event.position >= completionThreshold) {
+        playRecordedForTrackId = currentTrack.id;
+        const completed = event.duration > 0 && event.position >= event.duration - 1;
+        const api = getApi();
+        void api.post(`/tracks/${currentTrack.id}/play`, {
+          durationPlayed: Math.floor(event.position),
+          completed,
+        }).catch(() => {
+          // silent fail
+        });
+      }
     },
   );
 

@@ -17,7 +17,7 @@ export function Topbar() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    if (!user && !isAuthenticated) fetchUser();
+    if (!user && isAuthenticated) fetchUser();
   }, [user, isAuthenticated, fetchUser]);
 
   useEffect(() => {

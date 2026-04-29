@@ -54,6 +54,7 @@ export function AudioPlayer() {
   const skipNextLoadRef = useRef(false);
   const crossfadingRef = useRef(false);
   const crossfadeTimerRef = useRef<number | null>(null);
+  const crossfadePromoteTimeoutRef = useRef<number | null>(null);
 
   const playRecordedRef = useRef(false);
   const engineInitRef = useRef(false);
@@ -78,6 +79,10 @@ export function AudioPlayer() {
     if (crossfadeTimerRef.current) {
       window.clearInterval(crossfadeTimerRef.current);
       crossfadeTimerRef.current = null;
+    }
+    if (crossfadePromoteTimeoutRef.current) {
+      window.clearTimeout(crossfadePromoteTimeoutRef.current);
+      crossfadePromoteTimeoutRef.current = null;
     }
     crossfadingRef.current = false;
     preloadedTrackIdRef.current = null;
@@ -306,7 +311,8 @@ export function AudioPlayer() {
       }
 
       // Promote after the ramp completes.
-      window.setTimeout(() => {
+      crossfadePromoteTimeoutRef.current = window.setTimeout(() => {
+        crossfadePromoteTimeoutRef.current = null;
         if (!crossfadingRef.current) return;
         try { active.pause(); } catch {}
         if (engineInitRef.current) {
@@ -323,6 +329,8 @@ export function AudioPlayer() {
         skipNextLoadRef.current = true;
         playRecordedRef.current = false;
         nextTrack();
+        if (Number.isFinite(inactive.duration)) setDuration(inactive.duration);
+        setProgress(inactive.currentTime || 0);
       }, crossfade * 1000 + 50);
     };
 
@@ -340,7 +348,7 @@ export function AudioPlayer() {
         if (crossfadingRef.current && inactive.readyState < 2) cancelCrossfade();
       }, 5000);
     }
-  }, [crossfade, repeat, queue, queueIndex, shuffle, playbackSpeed, volume, nextTrack, cancelCrossfade]);
+  }, [crossfade, repeat, queue, queueIndex, shuffle, playbackSpeed, volume, nextTrack, cancelCrossfade, setDuration, setProgress]);
 
   const handleTimeUpdate = useCallback(() => {
     const audio = getActiveEl();
@@ -374,7 +382,8 @@ export function AudioPlayer() {
       const audio = getActiveEl();
       if (audio) { audio.currentTime = 0; audio.play().catch(() => {}); }
     } else {
-      if (currentTrack) {
+      if (currentTrack && !playRecordedRef.current) {
+        playRecordedRef.current = true;
         api.post(`/tracks/${currentTrack.id}/play`, {
           durationPlayed: Math.floor(duration),
           completed: true,

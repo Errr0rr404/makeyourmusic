@@ -16,16 +16,27 @@ import { usePlayerStore } from '@/lib/store/playerStore';
 
 function AuthHydrator({ children }: { children: React.ReactNode }) {
   const hydrateAuth = useAuthStore((s) => s.hydrate);
+  const fetchUser = useAuthStore((s) => s.fetchUser);
   const hydratePlayerPrefs = usePlayerStore((s) => s.hydratePrefs);
 
   useEffect(() => {
-    // Hydrate auth state and player prefs from storage on mount.
-    // For auth: instantly sets isAuthenticated=true if a token exists,
-    // so protected pages don't flash the "log in" state.
-    // For player: restores volume, EQ, etc. from the last session.
-    hydrateAuth();
-    hydratePlayerPrefs();
-  }, [hydrateAuth, hydratePlayerPrefs]);
+    let cancelled = false;
+
+    void (async () => {
+      // Hydrate auth state and player prefs from storage on mount.
+      // For auth: instantly sets isAuthenticated=true if a token exists,
+      // then fetchUser reconciles the full profile through the refresh flow.
+      // For player: restores volume, EQ, etc. from the last session.
+      await Promise.all([hydrateAuth(), hydratePlayerPrefs()]);
+      if (!cancelled) {
+        await fetchUser();
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [hydrateAuth, fetchUser, hydratePlayerPrefs]);
 
   return <>{children}</>;
 }

@@ -5,6 +5,8 @@ import { serverFetch, getSiteUrl } from '@/lib/serverApi';
 // when the backend isn't reachable at build time.
 export const revalidate = 3600;
 
+const SITEMAP_PAGE_SIZE = 100;
+
 interface Track {
   slug: string;
   updatedAt?: string;
@@ -35,8 +37,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   ];
 
   const [tracksRes, agentsRes, genresRes] = await Promise.all([
-    serverFetch<{ tracks: Track[] }>('/tracks?sort=popular&limit=500', { revalidate: 3600 }),
-    serverFetch<{ agents: Agent[] }>('/agents?limit=500', { revalidate: 3600 }),
+    serverFetch<{ tracks: Track[] }>(`/tracks?sort=popular&limit=${SITEMAP_PAGE_SIZE}`, { revalidate: 3600 }),
+    serverFetch<{ agents: Agent[] }>(`/agents?limit=${SITEMAP_PAGE_SIZE}`, { revalidate: 3600 }),
     serverFetch<{ genres: Genre[] }>('/genres', { revalidate: 3600 }),
   ]);
 
