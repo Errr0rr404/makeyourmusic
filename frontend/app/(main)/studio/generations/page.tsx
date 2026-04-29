@@ -153,17 +153,17 @@ export default function GenerationsPage() {
 
   return (
     <div className="max-w-3xl mx-auto animate-fade-in">
-      <div className="flex items-center justify-between mb-6">
-        <div>
+      <div className="flex flex-col gap-4 mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <Sparkles className="w-5 h-5 text-purple-400" />
             <span className="text-xs font-bold uppercase tracking-wider text-purple-300">Studio</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white">My generations</h1>
+          <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">My generations</h1>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex w-full items-center gap-3 sm:w-auto">
           {usage && (
-            <div className="text-right">
+            <div className="mr-auto sm:mr-0 sm:text-right">
               <p className="text-xs text-[hsl(var(--muted-foreground))] uppercase">Today</p>
               <p className="text-lg font-bold text-white">
                 {usage.used}<span className="text-white/40">/{usage.limit}</span>
@@ -172,7 +172,7 @@ export default function GenerationsPage() {
           )}
           <Link
             href="/create"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold hover:scale-105 transition-transform"
+            className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-semibold hover:scale-105 transition-transform"
           >
             <Wand2 className="w-4 h-4" /> New track
           </Link>
@@ -180,7 +180,7 @@ export default function GenerationsPage() {
       </div>
 
       {error && (
-        <div className="flex items-center justify-between gap-3 p-4 mb-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm">
+        <div className="flex flex-col gap-3 p-4 mb-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
@@ -218,7 +218,7 @@ export default function GenerationsPage() {
               key={gen.id}
               className="p-4 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))]"
             >
-              <div className="flex items-start gap-3">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
                     <h3 className="text-base font-semibold text-white truncate">
@@ -235,7 +235,7 @@ export default function GenerationsPage() {
                   {gen.prompt && (
                     <p className="text-xs text-[hsl(var(--muted-foreground))] line-clamp-1">{gen.prompt}</p>
                   )}
-                  <div className="flex items-center gap-3 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1 text-xs text-[hsl(var(--muted-foreground))]">
                     <span>{timeAgo(gen.createdAt)}</span>
                     {gen.durationSec && (
                       <span className="flex items-center gap-1">
@@ -258,11 +258,11 @@ export default function GenerationsPage() {
                     </div>
                   )}
                 </div>
-                <div className="flex flex-col gap-1 flex-shrink-0">
+                <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-col sm:flex-shrink-0">
                   {gen.status === 'COMPLETED' && gen.audioUrl && !gen.track && (
                     <button
                       onClick={() => router.push(`/create?generation=${gen.id}`)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[hsl(var(--primary))] text-white text-xs font-medium hover:bg-[hsl(var(--primary))]/90"
+                      className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-[hsl(var(--primary))] text-white text-xs font-medium hover:bg-[hsl(var(--primary))]/90"
                       title="Publish as track"
                     >
                       <Upload className="w-3.5 h-3.5" /> Publish
@@ -271,7 +271,7 @@ export default function GenerationsPage() {
                   {gen.status === 'COMPLETED' && gen.audioUrl && (
                     <button
                       onClick={() => handleVariation(gen)}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-purple-500/15 text-purple-200 border border-purple-500/30 text-xs font-medium hover:bg-purple-500/25"
+                      className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-purple-500/15 text-purple-200 border border-purple-500/30 text-xs font-medium hover:bg-purple-500/25"
                       title="Generate a new take with these lyrics"
                     >
                       <Repeat2 className="w-3.5 h-3.5" /> Variation
@@ -280,7 +280,7 @@ export default function GenerationsPage() {
                   {gen.track && (
                     <Link
                       href={`/track/${gen.track.slug}`}
-                      className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-medium"
+                      className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white text-xs font-medium"
                     >
                       <Play className="w-3.5 h-3.5" /> Open
                     </Link>

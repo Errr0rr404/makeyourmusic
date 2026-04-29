@@ -8,6 +8,7 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { ImageUpload } from '@/components/upload/ImageUpload';
 import { toast } from 'sonner';
 import {
+  type LucideIcon,
   Sparkles, Wand2, Lock, Loader2, ChevronLeft, ChevronRight,
   Globe, LockKeyhole, CheckCircle2, AlertCircle, RotateCcw,
   Zap, FileText, Settings2, Headphones, Clock,
@@ -331,28 +332,32 @@ export default function CreatePage() {
 
 function Header({ usage }: { usage: Usage | null }) {
   return (
-    <div className="flex items-center justify-between mb-6">
-      <div>
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
+      <div className="min-w-0">
         <div className="flex items-center gap-2 mb-1">
           <Sparkles className="w-5 h-5 text-purple-400" />
           <span className="text-xs font-bold uppercase tracking-wider text-purple-300">
             AI Music Studio
           </span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-white">Create a track</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">Create a track</h1>
         <p className="text-sm text-white/50 mt-1">
           Write lyrics, pick a vibe, and let the AI compose your song
         </p>
       </div>
       {usage && (
-        <div className="text-right">
-          <p className="text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Today</p>
-          <p className="text-lg font-bold text-white">
-            {usage.used}<span className="text-white/40">/{usage.limit}</span>
+        <div className="flex items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 sm:block sm:border-0 sm:bg-transparent sm:p-0 sm:text-right">
+          <p className="text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider">
+            Today
           </p>
-          <p className="text-xs text-[hsl(var(--muted-foreground))]">
-            {usage.tier === 'PREMIUM' ? 'Premium' : 'Free tier'}
-          </p>
+          <div className="text-right sm:text-right">
+            <p className="text-lg font-bold text-white leading-none">
+              {usage.used}<span className="text-white/40">/{usage.limit}</span>
+            </p>
+            <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+              {usage.tier === 'PREMIUM' ? 'Premium' : 'Free tier'}
+            </p>
+          </div>
         </div>
       )}
     </div>
@@ -361,7 +366,7 @@ function Header({ usage }: { usage: Usage | null }) {
 
 // ─── Stepper ─────────────────────────────────────────────
 
-const STEPS: { key: Step; label: string; icon: any }[] = [
+const STEPS: { key: Step; label: string; icon: LucideIcon }[] = [
   { key: 'idea', label: 'Idea', icon: Zap },
   { key: 'lyrics', label: 'Lyrics', icon: FileText },
   { key: 'style', label: 'Style', icon: Settings2 },
@@ -371,36 +376,65 @@ const STEPS: { key: Step; label: string; icon: any }[] = [
 
 function Stepper({ current }: { current: Step }) {
   const currentIdx = STEPS.findIndex((s) => s.key === current);
+  const currentStep = STEPS[currentIdx] ?? STEPS[0]!;
+  const CurrentIcon = currentStep.icon;
+  const progress = ((currentIdx + 1) / STEPS.length) * 100;
+
   return (
-    <div className="flex items-center gap-2 p-3 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] overflow-x-auto">
-      {STEPS.map((s, i) => {
-        const isActive = i === currentIdx;
-        const isDone = i < currentIdx;
-        const Icon = s.icon;
-        return (
-          <div key={s.key} className="flex items-center gap-2 flex-shrink-0">
-            <div
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors ${
-                isActive
-                  ? 'bg-[hsl(var(--accent))]/20 text-[hsl(var(--accent))]'
-                  : isDone
-                    ? 'text-green-400'
-                    : 'text-[hsl(var(--muted-foreground))]'
-              }`}
-            >
-              {isDone ? (
-                <CheckCircle2 className="w-4 h-4" />
-              ) : (
-                <Icon className="w-4 h-4" />
-              )}
-              <span className="text-xs font-semibold whitespace-nowrap">{s.label}</span>
-            </div>
-            {i < STEPS.length - 1 && (
-              <div className={`w-4 h-[1px] ${isDone ? 'bg-green-400/50' : 'bg-white/10'}`} />
-            )}
+    <div className="rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))] p-3">
+      <div className="flex items-center justify-between gap-3 md:hidden">
+        <div className="min-w-0 flex items-center gap-2">
+          <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-full bg-[hsl(var(--accent))]/15 text-[hsl(var(--accent))]">
+            <CurrentIcon className="w-4 h-4" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-xs uppercase tracking-wider text-[hsl(var(--muted-foreground))]">
+              Step {currentIdx + 1} of {STEPS.length}
+            </p>
+            <p className="text-sm font-semibold text-white truncate">{currentStep.label}</p>
           </div>
-        );
-      })}
+        </div>
+        <span className="text-xs font-semibold text-[hsl(var(--muted-foreground))]">
+          {Math.round(progress)}%
+        </span>
+      </div>
+      <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10 md:hidden">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-purple-500 to-pink-500 transition-[width]"
+          style={{ width: `${progress}%` }}
+        />
+      </div>
+
+      <div className="mt-3 flex items-center gap-2 overflow-x-auto pb-1 md:mt-0 md:pb-0">
+        {STEPS.map((s, i) => {
+          const isActive = i === currentIdx;
+          const isDone = i < currentIdx;
+          const Icon = s.icon;
+          return (
+            <div key={s.key} className="flex items-center gap-2 flex-shrink-0">
+              <div
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm transition-colors ${
+                  isActive
+                    ? 'bg-[hsl(var(--accent))]/20 text-[hsl(var(--accent))]'
+                    : isDone
+                      ? 'text-green-400'
+                      : 'text-[hsl(var(--muted-foreground))]'
+                }`}
+              >
+                {isDone ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <Icon className="w-4 h-4" />
+                )}
+                <span className="text-xs font-semibold whitespace-nowrap">{s.label}</span>
+              </div>
+              {i < STEPS.length - 1 && (
+                <div className={`w-4 h-[1px] ${isDone ? 'bg-green-400/50' : 'bg-white/10'}`} />
+              )}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -451,7 +485,7 @@ function IdeaStep({
         <button
           onClick={onNext}
           disabled={!idea.trim()}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium hover:bg-[hsl(var(--primary))]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex w-full items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium hover:bg-[hsl(var(--primary))]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors sm:w-auto"
         >
           Next: Lyrics <ChevronRight className="w-4 h-4" />
         </button>
@@ -472,14 +506,14 @@ function LyricsStep({
 }) {
   return (
     <div className="space-y-4 p-5 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <h2 className="text-lg font-bold text-white mb-1">Write or generate lyrics</h2>
           <p className="text-sm text-[hsl(var(--muted-foreground))]">
             Use <code className="text-white/80">[Verse]</code>, <code className="text-white/80">[Chorus]</code>, etc. on their own lines for structure
           </p>
         </div>
-        <label className="flex items-center gap-2 cursor-pointer shrink-0">
+        <label className="flex items-center gap-2 cursor-pointer self-start sm:shrink-0">
           <input
             type="checkbox"
             checked={isInstrumental}
@@ -492,11 +526,11 @@ function LyricsStep({
 
       {!isInstrumental && (
         <>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col items-stretch gap-2 sm:flex-row sm:items-center">
             <button
               onClick={onGenerate}
               disabled={generating}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-200 text-sm font-medium transition-colors disabled:opacity-50"
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/30 text-purple-200 text-sm font-medium transition-colors disabled:opacity-50"
             >
               {generating ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Generating…</>
@@ -542,17 +576,17 @@ function LyricsStep({
         </div>
       )}
 
-      <div className="flex justify-between pt-2">
+      <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-between">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors sm:justify-start"
         >
           <ChevronLeft className="w-4 h-4" /> Back
         </button>
         <button
           onClick={onNext}
           disabled={!isInstrumental && !lyrics.trim()}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium hover:bg-[hsl(var(--primary))]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium hover:bg-[hsl(var(--primary))]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Next: Style <ChevronRight className="w-4 h-4" />
         </button>
@@ -683,17 +717,17 @@ function StyleStep({
         </div>
       )}
 
-      <div className="flex justify-between pt-2">
+      <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-between">
         <button
           onClick={onBack}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors sm:justify-start"
         >
           <ChevronLeft className="w-4 h-4" /> Back
         </button>
         <button
           onClick={onNext}
           disabled={!!insufficientCredits}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-transform"
+          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-transform"
         >
           <Wand2 className="w-4 h-4" /> Generate Music
         </button>
@@ -718,17 +752,17 @@ function GenerateStep({
 
   if (error) {
     return (
-      <div className="text-center p-10 rounded-xl bg-[hsl(var(--card))] border border-red-500/20">
+      <div className="text-center p-6 sm:p-10 rounded-xl bg-[hsl(var(--card))] border border-red-500/20">
         <div className="w-16 h-16 mx-auto rounded-full bg-red-500/10 flex items-center justify-center mb-4">
           <AlertCircle className="w-8 h-8 text-red-400" />
         </div>
         <h2 className="text-xl font-bold text-white mb-2">Generation failed</h2>
         <p className="text-sm text-red-400 mb-6">{error}</p>
-        <div className="flex gap-3 justify-center">
+        <div className="flex flex-col gap-2 justify-center sm:flex-row sm:gap-3">
           <button onClick={onBack} className="px-4 py-2 rounded-lg text-sm text-[hsl(var(--muted-foreground))] hover:text-white">
             Edit inputs
           </button>
-          <button onClick={onRetry} className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium">
+          <button onClick={onRetry} className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium">
             <RotateCcw className="w-4 h-4" /> Try again
           </button>
           <button onClick={onStartOver} className="px-4 py-2 rounded-lg text-sm text-[hsl(var(--muted-foreground))] hover:text-white">
@@ -747,7 +781,7 @@ function GenerateStep({
     : 'Working…';
 
   return (
-    <div className="text-center p-10 rounded-xl bg-gradient-to-br from-purple-600/10 to-blue-600/10 border border-white/5">
+    <div className="text-center p-6 sm:p-10 rounded-xl bg-gradient-to-br from-purple-600/10 to-blue-600/10 border border-white/5">
       <div className="relative w-20 h-20 mx-auto mb-6">
         <div className="absolute inset-0 rounded-full bg-purple-500/20 animate-ping" />
         <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
@@ -822,8 +856,8 @@ function PublishStep({
         )}
       </div>
 
-      <div className="grid grid-cols-[auto_1fr] gap-4">
-        <div className="w-32">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-[auto_1fr]">
+        <div className="w-full max-w-[8rem]">
           <label className="block text-sm font-medium text-white mb-1.5">Cover art</label>
           <ImageUpload
             value={publishCover}
@@ -883,7 +917,7 @@ function PublishStep({
 
       <div>
         <label className="block text-sm font-medium text-white mb-2">Visibility</label>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <button
             onClick={() => setPublishPublic(true)}
             className={`p-4 rounded-lg border text-left transition-colors ${
@@ -911,17 +945,17 @@ function PublishStep({
         </div>
       </div>
 
-      <div className="flex justify-between pt-2">
+      <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-between">
         <button
           onClick={onStartOver}
-          className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors"
+          className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors sm:justify-start"
         >
           <RotateCcw className="w-4 h-4" /> Start over
         </button>
         <button
           onClick={onPublish}
           disabled={publishing || !hasAgents || !title.trim()}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-transform"
+          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-transform"
         >
           {publishing ? (
             <><Loader2 className="w-4 h-4 animate-spin" /> Publishing…</>

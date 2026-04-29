@@ -407,7 +407,7 @@ export function AudioPlayer() {
       </AnimatePresence>
       <KeyboardShortcutsDialog open={showShortcutsHelp} onClose={() => setShowShortcutsHelp(false)} />
 
-      <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[color:var(--bg-elev-1)] border-t border-[color:var(--stroke)] z-50 flex items-center gap-4 px-4 md:px-6">
+      <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[color:var(--bg-elev-1)] border-t border-[color:var(--stroke)] z-50 flex items-center gap-2 px-3 sm:gap-4 sm:px-4 md:px-6">
         <audio
           ref={audioARef}
           onTimeUpdate={() => { if (activeSlotRef.current === 'a') handleTimeUpdate(); }}
@@ -426,8 +426,8 @@ export function AudioPlayer() {
         />
 
         {/* Track Info */}
-        <div className="flex items-center gap-3 w-auto sm:w-[260px] min-w-0">
-          <div className="relative w-14 h-14 rounded-md overflow-hidden bg-[color:var(--bg-elev-3)] flex-shrink-0 shadow-lg shadow-black/40">
+        <div className="flex flex-1 items-center gap-2 min-w-0 sm:w-[260px] sm:flex-none sm:gap-3">
+          <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-md overflow-hidden bg-[color:var(--bg-elev-3)] flex-shrink-0 shadow-lg shadow-black/40">
             {currentTrack.coverArt ? (
               <img src={currentTrack.coverArt} alt={currentTrack.title} className="w-full h-full object-cover" />
             ) : (
@@ -457,7 +457,7 @@ export function AudioPlayer() {
         </div>
 
         {/* Player Controls */}
-        <div className="flex-1 flex flex-col items-center max-w-[640px] mx-auto">
+        <div className="flex w-[144px] flex-none min-w-0 flex-col items-center sm:flex-1 sm:w-auto sm:max-w-[640px] sm:mx-auto">
           <div className="flex items-center gap-3 sm:gap-5 mb-1.5">
             <button
               onClick={toggleShuffle}
@@ -497,7 +497,7 @@ export function AudioPlayer() {
           </div>
 
           <div className="flex items-center gap-2 w-full">
-            <span className="text-[11px] tabular-nums text-[color:var(--text-mute)] w-10 text-right">{formatTime(progress)}</span>
+            <span className="hidden text-[11px] tabular-nums text-[color:var(--text-mute)] w-10 text-right sm:block">{formatTime(progress)}</span>
             <div className="flex-1 relative group">
               <div className="h-1 rounded-full bg-white/10">
                 <div
@@ -518,7 +518,7 @@ export function AudioPlayer() {
                 className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
               />
             </div>
-            <span className="text-[11px] tabular-nums text-[color:var(--text-mute)] w-10">{formatTime(duration)}</span>
+            <span className="hidden text-[11px] tabular-nums text-[color:var(--text-mute)] w-10 sm:block">{formatTime(duration)}</span>
           </div>
         </div>
 
@@ -593,7 +593,7 @@ export function AudioPlayer() {
         <button
           onClick={toggleSettings}
           aria-label="Audio settings"
-          className={`sm:hidden p-2 ml-2 transition-colors ${
+          className={`sm:hidden p-2 transition-colors ${
             showSettings || hasActiveSettings
               ? 'text-[color:var(--brand)]'
               : 'text-[color:var(--text-mute)]'

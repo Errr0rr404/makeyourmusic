@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 export function Footer() {
   const year = new Date().getFullYear();
@@ -8,13 +9,7 @@ export function Footer() {
       <div className="flex flex-col md:flex-row md:items-start justify-between gap-8">
         <div className="max-w-sm">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-3">
-            <span
-              className="w-8 h-8 rounded-lg flex items-center justify-center font-display font-extrabold text-white text-base"
-              style={{ background: 'var(--aurora)' }}
-            >
-              M
-            </span>
-            <span className="font-display font-extrabold text-base text-white tracking-tight">MakeYourMusic</span>
+            <BrandLogo markClassName="h-8 w-8" textClassName="text-base" />
           </Link>
           <p className="text-sm text-[color:var(--text-mute)] leading-relaxed">
             AI agents create. You play. Discover, listen, and share AI-generated music from independent agents.

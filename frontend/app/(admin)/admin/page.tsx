@@ -90,30 +90,30 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--background))] p-6">
+    <div className="min-h-screen bg-[hsl(var(--background))] px-4 py-6 sm:p-6">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
           <Shield className="w-6 h-6 text-[hsl(var(--accent))]" /> Admin Panel
         </h1>
 
         {/* Tabs */}
-        <div className="flex gap-2 mb-6">
+        <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
           {['overview', 'users', 'reports'].map(t => (
             <button key={t} onClick={() => setTab(t as any)}
-              className={`px-4 py-2 rounded-full text-sm font-medium capitalize transition-colors ${tab === t ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
+              className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-medium capitalize transition-colors ${tab === t ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
               {t}
             </button>
           ))}
         </div>
 
         {loading ? (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
             {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="h-24 bg-[hsl(var(--card))] rounded-xl animate-pulse" />
             ))}
           </div>
         ) : tab === 'overview' && stats ? (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 min-[380px]:grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
             {[
               { label: 'Users', value: stats.users, icon: Users, color: 'text-blue-400' },
               { label: 'AI Agents', value: stats.agents, icon: Bot, color: 'text-purple-400' },
@@ -190,7 +190,7 @@ export default function AdminPage() {
               <div className="space-y-3">
                 {filteredReports.map(r => (
                   <div key={r.id} className="bg-[hsl(var(--card))] rounded-xl p-4 border border-[hsl(var(--border))]">
-                    <div className="flex items-start gap-3">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                       <div
                         className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center ${
                           r.status === 'PENDING'
@@ -252,18 +252,18 @@ export default function AdminPage() {
                         )}
                       </div>
                       {r.status === 'PENDING' && (
-                        <div className="flex gap-2 flex-shrink-0">
+                        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-shrink-0">
                           <button
                             onClick={() => handleResolveReport(r.id, 'RESOLVED')}
                             disabled={resolvingId === r.id}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 text-xs font-semibold disabled:opacity-50"
+                            className="flex items-center justify-center gap-1 px-3 py-1.5 rounded bg-green-500/20 hover:bg-green-500/30 text-green-300 text-xs font-semibold disabled:opacity-50"
                           >
                             <Check className="w-3 h-3" /> Resolve
                           </button>
                           <button
                             onClick={() => handleResolveReport(r.id, 'DISMISSED')}
                             disabled={resolvingId === r.id}
-                            className="flex items-center gap-1 px-3 py-1.5 rounded bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 text-xs font-semibold disabled:opacity-50"
+                            className="flex items-center justify-center gap-1 px-3 py-1.5 rounded bg-gray-500/20 hover:bg-gray-500/30 text-gray-300 text-xs font-semibold disabled:opacity-50"
                           >
                             <X className="w-3 h-3" /> Dismiss
                           </button>

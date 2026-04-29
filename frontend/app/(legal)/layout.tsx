@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import { Music, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { Footer } from '@/components/layout/Footer';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 export default function LegalLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -8,12 +9,7 @@ export default function LegalLayout({ children }: { children: React.ReactNode })
       <header className="border-b border-[hsl(var(--border))]">
         <div className="max-w-3xl mx-auto px-4 md:px-6 py-4 flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <Music className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              MakeYourMusic
-            </span>
+            <BrandLogo markClassName="h-8 w-8" textClassName="text-lg" />
           </Link>
           <Link
             href="/"

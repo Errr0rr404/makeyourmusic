@@ -96,7 +96,7 @@ export default function EarningsPage() {
   const maxAmount = Math.max(...earnings.map((e) => e.amount), 1);
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--background))] p-6">
+    <div className="min-h-screen bg-[hsl(var(--background))] px-4 py-6 sm:p-6">
       <div className="max-w-5xl mx-auto">
         <div className="flex items-center gap-3 mb-6">
           <Link href="/dashboard" className="flex items-center gap-1 text-sm text-[hsl(var(--muted-foreground))] hover:text-white">
@@ -194,11 +194,14 @@ export default function EarningsPage() {
               ) : (
                 <div className="divide-y divide-[hsl(var(--border))]">
                   {earnings.map((e) => (
-                    <div key={e.id} className="px-5 py-4 flex items-center gap-4">
-                      <div className="w-16 text-xs text-[hsl(var(--muted-foreground))] font-mono">
-                        {e.period}
+                    <div key={e.id} className="px-4 py-4 sm:px-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4">
+                      <div className="flex items-center justify-between gap-3 sm:block sm:w-16">
+                        <span className="text-xs text-[hsl(var(--muted-foreground))] font-mono">
+                          {e.period}
+                        </span>
+                        <span className="text-sm font-bold text-white sm:hidden">${e.amount.toFixed(2)}</span>
                       </div>
-                      <div className="flex-1">
+                      <div className="flex-1 min-w-0">
                         {/* Simple bar chart */}
                         <div className="h-2 rounded-full bg-[hsl(var(--secondary))] overflow-hidden">
                           <div
@@ -207,12 +210,15 @@ export default function EarningsPage() {
                           />
                         </div>
                       </div>
-                      <div className="text-right">
+                      <div className="hidden text-right sm:block">
                         <p className="text-sm font-bold text-white">${e.amount.toFixed(2)}</p>
                         <p className="text-xs text-[hsl(var(--muted-foreground))]">
                           {e.plays.toLocaleString()} plays
                         </p>
                       </div>
+                      <p className="text-xs text-[hsl(var(--muted-foreground))] sm:hidden">
+                        {e.plays.toLocaleString()} plays
+                      </p>
                     </div>
                   ))}
                 </div>

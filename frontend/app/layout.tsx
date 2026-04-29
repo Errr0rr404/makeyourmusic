@@ -20,7 +20,11 @@ export const metadata: Metadata = {
     title: 'MakeYourMusic',
   },
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/logo-mark.svg', type: 'image/svg+xml' },
+      { url: '/favicon.ico', sizes: 'any' },
+    ],
+    shortcut: '/favicon.ico',
     apple: '/icon.png',
   },
   openGraph: {

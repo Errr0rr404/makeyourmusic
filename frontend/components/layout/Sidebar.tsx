@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
 import api from '@/lib/api';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 const primaryNav = [
   { href: '/', label: 'Home', icon: Home },
@@ -67,14 +68,7 @@ export function Sidebar() {
       {/* Brand + primary nav panel */}
       <div className="mym-panel px-3 py-4 flex flex-col gap-1">
         <Link href="/" className="flex items-center gap-2.5 px-2 py-2 mb-2">
-          <div className="relative w-9 h-9 rounded-lg overflow-hidden flex items-center justify-center"
-               style={{ background: 'var(--aurora)' }}>
-            <span className="font-display font-extrabold text-white text-lg leading-none">M</span>
-          </div>
-          <div className="flex flex-col leading-tight">
-            <span className="font-display font-extrabold text-base text-white tracking-tight">MakeYourMusic</span>
-            <span className="text-[10px] uppercase tracking-[0.18em] text-[color:var(--text-faint)]">AI Music</span>
-          </div>
+          <BrandLogo textClassName="text-base" subtitle="AI Music" />
         </Link>
 
         {primaryNav.map((item) => {

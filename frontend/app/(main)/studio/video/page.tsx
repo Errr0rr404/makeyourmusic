@@ -150,7 +150,7 @@ export default function VideoStudioPage() {
               <ImageIcon className="inline w-4 h-4 mr-1" />
               Starting frame <span className="text-[hsl(var(--muted-foreground))] font-normal">(optional — for image-to-video)</span>
             </label>
-            <div className="w-48">
+            <div className="w-full max-w-[12rem]">
               <ImageUpload
                 value={imageRefUrl}
                 onChange={setImageRefUrl}
@@ -172,7 +172,7 @@ export default function VideoStudioPage() {
             <button
               onClick={handleGenerate}
               disabled={starting || !prompt.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-transform"
+              className="flex w-full items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-transform sm:w-auto"
             >
               {starting ? (
                 <><Loader2 className="w-4 h-4 animate-spin" /> Starting…</>
@@ -196,17 +196,17 @@ export default function VideoStudioPage() {
                 </div>
               </div>
               <video controls src={gen.videoUrl} className="w-full rounded-lg bg-black" />
-              <div className="flex gap-3 mt-4">
+              <div className="flex flex-col gap-2 mt-4 sm:flex-row sm:gap-3">
                 <a
                   href={gen.videoUrl}
                   download
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors"
+                  className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-white text-sm font-medium transition-colors"
                 >
                   <Download className="w-4 h-4" /> Download
                 </a>
                 <button
                   onClick={handleReset}
-                  className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium"
+                  className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium"
                 >
                   <Wand2 className="w-4 h-4" /> Generate another
                 </button>

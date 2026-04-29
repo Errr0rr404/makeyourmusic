@@ -114,25 +114,25 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[hsl(var(--background))] p-6">
+    <div className="min-h-screen bg-[hsl(var(--background))] px-4 py-6 sm:p-6">
       <div className="max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-bold text-white flex items-center gap-2">
+        <div className="flex flex-col items-start gap-4 mb-8 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0">
+            <h1 className="text-2xl font-bold text-white flex items-center gap-2 leading-tight">
               <BarChart3 className="w-6 h-6 text-[hsl(var(--accent))]" />
               Creator Studio
             </h1>
             <p className="text-[hsl(var(--muted-foreground))] text-sm mt-1">Manage your AI agents and tracks</p>
           </div>
-          <div className="flex gap-3">
+          <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:gap-3">
             <Link
               href="/dashboard/earnings"
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-white text-sm font-medium hover:bg-white/5 transition-colors"
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] text-white text-sm font-medium hover:bg-white/5 transition-colors"
             >
               <BarChart3 className="w-4 h-4" /> Earnings
             </Link>
             <button onClick={() => setShowCreateAgent(true)}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium hover:bg-[hsl(var(--primary))]/90 transition-colors">
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium hover:bg-[hsl(var(--primary))]/90 transition-colors">
               <Plus className="w-4 h-4" /> New Agent
             </button>
           </div>
@@ -141,11 +141,11 @@ export default function DashboardPage() {
         {/* Create Agent Modal */}
         {showCreateAgent && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowCreateAgent(false)}>
-            <div className="bg-[hsl(var(--card))] rounded-xl p-6 w-full max-w-lg border border-[hsl(var(--border))] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-[hsl(var(--card))] rounded-xl p-4 sm:p-6 w-full max-w-lg border border-[hsl(var(--border))] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <h2 className="text-lg font-bold text-white mb-4">Create AI Agent</h2>
               <form onSubmit={handleCreateAgent} className="space-y-4">
-                <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
-                  <div className="w-28">
+                <div className="grid grid-cols-1 gap-4 items-start sm:grid-cols-[auto_1fr]">
+                  <div className="w-full max-w-[7rem]">
                     <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Avatar</label>
                     <ImageUpload
                       value={agentForm.avatar}
@@ -178,7 +178,7 @@ export default function DashboardPage() {
                     label="Upload banner"
                   />
                 </div>
-                <div className="flex gap-3 justify-end pt-2">
+                <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
                   <button type="button" onClick={() => setShowCreateAgent(false)} className="px-4 py-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-white">Cancel</button>
                   <button type="submit" disabled={submitting || !agentForm.name} className="px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium disabled:opacity-50">
                     {submitting ? 'Creating…' : 'Create Agent'}
@@ -192,7 +192,7 @@ export default function DashboardPage() {
         {/* Upload Track Modal */}
         {showUploadTrack && (
           <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4" onClick={() => setShowUploadTrack(false)}>
-            <div className="bg-[hsl(var(--card))] rounded-xl p-6 w-full max-w-xl border border-[hsl(var(--border))] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="bg-[hsl(var(--card))] rounded-xl p-4 sm:p-6 w-full max-w-xl border border-[hsl(var(--border))] max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
               <h2 className="text-lg font-bold text-white mb-4">Upload Track</h2>
               <form onSubmit={handleUploadTrack} className="space-y-4">
                 <div>
@@ -209,8 +209,8 @@ export default function DashboardPage() {
                   />
                 </div>
 
-                <div className="grid grid-cols-[auto_1fr] gap-4 items-start">
-                  <div className="w-28">
+                <div className="grid grid-cols-1 gap-4 items-start sm:grid-cols-[auto_1fr]">
+                  <div className="w-full max-w-[7rem]">
                     <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Cover art</label>
                     <ImageUpload
                       value={trackForm.coverArt}
@@ -226,7 +226,7 @@ export default function DashboardPage() {
                       <input value={trackForm.title} onChange={e => setTrackForm(p => ({ ...p, title: e.target.value }))} required maxLength={200}
                         className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none" />
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       <div>
                         <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">Duration (s) *</label>
                         <input type="number" value={trackForm.duration} onChange={e => setTrackForm(p => ({ ...p, duration: e.target.value }))} required min={1} max={36000}
@@ -244,7 +244,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   <div>
                     <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1.5">AI Model</label>
                     <input value={trackForm.aiModel} onChange={e => setTrackForm(p => ({ ...p, aiModel: e.target.value }))} placeholder="e.g. Suno v3" maxLength={100}
@@ -268,7 +268,7 @@ export default function DashboardPage() {
                 </div>
                 <div>
                   <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-2">Visibility</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                     <label className={`flex items-start gap-2 p-3 rounded-lg border cursor-pointer transition-colors ${trackForm.isPublic ? 'bg-[hsl(var(--accent))]/10 border-[hsl(var(--accent))]' : 'bg-[hsl(var(--secondary))] border-[hsl(var(--border))] hover:border-white/20'}`}>
                       <input
                         type="radio"
@@ -297,7 +297,7 @@ export default function DashboardPage() {
                     </label>
                   </div>
                 </div>
-                <div className="flex gap-3 justify-end pt-2">
+                <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:gap-3">
                   <button type="button" onClick={() => setShowUploadTrack(false)} className="px-4 py-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-white">Cancel</button>
                   <button type="submit" disabled={submitting || !trackForm.audioUrl || !trackForm.title || !trackForm.duration} className="px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium disabled:opacity-50">
                     {submitting ? 'Uploading…' : 'Upload Track'}
@@ -328,12 +328,12 @@ export default function DashboardPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                       <Link href={`/agent/${agent.slug}`} className="text-lg font-bold text-white hover:underline">{agent.name}</Link>
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 sm:shrink-0">
                         <button
                           onClick={() => { setSelectedAgentId(agent.id); setShowUploadTrack(true); }}
-                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[hsl(var(--primary))] text-white text-xs font-medium hover:bg-[hsl(var(--primary))]/90">
+                          className="flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg bg-[hsl(var(--primary))] text-white text-xs font-medium hover:bg-[hsl(var(--primary))]/90">
                           <Upload className="w-3 h-3" /> Upload Track
                         </button>
                         <button onClick={() => handleDeleteAgent(agent.id, agent.name)}
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                       </div>
                     </div>
                     {agent.bio && <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1 line-clamp-2">{agent.bio}</p>}
-                    <div className="flex gap-4 mt-3 text-xs text-[hsl(var(--muted-foreground))]">
+                    <div className="flex flex-wrap gap-x-4 gap-y-2 mt-3 text-xs text-[hsl(var(--muted-foreground))]">
                       <span className="flex items-center gap-1"><Music className="w-3 h-3" /> {agent._count?.tracks || 0} tracks</span>
                       <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {agent.followerCount} followers</span>
                       <span className="flex items-center gap-1"><Play className="w-3 h-3" /> {agent.totalPlays} plays</span>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Eye, EyeOff } from 'lucide-react';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 export default function LoginPage() {
   return (
@@ -43,13 +44,7 @@ function LoginForm() {
       <div className="relative w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
-            <span
-              className="w-10 h-10 rounded-xl flex items-center justify-center font-display font-extrabold text-white text-xl"
-              style={{ background: 'var(--aurora)' }}
-            >
-              M
-            </span>
-            <span className="font-display font-extrabold text-2xl text-white tracking-tight">MakeYourMusic</span>
+            <BrandLogo markClassName="h-10 w-10" textClassName="text-2xl" />
           </Link>
           <h1 className="font-display font-extrabold text-3xl text-white tracking-tight">Welcome back</h1>
           <p className="text-[color:var(--text-mute)] mt-1.5 text-sm">Log in to continue listening.</p>

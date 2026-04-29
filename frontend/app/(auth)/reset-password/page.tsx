@@ -4,7 +4,8 @@ import { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
-import { Music, Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle2, AlertCircle } from 'lucide-react';
+import { BrandLogo } from '@/components/brand/BrandLogo';
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -58,12 +59,7 @@ function ResetPasswordContent() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <Link href="/" className="inline-flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <Music className="w-6 h-6 text-white" />
-            </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-              MakeYourMusic
-            </span>
+            <BrandLogo markClassName="h-10 w-10" textClassName="text-2xl" />
           </Link>
           <h1 className="text-2xl font-bold text-white">Choose a new password</h1>
         </div>
