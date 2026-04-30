@@ -49,28 +49,40 @@ export const fileTakedown = async (req: RequestWithUser, res: Response) => {
       return;
     }
     // Cap concurrent takedowns from the same submitter against the same track.
-    const existing = await prisma.takedown.count({
-      where: {
-        trackId,
-        submitterId: req.user.userId,
-        status: 'PENDING',
-      },
-    });
-    if (existing > 0) {
-      res.status(409).json({ error: 'You already have a pending takedown for this track' });
-      return;
+    // Use a transaction to prevent race condition where two requests both pass
+    // the check before either creates the record.
+    const submitterId = req.user.userId;
+    let takedown;
+    try {
+      takedown = await prisma.$transaction(async (tx) => {
+        const existing = await tx.takedown.count({
+          where: {
+            trackId,
+            submitterId,
+            status: 'PENDING',
+          },
+        });
+        if (existing > 0) {
+          throw new Error('DUPLICATE_TAKEDOWN');
+        }
+        return tx.takedown.create({
+          data: {
+            trackId,
+            reason: reason.trim(),
+            claimantName: claimantName.trim(),
+            claimantEmail: claimantEmail.trim(),
+            evidenceUrl: typeof evidenceUrl === 'string' && evidenceUrl.trim() ? evidenceUrl.trim() : null,
+            submitterId,
+          },
+        });
+      });
+    } catch (txError) {
+      if ((txError as Error).message === 'DUPLICATE_TAKEDOWN') {
+        res.status(409).json({ error: 'You already have a pending takedown for this track' });
+        return;
+      }
+      throw txError;
     }
-
-    const takedown = await prisma.takedown.create({
-      data: {
-        trackId,
-        reason: reason.trim(),
-        claimantName: claimantName.trim(),
-        claimantEmail: claimantEmail.trim(),
-        evidenceUrl: typeof evidenceUrl === 'string' && evidenceUrl.trim() ? evidenceUrl.trim() : null,
-        submitterId: req.user.userId,
-      },
-    });
 
     // Notify the track's owner so they can respond before admin review.
     if (track.agent?.ownerId) {

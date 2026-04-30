@@ -69,8 +69,13 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 // CORS
-const allowedOrigins = process.env.FRONTEND_URL
-  ? process.env.FRONTEND_URL.split(',').map((url) => url.trim())
+const env = process.env.NODE_ENV || 'development';
+const frontendUrl = process.env.FRONTEND_URL;
+if (!frontendUrl && env === 'production') {
+  throw new Error('FRONTEND_URL environment variable is required in production');
+}
+const allowedOrigins = frontendUrl
+  ? frontendUrl.split(',').map((url) => url.trim())
   : ['http://localhost:3000'];
 
 app.use(

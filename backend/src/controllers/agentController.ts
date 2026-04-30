@@ -193,16 +193,24 @@ export const getMyAgents = async (req: RequestWithUser, res: Response) => {
   try {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
 
-    const agents = await prisma.aiAgent.findMany({
-      where: { ownerId: req.user.userId },
-      include: {
-        genres: { include: { genre: true } },
-        _count: { select: { tracks: true, followers: true } },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+    const take = Math.min(parseInt(String(req.query.take ?? '50'), 10) || 50, 100);
+    const skip = parseInt(String(req.query.skip ?? '0'), 10) || 0;
 
-    res.json({ agents });
+    const [agents, total] = await Promise.all([
+      prisma.aiAgent.findMany({
+        where: { ownerId: req.user.userId },
+        include: {
+          genres: { include: { genre: true } },
+          _count: { select: { tracks: true, followers: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        take,
+        skip,
+      }),
+      prisma.aiAgent.count({ where: { ownerId: req.user.userId } }),
+    ]);
+
+    res.json({ agents, total, take, skip });
   } catch (error) {
     logger.error('Get my agents error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get agents' });

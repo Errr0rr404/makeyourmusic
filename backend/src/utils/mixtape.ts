@@ -126,15 +126,23 @@ export async function generateWeeklyMixtapes(opts: { period?: string; activeWith
   });
   logger.info('Mixtape job starting', { period, candidates: activeUserIds.length });
 
+  const BATCH_SIZE = 50;
   const results: MixtapeResult[] = [];
-  for (const u of activeUserIds) {
-    try {
-      const r = await generateForUser(u.id, period);
-      results.push(r);
-    } catch (err) {
-      logger.warn('Mixtape user failed', { userId: u.id, error: (err as Error).message });
-    }
+
+  for (let i = 0; i < activeUserIds.length; i += BATCH_SIZE) {
+    const batch = activeUserIds.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.allSettled(
+      batch.map((u) => generateForUser(u.id, period))
+    );
+    batchResults.forEach((result, j) => {
+      if (result.status === 'fulfilled' && result.value) {
+        results.push(result.value);
+      } else if (result.status === 'rejected') {
+        logger.warn('Mixtape user failed', { userId: batch[j]?.id, error: result.reason });
+      }
+    });
   }
+
   const created = results.filter((r) => r.status === 'created').length;
   logger.info('Mixtape job complete', { period, created, total: results.length });
   return { period, created, results };

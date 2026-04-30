@@ -39,7 +39,7 @@ router.delete('/:id', authenticate as any, deleteTrack as any);
 
 // Collaboration
 router.put('/:trackId/collaborators', authenticate as any, setCollaborators as any);
-router.get('/:trackId/collaborators', getCollaborators as any);
+router.get('/:trackId/collaborators', authenticate as any, getCollaborators as any);
 
 // Distribution to Spotify/Apple via partner
 router.post('/:trackId/distribution', authenticate as any, requestDistribution as any);

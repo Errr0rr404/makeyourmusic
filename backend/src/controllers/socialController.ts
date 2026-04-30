@@ -508,13 +508,21 @@ export const getMyPlaylists = async (req: RequestWithUser, res: Response) => {
   try {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
 
-    const playlists = await prisma.playlist.findMany({
-      where: { userId: req.user.userId },
-      include: { _count: { select: { tracks: true } } },
-      orderBy: { updatedAt: 'desc' },
-    });
+    const take = Math.min(parseInt(String(req.query.take ?? '50'), 10) || 50, 100);
+    const skip = parseInt(String(req.query.skip ?? '0'), 10) || 0;
 
-    res.json({ playlists });
+    const [playlists, total] = await Promise.all([
+      prisma.playlist.findMany({
+        where: { userId: req.user.userId },
+        include: { _count: { select: { tracks: true } } },
+        orderBy: { updatedAt: 'desc' },
+        take,
+        skip,
+      }),
+      prisma.playlist.count({ where: { userId: req.user.userId } }),
+    ]);
+
+    res.json({ playlists, total, take, skip });
   } catch (error) {
     logger.error('Get my playlists error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get playlists' });
@@ -668,16 +676,28 @@ const VALID_SHARE_PLATFORMS = ['copy', 'twitter', 'facebook', 'whatsapp', 'teleg
 // vector. 1 minute is a stricter window than likes/plays since shares
 // are inherently low-frequency.
 const SHARE_DEDUP_WINDOW_MS = 60_000;
+const MAX_RECENT_SHARES = 5000;
 const recentShares = new Map<string, number>();
+let recentSharesCleanupScheduled = false;
+
+function cleanupStaleShares(now: number): void {
+  if (recentShares.size === 0) return;
+  for (const [k, t] of recentShares.entries()) {
+    if (now - t > SHARE_DEDUP_WINDOW_MS) recentShares.delete(k);
+  }
+}
+
 function shouldDedupShare(key: string): boolean {
   const now = Date.now();
   const last = recentShares.get(key);
   if (last && now - last < SHARE_DEDUP_WINDOW_MS) return true;
   recentShares.set(key, now);
-  if (recentShares.size > 5000) {
-    for (const [k, t] of recentShares.entries()) {
-      if (now - t > SHARE_DEDUP_WINDOW_MS) recentShares.delete(k);
-    }
+  if (recentShares.size > MAX_RECENT_SHARES && !recentSharesCleanupScheduled) {
+    recentSharesCleanupScheduled = true;
+    setImmediate(() => {
+      cleanupStaleShares(Date.now());
+      recentSharesCleanupScheduled = false;
+    });
   }
   return false;
 }

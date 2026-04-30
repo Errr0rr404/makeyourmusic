@@ -79,7 +79,9 @@ router.get('/track/:slug', async (req, res) => {
     //   2. Replace the CSP, not append — appending would just add another
     //      header that browsers AND together (more restrictive wins).
     res.removeHeader('X-Frame-Options');
-    res.setHeader('Content-Security-Policy', "frame-ancestors *");
+    const env = process.env.NODE_ENV || 'development';
+    const allowedDomains = process.env.EMBED_ALLOWED_DOMAINS || (env === 'production' ? '' : '*');
+    res.setHeader('Content-Security-Policy', `frame-ancestors ${allowedDomains}`);
     res.type('text/html').send(html);
   } catch (error) {
     logger.error('embed track error', { error: (error as Error).message });

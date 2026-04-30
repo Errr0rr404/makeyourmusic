@@ -169,13 +169,13 @@ export const publicAgentEarnings = async (req: RequestWithUser, res: Response) =
 export const topEarners = async (req: RequestWithUser, res: Response) => {
   try {
     const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10) || 20, 100);
-    const rows = await prisma.$queryRawUnsafe<Array<{
+    const rows = await prisma.$queryRaw<Array<{
       agent_id: string;
       agent_slug: string;
       agent_name: string;
       avatar: string | null;
       lifetime_cents: number;
-    }>>(`
+    }>>`
       SELECT a.id AS agent_id, a.slug AS agent_slug, a.name AS agent_name, a.avatar,
              COALESCE(t.cents, 0) + COALESCE(sl.cents, 0) AS lifetime_cents
       FROM ai_agents a
@@ -192,7 +192,7 @@ export const topEarners = async (req: RequestWithUser, res: Response) => {
       WHERE COALESCE(t.cents, 0) + COALESCE(sl.cents, 0) > 0
       ORDER BY lifetime_cents DESC, a.follower_count DESC
       LIMIT ${limit}
-    `);
+    `;
     res.json({ topEarners: rows });
   } catch (error) {
     logger.error('topEarners error', { error: (error as Error).message });

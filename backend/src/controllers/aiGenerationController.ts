@@ -1629,7 +1629,7 @@ export const regenerateSection = async (req: RequestWithUser, res: Response) => 
   } catch (error) {
     const statusCode = (error as any).statusCode;
     if (statusCode === 429) {
-      res.status(429).json({ error: (error as Error).message, usage: (error as any).usage });
+      res.status(429).json({ error: 'Rate limit exceeded. Please try again later.', usage: (error as any).usage });
       return;
     }
     logger.error('regenerateSection error', { error: (error as Error).message });
@@ -1731,7 +1731,7 @@ export const extendGeneration = async (req: RequestWithUser, res: Response) => {
   } catch (error) {
     const statusCode = (error as any).statusCode;
     if (statusCode === 429) {
-      res.status(429).json({ error: (error as Error).message, usage: (error as any).usage });
+      res.status(429).json({ error: 'Rate limit exceeded. Please try again later.', usage: (error as any).usage });
       return;
     }
     logger.error('extendGeneration error', { error: (error as Error).message });

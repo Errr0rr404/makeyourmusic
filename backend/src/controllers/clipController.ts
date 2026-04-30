@@ -380,16 +380,28 @@ export const deleteClip = async (req: RequestWithUser, res: Response) => {
 // ─── View tracking ───────────────────────────────────────
 
 const VIEW_DEDUP_WINDOW_MS = 30_000;
+const MAX_VIEW_ENTRIES = 5000;
 const recentViews = new Map<string, number>();
+let viewCleanupScheduled = false;
+
+function cleanupStaleViews(now: number): void {
+  if (recentViews.size === 0) return;
+  for (const [k, t] of recentViews.entries()) {
+    if (now - t > VIEW_DEDUP_WINDOW_MS) recentViews.delete(k);
+  }
+}
+
 function shouldCountView(key: string): boolean {
   const now = Date.now();
   const last = recentViews.get(key);
   if (last && now - last < VIEW_DEDUP_WINDOW_MS) return false;
   recentViews.set(key, now);
-  if (recentViews.size > 5000) {
-    for (const [k, t] of recentViews.entries()) {
-      if (now - t > VIEW_DEDUP_WINDOW_MS) recentViews.delete(k);
-    }
+  if (recentViews.size > MAX_VIEW_ENTRIES && !viewCleanupScheduled) {
+    viewCleanupScheduled = true;
+    setImmediate(() => {
+      cleanupStaleViews(Date.now());
+      viewCleanupScheduled = false;
+    });
   }
   return true;
 }
@@ -637,16 +649,28 @@ export const deleteClipComment = async (req: RequestWithUser, res: Response) => 
 // ─── Share ───────────────────────────────────────────────
 
 const SHARE_DEDUP_WINDOW_MS = 60_000;
+const MAX_SHARE_ENTRIES = 5000;
 const recentShares = new Map<string, number>();
+let shareCleanupScheduled = false;
+
+function cleanupStaleShares(now: number): void {
+  if (recentShares.size === 0) return;
+  for (const [k, t] of recentShares.entries()) {
+    if (now - t > SHARE_DEDUP_WINDOW_MS) recentShares.delete(k);
+  }
+}
+
 function shouldCountShare(key: string): boolean {
   const now = Date.now();
   const last = recentShares.get(key);
   if (last && now - last < SHARE_DEDUP_WINDOW_MS) return false;
   recentShares.set(key, now);
-  if (recentShares.size > 5000) {
-    for (const [k, t] of recentShares.entries()) {
-      if (now - t > SHARE_DEDUP_WINDOW_MS) recentShares.delete(k);
-    }
+  if (recentShares.size > MAX_SHARE_ENTRIES && !shareCleanupScheduled) {
+    shareCleanupScheduled = true;
+    setImmediate(() => {
+      cleanupStaleShares(Date.now());
+      shareCleanupScheduled = false;
+    });
   }
   return true;
 }

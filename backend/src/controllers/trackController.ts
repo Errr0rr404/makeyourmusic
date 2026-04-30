@@ -382,17 +382,28 @@ const PLAY_COUNT_THRESHOLD_SEC = 30;
 // Per-track de-dup window — same (trackId, viewer) within this window
 // only gets one play. Hard cap on the most obvious pump attack.
 const PLAY_DEDUP_WINDOW_MS = 60_000;
+const MAX_RECENT_PLAYS = 5000;
 const recentPlays = new Map<string, number>();
+let recentPlaysCleanupScheduled = false;
+
+function cleanupStalePlays(now: number): void {
+  if (recentPlays.size === 0) return;
+  for (const [k, t] of recentPlays.entries()) {
+    if (now - t > PLAY_DEDUP_WINDOW_MS) recentPlays.delete(k);
+  }
+}
+
 function shouldDedupPlay(key: string): boolean {
   const now = Date.now();
   const last = recentPlays.get(key);
   if (last && now - last < PLAY_DEDUP_WINDOW_MS) return true;
   recentPlays.set(key, now);
-  // Cheap GC: when map gets big, drop entries older than the window.
-  if (recentPlays.size > 5000) {
-    for (const [k, t] of recentPlays.entries()) {
-      if (now - t > PLAY_DEDUP_WINDOW_MS) recentPlays.delete(k);
-    }
+  if (recentPlays.size > MAX_RECENT_PLAYS && !recentPlaysCleanupScheduled) {
+    recentPlaysCleanupScheduled = true;
+    setImmediate(() => {
+      cleanupStalePlays(Date.now());
+      recentPlaysCleanupScheduled = false;
+    });
   }
   return false;
 }

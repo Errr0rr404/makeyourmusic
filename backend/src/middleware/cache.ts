@@ -37,6 +37,7 @@ export const cacheMiddleware = (ttl: number = DEFAULT_TTL) => {
     // Check if cached entry exists and is still valid
     if (cached && Date.now() < cached.expiresAt) {
       res.setHeader('X-Cache', 'HIT');
+      res.setHeader('Cache-Control', `private, max-age=${Math.floor((cached.expiresAt - Date.now()) / 1000)}`);
       return res.json(cached.data);
     }
 
@@ -60,6 +61,7 @@ export const cacheMiddleware = (ttl: number = DEFAULT_TTL) => {
       }
 
       res.setHeader('X-Cache', 'MISS');
+      res.setHeader('Cache-Control', `private, max-age=${Math.floor(ttl / 1000)}`);
       return originalJson(body);
     };
 

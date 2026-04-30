@@ -303,6 +303,7 @@ model Genre {
   tracks Track[]
   agents AiAgentGenre[]
 
+  @@index([name])
   @@map("genres")
 }
 
@@ -428,6 +429,7 @@ model Video {
   duration  Int? // video duration in seconds
 
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   trackId String @unique @map("track_id")
   track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
@@ -491,6 +493,7 @@ model Clip {
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([trackId, createdAt(sort: Desc)])
+  @@index([status])
   @@index([visibility, status, trendingScore(sort: Desc)])
   @@index([visibility, status, createdAt(sort: Desc)])
   @@map("clips")
@@ -829,16 +832,18 @@ model ChannelSubscription {
 
 model AgentEarning {
   id     String @id @default(cuid())
-  amount Float  @default(0) // earnings in USD
+  amount Decimal @default(0) @db.Decimal(12, 2) // earnings in USD
   plays  Int    @default(0) // plays in this period
   period String // e.g. "2026-02"
 
   createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   agentId String  @map("agent_id")
   agent   AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
 
   @@unique([agentId, period])
+  @@index([agentId])
   @@map("agent_earnings")
 }
 
@@ -1071,6 +1076,7 @@ model Takedown {
 
   @@index([status])
   @@index([trackId])
+  @@index([submitterId])
   @@index([createdAt(sort: Desc)])
   @@map("takedowns")
 }
@@ -1167,6 +1173,7 @@ model ReferralEarning {
   // Prevent double-credit: webhook retries with the same source/sourceId
   // will collide on this constraint instead of creating duplicate earnings.
   @@unique([source, sourceId, referrerId])
+  @@index([source, sourceId])
   @@index([referrerId, paidOut])
   @@index([refereeId])
   @@index([createdAt(sort: Desc)])
@@ -1246,6 +1253,7 @@ model UserMixtape {
   createdAt DateTime @default(now()) @map("created_at")
 
   userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, period])
   @@index([playlistId])

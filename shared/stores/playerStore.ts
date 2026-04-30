@@ -146,6 +146,8 @@ export interface PlayerActions {
    * boot so user prefs carry across app launches.
    */
   hydratePrefs: () => Promise<void>;
+  /** Reset player state (used on logout to clear previous user's queue) */
+  resetPlayer: () => void;
 }
 
 export type PlayerStore = PlayerState & PlayerActions;
@@ -476,5 +478,16 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     } catch {
       // Non-critical — defaults stay in place.
     }
+  },
+
+  resetPlayer: () => {
+    set({
+      currentTrack: null,
+      queue: [],
+      queueIndex: -1,
+      isPlaying: false,
+      progress: 0,
+      duration: 0,
+    });
   },
 }));

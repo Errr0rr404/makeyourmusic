@@ -1,7 +1,8 @@
 import { create } from 'zustand';
-import { getApi, onTokenRefreshed } from '../api';
+import { getApi, onTokenRefreshed, onTokenRefreshFailed } from '../api';
 import { getStorage } from '../storage';
 import type { User } from '../types';
+import { usePlayerStore } from './playerStore';
 
 const TOKEN_KEY = 'accessToken';
 
@@ -113,6 +114,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
     const storage = getStorage();
     await storage.removeItem(TOKEN_KEY);
     set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
+    usePlayerStore.getState().resetPlayer();
   },
 
   fetchUser: async () => {
@@ -122,14 +124,29 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({ isLoading: false, isAuthenticated: false });
       return;
     }
-    set({ isLoading: true, accessToken: token });
+    // Optimistically mark as authenticated from the stored token while we
+    // validate against the server. If validation fails for a reason other
+    // than 401 (network blip, backend down, 5xx), keep the user signed in —
+    // logging them out on transient errors is the easiest way to ruin a
+    // session.
+    set({ isLoading: true, accessToken: token, isAuthenticated: true });
     try {
       const api = getApi();
       const res = await api.get('/auth/me');
       set({ user: res.data.user, accessToken: token, isAuthenticated: true, isLoading: false });
-    } catch {
-      await storage.removeItem(TOKEN_KEY);
-      set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
+    } catch (err: any) {
+      const status = err?.response?.status;
+      if (status === 401 || status === 403) {
+        // Token is genuinely invalid — clear and require re-auth. The 401
+        // response interceptor in api.ts already attempted a refresh by the
+        // time we get here, so reaching this branch means refresh also
+        // failed authoritatively.
+        await storage.removeItem(TOKEN_KEY);
+        set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
+      } else {
+        // Network error / 5xx / timeout — keep the token, stay logged in.
+        set({ isLoading: false });
+      }
     }
   },
 }));
@@ -139,4 +156,9 @@ export const useAuthStore = create<AuthStore>((set) => ({
 // truth for `accessToken`.
 onTokenRefreshed((token) => {
   useAuthStore.getState().setAccessToken(token);
+});
+
+// When token refresh fails (e.g., refresh token expired), clear auth state
+onTokenRefreshFailed(() => {
+  useAuthStore.getState().logout();
 });

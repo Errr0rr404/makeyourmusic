@@ -9,8 +9,12 @@ let _apiInstance: AxiosInstance | null = null;
 // access token back into the store. Keeps the api module free of a cyclic
 // import on authStore (which itself imports getApi).
 let _onTokenRefreshed: ((token: string) => void) | null = null;
+let _onTokenRefreshFailed: (() => void) | null = null;
 export function onTokenRefreshed(cb: (token: string) => void): void {
   _onTokenRefreshed = cb;
+}
+export function onTokenRefreshFailed(cb: () => void): void {
+  _onTokenRefreshFailed = cb;
 }
 
 /**
@@ -120,8 +124,19 @@ export function createApi(baseURL: string): AxiosInstance {
               }
             } catch (refreshErr) {
               processQueue(refreshErr as AxiosError, null);
-              const storage = getStorage();
-              await storage.removeItem(TOKEN_KEY);
+              // Only sign the user out when the refresh endpoint says the
+              // refresh token itself is invalid (401/403). Network failures
+              // and 5xx are transient — clearing the access token in those
+              // cases boots the user out for blips on flaky connections.
+              const refreshStatus = (refreshErr as AxiosError)?.response?.status;
+              const refreshIsInvalid = refreshStatus === 401 || refreshStatus === 403;
+              if (refreshIsInvalid) {
+                const storage = getStorage();
+                await storage.removeItem(TOKEN_KEY);
+                try {
+                  _onTokenRefreshFailed?.();
+                } catch { /* never let store updates break the request flow */ }
+              }
               return Promise.reject(refreshErr);
             } finally {
               isRefreshing = false;

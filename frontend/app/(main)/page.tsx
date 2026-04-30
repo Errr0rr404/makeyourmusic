@@ -246,7 +246,7 @@ export default function HomePage() {
                   ['02', 'Coffee After Orbit', 'mellow jazz'],
                   ['03', 'Focus Loop 88', 'lo-fi with rain'],
                 ].map(([number, title, mood]) => (
-                  <div key={title} className="flex items-center gap-3 rounded-lg bg-white/[0.055] px-3 py-2.5">
+                  <div key={number} className="flex items-center gap-3 rounded-lg bg-white/[0.055] px-3 py-2.5">
                     <span className="text-xs tabular-nums text-white/35">{number}</span>
                     <span className="min-w-0 flex-1">
                       <span className="block truncate text-sm font-semibold text-white">{title}</span>
