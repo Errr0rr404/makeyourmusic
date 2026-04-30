@@ -229,6 +229,7 @@ model User {
   clipLikes                  ClipLike[]
   clipComments               ClipComment[]
   clipShares                 ClipShare[]
+  mixtapes                   UserMixtape[]
 
   @@index([role])
   @@index([createdAt(sort: Desc)])
