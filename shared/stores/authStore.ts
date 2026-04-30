@@ -14,7 +14,7 @@ export interface AuthState {
 
 export interface AuthActions {
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, username: string, displayName?: string) => Promise<void>;
+  register: (email: string, password: string, username: string, displayName?: string, referralCode?: string) => Promise<void>;
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setAuth: (data: { user: User; accessToken: string }) => Promise<void>;
@@ -86,11 +86,13 @@ export const useAuthStore = create<AuthStore>((set) => ({
     }
   },
 
-  register: async (email, password, username, displayName) => {
+  register: async (email, password, username, displayName, referralCode) => {
     set({ isLoading: true });
     try {
       const api = getApi();
-      const res = await api.post('/auth/register', { email, password, username, displayName });
+      const res = await api.post('/auth/register', {
+        email, password, username, displayName, referralCode,
+      });
       const { user, accessToken } = res.data;
       const storage = getStorage();
       await storage.setItem(TOKEN_KEY, accessToken);

@@ -49,6 +49,7 @@ export function Footer() {
               <li><Link href="/terms" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Terms</Link></li>
               <li><Link href="/privacy" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Privacy</Link></li>
               <li><Link href="/cookies" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Cookies</Link></li>
+              <li><Link href="/takedown" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Report copyright</Link></li>
             </ul>
           </div>
         </div>

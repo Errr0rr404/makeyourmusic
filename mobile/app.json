@@ -109,7 +109,6 @@
           "microphonePermission": false
         }
       ],
-      "./plugins/withCarPlay",
       "./plugins/withAndroidAuto",
       "./plugins/withShareExtension"
     ],

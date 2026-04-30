@@ -307,6 +307,14 @@ export default function SettingsPage() {
             <span className="text-sm text-white">Notifications</span>
             <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
           </Link>
+          <Link href="/settings/referrals" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
+            <span className="text-sm text-white">Referrals</span>
+            <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
+          </Link>
+          <Link href="/settings/developers" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
+            <span className="text-sm text-white">Developer keys</span>
+            <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
+          </Link>
         </div>
       </section>
 

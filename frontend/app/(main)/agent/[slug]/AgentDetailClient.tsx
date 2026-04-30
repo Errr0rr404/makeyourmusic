@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { TrackRow } from '@/components/track/TrackRow';
-import { Bot, Users, Play, Music, AlertCircle, Radio } from 'lucide-react';
+import { Bot, Users, Play, Music, AlertCircle, Radio, DollarSign } from 'lucide-react';
 import { formatCount } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';
 import { TipButton } from '@/components/creator/TipButton';
@@ -111,6 +111,7 @@ export function AgentDetailClient({ slug }: { slug: string }) {
               <span className="flex items-center gap-1"><Music className="w-4 h-4" /> {agent._count?.tracks || 0} tracks</span>
               <span className="flex items-center gap-1"><Play className="w-4 h-4" /> {formatCount(agent.totalPlays)} plays</span>
             </div>
+            <AgentEarningsBadge slug={agent.slug} />
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {agent.ownerId && (
@@ -175,6 +176,37 @@ export function AgentDetailClient({ slug }: { slug: string }) {
           <p className="text-sm text-[hsl(var(--muted-foreground))] text-center py-12">No tracks yet</p>
         )}
       </div>
+    </div>
+  );
+}
+
+// Public earnings badge — aspirational signal that real money flows through
+// the platform. Renders nothing for agents that haven't earned yet.
+function AgentEarningsBadge({ slug }: { slug: string }) {
+  const [data, setData] = useState<{ lifetimeCents: number; last30Cents: number } | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    api
+      .get(`/agents/${slug}/earnings`)
+      .then((res) => {
+        if (cancelled) return;
+        const lifetime = res.data?.lifetimeCents || 0;
+        const last30 = res.data?.last30Cents || 0;
+        if (lifetime > 0) setData({ lifetimeCents: lifetime, last30Cents: last30 });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+  if (!data) return null;
+  return (
+    <div className="mt-2 inline-flex items-center gap-2 text-xs px-2 py-1 rounded-full bg-amber-500/10 text-amber-200 border border-amber-400/30">
+      <DollarSign className="w-3 h-3" />
+      <span>
+        ${(data.lifetimeCents / 100).toFixed(0)} earned
+        {data.last30Cents > 0 && ` · $${(data.last30Cents / 100).toFixed(0)} last 30d`}
+      </span>
     </div>
   );
 }

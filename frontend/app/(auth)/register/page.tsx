@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Eye, EyeOff } from 'lucide-react';
 import { BrandLogo } from '@/components/brand/BrandLogo';
@@ -10,8 +10,24 @@ import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { register, isLoading } = useAuthStore();
   const [form, setForm] = useState({ email: '', username: '', displayName: '', password: '', confirmPassword: '' });
+  // Captured from ?ref=… on first render. Persisted in sessionStorage so it
+  // survives the OAuth bounce-out / back-in path used by social login.
+  const [referralCode, setReferralCode] = useState<string>('');
+  useEffect(() => {
+    const fromUrl = searchParams?.get('ref') || '';
+    if (fromUrl) {
+      try { sessionStorage.setItem('mym_ref', fromUrl); } catch {}
+      setReferralCode(fromUrl);
+      return;
+    }
+    try {
+      const stored = sessionStorage.getItem('mym_ref');
+      if (stored) setReferralCode(stored);
+    } catch {}
+  }, [searchParams]);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState('');
@@ -42,7 +58,14 @@ export default function RegisterPage() {
     }
 
     try {
-      await register(form.email, form.password, form.username, form.displayName || undefined);
+      await register(
+        form.email,
+        form.password,
+        form.username,
+        form.displayName || undefined,
+        referralCode || undefined,
+      );
+      try { sessionStorage.removeItem('mym_ref'); } catch {}
       router.push('/verify-email');
     } catch (err: any) {
       setError(err.message);

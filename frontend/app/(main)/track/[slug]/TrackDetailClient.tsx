@@ -5,7 +5,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio } from 'lucide-react';
+import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio, Code, DollarSign } from 'lucide-react';
 import { formatDuration } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';
 import { Lyrics } from '@/components/track/Lyrics';
@@ -194,6 +194,39 @@ export function TrackDetailClient({ slug }: { slug: string }) {
               className="p-2.5 rounded-full border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-white hover:border-white/30 transition-colors">
               <Share2 className="w-5 h-5" />
             </button>
+            <button
+              onClick={async () => {
+                const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
+                const origin = apiBase ? apiBase.replace(/\/api\/?$/, '') : window.location.origin;
+                const snippet = `<iframe src="${origin}/embed/track/${track.slug}" width="320" height="120" frameborder="0" allow="autoplay" loading="lazy"></iframe>`;
+                await navigator.clipboard.writeText(snippet);
+                toast.success('Embed snippet copied');
+              }}
+              aria-label="Copy embed code"
+              title="Copy embed code"
+              className="p-2.5 rounded-full border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-white hover:border-white/30 transition-colors">
+              <Code className="w-5 h-5" />
+            </button>
+            {(track as any).licenseable && (track as any).licensePriceCents && (
+              <button
+                onClick={async () => {
+                  try {
+                    const { data } = await api.post<{ checkoutUrl: string }>('/licenses/checkout', {
+                      trackId: track.id,
+                      kind: 'sync',
+                    });
+                    if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+                  } catch (err: any) {
+                    toast.error(err?.response?.data?.error || 'Failed to start checkout');
+                  }
+                }}
+                title={`License this track for $${((track as any).licensePriceCents / 100).toFixed(2)}`}
+                className="inline-flex items-center gap-1 h-10 px-4 rounded-full border border-amber-400/40 text-amber-200 hover:bg-amber-400/10 text-sm font-medium transition-colors"
+              >
+                <DollarSign className="w-4 h-4" />
+                License ${((track as any).licensePriceCents / 100).toFixed(2)}
+              </button>
+            )}
             {isAuthenticated && (
               <>
                 <button
@@ -237,7 +270,7 @@ export function TrackDetailClient({ slug }: { slug: string }) {
       {/* Lyrics */}
       {track.lyrics && (
         <div className="mb-8">
-          <Lyrics lyrics={track.lyrics} />
+          <Lyrics lyrics={track.lyrics} trackId={track.id} />
         </div>
       )}
 
