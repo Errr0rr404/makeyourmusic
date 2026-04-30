@@ -22,11 +22,11 @@ export function Footer() {
               Product
             </h3>
             <ul className="space-y-2">
-              <li><Link href="/search" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Explore</Link></li>
-              <li><Link href="/library" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Library</Link></li>
-              <li><Link href="/pricing" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Pricing</Link></li>
-              <li><Link href="/creator" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Earn</Link></li>
-              <li><Link href="/dashboard" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Creator Studio</Link></li>
+              <li><Link href="/search" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Explore</Link></li>
+              <li><Link href="/library" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Library</Link></li>
+              <li><Link href="/pricing" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Pricing</Link></li>
+              <li><Link href="/creator" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Earn</Link></li>
+              <li><Link href="/dashboard" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Creator Studio</Link></li>
             </ul>
           </div>
 
@@ -35,9 +35,9 @@ export function Footer() {
               Account
             </h3>
             <ul className="space-y-2">
-              <li><Link href="/profile" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Profile</Link></li>
-              <li><Link href="/settings" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Settings</Link></li>
-              <li><Link href="/notifications" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Notifications</Link></li>
+              <li><Link href="/profile" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Profile</Link></li>
+              <li><Link href="/settings" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Settings</Link></li>
+              <li><Link href="/notifications" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Notifications</Link></li>
             </ul>
           </div>
 
@@ -46,10 +46,10 @@ export function Footer() {
               Legal
             </h3>
             <ul className="space-y-2">
-              <li><Link href="/terms" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Terms</Link></li>
-              <li><Link href="/privacy" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Privacy</Link></li>
-              <li><Link href="/cookies" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Cookies</Link></li>
-              <li><Link href="/takedown" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Report copyright</Link></li>
+              <li><Link href="/terms" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Terms</Link></li>
+              <li><Link href="/privacy" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Privacy</Link></li>
+              <li><Link href="/cookies" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Cookies</Link></li>
+              <li><Link href="/takedown" className="text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors">Report copyright</Link></li>
             </ul>
           </div>
         </div>
@@ -58,7 +58,7 @@ export function Footer() {
       <div className="mt-8 pt-5 border-t border-[color:var(--stroke)] flex flex-col md:flex-row justify-between gap-2 text-xs text-[color:var(--text-mute)]">
         <p>© {year} MakeYourMusic · All rights reserved.</p>
         <p>
-          AI-generated content. See <Link href="/terms" className="underline hover:text-white">Terms</Link> for licensing details.
+          AI-generated content. See <Link href="/terms" className="underline hover:text-[color:var(--text)]">Terms</Link> for licensing details.
         </p>
       </div>
     </footer>

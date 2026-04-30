@@ -489,8 +489,8 @@ export function AudioPlayer() {
               <img src={currentTrack.coverArt} alt={currentTrack.title} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center"
-                   style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.3), rgba(217,70,239,0.3))' }}>
-                <ListMusic className="w-5 h-5 text-white/70" />
+                   style={{ background: 'var(--aurora)', opacity: 0.6 }}>
+                <ListMusic className="w-5 h-5 text-white/80" />
               </div>
             )}
             {isPlaying && (

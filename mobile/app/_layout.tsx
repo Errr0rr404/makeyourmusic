@@ -17,6 +17,7 @@ import { parseDeepLink } from '../lib/linking';
 import { consumePendingShare } from '../services/sharePayloadService';
 import { ONBOARDING_KEY } from './onboarding';
 import { ThemeProvider, useTokens } from '../lib/theme';
+import { vars } from 'nativewind';
 
 // Initialize shared services before anything else
 bootstrap();
@@ -156,9 +157,22 @@ function RootLayoutInner() {
 
   const tokens = useTokens();
 
+  // NativeWind CSS variables — `bg-mym-*` and friends resolve to whichever
+  // skin/palette is active.
+  const themeVars = vars({
+    '--mym-bg': tokens.bg,
+    '--mym-surface': tokens.surface,
+    '--mym-card': tokens.card,
+    '--mym-border': tokens.border,
+    '--mym-accent': tokens.accent,
+    '--mym-accent-hover': tokens.brandStrong,
+    '--mym-muted': tokens.textMute,
+    '--mym-text': tokens.text,
+  });
+
   if (isLoading || !booted) {
     return (
-      <View style={{ flex: 1, backgroundColor: tokens.bg, alignItems: 'center', justifyContent: 'center' }}>
+      <View style={[{ flex: 1, backgroundColor: tokens.bg, alignItems: 'center', justifyContent: 'center' }, themeVars]}>
         <ActivityIndicator size="large" color={tokens.brand} />
       </View>
     );
@@ -166,7 +180,7 @@ function RootLayoutInner() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+      <View style={[{ flex: 1, backgroundColor: tokens.bg }, themeVars]}>
         <Stack
           screenOptions={{
             headerShown: false,

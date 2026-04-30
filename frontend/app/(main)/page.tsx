@@ -152,18 +152,14 @@ export default function HomePage() {
         <div
           className="absolute inset-0"
           style={{
-            background: [
-              'linear-gradient(135deg, rgba(139,92,246,0.38) 0%, rgba(217,70,239,0.24) 48%, rgba(20,184,166,0.14) 100%)',
-              'linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 48%)',
-            ].join(', '),
+            background: 'var(--hero-gradient), var(--hero-overlay)',
           }}
         />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 60%, var(--bg-elev-1) 100%)' }} />
         <div
           className="absolute inset-0 opacity-[0.18]"
           style={{
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.16) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.12) 1px, transparent 1px)',
+            backgroundImage: 'var(--hero-grid)',
             backgroundSize: '42px 42px',
             maskImage: 'linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%)',
           }}
@@ -231,8 +227,13 @@ export default function HomePage() {
                       className="flex-1 rounded-t-sm"
                       style={{
                         height: `${24 + ((i * 17) % 68)}%`,
-                        background: i % 5 === 0 ? '#2dd4bf' : i % 3 === 0 ? '#f472b6' : '#a78bfa',
-                        opacity: 0.72,
+                        background:
+                          i % 5 === 0
+                            ? 'var(--led-green, #2dd4bf)'
+                            : i % 3 === 0
+                              ? 'var(--brand, #f472b6)'
+                              : 'var(--led-amber, #a78bfa)',
+                        opacity: 0.78,
                       }}
                     />
                   ))}
@@ -360,6 +361,9 @@ export default function HomePage() {
               />
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {genres.map((genre, i) => {
+                  // Tile gradient is built from the genre's color (DB-provided) or
+                  // the active skin's brand color when missing. The hex literal
+                  // here is only a fallback for genres that have no color saved.
                   const color = genre.color || '#d946ef';
                   return (
                     <Link
