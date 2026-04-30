@@ -36,6 +36,8 @@ mobile/ios/
 *.orig.*
 google-services.json
 GoogleService-Info.plist
+firebase-service-account.json
+firebase-service-account*.json
 
 # ─── OS files ─────────────────────────────────────────
 .DS_Store

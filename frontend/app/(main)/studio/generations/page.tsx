@@ -2,10 +2,10 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { PublishGenerationDialog } from '@/components/studio/PublishGenerationDialog';
 import { toast } from 'sonner';
 import {
   Sparkles, Wand2, Clock, Loader2, CheckCircle2, AlertCircle, XCircle,
@@ -60,13 +60,13 @@ function StatusBadge({ status }: { status: Gen['status'] }) {
 }
 
 export default function GenerationsPage() {
-  const router = useRouter();
   const confirm = useConfirm();
   const { isAuthenticated } = useAuthStore();
   const [generations, setGenerations] = useState<Gen[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [publishGen, setPublishGen] = useState<Gen | null>(null);
 
   const load = useCallback(async () => {
     if (!isAuthenticated) {
@@ -261,7 +261,7 @@ export default function GenerationsPage() {
                 <div className="grid grid-cols-2 gap-1 sm:flex sm:flex-col sm:flex-shrink-0">
                   {gen.status === 'COMPLETED' && gen.audioUrl && !gen.track && (
                     <button
-                      onClick={() => router.push(`/create?generation=${gen.id}`)}
+                      onClick={() => setPublishGen(gen)}
                       className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-[hsl(var(--primary))] text-white text-xs font-medium hover:bg-[hsl(var(--primary))]/90"
                       title="Publish as track"
                     >
@@ -307,6 +307,24 @@ export default function GenerationsPage() {
           <RefreshCw className="w-3.5 h-3.5" /> Refresh
         </button>
       </div>
+
+      {publishGen && (
+        <PublishGenerationDialog
+          generation={publishGen}
+          open
+          onClose={() => setPublishGen(null)}
+          onPublished={(track) => {
+            setGenerations((prev) =>
+              prev.map((g) =>
+                g.id === publishGen.id
+                  ? { ...g, track: { id: track.id, slug: track.slug, title: track.title, isPublic: track.isPublic } }
+                  : g,
+              ),
+            );
+            setPublishGen(null);
+          }}
+        />
+      )}
     </div>
   );
 }
