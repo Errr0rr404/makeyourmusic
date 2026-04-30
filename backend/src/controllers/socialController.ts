@@ -400,18 +400,67 @@ export const getPlaylist = async (req: RequestWithUser, res: Response) => {
     });
 
     if (!playlist) { res.status(404).json({ error: 'Playlist not found' }); return; }
-    if (!playlist.isPublic && playlist.userId !== req.user?.userId) {
-      res.status(403).json({ error: 'This playlist is private' }); return;
+
+    const viewerId = req.user?.userId;
+    const isOwner = viewerId && playlist.userId === viewerId;
+
+    // Access control by tier:
+    //  PUBLIC  → anyone (also surface tracks to anyone)
+    //  PRIVATE → owner only
+    //  PAID    → owner OR active ChannelSubscription. Non-subscribers see metadata
+    //            but no tracks, so the UI can render a paywall.
+    if (playlist.accessTier === 'PRIVATE' && !isOwner) {
+      res.status(403).json({ error: 'This playlist is private' });
+      return;
     }
 
-    // Filter out private tracks that the viewer doesn't own
-    const viewerId = req.user?.userId;
+    let isPaidSubscriber = false;
+    if (playlist.accessTier === 'PAID' && !isOwner) {
+      if (!viewerId) {
+        // Hide track contents but return playlist meta so the UI can show the
+        // paywall + price.
+        res.json({
+          playlist: {
+            ...playlist,
+            tracks: [],
+            locked: true,
+          },
+        });
+        return;
+      }
+      const sub = await prisma.channelSubscription.findUnique({
+        where: { subscriberUserId_playlistId: { subscriberUserId: viewerId, playlistId: playlist.id } },
+      });
+      isPaidSubscriber = Boolean(
+        sub && (sub.status === 'ACTIVE' || sub.status === 'PAST_DUE')
+      );
+      if (!isPaidSubscriber) {
+        res.json({
+          playlist: {
+            ...playlist,
+            tracks: [],
+            locked: true,
+          },
+        });
+        return;
+      }
+    }
+
+    // Filter individual tracks by their own visibility (private tracks only
+    // visible to their agent owner).
     const visibleTracks = playlist.tracks.filter((pt) => {
       if (pt.track.isPublic) return true;
       return viewerId && pt.track.agent.ownerId === viewerId;
     });
 
-    res.json({ playlist: { ...playlist, tracks: visibleTracks } });
+    res.json({
+      playlist: {
+        ...playlist,
+        tracks: visibleTracks,
+        locked: false,
+        subscribed: isPaidSubscriber,
+      },
+    });
   } catch (error) {
     logger.error('Get playlist error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get playlist' });

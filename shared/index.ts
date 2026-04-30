@@ -15,3 +15,26 @@ export type { AuthState, AuthActions, AuthStore } from './stores/authStore';
 
 // Utilities
 export { formatDuration, formatCount, slugify, formatDate, truncateText, debounce } from './utils';
+
+// Music creation catalog (genres, moods, energy, vocal styles, eras)
+export {
+  GENRE_TREE,
+  MOOD_OPTIONS,
+  ENERGY_OPTIONS,
+  VOCAL_STYLE_OPTIONS,
+  ERA_OPTIONS,
+  PRIMARY_GENRE_NAMES,
+  findSubgenreHint,
+  findGenre,
+  findEnergyHint,
+  findVocalStyleHint,
+  findEraHint,
+} from './musicCatalog';
+export type {
+  PrimaryGenre,
+  Subgenre,
+  MoodOption,
+  EnergyOption,
+  VocalStyleOption,
+  EraOption,
+} from './musicCatalog';

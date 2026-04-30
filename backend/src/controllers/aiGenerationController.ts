@@ -9,8 +9,15 @@ import {
   minimaxStartVideo,
   minimaxQueryVideo,
   minimaxRetrieveFile,
+  minimaxTranslateVibeReference,
   MinimaxRateLimitError,
 } from '../utils/minimax';
+import {
+  lookupSubgenreHint,
+  lookupEnergyHint,
+  lookupVocalStyleHint,
+  lookupEraHint,
+} from '../utils/musicCatalog';
 import { assertCanGenerate, getDailyUsage } from '../utils/aiUsage';
 import { slugify, uniqueSuffix } from '../utils/slugify';
 import { uploadAudio, uploadImageBase64, uploadCoverArt } from '../utils/cloudinary';
@@ -29,6 +36,80 @@ function providerPromptForGeneration(prompt: string | null, generationId: string
   if (!base) return suffix;
   const maxBaseLength = Math.max(0, MAX_PROMPT_LEN - suffix.length - 1);
   return `${base.slice(0, maxBaseLength)}\n${suffix}`;
+}
+
+interface MusicPromptInput {
+  idea?: string | null;
+  title?: string | null;
+  genre?: string | null;
+  subGenre?: string | null;
+  mood?: string | null;
+  energy?: string | null;
+  era?: string | null;
+  vocalStyle?: string | null;
+  vibeReference?: string | null;
+  /** Free-text legacy "extra style notes" field. */
+  style?: string | null;
+  isInstrumental?: boolean;
+}
+
+interface BuiltMusicPrompt {
+  prompt: string;
+  vibeDescriptors: string;
+}
+
+// Compose a rich production prompt from structured inputs + catalog hints.
+// Output is a multi-line string fed straight into MiniMax music generation.
+async function buildMusicPrompt(input: MusicPromptInput): Promise<BuiltMusicPrompt> {
+  const parts: string[] = [];
+
+  const genreLine = [input.genre, input.subGenre].filter(Boolean).join(' / ');
+  if (genreLine) parts.push(`Genre: ${genreLine}`);
+
+  const subHint = lookupSubgenreHint(input.subGenre);
+  if (subHint) parts.push(`Production: ${subHint}`);
+
+  if (input.mood) parts.push(`Mood: ${input.mood}`);
+
+  if (input.energy) {
+    const energyHint = lookupEnergyHint(input.energy);
+    parts.push(`Energy: ${input.energy}${energyHint ? ` (${energyHint})` : ''}`);
+  }
+
+  if (input.era) {
+    const eraHint = lookupEraHint(input.era);
+    parts.push(`Era: ${input.era}${eraHint ? ` (${eraHint})` : ''}`);
+  }
+
+  if (!input.isInstrumental && input.vocalStyle) {
+    const vHint = lookupVocalStyleHint(input.vocalStyle);
+    parts.push(`Vocals: ${vHint || input.vocalStyle}`);
+  }
+
+  // Translate user-named artists/bands into musical descriptors so we don't
+  // trip provider copyright filters and so the model gets actionable cues.
+  let vibeDescriptors = '';
+  if (input.vibeReference?.trim()) {
+    try {
+      vibeDescriptors = await minimaxTranslateVibeReference(input.vibeReference);
+    } catch (err) {
+      logger.warn('Vibe reference translation failed, falling back', {
+        error: (err as Error).message,
+      });
+      vibeDescriptors = input.vibeReference
+        .replace(/\b(sound[s]? like|in the style of|similar to|reminiscent of)\b/gi, '')
+        .trim()
+        .slice(0, 200);
+    }
+  }
+  if (vibeDescriptors) parts.push(`Sonic vibe: ${vibeDescriptors}`);
+
+  if (input.style?.trim()) parts.push(`Style notes: ${input.style.trim()}`);
+
+  if (input.idea?.trim()) parts.push(`Concept: ${input.idea.trim()}`);
+  if (input.title?.trim()) parts.push(`Working title: ${input.title.trim()}`);
+
+  return { prompt: parts.join('\n'), vibeDescriptors };
 }
 
 function hasCloudinaryCredentials(): boolean {
@@ -85,7 +166,18 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const { idea, genre, mood, style, language } = req.body || {};
+    const {
+      idea,
+      genre,
+      subGenre,
+      mood,
+      energy,
+      era,
+      vocalStyle,
+      vibeReference,
+      style,
+      language,
+    } = req.body || {};
     if (!idea || typeof idea !== 'string' || idea.trim().length === 0) {
       res.status(400).json({ error: 'idea is required' });
       return;
@@ -95,10 +187,28 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
+    // Translate any artist references into descriptors before we hand them
+    // to the lyrics model. Failures are non-fatal — we just skip the field.
+    let vibeDescriptors: string | undefined;
+    if (typeof vibeReference === 'string' && vibeReference.trim()) {
+      try {
+        vibeDescriptors = await minimaxTranslateVibeReference(vibeReference);
+      } catch (err) {
+        logger.warn('Vibe reference translation failed in lyrics path', {
+          error: (err as Error).message,
+        });
+      }
+    }
+
     const result = await minimaxGenerateLyrics({
       idea,
       genre: typeof genre === 'string' ? genre : undefined,
+      subGenre: typeof subGenre === 'string' ? subGenre : undefined,
       mood: typeof mood === 'string' ? mood : undefined,
+      energy: typeof energy === 'string' ? energy : undefined,
+      era: typeof era === 'string' ? era : undefined,
+      vocalStyle: typeof vocalStyle === 'string' ? vocalStyle : undefined,
+      vibeDescriptors,
       style: typeof style === 'string' ? style : undefined,
       language: typeof language === 'string' ? language : 'English',
     });
@@ -194,22 +304,32 @@ export const startMusicGeneration = async (req: RequestWithUser, res: Response) 
       title,
       prompt,
       lyrics,
+      idea,
       genre,
+      subGenre,
       mood,
+      energy,
+      era,
+      vocalStyle,
+      vibeReference,
+      style,
       durationSec,
       isInstrumental,
       agentId,
     } = req.body || {};
 
-    // For vocal tracks the user can either provide lyrics OR a prompt — when
-    // lyrics is empty we let MiniMax auto-generate them via lyrics_optimizer.
+    // For vocal tracks the user can either provide lyrics OR enough hints
+    // (prompt/idea/genre) to drive auto-lyrics. When everything is empty
+    // we can't generate anything sensible.
     if (!isInstrumental) {
       const hasLyrics = typeof lyrics === 'string' && lyrics.trim().length > 0;
       const hasPrompt = typeof prompt === 'string' && prompt.trim().length > 0;
-      if (!hasLyrics && !hasPrompt) {
+      const hasIdea = typeof idea === 'string' && idea.trim().length > 0;
+      const hasGenre = typeof genre === 'string' && genre.trim().length > 0;
+      if (!hasLyrics && !hasPrompt && !hasIdea && !hasGenre) {
         res
           .status(400)
-          .json({ error: 'either lyrics or prompt is required for vocal tracks' });
+          .json({ error: 'either lyrics, prompt, idea, or genre is required for vocal tracks' });
         return;
       }
     }
@@ -233,15 +353,43 @@ export const startMusicGeneration = async (req: RequestWithUser, res: Response) 
       }
     }
 
+    // Compose the rich prompt server-side so the structured fields the user
+    // picked (subgenre hints, era, vocal style, translated vibe references,
+    // etc.) all reach the music model — the client only needs to send raw
+    // selections.
+    const built = await buildMusicPrompt({
+      idea: typeof idea === 'string' ? idea : null,
+      title: typeof title === 'string' ? title : null,
+      genre: typeof genre === 'string' ? genre : null,
+      subGenre: typeof subGenre === 'string' ? subGenre : null,
+      mood: typeof mood === 'string' ? mood : null,
+      energy: typeof energy === 'string' ? energy : null,
+      era: typeof era === 'string' ? era : null,
+      vocalStyle: typeof vocalStyle === 'string' ? vocalStyle : null,
+      vibeReference: typeof vibeReference === 'string' ? vibeReference : null,
+      style: typeof style === 'string' ? style : null,
+      isInstrumental: Boolean(isInstrumental),
+    });
+
+    // Prefer the server-built prompt; fall back to any client-supplied prompt
+    // (older clients or callers that already composed their own).
+    const finalPrompt =
+      built.prompt.trim() || (typeof prompt === 'string' ? prompt : null);
+
     const generation = await prisma.musicGeneration.create({
       data: {
         userId: req.user.userId,
         agentId: typeof agentId === 'string' ? agentId : null,
         title: typeof title === 'string' ? title.slice(0, 200) : null,
-        prompt: typeof prompt === 'string' ? prompt : null,
+        prompt: finalPrompt,
         lyrics: typeof lyrics === 'string' ? lyrics : null,
         genre: typeof genre === 'string' ? genre.slice(0, 50) : null,
+        subGenre: typeof subGenre === 'string' ? subGenre.slice(0, 50) : null,
         mood: typeof mood === 'string' ? mood.slice(0, 50) : null,
+        energy: typeof energy === 'string' ? energy.slice(0, 50) : null,
+        vocalStyle: typeof vocalStyle === 'string' ? vocalStyle.slice(0, 50) : null,
+        era: typeof era === 'string' ? era.slice(0, 50) : null,
+        vibeReference: typeof vibeReference === 'string' ? vibeReference.slice(0, 300) : null,
         durationSec: typeof durationSec === 'number' ? durationSec : null,
         isInstrumental: Boolean(isInstrumental),
         provider: 'minimax',
@@ -474,7 +622,12 @@ export const createVariation = async (req: RequestWithUser, res: Response) => {
         prompt: typeof prompt === 'string' ? prompt : source.prompt,
         lyrics: source.lyrics,
         genre: typeof genre === 'string' ? genre.slice(0, 50) : source.genre,
+        subGenre: source.subGenre,
         mood: typeof mood === 'string' ? mood.slice(0, 50) : source.mood,
+        energy: source.energy,
+        vocalStyle: source.vocalStyle,
+        era: source.era,
+        vibeReference: source.vibeReference,
         durationSec: typeof durationSec === 'number' ? durationSec : source.durationSec,
         isInstrumental:
           typeof isInstrumental === 'boolean' ? isInstrumental : source.isInstrumental,

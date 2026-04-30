@@ -27,10 +27,38 @@ enum UserRole {
 
 enum SubscriptionTier {
   FREE
+  CREATOR
   PREMIUM
 }
 
 enum SubscriptionStatus {
+  ACTIVE
+  CANCELLED
+  PAST_DUE
+  EXPIRED
+}
+
+enum PlaylistAccessTier {
+  PUBLIC
+  PRIVATE
+  PAID
+}
+
+enum ConnectAccountStatus {
+  PENDING
+  ACTIVE
+  RESTRICTED
+  DISCONNECTED
+}
+
+enum TipStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum ChannelSubscriptionStatus {
   ACTIVE
   CANCELLED
   PAST_DUE
@@ -126,6 +154,11 @@ model User {
   musicGenerations  MusicGeneration[]
   videoGenerations  VideoGeneration[]
   pushTokens        PushToken[]
+  connectAccount        ConnectAccount?
+  tipsSent              Tip[]                  @relation("TipsSent")
+  tipsReceived          Tip[]                  @relation("TipsReceived")
+  channelSubsAsFan      ChannelSubscription[]  @relation("ChannelSubsAsFan")
+  channelSubsAsCreator  ChannelSubscription[]  @relation("ChannelSubsAsCreator")
 
   @@index([role])
   @@index([createdAt(sort: Desc)])
@@ -317,6 +350,13 @@ model Playlist {
   coverArt    String? @map("cover_art")
   isPublic    Boolean @default(true) @map("is_public")
 
+  // Paid playlist (channel subscription) fields
+  accessTier        PlaylistAccessTier @default(PUBLIC) @map("access_tier")
+  monthlyPriceCents Int?               @map("monthly_price_cents")
+  currency          String?            @default("usd")
+  stripeProductId   String?            @unique @map("stripe_product_id")
+  stripePriceId     String?            @unique @map("stripe_price_id")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -324,7 +364,10 @@ model Playlist {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   tracks PlaylistTrack[]
 
+  channelSubscriptions ChannelSubscription[]
+
   @@index([userId])
+  @@index([accessTier])
   @@map("playlists")
 }
 
@@ -452,6 +495,80 @@ model Subscription {
   @@map("subscriptions")
 }
 
+model ConnectAccount {
+  id               String                @id @default(cuid())
+  stripeAccountId  String                @unique @map("stripe_account_id")
+  status           ConnectAccountStatus  @default(PENDING)
+  payoutsEnabled   Boolean               @default(false) @map("payouts_enabled")
+  chargesEnabled   Boolean               @default(false) @map("charges_enabled")
+  detailsSubmitted Boolean               @default(false) @map("details_submitted")
+  country          String?
+  defaultCurrency  String?               @default("usd") @map("default_currency")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId String @unique @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("connect_accounts")
+}
+
+model Tip {
+  id                      String    @id @default(cuid())
+  amountCents             Int       @map("amount_cents")
+  platformFeeCents        Int       @map("platform_fee_cents")
+  netCents                Int       @map("net_cents")
+  currency                String    @default("usd")
+  message                 String?
+  status                  TipStatus @default(PENDING)
+  stripeCheckoutSessionId String?   @unique @map("stripe_checkout_session_id")
+  stripePaymentIntentId   String?   @unique @map("stripe_payment_intent_id")
+  stripeTransferId        String?   @map("stripe_transfer_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  fromUserId String?  @map("from_user_id")
+  fromUser   User?    @relation("TipsSent", fields: [fromUserId], references: [id], onDelete: SetNull)
+  toUserId   String   @map("to_user_id")
+  toUser     User     @relation("TipsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  trackId    String?  @map("track_id")
+
+  @@index([toUserId, createdAt(sort: Desc)])
+  @@index([fromUserId])
+  @@index([status])
+  @@map("tips")
+}
+
+model ChannelSubscription {
+  id                    String                    @id @default(cuid())
+  amountCents           Int                       @map("amount_cents")
+  platformFeeBps        Int                       @map("platform_fee_bps")
+  currency              String                    @default("usd")
+  status                ChannelSubscriptionStatus @default(ACTIVE)
+  stripeSubscriptionId  String                    @unique @map("stripe_subscription_id")
+  stripeCustomerId      String                    @map("stripe_customer_id")
+  currentPeriodStart    DateTime?                 @map("current_period_start")
+  currentPeriodEnd      DateTime?                 @map("current_period_end")
+  cancelAtPeriodEnd     Boolean                   @default(false) @map("cancel_at_period_end")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  subscriberUserId String   @map("subscriber_user_id")
+  subscriber       User     @relation("ChannelSubsAsFan", fields: [subscriberUserId], references: [id], onDelete: Cascade)
+  creatorUserId    String   @map("creator_user_id")
+  creator          User     @relation("ChannelSubsAsCreator", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  playlistId       String   @map("playlist_id")
+  playlist         Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+
+  @@unique([subscriberUserId, playlistId])
+  @@index([creatorUserId, status])
+  @@index([playlistId, status])
+  @@map("channel_subscriptions")
+}
+
 model AgentEarning {
   id       String @id @default(cuid())
   amount   Float  @default(0) // earnings in USD
@@ -519,7 +636,12 @@ model MusicGeneration {
   prompt          String?          @db.Text
   lyrics          String?          @db.Text
   genre           String?
+  subGenre        String?          @map("sub_genre")
   mood            String?
+  energy          String?
+  vocalStyle      String?          @map("vocal_style")
+  era             String?
+  vibeReference   String?          @map("vibe_reference")
   durationSec     Int?             @map("duration_sec")
   isInstrumental  Boolean          @default(false) @map("is_instrumental")
   referenceAudioUrl String?        @map("reference_audio_url")

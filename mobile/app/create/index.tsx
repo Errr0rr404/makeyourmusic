@@ -4,12 +4,15 @@ import {
   Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { useAuthStore, getApi } from '@makeyourmusic/shared';
+import {
+  useAuthStore, getApi,
+  GENRE_TREE, MOOD_OPTIONS, ENERGY_OPTIONS, ERA_OPTIONS, VOCAL_STYLE_OPTIONS,
+} from '@makeyourmusic/shared';
 import {
   Sparkles, Wand2, Lock, ChevronLeft, ChevronRight, CheckCircle2,
   AlertCircle, Zap, FileText, Settings2, Headphones, Loader2,
   BookOpen, RotateCcw, Globe, LockKeyhole, Bot, Flame, Play, Pause,
-  Clock,
+  Clock, Music2,
 } from 'lucide-react-native';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Button } from '../../components/ui/Button';
@@ -35,9 +38,6 @@ interface Usage {
   tier: 'FREE' | 'PREMIUM';
 }
 
-const GENRES = ['Pop', 'Rock', 'Hip Hop', 'R&B', 'Electronic', 'Indie', 'Folk', 'Jazz', 'Classical', 'Lo-Fi', 'Metal', 'Country'];
-const MOODS = ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Nostalgic', 'Dreamy', 'Aggressive'];
-
 export default function CreateScreen() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
@@ -47,7 +47,12 @@ export default function CreateScreen() {
   const [title, setTitle] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [genre, setGenre] = useState('');
+  const [subGenre, setSubGenre] = useState('');
   const [mood, setMood] = useState('');
+  const [energy, setEnergy] = useState('');
+  const [era, setEra] = useState('');
+  const [vocalStyle, setVocalStyle] = useState('');
+  const [vibeReference, setVibeReference] = useState('');
   const [style, setStyle] = useState('');
   const [language, setLanguage] = useState('English');
   const [isInstrumental, setIsInstrumental] = useState(false);
@@ -126,7 +131,18 @@ export default function CreateScreen() {
     setLyricsError('');
     setGeneratingLyrics(true);
     try {
-      const res = await getApi().post('/ai/lyrics', { idea, genre, mood, style, language });
+      const res = await getApi().post('/ai/lyrics', {
+        idea,
+        genre,
+        subGenre,
+        mood,
+        energy,
+        era,
+        vocalStyle,
+        vibeReference,
+        style,
+        language,
+      });
       const text = (res.data.lyrics || '').trim();
       if (!text) {
         setLyricsError('The AI returned empty lyrics. Try a more specific idea.');
@@ -190,19 +206,19 @@ export default function CreateScreen() {
     setGeneration(null);
     setStep('generate');
     try {
-      const prompt = [
-        genre ? `Genre: ${genre}` : '',
-        mood ? `Mood: ${mood}` : '',
-        style ? `Style notes: ${style}` : '',
-        idea.trim() ? `Song concept: ${idea.trim()}` : '',
-        title.trim() ? `Working title: ${title.trim()}` : '',
-      ].filter(Boolean).join('\n') || undefined;
+      // Backend builds the rich prompt from the structured fields below.
       const res = await getApi().post('/ai/music', {
         title,
-        prompt,
+        idea,
         lyrics: isInstrumental ? undefined : lyrics,
         genre,
+        subGenre,
         mood,
+        energy,
+        era,
+        vocalStyle,
+        vibeReference,
+        style,
         durationSec,
         isInstrumental,
       });
@@ -348,8 +364,19 @@ export default function CreateScreen() {
             <StyleStep
               genre={genre}
               setGenre={setGenre}
+              subGenre={subGenre}
+              setSubGenre={setSubGenre}
               mood={mood}
               setMood={setMood}
+              energy={energy}
+              setEnergy={setEnergy}
+              era={era}
+              setEra={setEra}
+              vocalStyle={vocalStyle}
+              setVocalStyle={setVocalStyle}
+              vibeReference={vibeReference}
+              setVibeReference={setVibeReference}
+              isInstrumental={isInstrumental}
               style={style}
               setStyle={setStyle}
               durationSec={durationSec}
@@ -609,77 +636,212 @@ function LyricsStep({ lyrics, setLyrics, generating, error, isInstrumental, setI
 
 // ─── Step 3: Style ───────────────────────────────────────
 
-function StyleStep({ genre, setGenre, mood, setMood, style, setStyle, durationSec, setDurationSec, language, setLanguage, usage, onBack, onNext }: any) {
+function StyleStep({
+  genre, setGenre, subGenre, setSubGenre,
+  mood, setMood, energy, setEnergy, era, setEra,
+  vocalStyle, setVocalStyle, vibeReference, setVibeReference,
+  isInstrumental, style, setStyle,
+  durationSec, setDurationSec, language, setLanguage,
+  usage, onBack, onNext,
+}: any) {
   const insufficient = usage && usage.remaining <= 0;
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const selectedGenre = GENRE_TREE.find((g: any) => g.name === genre);
+
+  const handleGenreChange = (g: string) => {
+    hapticSelection();
+    if (genre === g) {
+      setGenre('');
+      setSubGenre('');
+    } else {
+      setGenre(g);
+      setSubGenre('');
+    }
+  };
 
   return (
     <View className="px-4 pt-2">
       <View className="bg-mym-card rounded-xl border border-mym-border p-4">
-        <Text className="text-mym-text text-lg font-bold mb-3">Pick the vibe</Text>
+        <Text className="text-mym-text text-lg font-bold mb-1">Pick the vibe</Text>
+        <Text className="text-mym-muted text-xs mb-4">
+          Only genre is suggested — the rest is optional.
+        </Text>
 
         <Text className="text-mym-text text-sm font-semibold mb-2">Genre</Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
-          {GENRES.map((g) => (
+          {GENRE_TREE.map((g: any) => (
             <TouchableOpacity
-              key={g}
-              onPress={() => {
-                setGenre(genre === g ? '' : g);
-                hapticSelection();
-              }}
-              className={`px-3 py-1.5 rounded-full ${genre === g ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+              key={g.name}
+              onPress={() => handleGenreChange(g.name)}
+              className={`flex-row items-center gap-1 px-3 py-1.5 rounded-full ${genre === g.name ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
             >
-              <Text className={`text-xs font-semibold ${genre === g ? 'text-white' : 'text-mym-muted'}`}>{g}</Text>
+              <Text>{g.emoji}</Text>
+              <Text className={`text-xs font-semibold ${genre === g.name ? 'text-white' : 'text-mym-muted'}`}>{g.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
+
+        {selectedGenre && (
+          <>
+            <Text className="text-mym-text text-sm font-semibold mb-2">
+              Subgenre <Text className="text-mym-muted font-normal text-xs">(optional)</Text>
+            </Text>
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              {selectedGenre.subgenres.map((sg: any) => (
+                <TouchableOpacity
+                  key={sg.name}
+                  onPress={() => {
+                    setSubGenre(subGenre === sg.name ? '' : sg.name);
+                    hapticSelection();
+                  }}
+                  className={`px-3 py-1.5 rounded-full ${subGenre === sg.name ? 'bg-purple-600' : 'bg-mym-surface border border-mym-border'}`}
+                >
+                  <Text className={`text-xs font-semibold ${subGenre === sg.name ? 'text-white' : 'text-mym-muted'}`}>{sg.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
 
         <Text className="text-mym-text text-sm font-semibold mb-2">Mood</Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
-          {MOODS.map((m) => (
+          {MOOD_OPTIONS.map((m: any) => (
             <TouchableOpacity
-              key={m}
+              key={m.name}
               onPress={() => {
-                setMood(mood === m ? '' : m);
+                setMood(mood === m.name ? '' : m.name);
                 hapticSelection();
               }}
-              className={`px-3 py-1.5 rounded-full ${mood === m ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+              className={`flex-row items-center gap-1 px-3 py-1.5 rounded-full ${mood === m.name ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
             >
-              <Text className={`text-xs font-semibold ${mood === m ? 'text-white' : 'text-mym-muted'}`}>{m}</Text>
+              <Text>{m.emoji}</Text>
+              <Text className={`text-xs font-semibold ${mood === m.name ? 'text-white' : 'text-mym-muted'}`}>{m.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
         <Text className="text-mym-text text-sm font-semibold mb-2">
-          Duration ({Math.floor(durationSec / 60)}:{(durationSec % 60).toString().padStart(2, '0')})
+          Energy <Text className="text-mym-muted font-normal text-xs">(tempo + intensity)</Text>
         </Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
-          {[30, 60, 90, 120, 180, 240].map((d) => (
+          {ENERGY_OPTIONS.map((e: any) => (
             <TouchableOpacity
-              key={d}
+              key={e.name}
               onPress={() => {
-                setDurationSec(d);
+                setEnergy(energy === e.name ? '' : e.name);
                 hapticSelection();
               }}
-              className={`px-3 py-1.5 rounded-full ${durationSec === d ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+              className={`flex-row items-center gap-1 px-3 py-1.5 rounded-full ${energy === e.name ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
             >
-              <Text className={`text-xs font-semibold ${durationSec === d ? 'text-white' : 'text-mym-muted'}`}>
-                {d < 60 ? `${d}s` : `${d / 60}:${(d % 60).toString().padStart(2, '0')}`}
-              </Text>
+              <Text>{e.emoji}</Text>
+              <Text className={`text-xs font-semibold ${energy === e.name ? 'text-white' : 'text-mym-muted'}`}>{e.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        <Text className="text-mym-text text-sm font-semibold mb-2">
-          Extra style notes <Text className="text-mym-muted font-normal">(optional)</Text>
-        </Text>
+        <View className="flex-row items-center gap-1.5 mb-2">
+          <Music2 size={12} color="#a1a1aa" />
+          <Text className="text-mym-text text-sm font-semibold">
+            Artists you love <Text className="text-mym-muted font-normal text-xs">(optional)</Text>
+          </Text>
+        </View>
         <TextInput
-          value={style}
-          onChangeText={setStyle}
+          value={vibeReference}
+          onChangeText={setVibeReference}
           maxLength={300}
-          placeholder='e.g. "dreamy synth pads, trap drums, female vocals"'
+          placeholder='e.g. "Daft Punk, Tame Impala, early M83"'
           placeholderTextColor="#71717a"
           className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm"
         />
+        <Text className="text-mym-muted text-xs mt-1 mb-4">
+          We translate this into instruments + production cues for the AI — no copying.
+        </Text>
+
+        <TouchableOpacity
+          onPress={() => setShowAdvanced(!showAdvanced)}
+          className="flex-row items-center gap-1 self-start mb-2"
+        >
+          <ChevronRight
+            size={12}
+            color="#a78bfa"
+            style={{ transform: [{ rotate: showAdvanced ? '90deg' : '0deg' }] }}
+          />
+          <Text className="text-purple-300 text-xs font-semibold">
+            Advanced {showAdvanced ? '(hide)' : '(era, vocals, language, duration, notes)'}
+          </Text>
+        </TouchableOpacity>
+
+        {showAdvanced && (
+          <View className="pt-2">
+            <Text className="text-mym-text text-sm font-semibold mb-2">Era</Text>
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              {ERA_OPTIONS.map((e: any) => (
+                <TouchableOpacity
+                  key={e.name}
+                  onPress={() => {
+                    setEra(era === e.name ? '' : e.name);
+                    hapticSelection();
+                  }}
+                  className={`px-3 py-1.5 rounded-full ${era === e.name ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+                >
+                  <Text className={`text-xs font-semibold ${era === e.name ? 'text-white' : 'text-mym-muted'}`}>{e.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {!isInstrumental && (
+              <>
+                <Text className="text-mym-text text-sm font-semibold mb-2">Vocal style</Text>
+                <View className="flex-row flex-wrap gap-2 mb-4">
+                  {VOCAL_STYLE_OPTIONS.map((v: any) => (
+                    <TouchableOpacity
+                      key={v.name}
+                      onPress={() => {
+                        setVocalStyle(vocalStyle === v.name ? '' : v.name);
+                        hapticSelection();
+                      }}
+                      className={`px-3 py-1.5 rounded-full ${vocalStyle === v.name ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+                    >
+                      <Text className={`text-xs font-semibold ${vocalStyle === v.name ? 'text-white' : 'text-mym-muted'}`}>{v.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
+            <Text className="text-mym-text text-sm font-semibold mb-2">
+              Duration ({Math.floor(durationSec / 60)}:{(durationSec % 60).toString().padStart(2, '0')})
+            </Text>
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              {[30, 60, 90, 120, 180, 240].map((d) => (
+                <TouchableOpacity
+                  key={d}
+                  onPress={() => {
+                    setDurationSec(d);
+                    hapticSelection();
+                  }}
+                  className={`px-3 py-1.5 rounded-full ${durationSec === d ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+                >
+                  <Text className={`text-xs font-semibold ${durationSec === d ? 'text-white' : 'text-mym-muted'}`}>
+                    {d < 60 ? `${d}s` : `${d / 60}:${(d % 60).toString().padStart(2, '0')}`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text className="text-mym-text text-sm font-semibold mb-2">
+              Extra style notes <Text className="text-mym-muted font-normal">(optional)</Text>
+            </Text>
+            <TextInput
+              value={style}
+              onChangeText={setStyle}
+              maxLength={300}
+              placeholder='e.g. "dreamy synth pads, trap drums, slow-burn outro"'
+              placeholderTextColor="#71717a"
+              className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm"
+            />
+          </View>
+        )}
       </View>
 
       {insufficient && (

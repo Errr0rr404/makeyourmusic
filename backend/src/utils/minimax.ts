@@ -365,7 +365,12 @@ export async function minimaxRetrieveFile(fileId: string): Promise<{ downloadUrl
 export interface LyricsParams {
   idea: string;
   genre?: string;
+  subGenre?: string;
   mood?: string;
+  energy?: string;
+  era?: string;
+  vocalStyle?: string;
+  vibeDescriptors?: string; // already-translated vibe reference (no artist names)
   language?: string;
   style?: string;
 }
@@ -374,15 +379,32 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
   lyrics: string;
   raw: unknown;
 }> {
-  const { idea, genre, mood, language = 'English', style } = params;
+  const {
+    idea,
+    genre,
+    subGenre,
+    mood,
+    energy,
+    era,
+    vocalStyle,
+    vibeDescriptors,
+    language = 'English',
+    style,
+  } = params;
   const constraints: string[] = [];
-  if (genre) constraints.push(`Genre: ${genre}`);
+  const genreLine = [genre, subGenre].filter(Boolean).join(' / ');
+  if (genreLine) constraints.push(`Genre: ${genreLine}`);
   if (mood) constraints.push(`Mood: ${mood}`);
-  if (style) constraints.push(`Style: ${style}`);
+  if (energy) constraints.push(`Energy: ${energy}`);
+  if (era) constraints.push(`Era: ${era}`);
+  if (vocalStyle) constraints.push(`Vocal style: ${vocalStyle}`);
+  if (vibeDescriptors) constraints.push(`Sonic vibe: ${vibeDescriptors}`);
+  if (style) constraints.push(`Extra notes: ${style}`);
 
   const system =
     `You are a talented songwriter. Write original song lyrics in ${language} that are evocative, radio-ready, and emotionally resonant. ` +
     `Use clear structure tags on their own lines: [Intro], [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Bridge], [Outro]. ` +
+    `Match the lyrical voice and cadence to the genre and mood — e.g. punchy short lines for trap, narrative imagery for indie folk, hooky chant choruses for dance pop. ` +
     `Keep the total length between 200 and 800 words. ` +
     `Avoid copyrighted lyrics. Output ONLY the lyrics — no commentary.`;
 
@@ -403,6 +425,43 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
   });
 
   return { lyrics: result.text.trim(), raw: result.raw };
+}
+
+// ─── Vibe reference translator ────────────────────────────
+
+// Turn user-provided artist/band names into descriptive musical attributes.
+// This is much more effective than passing raw artist names to the music
+// model: providers often filter/reject named-artist prompts on copyright
+// grounds, and even when accepted the model may not "know" the reference.
+// Translating to instrument/production cues yields better, safer results.
+export async function minimaxTranslateVibeReference(
+  vibeReference: string
+): Promise<string> {
+  const trimmed = vibeReference.trim();
+  if (!trimmed) return '';
+
+  const system =
+    `You are a music producer translating artist references into specific musical attributes. ` +
+    `When given names of artists/bands, output 6-12 short descriptors that capture their shared sound: ` +
+    `instruments, production techniques, vocal qualities, rhythmic feel, mood. ` +
+    `RULES: ` +
+    `(1) NEVER output any artist or band names. ` +
+    `(2) Output a single comma-separated list of descriptors, no other commentary. ` +
+    `(3) Be specific (e.g. "warm analog tape saturation" not "good production"). ` +
+    `(4) Aim for 12-25 words total.`;
+
+  const user = `Translate these artist references into musical descriptors: ${trimmed.slice(0, 300)}`;
+
+  const result = await minimaxChat({
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    maxTokens: 200,
+    temperature: 0.6,
+  });
+
+  return result.text.trim().replace(/^["']|["']$/g, '');
 }
 
 // ─── Image generation (image-01) ──────────────────────────

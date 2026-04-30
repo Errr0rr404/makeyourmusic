@@ -35,6 +35,7 @@ import subscriptionRoutes from './routes/subscriptionRoutes';
 import uploadRoutes from './routes/uploadRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import aiRoutes from './routes/aiRoutes';
+import creatorRoutes from './routes/creatorRoutes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -103,6 +104,7 @@ app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/upload', uploadRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
+app.use('/api/creator', creatorRoutes);
 
 // Error handling
 app.use(errorHandler);

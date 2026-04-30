@@ -8,11 +8,18 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { ImageUpload } from '@/components/upload/ImageUpload';
 import { toast } from 'sonner';
 import {
+  GENRE_TREE,
+  MOOD_OPTIONS,
+  ENERGY_OPTIONS,
+  ERA_OPTIONS,
+  VOCAL_STYLE_OPTIONS,
+} from '@makeyourmusic/shared';
+import {
   type LucideIcon,
   Sparkles, Wand2, Lock, Loader2, ChevronLeft, ChevronRight,
   Globe, LockKeyhole, CheckCircle2, AlertCircle, RotateCcw,
   Zap, FileText, Settings2, Headphones, Clock,
-  Bot, BookOpen, Flame,
+  Bot, BookOpen, Flame, Music2,
 } from 'lucide-react';
 
 type Step = 'idea' | 'lyrics' | 'style' | 'generate' | 'publish';
@@ -47,9 +54,6 @@ interface Usage {
   tier: 'FREE' | 'PREMIUM';
 }
 
-const GENRE_OPTIONS = ['Pop', 'Rock', 'Hip Hop', 'R&B', 'Electronic', 'Indie', 'Folk', 'Jazz', 'Classical', 'Lo-Fi', 'Metal', 'Country', 'Soul', 'Funk', 'Reggae'];
-const MOOD_OPTIONS = ['Happy', 'Sad', 'Energetic', 'Calm', 'Romantic', 'Dark', 'Epic', 'Nostalgic', 'Dreamy', 'Aggressive'];
-
 export default function CreatePage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
@@ -60,7 +64,12 @@ export default function CreatePage() {
   const [title, setTitle] = useState('');
   const [lyrics, setLyrics] = useState('');
   const [genre, setGenre] = useState('');
+  const [subGenre, setSubGenre] = useState('');
   const [mood, setMood] = useState('');
+  const [energy, setEnergy] = useState('');
+  const [era, setEra] = useState('');
+  const [vocalStyle, setVocalStyle] = useState('');
+  const [vibeReference, setVibeReference] = useState('');
   const [style, setStyle] = useState('');
   const [language, setLanguage] = useState('English');
   const [isInstrumental, setIsInstrumental] = useState(false);
@@ -139,7 +148,18 @@ export default function CreatePage() {
     setLyricsError('');
     setGeneratingLyrics(true);
     try {
-      const res = await api.post('/ai/lyrics', { idea, genre, mood, style, language });
+      const res = await api.post('/ai/lyrics', {
+        idea,
+        genre,
+        subGenre,
+        mood,
+        energy,
+        era,
+        vocalStyle,
+        vibeReference,
+        style,
+        language,
+      });
       const generated = (res.data.lyrics || '').trim();
       if (!generated) {
         setLyricsError('The AI returned empty lyrics. Try a more specific idea.');
@@ -193,19 +213,21 @@ export default function CreatePage() {
     setGeneration(null);
     setStep('generate');
     try {
-      const prompt = [
-        genre ? `Genre: ${genre}` : '',
-        mood ? `Mood: ${mood}` : '',
-        style ? `Style notes: ${style}` : '',
-        idea.trim() ? `Song concept: ${idea.trim()}` : '',
-        title.trim() ? `Working title: ${title.trim()}` : '',
-      ].filter(Boolean).join('\n') || undefined;
+      // The backend composes the rich prompt from these structured fields
+      // (subgenre hints, era, vocal style, vibe-reference translation, etc.).
+      // We still pass `idea` and `title` so the prompt builder can work them in.
       const res = await api.post('/ai/music', {
         title,
-        prompt,
+        idea,
         lyrics: isInstrumental ? undefined : lyrics,
         genre,
+        subGenre,
         mood,
+        energy,
+        era,
+        vocalStyle,
+        vibeReference,
+        style,
         durationSec,
         isInstrumental,
       });
@@ -292,8 +314,19 @@ export default function CreatePage() {
           <StyleStep
             genre={genre}
             setGenre={setGenre}
+            subGenre={subGenre}
+            setSubGenre={setSubGenre}
             mood={mood}
             setMood={setMood}
+            energy={energy}
+            setEnergy={setEnergy}
+            era={era}
+            setEra={setEra}
+            vocalStyle={vocalStyle}
+            setVocalStyle={setVocalStyle}
+            vibeReference={vibeReference}
+            setVibeReference={setVibeReference}
+            isInstrumental={isInstrumental}
             style={style}
             setStyle={setStyle}
             durationSec={durationSec}
@@ -614,12 +647,21 @@ function LyricsStep({
 // ─── Step 3: Style ───────────────────────────────────────
 
 function StyleStep({
-  genre, setGenre, mood, setMood, style, setStyle,
+  genre, setGenre, subGenre, setSubGenre,
+  mood, setMood, energy, setEnergy, era, setEra,
+  vocalStyle, setVocalStyle, vibeReference, setVibeReference,
+  isInstrumental, style, setStyle,
   durationSec, setDurationSec, language, setLanguage,
   onBack, onNext, usage,
 }: {
   genre: string; setGenre: (v: string) => void;
+  subGenre: string; setSubGenre: (v: string) => void;
   mood: string; setMood: (v: string) => void;
+  energy: string; setEnergy: (v: string) => void;
+  era: string; setEra: (v: string) => void;
+  vocalStyle: string; setVocalStyle: (v: string) => void;
+  vibeReference: string; setVibeReference: (v: string) => void;
+  isInstrumental: boolean;
   style: string; setStyle: (v: string) => void;
   durationSec: number; setDurationSec: (v: number) => void;
   language: string; setLanguage: (v: string) => void;
@@ -627,99 +669,241 @@ function StyleStep({
   usage: Usage | null;
 }) {
   const insufficientCredits = usage && usage.remaining <= 0;
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const selectedGenre = GENRE_TREE.find((g) => g.name === genre);
+
+  // Clear sub-genre when parent genre changes
+  const handleGenreChange = (g: string) => {
+    if (genre === g) {
+      setGenre('');
+      setSubGenre('');
+    } else {
+      setGenre(g);
+      setSubGenre('');
+    }
+  };
 
   return (
     <div className="space-y-5 p-5 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
       <div>
         <h2 className="text-lg font-bold text-white mb-1">Pick the vibe</h2>
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
-          These hints shape the arrangement, instruments, and energy
+          These hints shape the arrangement, instruments, and energy. Only genre is suggested — everything else is optional.
         </p>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-white mb-2">Genre</label>
+        <label className="block text-sm font-medium text-white mb-2">
+          Genre <span className="text-[hsl(var(--muted-foreground))] font-normal text-xs">(start here)</span>
+        </label>
         <div className="flex flex-wrap gap-2">
-          {GENRE_OPTIONS.map((g) => (
+          {GENRE_TREE.map((g) => (
             <button
-              key={g}
-              onClick={() => setGenre(genre === g ? '' : g)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                genre === g
+              key={g.name}
+              onClick={() => handleGenreChange(g.name)}
+              title={g.blurb}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                genre === g.name
                   ? 'bg-[hsl(var(--accent))] text-white'
                   : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'
               }`}
             >
-              {g}
+              <span aria-hidden>{g.emoji}</span>
+              {g.name}
             </button>
           ))}
         </div>
       </div>
+
+      {selectedGenre && (
+        <div className="animate-fade-in">
+          <label className="block text-sm font-medium text-white mb-2">
+            Subgenre <span className="text-[hsl(var(--muted-foreground))] font-normal text-xs">(optional — narrows the sound)</span>
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {selectedGenre.subgenres.map((sg) => (
+              <button
+                key={sg.name}
+                onClick={() => setSubGenre(subGenre === sg.name ? '' : sg.name)}
+                title={sg.hint}
+                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                  subGenre === sg.name
+                    ? 'bg-purple-500 text-white'
+                    : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'
+                }`}
+              >
+                {sg.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div>
         <label className="block text-sm font-medium text-white mb-2">Mood</label>
         <div className="flex flex-wrap gap-2">
           {MOOD_OPTIONS.map((m) => (
             <button
-              key={m}
-              onClick={() => setMood(mood === m ? '' : m)}
-              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                mood === m
+              key={m.name}
+              onClick={() => setMood(mood === m.name ? '' : m.name)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                mood === m.name
                   ? 'bg-[hsl(var(--accent))] text-white'
                   : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'
               }`}
             >
-              {m}
+              <span aria-hidden>{m.emoji}</span>
+              {m.name}
             </button>
           ))}
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-white mb-1.5">Language (vocals)</label>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
-          >
-            <option>English</option>
-            <option>Spanish</option>
-            <option>French</option>
-            <option>Korean</option>
-            <option>Japanese</option>
-            <option>Mandarin</option>
-            <option>Portuguese</option>
-          </select>
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-white mb-1.5">
-            Target duration <span className="text-[hsl(var(--muted-foreground))]">({Math.floor(durationSec / 60)}:{(durationSec % 60).toString().padStart(2, '0')})</span>
-          </label>
-          <input
-            type="range" min={30} max={240} step={15}
-            value={durationSec}
-            onChange={(e) => setDurationSec(parseInt(e.target.value))}
-            className="w-full accent-[hsl(var(--accent))]"
-          />
-          <div className="flex justify-between text-xs text-[hsl(var(--muted-foreground))] mt-1">
-            <span>0:30</span><span>4:00</span>
-          </div>
+      <div>
+        <label className="block text-sm font-medium text-white mb-2">
+          Energy <span className="text-[hsl(var(--muted-foreground))] font-normal text-xs">(tempo + intensity)</span>
+        </label>
+        <div className="flex flex-wrap gap-2">
+          {ENERGY_OPTIONS.map((e) => (
+            <button
+              key={e.name}
+              onClick={() => setEnergy(energy === e.name ? '' : e.name)}
+              title={e.hint}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors flex items-center gap-1.5 ${
+                energy === e.name
+                  ? 'bg-[hsl(var(--accent))] text-white'
+                  : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'
+              }`}
+            >
+              <span aria-hidden>{e.emoji}</span>
+              {e.name}
+            </button>
+          ))}
         </div>
       </div>
 
       <div>
-        <label className="block text-sm font-medium text-white mb-1.5">
-          Extra style notes <span className="text-[hsl(var(--muted-foreground))] font-normal">(optional)</span>
+        <label className="block text-sm font-medium text-white mb-1.5 flex items-center gap-1.5">
+          <Music2 className="w-3.5 h-3.5" />
+          Artists or bands you love <span className="text-[hsl(var(--muted-foreground))] font-normal text-xs">(optional)</span>
         </label>
         <input
-          value={style}
-          onChange={(e) => setStyle(e.target.value)}
+          value={vibeReference}
+          onChange={(e) => setVibeReference(e.target.value)}
           maxLength={300}
-          placeholder='e.g. "dreamy synth pads, trap drums, female vocals"'
+          placeholder='e.g. "Daft Punk, Tame Impala, early M83"'
           className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
         />
+        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
+          We&apos;ll translate this into instruments + production cues so the AI gets the vibe without copying anyone.
+        </p>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setShowAdvanced(!showAdvanced)}
+        className="text-xs font-semibold text-purple-300 hover:text-purple-200 flex items-center gap-1"
+      >
+        {showAdvanced ? <ChevronLeft className="w-3 h-3 rotate-90" /> : <ChevronRight className="w-3 h-3 rotate-90" />}
+        Advanced options {showAdvanced ? '(hide)' : '(era, vocal style, language, duration, notes)'}
+      </button>
+
+      {showAdvanced && (
+        <div className="space-y-5 pt-2 border-t border-white/5 animate-fade-in">
+          <div>
+            <label className="block text-sm font-medium text-white mb-2">
+              Era <span className="text-[hsl(var(--muted-foreground))] font-normal text-xs">(production style)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {ERA_OPTIONS.map((e) => (
+                <button
+                  key={e.name}
+                  onClick={() => setEra(era === e.name ? '' : e.name)}
+                  title={e.hint}
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                    era === e.name
+                      ? 'bg-[hsl(var(--accent))] text-white'
+                      : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'
+                  }`}
+                >
+                  {e.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {!isInstrumental && (
+            <div>
+              <label className="block text-sm font-medium text-white mb-2">Vocal style</label>
+              <div className="flex flex-wrap gap-2">
+                {VOCAL_STYLE_OPTIONS.map((v) => (
+                  <button
+                    key={v.name}
+                    onClick={() => setVocalStyle(vocalStyle === v.name ? '' : v.name)}
+                    title={v.hint}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                      vocalStyle === v.name
+                        ? 'bg-[hsl(var(--accent))] text-white'
+                        : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'
+                    }`}
+                  >
+                    {v.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-white mb-1.5">Language (vocals)</label>
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
+              >
+                <option>English</option>
+                <option>Spanish</option>
+                <option>French</option>
+                <option>Korean</option>
+                <option>Japanese</option>
+                <option>Mandarin</option>
+                <option>Portuguese</option>
+                <option>Italian</option>
+                <option>German</option>
+                <option>Hindi</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white mb-1.5">
+                Target duration <span className="text-[hsl(var(--muted-foreground))]">({Math.floor(durationSec / 60)}:{(durationSec % 60).toString().padStart(2, '0')})</span>
+              </label>
+              <input
+                type="range" min={30} max={240} step={15}
+                value={durationSec}
+                onChange={(e) => setDurationSec(parseInt(e.target.value))}
+                className="w-full accent-[hsl(var(--accent))]"
+              />
+              <div className="flex justify-between text-xs text-[hsl(var(--muted-foreground))] mt-1">
+                <span>0:30</span><span>4:00</span>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-white mb-1.5">
+              Extra style notes <span className="text-[hsl(var(--muted-foreground))] font-normal">(optional)</span>
+            </label>
+            <input
+              value={style}
+              onChange={(e) => setStyle(e.target.value)}
+              maxLength={300}
+              placeholder='e.g. "dreamy synth pads, trap drums, slow-burn outro"'
+              className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
+            />
+          </div>
+        </div>
+      )}
 
       {insufficientCredits && (
         <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-sm">
