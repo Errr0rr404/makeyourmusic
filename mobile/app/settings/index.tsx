@@ -8,8 +8,9 @@ import { useAuthStore, usePlayerStore, getApi } from '@makeyourmusic/shared';
 import {
   ArrowLeft, LogOut, KeyRound, Trash2, ChevronRight, Mail,
   Volume2, Sliders, AlertCircle, CheckCircle2, Lock, FileText,
-  ShieldCheck, Cookie,
+  ShieldCheck, Cookie, Sun, Moon, Monitor, Disc3, Radio,
 } from 'lucide-react-native';
+import { useTheme, useTokens } from '../../lib/theme';
 import Slider from '../../components/ui/Slider';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
@@ -23,6 +24,8 @@ export default function SettingsScreen() {
   const router = useRouter();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { volume, setVolume, crossfade, setCrossfade, eqEnabled } = usePlayerStore();
+  const { skin, palette, setSkin, setPalette } = useTheme();
+  const tokens = useTokens();
 
   const [showPassword, setShowPassword] = useState(false);
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
@@ -183,6 +186,92 @@ export default function SettingsScreen() {
             </View>
           </View>
         )}
+
+        {/* Appearance */}
+        <Section title="Appearance">
+          <View className="px-4 py-3 border-b border-mym-border/60">
+            <Text style={{ color: tokens.text, fontSize: 14, fontWeight: '600', marginBottom: 4 }}>Style</Text>
+            <Text style={{ color: tokens.textMute, fontSize: 12, marginBottom: 10 }}>
+              Modern is electric studio. Vintage is a tape-deck listening room.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              {([
+                { id: 'modern' as const, label: 'Modern', sub: 'Electric · Studio', icon: Radio },
+                { id: 'vintage' as const, label: 'Vintage', sub: 'Cassette · Hi-Fi', icon: Disc3 },
+              ]).map((opt) => {
+                const Icon = opt.icon;
+                const active = skin === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    onPress={() => setSkin(opt.id)}
+                    style={{
+                      flex: 1,
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 10,
+                      padding: 12,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: active ? tokens.accent : tokens.border,
+                      backgroundColor: active ? tokens.accentSoft : tokens.surface,
+                    }}
+                  >
+                    <Icon size={20} color={active ? tokens.accent : tokens.textMute} />
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={{ color: tokens.text, fontSize: 13, fontWeight: '600' }}>{opt.label}</Text>
+                      <Text style={{ color: tokens.textMute, fontSize: 10 }}>{opt.sub}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+
+          <View className="px-4 py-3">
+            <Text style={{ color: tokens.text, fontSize: 14, fontWeight: '600', marginBottom: 4 }}>Mode</Text>
+            <Text style={{ color: tokens.textMute, fontSize: 12, marginBottom: 10 }}>
+              Light follows daylight; dark for late-night listening.
+            </Text>
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              {([
+                { id: 'dark' as const, label: 'Dark', icon: Moon },
+                { id: 'light' as const, label: 'Light', icon: Sun },
+                { id: 'system' as const, label: 'System', icon: Monitor },
+              ]).map((opt) => {
+                const Icon = opt.icon;
+                const active = palette === opt.id;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    onPress={() => setPalette(opt.id)}
+                    style={{
+                      flex: 1,
+                      alignItems: 'center',
+                      gap: 4,
+                      paddingVertical: 10,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: active ? tokens.accent : tokens.border,
+                      backgroundColor: active ? tokens.accentSoft : tokens.surface,
+                    }}
+                  >
+                    <Icon size={16} color={active ? tokens.accent : tokens.textMute} />
+                    <Text
+                      style={{
+                        color: active ? tokens.accent : tokens.textMute,
+                        fontSize: 11,
+                        fontWeight: '600',
+                      }}
+                    >
+                      {opt.label}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          </View>
+        </Section>
 
         {/* Audio */}
         <Section title="Audio">
