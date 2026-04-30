@@ -6,10 +6,12 @@ import { Mail, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { asToken } from '../../lib/validateSlug';
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
-  const { token } = useLocalSearchParams<{ token?: string }>();
+  const rawToken = useLocalSearchParams<{ token?: string }>().token;
+  const token = asToken(rawToken);
   const { user, fetchUser } = useAuthStore();
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'pending'>(

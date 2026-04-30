@@ -172,7 +172,12 @@ export function AudioPlayer() {
     if (isPlayingRef.current) {
       active.play().catch(() => {});
     }
-  }, [currentTrack, playbackSpeed, volume, cancelCrossfade, tryInitEngine]);
+    // Intentionally NOT depending on `volume` or `playbackSpeed` — those
+    // have their own dedicated effects below. Including them here meant
+    // dragging the volume slider during a crossfade would cancel the
+    // crossfade and reload the same src, causing an audible stutter.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrack, cancelCrossfade, tryInitEngine]);
 
   useEffect(() => {
     const el = getActiveEl();

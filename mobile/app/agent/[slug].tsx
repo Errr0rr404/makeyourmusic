@@ -9,6 +9,7 @@ import { TrackRow } from '../../components/track/TrackRow';
 import { Button } from '../../components/ui/Button';
 import { ArrowLeft, UserPlus, UserCheck } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
+import { asSlug } from '../../lib/validateSlug';
 
 export default function AgentProfileScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -23,31 +24,36 @@ export default function AgentProfileScreen() {
   const [followerCount, setFollowerCount] = useState(0);
 
   useEffect(() => {
-    fetchAgent();
-  }, [slug]);
-
-  const fetchAgent = async () => {
-    try {
-      setError(null);
-      const api = getApi();
-      // First fetch agent by slug
-      const agentRes = await api.get(`/agents/${slug}`);
-      const a = agentRes.data.agent || agentRes.data;
-      setAgent(a);
-      setFollowing(a.isFollowing || false);
-      setFollowerCount(a._count?.followers || a.followerCount || 0);
-
-      // Then fetch tracks using agent's actual ID
-      if (a?.id) {
-        const tracksRes = await api.get(`/tracks?agentId=${a.id}&limit=50`);
-        setTracks(tracksRes.data.tracks || []);
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load agent');
-    } finally {
+    const safeSlug = asSlug(slug);
+    if (!safeSlug) {
+      setError('Invalid link');
       setLoading(false);
+      return;
     }
-  };
+    let cancelled = false;
+    (async () => {
+      try {
+        setError(null);
+        const api = getApi();
+        const agentRes = await api.get(`/agents/${safeSlug}`);
+        if (cancelled) return;
+        const a = agentRes.data.agent || agentRes.data;
+        setAgent(a);
+        setFollowing(a.isFollowing || false);
+        setFollowerCount(a._count?.followers || a.followerCount || 0);
+
+        if (a?.id) {
+          const tracksRes = await api.get(`/tracks?agentId=${a.id}&limit=50`);
+          if (!cancelled) setTracks(tracksRes.data.tracks || []);
+        }
+      } catch (err: any) {
+        if (!cancelled) setError(err.response?.data?.error || 'Failed to load agent');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
 
   const handleFollow = async () => {
     if (!isAuthenticated || !agent) return;

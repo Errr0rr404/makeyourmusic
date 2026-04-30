@@ -6,6 +6,7 @@ import type { TrackItem } from '@makeyourmusic/shared';
 import { TrackRow } from '../../components/track/TrackRow';
 import { ArrowLeft } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { asSlug } from '../../lib/validateSlug';
 
 export default function GenreScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -16,29 +17,32 @@ export default function GenreScreen() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetchGenreTracks();
-  }, [slug]);
-
-  const fetchGenreTracks = async () => {
-    try {
-      const api = getApi();
-      const res = await api.get(`/tracks?genre=${slug}&limit=50`);
-      setTracks(res.data.tracks || []);
-      // Derive genre name from slug
-      setGenreName(
-        slug
-          ? slug
-              .split('-')
-              .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
-              .join(' ')
-          : 'Genre',
-      );
-    } catch (err) {
-      console.error('Genre fetch error:', err);
-    } finally {
+    const safeSlug = asSlug(slug);
+    if (!safeSlug) {
       setLoading(false);
+      return;
     }
-  };
+    let cancelled = false;
+    (async () => {
+      try {
+        const api = getApi();
+        const res = await api.get(`/tracks?genre=${safeSlug}&limit=50`);
+        if (cancelled) return;
+        setTracks(res.data.tracks || []);
+        setGenreName(
+          safeSlug
+            .split('-')
+            .map((w: string) => w.charAt(0).toUpperCase() + w.slice(1))
+            .join(' '),
+        );
+      } catch (err) {
+        if (!cancelled) console.error('Genre fetch error:', err);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
 
   return (
     <>

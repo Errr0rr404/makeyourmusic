@@ -32,20 +32,30 @@ export function TrackDetailClient({ slug }: { slug: string }) {
   const { isAuthenticated } = useAuthStore();
 
   useEffect(() => {
+    let cancelled = false;
+    // Reset state when slug changes — without this, briefly-stale data from
+    // the previous slug stays on screen while the new fetch is in flight.
+    setLoading(true);
+    setTrack(null);
+    setComments([]);
+    setSimilar([]);
+    setShowAddToPlaylist(false);
+    setShowReport(false);
+
     async function load() {
       try {
         setError(null);
-        // First fetch the track by slug
         const trackRes = await api.get(`/tracks/${slug}`);
+        if (cancelled) return;
         const fetchedTrack = trackRes.data.track;
         setTrack(fetchedTrack);
 
-        // Then fetch comments + similar tracks in parallel
         if (fetchedTrack?.id) {
           const [commentsRes, similarRes] = await Promise.allSettled([
             api.get(`/social/comments/${fetchedTrack.id}`),
             api.get(`/tracks/${fetchedTrack.slug || fetchedTrack.id}/similar?limit=12`),
           ]);
+          if (cancelled) return;
           if (commentsRes.status === 'fulfilled') {
             setComments(commentsRes.value.data.comments || []);
           } else {
@@ -56,11 +66,12 @@ export function TrackDetailClient({ slug }: { slug: string }) {
           }
         }
       } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to load track');
+        if (!cancelled) setError(err.response?.data?.error || 'Failed to load track');
       }
-      setLoading(false);
+      if (!cancelled) setLoading(false);
     }
     load();
+    return () => { cancelled = true; };
   }, [slug]);
 
   const handlePlay = () => {

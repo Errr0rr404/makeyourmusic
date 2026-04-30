@@ -648,6 +648,26 @@ export const deletePlaylist = async (req: RequestWithUser, res: Response) => {
 
 const VALID_SHARE_PLATFORMS = ['copy', 'twitter', 'facebook', 'whatsapp', 'telegram', 'email', 'other'];
 
+// In-process per-(track,viewer) cooldown so the share counter can't be
+// pumped by a script in a tight loop. shareCount feeds the trending score
+// directly (numerator includes shareCount * 2), so this is a real abuse
+// vector. 1 minute is a stricter window than likes/plays since shares
+// are inherently low-frequency.
+const SHARE_DEDUP_WINDOW_MS = 60_000;
+const recentShares = new Map<string, number>();
+function shouldDedupShare(key: string): boolean {
+  const now = Date.now();
+  const last = recentShares.get(key);
+  if (last && now - last < SHARE_DEDUP_WINDOW_MS) return true;
+  recentShares.set(key, now);
+  if (recentShares.size > 5000) {
+    for (const [k, t] of recentShares.entries()) {
+      if (now - t > SHARE_DEDUP_WINDOW_MS) recentShares.delete(k);
+    }
+  }
+  return false;
+}
+
 export const shareTrack = async (req: RequestWithUser, res: Response) => {
   try {
     const trackId = req.params.trackId as string;
@@ -658,9 +678,15 @@ export const shareTrack = async (req: RequestWithUser, res: Response) => {
 
     const track = await prisma.track.findUnique({
       where: { id: trackId },
-      select: { id: true, isPublic: true, status: true, agent: { select: { ownerId: true } } },
+      select: {
+        id: true,
+        isPublic: true,
+        status: true,
+        takedownStatus: true,
+        agent: { select: { ownerId: true } },
+      },
     });
-    if (!track || track.status !== 'ACTIVE') {
+    if (!track || track.status !== 'ACTIVE' || track.takedownStatus) {
       res.status(404).json({ error: 'Track not found' });
       return;
     }
@@ -671,12 +697,24 @@ export const shareTrack = async (req: RequestWithUser, res: Response) => {
       }
     }
 
-    await prisma.$transaction([
-      prisma.share.create({ data: { trackId, userId: req.user?.userId, platform: normalizedPlatform } }),
-      prisma.track.update({ where: { id: trackId }, data: { shareCount: { increment: 1 } } }),
-    ]);
+    // Self-shares from the agent owner shouldn't pump trending. Dedup keys
+    // off userId when authenticated; otherwise IP.
+    const isSelfShare = req.user?.userId === track.agent.ownerId;
+    const dedupId = req.user?.userId || req.ip || 'anon';
+    const isDuplicate = shouldDedupShare(`${trackId}:${dedupId}`);
+    const shouldCount = !isSelfShare && !isDuplicate;
 
-    res.json({ message: 'Share recorded' });
+    const ops: any[] = [
+      prisma.share.create({ data: { trackId, userId: req.user?.userId, platform: normalizedPlatform } }),
+    ];
+    if (shouldCount) {
+      ops.push(
+        prisma.track.update({ where: { id: trackId }, data: { shareCount: { increment: 1 } } })
+      );
+    }
+    await prisma.$transaction(ops);
+
+    res.json({ message: 'Share recorded', counted: shouldCount });
   } catch (error) {
     logger.error('Share track error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to share track' });

@@ -22,6 +22,7 @@ import {
 import * as Haptics from 'expo-haptics';
 import { downloadTrack, isTrackDownloaded, removeDownload } from '../../services/downloadService';
 import { Lyrics } from '../../components/track/Lyrics';
+import { asSlug } from '../../lib/validateSlug';
 
 export default function TrackDetailScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
@@ -75,34 +76,43 @@ export default function TrackDetailScreen() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    fetchTrack();
-  }, [slug]);
-
-  const fetchTrack = async () => {
-    try {
-      const api = getApi();
-      // First fetch track by slug
-      const trackRes = await api.get(`/tracks/${slug}`);
-      const t = trackRes.data.track || trackRes.data;
-      setTrack(t);
-      setLiked(t.isLiked || false);
-      setLikeCount(t._count?.likes || t.likeCount || 0);
-
-      // Then fetch comments using track's actual ID
-      if (t?.id) {
-        try {
-          const commentsRes = await api.get(`/social/comments/${t.id}`);
-          setComments(commentsRes.data.comments || []);
-        } catch {
-          setComments([]);
-        }
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load track');
-    } finally {
+    // Validate the slug param defensively. expo-router types this as
+    // string but at runtime it can be string | string[] | undefined when
+    // the deep link is malformed (e.g. `mym://track/`). Without this guard
+    // we'd hit `/tracks/undefined` and show a confusing "Failed to load".
+    const safeSlug = asSlug(slug);
+    if (!safeSlug) {
+      setError('Invalid link');
       setLoading(false);
+      return;
     }
-  };
+    let cancelled = false;
+    (async () => {
+      try {
+        const api = getApi();
+        const trackRes = await api.get(`/tracks/${safeSlug}`);
+        if (cancelled) return;
+        const t = trackRes.data.track || trackRes.data;
+        setTrack(t);
+        setLiked(t.isLiked || false);
+        setLikeCount(t._count?.likes || t.likeCount || 0);
+
+        if (t?.id) {
+          try {
+            const commentsRes = await api.get(`/social/comments/${t.id}`);
+            if (!cancelled) setComments(commentsRes.data.comments || []);
+          } catch {
+            if (!cancelled) setComments([]);
+          }
+        }
+      } catch (err: any) {
+        if (!cancelled) setError(err.response?.data?.error || 'Failed to load track');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [slug]);
 
   const handleShare = async () => {
     if (!track) return;

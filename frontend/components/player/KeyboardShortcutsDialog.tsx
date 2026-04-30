@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect } from 'react';
 import { X, Keyboard } from 'lucide-react';
 import { SHORTCUTS } from './useKeyboardShortcuts';
 
@@ -9,6 +10,20 @@ interface Props {
 }
 
 export function KeyboardShortcutsDialog({ open, onClose }: Props) {
+  // Escape closes the dialog. Without this, power users who open it via the
+  // `?` shortcut have no keyboard way out and the modal feels broken.
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [open, onClose]);
+
   if (!open) return null;
 
   return (

@@ -11,6 +11,7 @@ import {
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { hapticSelection, hapticSuccess } from '../../services/hapticService';
+import { asSlug } from '../../lib/validateSlug';
 
 interface Track {
   id: string;
@@ -52,11 +53,16 @@ export default function PlaylistScreen() {
   const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
-    if (!slug) return;
+    const safeSlug = asSlug(slug);
+    if (!safeSlug) {
+      setError('Invalid link');
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
-      const res = await getApi().get(`/social/playlists/${slug}`);
+      const res = await getApi().get(`/social/playlists/${safeSlug}`);
       setPlaylist(res.data.playlist);
       setEditTitle(res.data.playlist?.title || '');
     } catch (err: any) {

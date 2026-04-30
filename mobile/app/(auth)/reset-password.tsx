@@ -6,10 +6,15 @@ import { ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react-native';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { asToken } from '../../lib/validateSlug';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
-  const { token } = useLocalSearchParams<{ token?: string }>();
+  const rawToken = useLocalSearchParams<{ token?: string }>().token;
+  // Validate at the boundary — at runtime the param may be a string array
+  // or undefined when the deep link is malformed. asToken returns null on
+  // anything that isn't a 8–256 char alphanumeric/url-safe token.
+  const token = asToken(rawToken);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [loading, setLoading] = useState(false);
