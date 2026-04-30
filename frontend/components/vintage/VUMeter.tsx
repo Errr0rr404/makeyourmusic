@@ -96,6 +96,9 @@ export function VUMeter({
     <div
       role="meter"
       aria-label="Audio level"
+      aria-valuemin={0}
+      aria-valuemax={segments}
+      aria-valuenow={Math.max(0, Math.min(lit, segments))}
       className={className}
       style={{
         display: 'inline-flex',

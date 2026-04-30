@@ -37,7 +37,19 @@ export default function ProfilePage() {
     });
     loadStats();
     loadMyTracks();
-    loadMyClips();
+    const loadClips = async () => {
+      if (!user?.id) return;
+      setClipsLoading(true);
+      try {
+        const res = await api.get('/clips', { params: { userId: user.id, limit: 24 } });
+        setMyClips(res.data.clips || []);
+      } catch {
+        setMyClips([]);
+      } finally {
+        setClipsLoading(false);
+      }
+    };
+    void loadClips();
   }, [isAuthenticated, user]);
 
   const loadStats = async () => {
@@ -64,19 +76,6 @@ export default function ProfilePage() {
       setMyTracks([]);
     } finally {
       setTracksLoading(false);
-    }
-  };
-
-  const loadMyClips = async () => {
-    if (!user?.id) return;
-    setClipsLoading(true);
-    try {
-      const res = await api.get(`/clips?userId=${user.id}&limit=24`);
-      setMyClips(res.data.clips || []);
-    } catch {
-      setMyClips([]);
-    } finally {
-      setClipsLoading(false);
     }
   };
 

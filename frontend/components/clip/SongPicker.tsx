@@ -14,7 +14,7 @@ export interface PickedTrack {
   agent: { id: string; name: string; slug: string; avatar: string | null };
 }
 
-interface ApiTrack extends PickedTrack {}
+type ApiTrack = PickedTrack;
 
 interface SongPickerProps {
   open: boolean;
