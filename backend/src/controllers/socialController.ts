@@ -353,13 +353,27 @@ export const deleteComment = async (req: RequestWithUser, res: Response) => {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
 
     const id = req.params.id as string;
-    const comment = await prisma.comment.findUnique({ where: { id } });
+    const comment = await prisma.comment.findUnique({
+      where: { id },
+      select: { id: true, userId: true, parentId: true, _count: { select: { replies: true } } },
+    });
     if (!comment) { res.status(404).json({ error: 'Comment not found' }); return; }
     if (comment.userId !== req.user.userId && req.user.role !== 'ADMIN') {
       res.status(403).json({ error: 'Not authorized' }); return;
     }
 
-    await prisma.comment.delete({ where: { id } });
+    // Soft-delete top-level comments that have replies — hard-deleting would
+    // cascade and nuke every reply (with no notice to those reply authors).
+    // Leaving a "[deleted]" tombstone preserves the conversation while
+    // anonymizing the original author.
+    if (!comment.parentId && comment._count.replies > 0) {
+      await prisma.comment.update({
+        where: { id },
+        data: { content: '[deleted]' },
+      });
+    } else {
+      await prisma.comment.delete({ where: { id } });
+    }
     res.json({ message: 'Comment deleted' });
   } catch (error) {
     logger.error('Delete comment error', { error: (error as Error).message });

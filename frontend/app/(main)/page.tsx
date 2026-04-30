@@ -116,8 +116,16 @@ export default function HomePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isAuthenticated]);
 
-  const greetingHour = new Date().getHours();
-  const greeting = greetingHour < 12 ? 'Good morning' : greetingHour < 18 ? 'Good afternoon' : 'Good evening';
+  // Compute greeting after mount so the server-rendered HTML doesn't
+  // disagree with the client's local hour. SSR happens in the server's
+  // timezone; the client renders in the visitor's timezone; if the two
+  // straddle a noon/6pm boundary the React hydration warning fires. Empty
+  // string on first paint is harmless — the hero hides until authed.
+  const [greeting, setGreeting] = useState('');
+  useEffect(() => {
+    const h = new Date().getHours();
+    setGreeting(h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening');
+  }, []);
   const displayName = user?.displayName || user?.username || 'there';
 
   return (

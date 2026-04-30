@@ -201,9 +201,625 @@ const ERA_HINTS: Record<string, string> = {
   'Timeless': 'genre-classic production that does not signal a specific decade',
 };
 
+// Primary-genre fallback hints. Only used when no subgenre is selected — gives
+// the music model at least something to anchor on for "Rock" / "Pop" / "Metal"
+// without forcing the caller to pick a subgenre.
+const GENRE_HINTS: Record<string, string> = {
+  'Pop': 'modern pop production, hook-driven topline, polished mix, big chorus, 100-128 BPM',
+  'Hip Hop': '808 sub-bass, syncopated trap-style hi-hats, punchy kick/snare, rap-cadence vocals, 70-160 BPM',
+  'Rock': 'electric guitars, full drum kit with strong backbeat, driving bass, anthemic chorus, 90-150 BPM',
+  'R&B': 'smooth soulful vocals, lush keys/Rhodes, syncopated drums, 70-100 BPM, romantic harmonic palette',
+  'Electronic': 'synth-driven production, programmed drums, bass focal point, sound-design textures, club-ready dynamics',
+  'Indie': 'jangly clean guitars, lo-fi sheen, charismatic vocals, mid-tempo drive, 95-130 BPM',
+  'Folk': 'fingerpicked acoustic guitar, narrative vocals, organic warmth, sparse arrangement, 70-110 BPM',
+  'Jazz': 'swung drums, walking upright bass, jazz piano comping, horn solos, complex 7th/9th harmony',
+  'Classical': 'acoustic orchestra, dynamic phrasing, no programmed drums, expressive rubato, romantic harmony',
+  'Lo-Fi': 'tape hiss, dusty drums, mellow jazz/soul samples, head-nod tempo, vinyl warmth, 70-90 BPM',
+  'Metal': 'distorted downtuned guitars, double-kick drums, aggressive vocals, palm-muted riffs, 100-180 BPM',
+  'Country': 'acoustic+electric guitar, pedal steel or fiddle, twangy vocals, 2/4 or shuffle rhythm, 80-130 BPM',
+  'Soul': 'gospel-tinged vocals, organ, horn stabs, tight rhythm section, 70-120 BPM, vintage analog warmth',
+  'Funk': 'syncopated slap bass, tight drum-pocket, rhythmic guitar comping, horn stabs, ~95-115 BPM',
+  'Reggae': 'one-drop or rockers drums, off-beat skanking guitar, deep bass, dub-style space, 70-90 BPM',
+  'World': 'genre-authentic regional percussion, traditional instruments, native-language vocal phrasing',
+  'Cinematic': 'orchestral palette with optional hybrid synth, emotive dynamic arc, no pop chorus, build-and-release form',
+};
+
+// Mood hints translate the user's chosen mood word into production-language
+// cues. Without this, "Mood: Heartbroken" reaches the model as just a label;
+// with it, the model gets imagery + harmonic + dynamic guidance.
+const MOOD_HINTS: Record<string, string> = {
+  'Happy': 'major-key harmonic palette, bright timbres, upbeat groove, smiling vocal delivery',
+  'Sad': 'minor-key harmonic palette, sparse arrangement, slower tempo, plaintive vocal phrasing',
+  'Energetic': 'driving rhythm, high-velocity drums, prominent bassline, urgent vocal energy',
+  'Calm': 'soft dynamics, slow tempo, sustained pads, breathy intimate vocals',
+  'Romantic': 'lush warm chords, expressive lead instrument, sensual vocal delivery, mid-tempo sway',
+  'Dark': 'low-register harmonic palette, dissonant textures, ominous low-end, restrained vocal delivery',
+  'Epic': 'expansive arrangement, layered builds, big drums, soaring lead melody, dramatic dynamic arc',
+  'Nostalgic': 'analog warmth, tape saturation, slightly washed-out reverb, longing-tinged vocal melody',
+  'Dreamy': 'shimmering reverb, lush pads, floating vocal delivery, hazy mix character',
+  'Aggressive': 'distorted timbres, hard-hit drums, growling/shouted attack, dense low-end',
+  'Melancholic': 'minor key, rainy-day chord voicings, restrained dynamics, wistful vocal tone',
+  'Triumphant': 'major-key harmonic resolution, brass/anthemic synth leads, big drum hits, victorious vocal stance',
+  'Mysterious': 'unresolved harmony, sparse texture, ambiguous tonal center, breathy or whispered vocals',
+  'Playful': 'syncopated rhythms, bouncy basslines, playful vocal phrasing, bright lively timbres',
+  'Anxious': 'tight syncopation, restless arpeggios, dissonant harmonic motion, urgent vocal cadence',
+  'Hopeful': 'gradually rising harmonic motion, opening dynamics, warm uplifting timbres',
+  'Bittersweet': 'major chords with minor-9 colorings, mid-tempo, vocal delivered with warmth and longing',
+  'Euphoric': 'huge supersaw or piano stabs, four-on-the-floor energy, layered vocal hooks, festival-scale build',
+  'Sensual': 'slow groove, syncopated drums, smoky chord voicings, breathy close-mic vocals',
+  'Heartbroken': 'minor key, sparse arrangement, raw vulnerable vocal performance, slow ballad tempo',
+  'Confident': 'pocket-locked groove, swaggering vocal delivery, strong bass presence, mid-tempo confidence',
+  'Reflective': 'mid-tempo, sparse instrumentation, conversational vocal delivery, introspective space',
+  'Rebellious': 'distorted attack, defiant vocal energy, driving rhythm, anti-establishment edge',
+  'Peaceful': 'gentle acoustic timbres, soft dynamics, tonal harmonic palette, breath-led pacing',
+  'Uplifting': 'major key, bright lead instruments, lifting harmonic motion, optimistic vocal delivery',
+};
+
+// Per-genre lyric conventions: rhyme scheme, line length, vocabulary register,
+// total length target, structure conventions. The lyric system prompt picks the
+// matching block by genre; subgenre overrides primary genre.
+export interface LyricConvention {
+  /** Short comma-separated rhyme/meter cues (e.g. "AABB couplets, 8-syllable lines"). */
+  rhyme: string;
+  /** Vocabulary register, point of view, narrative shape. */
+  voice: string;
+  /** Genre-typical structure (mirror what the music will support). */
+  structure: string;
+  /** Target total length range for the song body. */
+  lengthHint: string;
+}
+
+const SUBGENRE_LYRIC_HINTS: Record<string, LyricConvention> = {
+  // Hip Hop
+  'Trap': {
+    rhyme: 'multi-syllable internal rhymes, AAAA bars, triplet flow accents',
+    voice: 'first-person swagger, modern slang, brand/lifestyle imagery, present tense',
+    structure: 'Intro → 16-bar Verse → Hook → 16-bar Verse → Hook → Bridge → Hook',
+    lengthHint: '350-600 words',
+  },
+  'Boom Bap': {
+    rhyme: 'dense end-rhymes with internal multis, 4-bar punchlines',
+    voice: 'first-person storyteller, street-poetic vocabulary, vivid concrete imagery',
+    structure: 'Intro → 16-bar Verse → 8-bar Hook → 16-bar Verse → 8-bar Hook → Verse → Hook',
+    lengthHint: '400-700 words',
+  },
+  'Drill': {
+    rhyme: 'aggressive end-rhymes, sliding cadence on the last word, repeated tag refrains',
+    voice: 'first-person hard-edged, blunt declarative imagery, present-tense menace',
+    structure: 'Tag → 16-bar Verse → Hook → 16-bar Verse → Hook',
+    lengthHint: '300-500 words',
+  },
+  'Conscious': {
+    rhyme: 'literary multi-syllable rhymes, layered metaphors, complex word-flips',
+    voice: 'first-person reflective, social/political imagery, allegory and metaphor',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Bridge → Verse → Hook',
+    lengthHint: '450-800 words',
+  },
+  'Cloud Rap': {
+    rhyme: 'loose half-rhymes, repeated words for hypnotic effect, melodic phrasing',
+    voice: 'first-person dreamy, abstract imagery, present-tense languid',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Outro',
+    lengthHint: '250-450 words',
+  },
+  'Lo-Fi Hip Hop': {
+    rhyme: 'soft end-rhymes, conversational phrasing, repeated mantra hooks',
+    voice: 'first-person introspective, study/late-night imagery, calm present tense',
+    structure: 'Verse → Hook → Verse → Hook (often instrumental-heavy with sparse vocals)',
+    lengthHint: '200-400 words',
+  },
+  // R&B
+  'Neo-Soul': {
+    rhyme: 'flowing end-rhymes with vocal runs, conversational meter',
+    voice: 'first-person sensual, organic body imagery, expressive vulnerability',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: '280-500 words',
+  },
+  'Alternative R&B': {
+    rhyme: 'sparse rhyme, melodic repetition over rhyme density, atmospheric phrasing',
+    voice: 'first-person introspective, modern romantic ambiguity, dreamlike imagery',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Outro',
+    lengthHint: '250-450 words',
+  },
+  // Pop
+  'Synth-Pop': {
+    rhyme: 'simple AABB or ABAB end-rhymes, hook-forward chorus',
+    voice: 'first or second person, bright modern imagery, repeated chant-able chorus',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: '250-400 words',
+  },
+  'Dance Pop': {
+    rhyme: 'simple ABAB rhymes, chant-along chorus with title-as-hook',
+    voice: 'first or second person, body/club imagery, present-tense urgency',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Drop/Final Chorus',
+    lengthHint: '230-380 words',
+  },
+  'K-Pop': {
+    rhyme: 'mixed-language ABAB rhymes, chant hook, repeated catchphrase ad-libs',
+    voice: 'group POV, aspirational imagery, dynamic shifts in tone across sections',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge (rap or dance break) → Final Chorus',
+    lengthHint: '280-450 words',
+  },
+  'Hyperpop': {
+    rhyme: 'rapid-fire end-rhymes, repeated short phrases, chant-style hook',
+    voice: 'first-person hyper-emotional, internet/digital imagery, exaggerated affect',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus (often sub-2 min)',
+    lengthHint: '180-320 words',
+  },
+  'Bedroom Pop': {
+    rhyme: 'soft slant-rhymes, conversational meter, quiet hook',
+    voice: 'first-person intimate, diary-room imagery, vulnerable present tense',
+    structure: 'Verse → Chorus → Verse → Chorus → Bridge → Outro',
+    lengthHint: '220-400 words',
+  },
+  // Rock
+  'Indie Rock': {
+    rhyme: 'loose ABAB, conversational meter, hook line in chorus',
+    voice: 'first-person observational, slice-of-life imagery, ironic distance',
+    structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: '250-450 words',
+  },
+  'Punk Rock': {
+    rhyme: 'simple AABB, short blunt lines, shouted chorus',
+    voice: 'first-person defiant, anti-establishment imagery, present-tense confrontation',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Chorus (often <2:30)',
+    lengthHint: '150-280 words',
+  },
+  'Alternative': {
+    rhyme: 'AABA or ABCB, dynamic chorus contrast, vivid imagery',
+    voice: 'first-person introspective with anthemic chorus turn, layered emotion',
+    structure: 'Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: '280-480 words',
+  },
+  'Metalcore': {
+    rhyme: 'screamed verses with sung chorus contrast, anthemic AABB chorus',
+    voice: 'first-person catharsis, anguished imagery, declarative chorus statement',
+    structure: 'Intro → Verse (scream) → Pre-Chorus → Chorus (sung) → Verse (scream) → Chorus → Breakdown → Bridge → Final Chorus',
+    lengthHint: '250-450 words',
+  },
+  // Folk
+  'Indie Folk': {
+    rhyme: 'AABB or ABAB, narrative imagery, refrain instead of pop chorus',
+    voice: 'first-person reflective, nature/place imagery, past-tense storytelling',
+    structure: 'Verse → Refrain → Verse → Refrain → Bridge → Refrain (often strophic)',
+    lengthHint: '300-550 words',
+  },
+  'Singer-Songwriter': {
+    rhyme: 'AABB or ABAB, conversational meter, narrative arc',
+    voice: 'first-person confessional, autobiographical imagery, vulnerable specificity',
+    structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: '300-550 words',
+  },
+  'Americana': {
+    rhyme: 'AABB end-rhymes, narrative ballad meter, regional vocabulary',
+    voice: 'first-person plain-spoken, working-class imagery, place names and concrete details',
+    structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: '300-550 words',
+  },
+  'Bluegrass': {
+    rhyme: 'AABB tight end-rhymes, fast-meter narrative',
+    voice: 'first-person folk-tale storyteller, rural imagery, past-tense narrative',
+    structure: 'Verse → Chorus → Verse → Chorus → Instrumental break → Verse → Chorus',
+    lengthHint: '250-450 words',
+  },
+  // Country
+  'Outlaw Country': {
+    rhyme: 'AABB couplets, shuffle meter, twangy turn-of-phrase',
+    voice: 'first-person rebel, working-class imagery, hard-living specificity',
+    structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: '280-500 words',
+  },
+  'Country Pop': {
+    rhyme: 'AABB simple rhymes, hook-forward chorus, country twang vocabulary',
+    voice: 'first-person heartfelt, small-town/rural imagery, big chorus payoff',
+    structure: 'Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: '280-450 words',
+  },
+  // Electronic
+  'House': {
+    rhyme: 'minimal lyric content, repeated short phrases, chant-style hook',
+    voice: 'second-person dance-floor invitation, sensory body imagery',
+    structure: 'Intro → Verse → Build → Drop/Hook → Breakdown → Build → Drop/Hook → Outro',
+    lengthHint: '120-280 words (dance music is hook-heavy with sparse verse content)',
+  },
+  'Future Bass': {
+    rhyme: 'simple ABAB, chopped vocal phrases, repeated chant pre-drop',
+    voice: 'first-person uplifting, big-feeling imagery, festival-anthem direct address',
+    structure: 'Intro → Verse → Pre-Drop → Drop/Hook → Verse → Pre-Drop → Drop/Hook → Outro',
+    lengthHint: '150-300 words',
+  },
+  'Trance': {
+    rhyme: 'sparse repeated phrases, chant-style hook',
+    voice: 'second-person ecstatic, transcendent imagery, present-tense surrender',
+    structure: 'Intro → Verse → Pre-Drop/Build → Drop → Breakdown → Build → Drop → Outro',
+    lengthHint: '120-250 words',
+  },
+  // Soul / Funk / Reggae
+  'Gospel': {
+    rhyme: 'AABB or ABAB, refrain-heavy, call-and-response',
+    voice: 'first-person or congregational, spiritual/uplifting imagery, declarative testimony',
+    structure: 'Verse → Chorus/Refrain → Verse → Chorus → Bridge → Final Chorus (often with vamp)',
+    lengthHint: '250-500 words',
+  },
+  'Motown': {
+    rhyme: 'AABB simple rhymes, snappy hook, call-and-response with backing vocals',
+    voice: 'first-person heartfelt, romantic imagery, classic mid-century vocabulary',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: '230-400 words',
+  },
+  'Roots Reggae': {
+    rhyme: 'simple AABB, conscious refrain, repeated mantra hook',
+    voice: 'first-person spiritual/political, communal imagery, repeated declarative refrain',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Chorus',
+    lengthHint: '250-450 words',
+  },
+  'Reggaeton': {
+    rhyme: 'Spanish AABB or ABAB, hook-forward chorus, ad-libs woven through',
+    voice: 'first-person sensual or party, club imagery, direct address',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: '230-420 words',
+  },
+  // World
+  'Bossa Nova': {
+    rhyme: 'subtle slant rhymes, soft conversational meter',
+    voice: 'first-person quiet romantic, warm tropical imagery, breathy intimacy',
+    structure: 'Verse → Chorus → Verse → Chorus → Instrumental → Final Chorus',
+    lengthHint: '200-400 words',
+  },
+  'Afrobeats': {
+    rhyme: 'mixed-language ABAB rhymes, repeated catch-phrase hook, ad-libs',
+    voice: 'first-person celebratory, body/dance imagery, communal direct address',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Bridge → Hook',
+    lengthHint: '250-450 words',
+  },
+  // Cinematic — usually instrumental, but if vocal:
+  'Choral': {
+    rhyme: 'simple AABB or sacred-text style, repeated invocational refrain',
+    voice: 'collective POV, sacred or epic imagery, vowel-driven phrasing for choir',
+    structure: 'Verse → Refrain → Verse → Refrain → Final Refrain (or through-composed)',
+    lengthHint: '180-380 words',
+  },
+};
+
+const PRIMARY_GENRE_LYRIC_HINTS: Record<string, LyricConvention> = {
+  'Pop': {
+    rhyme: 'simple AABB or ABAB end-rhymes, chant-able chorus repeated verbatim',
+    voice: 'first or second person, hook-driven, modern relatable imagery',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: '250-400 words',
+  },
+  'Hip Hop': {
+    rhyme: 'multi-syllable internal rhymes, dense end-rhymes, 16-bar verses',
+    voice: 'first-person, vivid concrete imagery, present-tense delivery',
+    structure: 'Intro → 16-bar Verse → 8-bar Hook → 16-bar Verse → 8-bar Hook → Bridge → Hook',
+    lengthHint: '350-650 words',
+  },
+  'Rock': {
+    rhyme: 'AABB or ABAB, anthemic chorus, vivid hook line',
+    voice: 'first-person emotive, declarative imagery, dynamic vocal delivery',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: '280-450 words',
+  },
+  'R&B': {
+    rhyme: 'flowing end-rhymes with melodic runs, conversational meter',
+    voice: 'first-person, romantic/sensual imagery, vulnerable expressive delivery',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: '280-500 words',
+  },
+  'Electronic': {
+    rhyme: 'sparse repeated phrases, chant-style hook',
+    voice: 'second-person direct address, body/dance/sky imagery, simple repeated phrasing',
+    structure: 'Intro → Verse → Build/Pre-Drop → Drop/Hook → Verse → Build → Drop → Outro',
+    lengthHint: '150-300 words',
+  },
+  'Indie': {
+    rhyme: 'loose ABAB or slant rhymes, conversational meter',
+    voice: 'first-person observational, slice-of-life imagery, ironic warmth',
+    structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: '270-480 words',
+  },
+  'Folk': {
+    rhyme: 'AABB or ABAB end-rhymes, narrative ballad meter',
+    voice: 'first-person reflective, nature/place/people imagery, past-tense storytelling',
+    structure: 'Verse → Refrain → Verse → Refrain → Bridge → Refrain (often strophic, no big chorus)',
+    lengthHint: '320-580 words',
+  },
+  'Jazz': {
+    rhyme: 'AABA standard form, sophisticated vocabulary, slant rhymes welcome',
+    voice: 'first-person reflective, sophisticated romantic imagery, conversational delivery',
+    structure: 'AABA standard form (32-bar) or Verse → Chorus → Bridge → Chorus',
+    lengthHint: '180-380 words',
+  },
+  'Lo-Fi': {
+    rhyme: 'soft end-rhymes, repeated mantras, conversational meter',
+    voice: 'first-person introspective, late-night/study imagery, calm present tense',
+    structure: 'Verse → Hook → Verse → Hook (often very sparse vocals)',
+    lengthHint: '180-350 words',
+  },
+  'Metal': {
+    rhyme: 'AABB or AABA, anthemic chorus, declarative dark imagery',
+    voice: 'first-person catharsis, mythic/dark/political imagery, declarative vocal stance',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: '250-450 words',
+  },
+  'Country': {
+    rhyme: 'AABB couplets, narrative shuffle meter, plain-spoken vocabulary',
+    voice: 'first-person plain-spoken, working-class/rural imagery, concrete specifics',
+    structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: '280-500 words',
+  },
+  'Soul': {
+    rhyme: 'flowing end-rhymes with vocal runs, AABB or ABAB',
+    voice: 'first-person heartfelt, romantic or spiritual imagery, expressive vulnerability',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: '250-450 words',
+  },
+  'Funk': {
+    rhyme: 'AABB or repeated short phrases, chant-style hook',
+    voice: 'first or second person, body/groove imagery, playful direct address',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Bridge → Hook',
+    lengthHint: '200-400 words',
+  },
+  'Reggae': {
+    rhyme: 'simple AABB, conscious refrain, repeated mantra hook',
+    voice: 'first-person spiritual or political, communal imagery, declarative refrain',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Chorus',
+    lengthHint: '250-450 words',
+  },
+  'World': {
+    rhyme: 'genre-authentic rhyme scheme; native-language phrasing where applicable',
+    voice: 'first-person celebratory or romantic, regional cultural imagery',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: '250-450 words',
+  },
+  'Cinematic': {
+    rhyme: 'sparse if vocal — usually instrumental; if vocal, vowel-driven choral phrasing',
+    voice: 'collective or narrator POV, mythic/epic imagery, vowel-forward delivery',
+    structure: 'Through-composed build-and-release; if structured, Refrain → Verse → Refrain',
+    lengthHint: '120-280 words (most cinematic music is instrumental)',
+  },
+};
+
+// Cover-art visual language by primary genre. Each entry is a concrete art-
+// direction brief: palette, composition, motifs, texture, lighting, finish.
+// The cover-art prompt builder injects the matching block by primary genre.
+// Subgenre-level overrides handle the most visually distinct subgenres.
+export interface VisualConvention {
+  /** Color palette in concrete terms. */
+  palette: string;
+  /** Composition + camera framing. */
+  composition: string;
+  /** Specific motifs to consider (objects, scenes, figures). */
+  motifs: string;
+  /** Surface texture and finish. */
+  texture: string;
+  /** Lighting / atmosphere descriptors. */
+  lighting: string;
+}
+
+const PRIMARY_GENRE_VISUAL_HINTS: Record<string, VisualConvention> = {
+  'Pop': {
+    palette: 'saturated brights — magenta, cyan, lemon, candy pastels',
+    composition: 'centered subject or bold typographic-suggested shape, clean negative space',
+    motifs: 'stylized portrait, geometric shapes, gloss, motion blur',
+    texture: 'glossy clean digital finish, light grain optional',
+    lighting: 'high-key polished, soft rim light, fashion-editorial gloss',
+  },
+  'Hip Hop': {
+    palette: 'high-contrast, blacks and reds with metallic gold accents, occasional neon',
+    composition: 'low-angle hero portrait, tight crop, urban backdrop or studio black',
+    motifs: 'portrait close-up, chains/diamonds, city skyline, chrome, smoke, moody street',
+    texture: 'photographic with sharp grain, occasional film/disposable feel for boom-bap',
+    lighting: 'dramatic chiaroscuro, single rim light, neon street reflection',
+  },
+  'Rock': {
+    palette: 'desaturated earth tones, blacks and rust reds, occasional bleached whites',
+    composition: 'wide-shot live-energy frame or single iconic object, asymmetric',
+    motifs: 'guitar/amp/microphone silhouette, weathered surfaces, crowd, leather, denim',
+    texture: 'film grain, scratched edges, photocopy-zine feel, paper fold',
+    lighting: 'stage spotlight cutting through smoke, hard side light, high contrast',
+  },
+  'R&B': {
+    palette: 'deep purples, burgundy, copper, soft warm browns, candlelight gold',
+    composition: 'sensual portrait, soft-focus background, intimate framing, mid-distance crop',
+    motifs: 'silhouette of body or hands, satin/silk drapery, candle, rose, bedroom interior',
+    texture: 'velvety smooth, soft film grain, glow-bloom on highlights',
+    lighting: 'warm tungsten low-light, golden hour, candle-glow, soft volumetric haze',
+  },
+  'Electronic': {
+    palette: 'electric neons — cyan, magenta, deep ultraviolet, plus pure black',
+    composition: 'symmetrical or geometric, abstract shapes, often grid or radial layout',
+    motifs: 'fractals, light trails, wireframe geometry, pulsing orb, abstract topographic forms',
+    texture: 'crisp digital, slight chromatic aberration, vector cleanness',
+    lighting: 'glowing volumetric beams, laser scan-lines, screen-emitted light',
+  },
+  'Indie': {
+    palette: 'muted vintage tones, faded blues and pinks, dusty pastels, off-whites',
+    composition: 'off-center crop, candid framing, lo-fi snapshot feel',
+    motifs: 'window light, hands, mundane objects, suburban exteriors, polaroid framing',
+    texture: 'film grain, light scratches, slight color shift, paper texture',
+    lighting: 'natural daylight, overcast soft light, golden-hour warmth',
+  },
+  'Folk': {
+    palette: 'natural earth tones — moss greens, browns, ochre, parchment cream',
+    composition: 'landscape or single still-life subject, painterly framing, rule-of-thirds',
+    motifs: 'forest, river, lone figure on a path, acoustic instrument, hand-lettered feel',
+    texture: 'painted/illustrated, paper grain, watercolor wash, woodcut',
+    lighting: 'soft daylight, dappled forest light, golden-hour warmth',
+  },
+  'Jazz': {
+    palette: 'midnight blues, smoky greys, brass yellows, cream, deep crimson',
+    composition: 'mid-century editorial layout, abstract Blue-Note-style shapes',
+    motifs: 'silhouetted instrument (sax, trumpet, upright bass), smoke, abstract type-suggesting shapes',
+    texture: 'screen-print/litho-style flat color, halftone dots, aged paper',
+    lighting: 'low-key bar light, single spotlight, rich shadow play',
+  },
+  'Classical': {
+    palette: 'muted ivories, deep burgundies, antique gold, slate, marble grey',
+    composition: 'classical symmetry, painterly central composition, baroque framing',
+    motifs: 'orchestral instruments, statue, marble texture, ornate frame, abstract score',
+    texture: 'oil-painting / fresco / engraved-print finish, fine grain',
+    lighting: 'chiaroscuro Old-Master lighting, single window light, gilded warm glow',
+  },
+  'Lo-Fi': {
+    palette: 'muted lavenders, sepia browns, soft oranges, dusty pinks',
+    composition: 'small isolated subject, plenty of negative space, anime-style framing',
+    motifs: 'study desk with cassette/headphones, window with rain, sleeping cat, anime-girl-by-window vibe',
+    texture: 'cassette-tape grain, vinyl scratches, light VHS distortion, anime cel-shading',
+    lighting: 'late-night warm desk lamp, neon sign glow through window',
+  },
+  'Metal': {
+    palette: 'blacks, blood reds, bone whites, cold steel, occasional infernal orange',
+    composition: 'symmetric occult or hellscape, baroque-detail dense fill',
+    motifs: 'skulls, ravens, gothic cathedrals, runes, mountains, fire, occult symbols, weathered armor',
+    texture: 'engraved/etched line-work, parchment burn, distressed leather, cracked stone',
+    lighting: 'low-key with single hellish backlight, moonlight, smoke and embers',
+  },
+  'Country': {
+    palette: 'sun-faded blues, dusty oranges, denim, weathered brown, prairie gold',
+    composition: 'wide horizon, lone figure or pickup truck, landscape framing',
+    motifs: 'highway, silhouetted cowboy hat, wheat field, weathered porch, neon honky-tonk sign',
+    texture: 'sun-bleached photo, light film grain, denim and leather feel',
+    lighting: 'golden-hour prairie sun, dusk silhouette, warm Americana glow',
+  },
+  'Soul': {
+    palette: 'warm browns, gold, burgundy, mustard, vintage cream',
+    composition: 'mid-century editorial portrait, classic LP-cover layout',
+    motifs: 'portrait with vintage microphone, gospel/church visual cue, soul-era fashion',
+    texture: 'vintage photograph grain, paper wear, screen-print color separation',
+    lighting: 'warm tungsten, single spotlight, halo backlight',
+  },
+  'Funk': {
+    palette: 'electric purples, hot pinks, oranges, gold, glitter accents',
+    composition: 'maximalist 70s poster layout, asymmetric energetic flow',
+    motifs: 'platform boots, afro silhouette, glittery suit, disco ball, abstract grooving figures',
+    texture: 'screen-print 70s poster, halftone, glitter sparkle highlights',
+    lighting: 'club-stage spotlights, disco-ball reflection scatter, neon backlight',
+  },
+  'Reggae': {
+    palette: 'red-yellow-green tropics, ocean turquoise, sun-warmed earth tones',
+    composition: 'sun-drenched landscape or icon-style portrait, flag-color banding',
+    motifs: 'palm trees, sun rays, lion silhouette, smoke, ocean, hand-painted lettering feel',
+    texture: 'hand-painted poster, sun-faded canvas, slight halftone',
+    lighting: 'tropical sun, golden-hour beach, hazy heat shimmer',
+  },
+  'World': {
+    palette: 'genre-authentic regional palette (e.g. saffron+turmeric for Bollywood, ocher+sienna for Afrobeats, indigo+coral for Latin)',
+    composition: 'culturally rooted central subject, traditional framing or pattern motifs',
+    motifs: 'regional textile patterns, traditional instrument, native landscape, cultural typography',
+    texture: 'hand-painted or printed-textile feel, woven grain, ornate detailing',
+    lighting: 'natural cultural lighting cue (sunset, lantern, stage)',
+  },
+  'Cinematic': {
+    palette: 'teal-and-orange grade, deep navies, cold steel + ember warmth, or moody monochrome',
+    composition: 'widescreen letterbox feel, single hero subject in vast environment, depth layers',
+    motifs: 'landscape with single small figure, futuristic or fantasy environment, atmospheric weather',
+    texture: 'photoreal CGI / matte-painted, soft film grain, atmospheric haze',
+    lighting: 'volumetric light shafts, dramatic god-rays, cinematic key+rim+fill lighting',
+  },
+};
+
+// Subgenre overrides for the most visually distinct subgenres only. Anything
+// not listed inherits from the primary-genre block.
+const SUBGENRE_VISUAL_HINTS: Record<string, Partial<VisualConvention>> = {
+  'Synthwave': {
+    palette: 'magenta-and-cyan neon gradient, deep violet sky, hot orange sunset',
+    motifs: 'palm-tree silhouettes, gridded horizon, retro sports car, 80s sun, chrome typography feel',
+    texture: 'pixel-grid scanlines, VHS chromatic aberration, vector smoothness',
+    lighting: 'neon glow + chrome reflection, vaporous backlight',
+  },
+  'Vaporwave': {
+    palette: 'soft pink, mint, lavender pastels, marble white',
+    motifs: 'Greco-Roman bust, gridded floor, 90s computer iconography, dolphins, anime fragments',
+    texture: 'JPEG compression artifacts, low-res screenshot feel, glossy 3D-render plastic',
+    lighting: 'flat fluorescent, screen-emitted glow',
+  },
+  'Drill': {
+    palette: 'cold blacks, slate greys, blood red flares',
+    motifs: 'masked figure silhouette, foggy estate corridor, brutalist housing block, low-light street',
+    texture: 'phone-camera flash photo, blocky compression, leaked-doc xerox feel',
+    lighting: 'harsh single flash, sodium-vapor street lamp glow',
+  },
+  'Lo-Fi Hip Hop': {
+    palette: 'muted browns, dusty pinks, peach, soft yellows',
+    motifs: 'anime girl studying by window, cassette tape, lofi-beats bedroom, rain on glass',
+    texture: 'cel-shaded anime, slight VHS noise, paper texture',
+    lighting: 'warm desk-lamp glow, blue-hour window light',
+  },
+  'Phonk': {
+    palette: 'cold steel grey, blood crimson, deep black',
+    motifs: 'masked drift-car silhouette, smoky underpass, occult/Memphis cassette aesthetic',
+    texture: 'distressed VHS, glitch artifacting, cassette-print feel',
+    lighting: 'red flare, headlight cone in fog',
+  },
+  'Death Metal': {
+    palette: 'black + blood red, putrid greens, bone whites',
+    motifs: 'corpse imagery, illegible blackletter logo feel, gore-suggesting baroque detail',
+    texture: 'engraved/etched line-work, smeared ink, decay surfaces',
+    lighting: 'low-key with single red rim light, cold cave atmosphere',
+  },
+  'Black Metal': {
+    palette: 'pure black + bone white, occasional steel blue, blood red highlights',
+    motifs: 'snowy forest, bare trees, mountain silhouette, illegible spiky logo feel',
+    texture: 'high-contrast engraved photocopy / xerox feel, raw black-and-white film',
+    lighting: 'cold moonlight, single back-rim light, fog',
+  },
+  'Doom Metal': {
+    palette: 'occult purples, deep greens, smoky greys, blood red',
+    motifs: 'cathedral interior, occult symbol, smoke, slow-burning candle, mountain mass',
+    texture: 'oil-paint / oil-on-canvas, heavy fog atmosphere',
+    lighting: 'single candle or stained-glass shaft, deep shadow dominance',
+  },
+  'Bossa Nova': {
+    palette: 'tropical pastel — soft cream, ocean turquoise, sun-warm peach',
+    motifs: 'Rio coastline, café table, soft silhouette, mid-century type-suggested layout',
+    texture: 'soft watercolor, paper grain, vintage poster',
+    lighting: 'soft tropical sun, late afternoon warmth',
+  },
+  'Trap': {
+    palette: 'deep purples, hot pink accents, glossy blacks, gold flashes',
+    motifs: 'low-rise diamonds-and-smoke aesthetic, neon-lit interior, lean-purple gradient, blurred motion',
+    texture: 'high-gloss digital, lens flare, motion blur',
+    lighting: 'neon backlight, purple haze, single hot key light',
+  },
+  'Disco-Funk': {
+    palette: 'glitter gold, hot pink, electric purple, mirrored silver',
+    motifs: 'disco ball, platform boots, sequined fabric, 70s dancefloor silhouettes',
+    texture: 'glittery sparkle highlights, screen-print 70s poster',
+    lighting: 'rotating disco-ball scatter, multicolor stage spotlights',
+  },
+  'Cinematic': {
+    palette: 'teal-and-orange Hollywood grade, deep blacks',
+    motifs: 'lone hero on mountain ridge, vast landscape, dramatic weather, sci-fi or fantasy environment',
+    texture: 'photoreal matte-painted, atmospheric haze',
+    lighting: 'volumetric god-rays, magic-hour backlight, key+rim+fill',
+  },
+  'Western Score': {
+    palette: 'sun-bleached ochre, dusty rose, prairie gold, deep navy night',
+    motifs: 'lone figure at horizon, mesa, cactus silhouette, weathered wood',
+    texture: 'sun-bleached photo, light grain, parchment',
+    lighting: 'high-noon sun or magic-hour silhouette',
+  },
+  'Sci-Fi Score': {
+    palette: 'deep ultraviolet, cyan, white-hot, neon teal',
+    motifs: 'futuristic cityscape, alien landscape, geometric spacecraft, holographic interfaces',
+    texture: 'photoreal CGI, glossy sci-fi finish',
+    lighting: 'volumetric neon, hard rim light, glow-emit panels',
+  },
+};
+
 export function lookupSubgenreHint(name: string | null | undefined): string | null {
   if (!name) return null;
   return SUBGENRE_HINTS[name] ?? null;
+}
+
+export function lookupGenreHint(name: string | null | undefined): string | null {
+  if (!name) return null;
+  return GENRE_HINTS[name] ?? null;
+}
+
+export function lookupMoodHint(name: string | null | undefined): string | null {
+  if (!name) return null;
+  return MOOD_HINTS[name] ?? null;
 }
 
 export function lookupEnergyHint(name: string | null | undefined): string | null {
@@ -219,4 +835,28 @@ export function lookupVocalStyleHint(name: string | null | undefined): string | 
 export function lookupEraHint(name: string | null | undefined): string | null {
   if (!name) return null;
   return ERA_HINTS[name] ?? null;
+}
+
+// Resolve lyric conventions: subgenre first, then primary genre, then null.
+export function lookupLyricConvention(
+  genre: string | null | undefined,
+  subGenre: string | null | undefined
+): LyricConvention | null {
+  if (subGenre && SUBGENRE_LYRIC_HINTS[subGenre]) return SUBGENRE_LYRIC_HINTS[subGenre]!;
+  if (genre && PRIMARY_GENRE_LYRIC_HINTS[genre]) return PRIMARY_GENRE_LYRIC_HINTS[genre]!;
+  return null;
+}
+
+// Resolve visual conventions: primary-genre block, with optional subgenre
+// overrides merged on top.
+export function lookupVisualConvention(
+  genre: string | null | undefined,
+  subGenre: string | null | undefined
+): VisualConvention | null {
+  const base = genre && PRIMARY_GENRE_VISUAL_HINTS[genre]
+    ? { ...PRIMARY_GENRE_VISUAL_HINTS[genre]! }
+    : null;
+  const override = subGenre ? SUBGENRE_VISUAL_HINTS[subGenre] : undefined;
+  if (!base && !override) return null;
+  return { ...(base || PRIMARY_GENRE_VISUAL_HINTS['Pop']!), ...(override || {}) };
 }

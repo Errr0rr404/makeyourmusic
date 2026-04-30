@@ -13,6 +13,7 @@ import {
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Button } from '../../components/ui/Button';
 import { Audio } from 'expo-av';
+import TrackPlayer from 'react-native-track-player';
 
 interface Gen {
   id: string;
@@ -129,6 +130,9 @@ export default function GenerationsScreen() {
       setPlayingId(null);
       return;
     }
+    // Pause the main player before playing a generation preview, otherwise
+    // the user hears two streams simultaneously.
+    try { await TrackPlayer.pause(); } catch { /* not initialized */ }
     // Stop previous
     if (sound.current) {
       await sound.current.unloadAsync?.();

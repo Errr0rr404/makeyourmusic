@@ -95,6 +95,17 @@ export function NotificationBell() {
     if (open) loadNotifications();
   }, [open, loadNotifications]);
 
+  // Force a re-render every minute while the panel is open so timeAgo()
+  // values stay fresh ("5m" → "6m") without manual user interaction.
+  // Without this the relative timestamps freeze at the moment the panel
+  // was opened.
+  const [, setNowTick] = useState(0);
+  useEffect(() => {
+    if (!open) return;
+    const t = setInterval(() => setNowTick((n) => n + 1), 60_000);
+    return () => clearInterval(t);
+  }, [open]);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setOpen(false);

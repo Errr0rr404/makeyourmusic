@@ -377,6 +377,15 @@ export interface LyricsParams {
   // imagery seeds, hooks. When present, we trust this as the primary direction
   // and treat `idea` as raw context.
   lyricsBrief?: string;
+  // Optional draft hook line from the orchestration planner. When present we
+  // anchor the chorus around it.
+  hookLine?: string;
+  // Optional pre-resolved lyric convention (rhyme/voice/structure/length).
+  // Caller can pass this from the catalog to avoid re-deriving in the prompt.
+  conventionRhyme?: string;
+  conventionVoice?: string;
+  conventionStructure?: string;
+  conventionLengthHint?: string;
 }
 
 export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
@@ -395,6 +404,11 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
     language = 'English',
     style,
     lyricsBrief,
+    hookLine,
+    conventionRhyme,
+    conventionVoice,
+    conventionStructure,
+    conventionLengthHint,
   } = params;
   const constraints: string[] = [];
   const genreLine = [genre, subGenre].filter(Boolean).join(' / ');
@@ -406,16 +420,37 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
   if (vibeDescriptors) constraints.push(`Sonic vibe: ${vibeDescriptors}`);
   if (style) constraints.push(`Extra notes: ${style}`);
 
+  // Genre-specific lyric conventions, when supplied by the controller from the
+  // catalog. These give the model concrete rhyme/voice/structure/length cues
+  // instead of the generic "match the genre" instruction.
+  const conventionLines: string[] = [];
+  if (conventionRhyme) conventionLines.push(`- Rhyme + meter: ${conventionRhyme}`);
+  if (conventionVoice) conventionLines.push(`- Voice + imagery: ${conventionVoice}`);
+  if (conventionStructure) conventionLines.push(`- Structure to follow: ${conventionStructure}`);
+  if (conventionLengthHint) conventionLines.push(`- Target length: ${conventionLengthHint}`);
+  const conventionBlock = conventionLines.length
+    ? `\nGENRE LYRIC CONVENTIONS (follow closely):\n${conventionLines.join('\n')}\n`
+    : '';
+
+  const lengthGuidance = conventionLengthHint
+    ? `Use the genre-specific target length above`
+    : `Keep total length between 200 and 600 words (vocal genres) or 120-280 words (dance/electronic)`;
+
   // The MiniMax music model sings whatever is in the `lyrics` field — including
   // parenthetical stage directions and tags like [Guitar Solo]. The system
   // prompt has to forbid those explicitly; downstream code also runs a
   // sanitizer pass as a defense in depth.
   const system =
-    `You are a talented songwriter. Write original SUNG lyrics in ${language} that are evocative, radio-ready, and emotionally resonant. ` +
-    `Match the lyrical voice and cadence to the genre and mood — punchy short lines for trap, narrative imagery for indie folk, hooky chant choruses for dance pop, etc. ` +
-    `Keep the total length between 200 and 800 words. Avoid copyrighted lyrics. ` +
+    `You are a professional songwriter writing original SUNG lyrics in ${language}. ` +
+    `Your lyrics must be evocative, emotionally resonant, and feel native to the named genre — not a generic pop substitute. ` +
+    `${lengthGuidance}. Avoid copyrighted lyrics. Avoid worn cliches like "neon lights / chasing dreams / heart of gold / tear-stained / fire in my veins" unless they are specifically requested. Use concrete, specific imagery instead of generic abstractions. ` +
+    `\n\nCRAFT GUIDELINES: ` +
+    `\n• The chorus must be repeatable verbatim — it is the song's hook and should appear identically each time it returns (Final Chorus may add one extra line or "(yeah)" ad-libs but stays recognizably the same). ` +
+    `\n• Match line lengths and stress patterns to the genre's typical vocal cadence (short punchy lines for trap/punk; longer narrative lines for folk/country; flowing melodic lines for R&B). ` +
+    `\n• Maintain a consistent narrator and tense throughout unless an intentional shift is part of the arc. ` +
+    `\n• Make the final chorus or outro pay off the song's emotional arc — don't just repeat verse 1. ` +
     `\n\nFORMATTING RULES (these are HARD constraints — the lyrics are fed directly into a music model that will SING anything you write): ` +
-    `\n1. Use ONLY these section tags on their own lines: [Intro], [Verse 1], [Verse 2], [Pre-Chorus], [Chorus], [Post-Chorus], [Bridge], [Final Chorus], [Outro]. ` +
+    `\n1. Use ONLY these section tags on their own lines: [Intro], [Verse 1], [Verse 2], [Verse 3], [Pre-Chorus], [Chorus], [Post-Chorus], [Hook], [Refrain], [Bridge], [Final Chorus], [Outro]. ` +
     `\n2. NEVER write [Guitar Solo], [Instrumental], [Breakdown], [Drum Fill], or any other instrumental-section tag — instrumental sections are decided by the producer, not by you. ` +
     `\n3. NEVER write parenthetical stage directions or production cues like "(Hammond swell, hi-hat pulse, eighth-note bass)", "(Tape hiss, finger-picked guitar)", "(808 hit, strings enter)". The model would sing those words. ` +
     `\n4. Parentheses are allowed ONLY for short vocal ad-libs that are meant to be sung, e.g. "(woah)", "(yeah)", "(oh-oh-oh)". Never list instruments, drums, effects, or production techniques inside parentheses. ` +
@@ -424,12 +459,17 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
   const briefBlock = lyricsBrief?.trim()
     ? `Direction from the orchestration planner (theme, voice, imagery, hooks):\n${lyricsBrief.trim()}\n`
     : '';
+  const hookBlock = hookLine?.trim()
+    ? `Suggested hook / chorus line (anchor the chorus around this — keep it or refine it, but use the same hook each time the chorus returns):\n"${hookLine.trim()}"\n`
+    : '';
 
   const user =
     `Write a song about: ${idea}\n` +
     (briefBlock ? `\n${briefBlock}` : '') +
+    (hookBlock ? `\n${hookBlock}` : '') +
+    (conventionBlock ? `${conventionBlock}` : '') +
     (constraints.length > 0 ? `\n${constraints.join('\n')}\n` : '') +
-    `\nReturn only lyrics with section tags on their own lines. Remember: NO parenthetical stage directions, NO instrument cues, NO [Guitar Solo]-style tags.`;
+    `\nReturn only lyrics with section tags on their own lines. Remember: NO parenthetical stage directions, NO instrument cues, NO [Guitar Solo]-style tags. The chorus must be identical (or near-identical) each time it appears.`;
 
   const result = await minimaxChat({
     messages: [
@@ -478,6 +518,10 @@ export interface OrchestrationPlan {
   vibeDescriptors: string;
   musicPrompt: string;
   lyricsBrief: string;
+  /** A draft of the chorus / hook line — short, memorable, sing-able. */
+  hookLine?: string | null;
+  /** Coarse arrangement arc, e.g. "soft intro → builds at chorus → stripped bridge → big final chorus". */
+  arrangementArc?: string | null;
 }
 
 function parseOrchestrationJson(text: string): OrchestrationPlan {
@@ -518,8 +562,36 @@ function parseOrchestrationJson(text: string): OrchestrationPlan {
     vibeDescriptors: stringOr(parsed.vibeDescriptors),
     musicPrompt: stringOr(parsed.musicPrompt),
     lyricsBrief: stringOr(parsed.lyricsBrief),
+    hookLine: stringOrNull(parsed.hookLine),
+    arrangementArc: stringOrNull(parsed.arrangementArc),
   };
 }
+
+// Genre priors used to anchor the orchestration planner. We embed this table
+// in the system prompt so the model picks coherent BPM/structure/instrument
+// defaults instead of free-improvising. Values reflect mainstream conventions
+// and are deliberately ranges rather than fixed numbers.
+const ORCHESTRATION_GENRE_PRIORS = `
+GENRE PRIORS (use as defaults — override only if the user concept clearly demands otherwise):
+- Pop: 90-128 BPM, major or minor, 4/4. Verse-PreChorus-Chorus form, hook-forward chorus, 5-8 instruments. Vocals: clean modern pop topline.
+- Hip Hop: 70-95 BPM (boom-bap, conscious) or 130-160 BPM (trap half-time = 70-80 perceived). 4/4. 16-bar verse + 8-bar hook. 4-7 instruments centered on 808/drums. Vocals: rap cadence.
+- Rock: 90-150 BPM, 4/4. Verse-Chorus-Verse-Chorus-Bridge form, anthemic chorus. 4-6 instruments (guitar/bass/drums/vocals + optional keys/synth).
+- R&B: 70-105 BPM, often 6/8 or 4/4 with swung 16ths. Verse-PreChorus-Chorus form. 5-8 instruments. Vocals: melismatic, expressive.
+- Electronic / Dance: 118-130 BPM (house/disco), 130-145 BPM (techno/trance), 140-180 BPM (drum & bass). 4/4. Build-Drop form, sparse vocals if any. 4-8 sound-design layers.
+- Indie: 95-130 BPM, 4/4. Verse-Chorus form. 4-6 instruments centered on guitars + lo-fi sheen.
+- Folk: 70-110 BPM, 4/4 or 6/8. Strophic Verse-Refrain form. 2-5 instruments centered on acoustic guitar.
+- Jazz: 60-220 BPM (genre-dependent: ballad → bebop). Often 4/4 swung or 3/4. AABA standard or head-solos-head form. 3-6 instruments.
+- Classical: 40-180 BPM range, varied time signatures. Through-composed or sonata form. 3-15+ instruments. No drum kit.
+- Lo-Fi: 70-95 BPM, 4/4. Loop-based, sparse vocals. 3-5 instruments with tape/vinyl coloration.
+- Metal: 100-200 BPM, 4/4 or odd meters. Verse-Chorus form, palm-muted riffs. 4-6 instruments centered on distorted guitars + double-kick drums.
+- Country: 80-130 BPM, 4/4 or shuffle. Verse-Chorus form. 4-7 instruments centered on acoustic+electric guitar + steel/fiddle.
+- Soul / Funk: 85-115 BPM, 4/4. Verse-Chorus or vamp form. 5-9 instruments with horns + tight rhythm section.
+- Reggae: 60-90 BPM, 4/4 with one-drop or rockers feel. Verse-Chorus form. 4-7 instruments.
+- World: genre-authentic regional defaults. Use traditional instruments + meter for the named subgenre.
+- Cinematic: through-composed build-and-release. No pop chorus required. Tempo set by emotion (60-140 BPM). 5-12+ orchestral/hybrid layers.
+
+INSTRUMENTATION COUNT: pick from the genre's range above. Cinematic/orchestral: 8-14. Pop/Rock/R&B: 5-8. Folk/Lo-Fi/Singer-songwriter: 2-5. Ambient/Drone: 2-4.
+`;
 
 // Pre-music orchestration: turn raw user inputs into a coherent production
 // plan (genre, BPM, key, structure, instrumentation, vocal direction, ready-
@@ -556,13 +628,17 @@ export async function minimaxOrchestrate(
     `You are reasoning about HOW the song should be produced — instruments, arrangement, structure, vocal direction — BEFORE any lyric or audio generation runs. ` +
     `\n\nRULES: ` +
     `\n(1) Translate any artist/band references into specific musical descriptors (instruments, production techniques, vocal qualities). NEVER output artist or band names anywhere in the JSON. ` +
-    `\n(2) Pick a coherent BPM, key, and time signature that fit the genre/mood. ` +
-    `\n(3) The structure should match the genre's conventions — short hook-driven structures for pop, longer dynamic builds for rock/electronic, etc. ` +
-    `\n(4) "musicPrompt" is fed verbatim to a music-generation model. Write it as a dense, comma-separated production brief covering genre, BPM, key, instrumentation, vocal direction, energy arc, and era. Do NOT include lyrics, section headings, or stage directions in musicPrompt. ` +
-    `\n(5) "lyricsBrief" is a paragraph for a lyric writer. Describe the emotional arc, narrative perspective, imagery, and any hook/refrain motifs. Do NOT write the actual lyrics. ` +
-    `\n(6) "instrumentation" is a 3-8 item list of short instrument/sound descriptors (e.g. "fingerpicked acoustic", "warm Rhodes", "brushed snare"). ` +
-    `\n(7) "structure" is a list of canonical section names: "Intro","Verse","Pre-Chorus","Chorus","Post-Chorus","Bridge","Final Chorus","Outro". Do NOT include "Guitar Solo" / "Instrumental" / "Breakdown" — those are arrangement details, not vocal sections. ` +
-    `\n(8) Output ONLY valid JSON. No commentary, no markdown fences.`;
+    `\n(2) Pick a coherent BPM, key, and time signature that fit the genre/mood. Use the GENRE PRIORS table below as your default — only deviate when the user concept clearly justifies it. ` +
+    `\n(3) The structure must match the named genre's conventions: hook-driven Verse-PreChorus-Chorus for pop/rock/R&B, 16-bar Verse + 8-bar Hook for hip-hop, Build-Drop for dance/electronic, strophic Verse-Refrain for folk/singer-songwriter, AABA for classic jazz, through-composed build-and-release for cinematic. Do not impose pop-form on genres that don't use it. ` +
+    `\n(4) "musicPrompt" is fed verbatim to a music-generation model. Write it as a dense, comma-separated production brief covering genre, BPM, key, instrumentation, vocal direction, energy arc, and era. Do NOT include lyrics, section headings, or stage directions in musicPrompt. Lead with the most genre-defining instruments. ` +
+    `\n(5) "lyricsBrief" is a paragraph for a lyric writer. Describe the emotional arc, narrative perspective (1st/2nd/3rd person, present/past tense), 3-5 concrete imagery seeds, and the hook/refrain motif. Do NOT write the actual lyrics. ${isInstrumental ? 'For instrumental tracks, set lyricsBrief to an empty string.' : ''} ` +
+    `\n(6) "hookLine" is a short draft of the chorus / refrain hook line — under 10 words, memorable, sing-able. ${isInstrumental ? 'Set to null for instrumental tracks.' : 'Required for vocal tracks.'} ` +
+    `\n(7) "instrumentation" is a list of short instrument/sound descriptors (e.g. "fingerpicked acoustic", "warm Rhodes", "brushed snare"). Choose count from the genre's range in the priors table — typically 5-8 for pop/rock/R&B, 2-5 for folk/lo-fi, 8-14 for cinematic/orchestral, 2-4 for ambient. ` +
+    `\n(8) "structure" is an array of section names matching the genre. Allowed canonical names: "Intro", "Verse", "Verse 2", "Pre-Chorus", "Chorus", "Post-Chorus", "Hook", "Refrain", "Bridge", "Final Chorus", "Drop", "Build", "Breakdown", "Outro", "Vamp", "Head", "Solo Section". Do NOT use "Guitar Solo" / "Instrumental" — instrumental moments are conveyed through "Solo Section" or "Breakdown" labels. ` +
+    `\n(9) "arrangementArc" is one short sentence describing the energy/density progression (e.g. "sparse intro → builds at chorus → stripped bridge → fullest final chorus"). ` +
+    `\n(10) "vocalDirection" ${isInstrumental ? 'must be null (instrumental track)' : 'should describe gender/timbre, vocal range register, delivery (belted/whispered/rap/etc.), use of harmonies/ad-libs, and any post-processing (auto-tune, doubled, etc.)'}. ` +
+    `\n(11) Output ONLY valid JSON. No commentary, no markdown fences.\n` +
+    ORCHESTRATION_GENRE_PRIORS;
 
   const schema =
     `{` +
@@ -574,13 +650,15 @@ export async function minimaxOrchestrate(
     `"key": string | null, ` +
     `"timeSignature": string | null, ` +
     `"energyArc": string, ` +
+    `"arrangementArc": string, ` +
     `"instrumentation": string[], ` +
-    `"vocalDirection": ${isInstrumental ? 'null (instrumental)' : 'string | null'}, ` +
+    `"vocalDirection": ${isInstrumental ? 'null' : 'string | null'}, ` +
     `"productionNotes": string, ` +
     `"structure": string[], ` +
     `"vibeDescriptors": string (comma-separated, no artist names), ` +
     `"musicPrompt": string (dense production brief, no lyrics), ` +
-    `"lyricsBrief": ${isInstrumental ? 'string (empty since instrumental)' : 'string'}` +
+    `"lyricsBrief": ${isInstrumental ? 'string (empty since instrumental)' : 'string'}, ` +
+    `"hookLine": ${isInstrumental ? 'null' : 'string'}` +
     `}`;
 
   const user =
@@ -593,7 +671,10 @@ export async function minimaxOrchestrate(
       { role: 'system', content: system },
       { role: 'user', content: user },
     ],
-    maxTokens: 1500,
+    // Bumped to fit hookLine + arrangementArc fields and the longer system
+    // prompt with genre priors. Reasoning models still occasionally need head-
+    // room before emitting the final JSON.
+    maxTokens: 2200,
     temperature: 0.7,
   });
 

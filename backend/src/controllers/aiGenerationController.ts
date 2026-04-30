@@ -16,9 +16,13 @@ import {
 } from '../utils/minimax';
 import {
   lookupSubgenreHint,
+  lookupGenreHint,
+  lookupMoodHint,
   lookupEnergyHint,
   lookupVocalStyleHint,
   lookupEraHint,
+  lookupLyricConvention,
+  lookupVisualConvention,
 } from '../utils/musicCatalog';
 import { assertCanGenerate, getDailyUsage } from '../utils/aiUsage';
 import { slugify, uniqueSuffix, createWithUniqueSlug } from '../utils/slugify';
@@ -73,10 +77,16 @@ async function buildMusicPrompt(input: MusicPromptInput): Promise<BuiltMusicProm
   const genreLine = [input.genre, input.subGenre].filter(Boolean).join(' / ');
   if (genreLine) parts.push(`Genre: ${genreLine}`);
 
-  const subHint = lookupSubgenreHint(input.subGenre);
-  if (subHint) parts.push(`Production: ${subHint}`);
+  // Subgenre hint takes precedence; fall back to primary-genre hint when no
+  // subgenre was selected so e.g. "Rock" still gets production cues.
+  const productionHint =
+    lookupSubgenreHint(input.subGenre) || lookupGenreHint(input.genre);
+  if (productionHint) parts.push(`Production: ${productionHint}`);
 
-  if (input.mood) parts.push(`Mood: ${input.mood}`);
+  if (input.mood) {
+    const moodHint = lookupMoodHint(input.mood);
+    parts.push(`Mood: ${input.mood}${moodHint ? ` (${moodHint})` : ''}`);
+  }
 
   if (input.energy) {
     const energyHint = lookupEnergyHint(input.energy);
@@ -244,10 +254,15 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
       }
     }
 
+    const lyricGenre = plan?.genre || (typeof genre === 'string' ? genre : undefined);
+    const lyricSubGenre =
+      plan?.subGenre || (typeof subGenre === 'string' ? subGenre : undefined);
+    const convention = lookupLyricConvention(lyricGenre || null, lyricSubGenre || null);
+
     const result = await minimaxGenerateLyrics({
       idea: plan?.refinedConcept?.trim() || idea,
-      genre: plan?.genre || (typeof genre === 'string' ? genre : undefined),
-      subGenre: plan?.subGenre || (typeof subGenre === 'string' ? subGenre : undefined),
+      genre: lyricGenre,
+      subGenre: lyricSubGenre,
       mood: typeof mood === 'string' ? mood : undefined,
       energy: typeof energy === 'string' ? energy : undefined,
       era: typeof era === 'string' ? era : undefined,
@@ -258,6 +273,11 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
       style: typeof style === 'string' ? style : undefined,
       language: lang,
       lyricsBrief: plan?.lyricsBrief || undefined,
+      hookLine: plan?.hookLine || undefined,
+      conventionRhyme: convention?.rhyme,
+      conventionVoice: convention?.voice,
+      conventionStructure: convention?.structure,
+      conventionLengthHint: convention?.lengthHint,
     });
 
     // Always sanitize: even with the tightened system prompt, models
@@ -345,16 +365,27 @@ async function orchestrateAndPrepareLyrics(gen: {
   let nextLyrics = gen.lyrics ? sanitizeLyrics(gen.lyrics) : null;
   if (!gen.isInstrumental && !nextLyrics && plan) {
     try {
+      const autoGenre = plan.genre || gen.genre || undefined;
+      const autoSubGenre = plan.subGenre || gen.subGenre || undefined;
+      const autoConvention = lookupLyricConvention(
+        autoGenre || null,
+        autoSubGenre || null
+      );
       const result = await minimaxGenerateLyrics({
         idea: plan.refinedConcept || gen.prompt || gen.title || 'song',
-        genre: plan.genre || gen.genre || undefined,
-        subGenre: plan.subGenre || gen.subGenre || undefined,
+        genre: autoGenre,
+        subGenre: autoSubGenre,
         mood: gen.mood || undefined,
         energy: gen.energy || undefined,
         era: gen.era || undefined,
         vocalStyle: plan.vocalDirection || gen.vocalStyle || undefined,
         vibeDescriptors: plan.vibeDescriptors || undefined,
         lyricsBrief: plan.lyricsBrief || undefined,
+        hookLine: plan.hookLine || undefined,
+        conventionRhyme: autoConvention?.rhyme,
+        conventionVoice: autoConvention?.voice,
+        conventionStructure: autoConvention?.structure,
+        conventionLengthHint: autoConvention?.lengthHint,
       });
       nextLyrics = sanitizeLyrics(result.lyrics);
     } catch (err) {
@@ -985,20 +1016,58 @@ function buildCoverArtPrompt(input: {
   title?: string | null;
   prompt?: string | null;
   genre?: string | null;
+  subGenre?: string | null;
   mood?: string | null;
+  energy?: string | null;
+  era?: string | null;
 }): string {
-  const bits: string[] = [];
-  if (input.title) bits.push(`title: ${input.title}`);
-  if (input.genre) bits.push(`genre: ${input.genre}`);
-  if (input.mood) bits.push(`mood: ${input.mood}`);
-  if (input.prompt) bits.push(`vibe: ${input.prompt.slice(0, 200)}`);
-  const ctx = bits.join(', ');
-  return (
-    `Square album cover artwork for a song${ctx ? ` (${ctx})` : ''}. ` +
-    `Striking, contemporary, music-streaming poster design. ` +
-    `Bold composition, high contrast, no text, no logos, no watermarks. ` +
-    `Cinematic lighting, rich colors.`
+  // Pull a genre-specific visual language block from the catalog. Falls back
+  // to a neutral cinematic-poster aesthetic if no genre/subgenre matches —
+  // way better than the previous one-size-fits-all "cinematic lighting, rich
+  // colors" prompt that actively hurt grunge/lofi/black-metal aesthetics.
+  const visual = lookupVisualConvention(input.genre || null, input.subGenre || null);
+
+  const lines: string[] = [];
+  lines.push(
+    `Album cover artwork (square 1:1) for a${input.genre ? ` ${input.genre.toLowerCase()}` : ''} song${
+      input.title ? ` titled "${input.title}"` : ''
+    }${input.mood ? `, ${input.mood.toLowerCase()} mood` : ''}.`
   );
+
+  if (visual) {
+    lines.push(`Palette: ${visual.palette}.`);
+    lines.push(`Composition: ${visual.composition}.`);
+    lines.push(`Visual motifs: ${visual.motifs}.`);
+    lines.push(`Texture / finish: ${visual.texture}.`);
+    lines.push(`Lighting: ${visual.lighting}.`);
+  } else {
+    // Neutral fallback — only used if genre is absent/unrecognized.
+    lines.push(
+      `Striking contemporary album-cover composition, balanced negative space, evocative single subject.`
+    );
+  }
+
+  // Era cue, only when meaningful for visual styling.
+  if (input.era && input.era !== 'Modern' && input.era !== 'Timeless') {
+    lines.push(`Era cue: ${input.era} visual aesthetic.`);
+  }
+
+  // Free-text user vibe goes in last so the genre frame sets the baseline and
+  // the user can tilt it further. Cap at 220 chars to leave headroom.
+  if (input.prompt?.trim()) {
+    lines.push(`Additional vibe: ${input.prompt.trim().slice(0, 220)}.`);
+  }
+
+  // Hard guardrails for streaming-platform covers. These are universal — no
+  // text overlays (the title is rendered by the player UI), no watermarks,
+  // no logos, no real recognizable celebrity faces.
+  lines.push(
+    `Constraints: NO text, NO typography, NO letters or numbers, NO logos, NO watermarks. ` +
+      `Do NOT include real celebrity faces or copyrighted characters. Composition must work as a tiny ` +
+      `streaming thumbnail and as a poster.`
+  );
+
+  return lines.join(' ');
 }
 
 async function persistMinimaxImage(
@@ -1036,11 +1105,26 @@ export const generateCoverArt = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const { prompt, title, genre, mood, aspectRatio } = req.body || {};
+    const { prompt, title, genre, subGenre, mood, energy, era, aspectRatio } =
+      req.body || {};
+    // Always run the structured builder when we have *any* genre/mood context,
+    // even if the user supplied a free-text prompt — we wrap their prompt as
+    // an additional vibe inside the genre-aware frame. If they explicitly want
+    // raw control, they can pass an opaque prompt with no genre.
+    const hasGenreContext =
+      typeof genre === 'string' || typeof subGenre === 'string' || typeof mood === 'string';
     const promptText =
-      typeof prompt === 'string' && prompt.trim().length > 0
+      typeof prompt === 'string' && prompt.trim().length > 0 && !hasGenreContext
         ? prompt.trim()
-        : buildCoverArtPrompt({ title, prompt: null, genre, mood });
+        : buildCoverArtPrompt({
+            title,
+            prompt: typeof prompt === 'string' ? prompt : null,
+            genre,
+            subGenre,
+            mood,
+            energy,
+            era,
+          });
     if (promptText.length > MAX_PROMPT_LEN) {
       res
         .status(400)
@@ -1363,12 +1447,35 @@ export const regenerateSection = async (req: RequestWithUser, res: Response) => 
     }
 
     // Generate new section text using the model. We feed surrounding
-    // sections as context so the rewrite stays thematically coherent.
-    const surrounding = source.lyrics.slice(0, target.start) + '\n[REWRITE_HERE]\n' + source.lyrics.slice(target.end);
+    // sections as context so the rewrite stays thematically coherent. Genre /
+    // mood context goes in the system prompt so the rewrite stays inside the
+    // song's stylistic frame instead of drifting toward a generic pop register.
+    const surrounding =
+      source.lyrics.slice(0, target.start) +
+      '\n[REWRITE_HERE]\n' +
+      source.lyrics.slice(target.end);
+    const sectionConvention = lookupLyricConvention(source.genre, source.subGenre);
+    const styleContext: string[] = [];
+    if (source.genre || source.subGenre) {
+      styleContext.push(
+        `Genre: ${[source.genre, source.subGenre].filter(Boolean).join(' / ')}`
+      );
+    }
+    if (source.mood) styleContext.push(`Mood: ${source.mood}`);
+    if (source.energy) styleContext.push(`Energy: ${source.energy}`);
+    if (source.era) styleContext.push(`Era: ${source.era}`);
+    if (source.vibeReference) styleContext.push(`Vibe: ${source.vibeReference}`);
+    if (sectionConvention?.rhyme) styleContext.push(`Rhyme/meter: ${sectionConvention.rhyme}`);
+    if (sectionConvention?.voice) styleContext.push(`Voice: ${sectionConvention.voice}`);
+    const styleBlock = styleContext.length
+      ? `\n\nSong style frame (must stay inside this):\n${styleContext.join('\n')}`
+      : '';
+
     const sysPrompt =
       `You are rewriting a single section of an existing song. Output ONLY the new lyrics for the ${target.tag} section. ` +
-      `Match the existing meter, rhyme scheme, and theme. Do NOT include the section tag itself. ` +
-      `Do NOT include other sections. Keep length similar to the original.`;
+      `Match the existing meter, rhyme scheme, and theme. Stay inside the song's genre/mood/voice frame supplied below. ` +
+      `Do NOT include the section tag itself. Do NOT include other sections. Keep length similar to the original. ` +
+      `Do NOT include parenthetical stage directions, instrument cues, or [Guitar Solo]-style tags — output only sing-able lyrics.${styleBlock}`;
     const userPrompt =
       `Existing song with the section to rewrite marked [REWRITE_HERE]:\n\n${surrounding}\n\n` +
       (typeof instructions === 'string' && instructions.trim()
@@ -1474,10 +1581,29 @@ export const extendGeneration = async (req: RequestWithUser, res: Response) => {
 
     // Compose the extension prompt. We tell the model to continue from where
     // the source left off rather than restart, and pin lyrics if supplied.
+    // Carry the original track's genre / mood / era / vibe so the music model
+    // doesn't drift into a generic continuation that loses the source style.
+    const extContext: string[] = [];
+    if (source.genre || source.subGenre) {
+      extContext.push(
+        `Genre: ${[source.genre, source.subGenre].filter(Boolean).join(' / ')}`
+      );
+    }
+    const extProductionHint =
+      lookupSubgenreHint(source.subGenre) || lookupGenreHint(source.genre);
+    if (extProductionHint) extContext.push(`Production: ${extProductionHint}`);
+    if (source.mood) extContext.push(`Mood: ${source.mood}`);
+    if (source.energy) extContext.push(`Energy: ${source.energy}`);
+    if (source.era) extContext.push(`Era: ${source.era}`);
+    if (source.vibeReference) extContext.push(`Vibe: ${source.vibeReference}`);
+
     const continuationPrompt =
-      `Continue this track: keep the same key, tempo, instrumentation, and vocal character. ` +
-      `Pick up where the reference audio leaves off and extend for another 30-60 seconds. ` +
-      (typeof instructions === 'string' && instructions.trim() ? `Direction: ${instructions.trim()}` : '');
+      `Continue this track: keep the same key, tempo, instrumentation, and vocal character as the reference audio. ` +
+      `Pick up where the reference audio leaves off and extend for another 30-60 seconds. Maintain the same arrangement density and energy arc — do not reset to a sparse intro.` +
+      (extContext.length ? `\n${extContext.join('\n')}` : '') +
+      (typeof instructions === 'string' && instructions.trim()
+        ? `\nDirection: ${instructions.trim()}`
+        : '');
 
     const sanitizedExtraLyrics =
       typeof extraLyrics === 'string' && extraLyrics.trim()

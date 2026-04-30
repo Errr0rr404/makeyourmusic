@@ -29,46 +29,35 @@ export function computeTrendingScore(
   return numerator / denominator;
 }
 
-export async function refreshTrendingScores(maxRows = 5000): Promise<number> {
-  const candidates = await prisma.track.findMany({
-    where: { isPublic: true, status: 'ACTIVE', takedownStatus: null },
-    select: {
-      id: true,
-      likeCount: true,
-      playCount: true,
-      shareCount: true,
-      createdAt: true,
-    },
-    orderBy: { createdAt: 'desc' },
-    take: maxRows,
-  });
+// Recompute trending scores in a single SQL UPDATE rather than N row-by-row
+// transactions. The previous chunked-transaction approach held locks on
+// 100 tracks at a time, blocking concurrent like/play writes; this version
+// uses Postgres's native power() and finishes in one round-trip.
+//
+// Skips rows whose trending_updated_at is fresher than RECOMPUTE_AGE_MIN
+// minutes ago — combined with the 15-minute cron, that means we only
+// recompute when something has actually changed since last time.
+const RECOMPUTE_AGE_MIN = parseInt(process.env.TRENDING_RECOMPUTE_AGE_MIN || '10', 10);
 
-  const now = new Date();
-  let updated = 0;
-  // Update in chunks to keep transactions short.
-  const CHUNK = 100;
-  for (let i = 0; i < candidates.length; i += CHUNK) {
-    const slice = candidates.slice(i, i + CHUNK);
-    await prisma.$transaction(
-      slice.map((t) =>
-        prisma.track.update({
-          where: { id: t.id },
-          data: {
-            trendingScore: computeTrendingScore(
-              t.likeCount,
-              t.playCount,
-              t.shareCount,
-              t.createdAt,
-              now
-            ),
-            trendingUpdatedAt: now,
-          },
-        })
-      )
-    );
-    updated += slice.length;
-  }
-
-  logger.info('Trending scores refreshed', { updated });
-  return updated;
+export async function refreshTrendingScores(_maxRows = 5000): Promise<number> {
+  const result = await prisma.$executeRawUnsafe(
+    `
+    UPDATE tracks
+    SET
+      trending_score = (
+        like_count + (play_count::float / 10.0) + (share_count * 2)
+      ) / power(
+        GREATEST(0, EXTRACT(EPOCH FROM (NOW() - created_at)) / 3600.0) + ${FRESH_OFFSET_HOURS},
+        ${GRAVITY}
+      ),
+      trending_updated_at = NOW()
+    WHERE
+      is_public = true
+      AND status = 'ACTIVE'
+      AND takedown_status IS NULL
+      AND (trending_updated_at IS NULL OR trending_updated_at < NOW() - INTERVAL '${RECOMPUTE_AGE_MIN} minutes')
+    `
+  );
+  logger.info('Trending scores refreshed', { updated: result });
+  return Number(result) || 0;
 }

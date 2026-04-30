@@ -12,18 +12,31 @@ import logger from './logger';
 import { findSimilarTracks } from './recommendations';
 import { uniqueSuffix } from './slugify';
 
+// ISO-8601 week-of-year. Returns "YYYY-Www" using the **ISO week year**
+// (which can differ from the calendar year at boundaries — e.g. 2025-12-29
+// is in 2026-W01). The previous implementation used the calendar year of
+// the current week's Thursday, which is correct for week-year — but mixed
+// it with a `Math.ceil` for the week number that breaks at the rare
+// "first Thursday is Jan 1" cases.
 function isoWeek(d: Date = new Date()): string {
-  // Cheap ISO-week: YYYY-Www
-  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
-  const dayNum = (date.getUTCDay() + 6) % 7;
-  date.setUTCDate(date.getUTCDate() - dayNum + 3);
-  const firstThursday = date.getTime();
-  date.setUTCMonth(0, 1);
-  if (date.getUTCDay() !== 4) {
-    date.setUTCMonth(0, 1 + ((4 - date.getUTCDay()) + 7) % 7);
-  }
-  const week = 1 + Math.ceil((firstThursday - date.getTime()) / 604_800_000);
-  return `${new Date(firstThursday).getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+  // Algorithm: find the Thursday of the current week (ISO weeks are
+  // anchored on Thursdays). The ISO week year is that Thursday's calendar
+  // year. The week number is the count of Thursdays from the year's first
+  // Thursday up to and including this week's Thursday.
+  const cur = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  // ISO weekday 1..7 with Mon=1 → offset from Mon
+  const dayOffsetFromMon = (cur.getUTCDay() + 6) % 7;
+  // Step to this week's Thursday (Mon=0 + 3 = Thu).
+  cur.setUTCDate(cur.getUTCDate() - dayOffsetFromMon + 3);
+  const isoYear = cur.getUTCFullYear();
+
+  // Find the Thursday of week 1 of isoYear (Jan 4 is always in week 1).
+  const jan4 = new Date(Date.UTC(isoYear, 0, 4));
+  const jan4Offset = (jan4.getUTCDay() + 6) % 7;
+  jan4.setUTCDate(jan4.getUTCDate() - jan4Offset + 3);
+
+  const week = 1 + Math.round((cur.getTime() - jan4.getTime()) / 604_800_000);
+  return `${isoYear}-W${String(week).padStart(2, '0')}`;
 }
 
 const MIXTAPE_SIZE = 25;

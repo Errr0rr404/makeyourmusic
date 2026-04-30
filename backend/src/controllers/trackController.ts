@@ -664,9 +664,18 @@ export const getRecommendations = async (req: RequestWithUser, res: Response) =>
       take: limit * 2,
     });
 
-    const shuffled = recommended.sort(() => Math.random() - 0.5).slice(0, limit);
+    // Fisher-Yates — `sort(() => Math.random() - 0.5)` is biased on V8 (the
+    // sort comparator must be transitive; random comparators violate that
+    // and skew toward the original order on TimSort).
+    const shuffled = [...recommended];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      const tmp = shuffled[i]!;
+      shuffled[i] = shuffled[j]!;
+      shuffled[j] = tmp;
+    }
 
-    res.json({ tracks: shuffled });
+    res.json({ tracks: shuffled.slice(0, limit) });
   } catch (error) {
     logger.error('Get recommendations error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get recommendations' });

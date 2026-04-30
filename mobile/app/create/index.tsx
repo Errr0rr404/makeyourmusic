@@ -19,6 +19,7 @@ import { Button } from '../../components/ui/Button';
 import { pickAndUploadImage } from '../../lib/uploadImage';
 import { hapticSelection, hapticSuccess } from '../../services/hapticService';
 import { Audio } from 'expo-av';
+import TrackPlayer from 'react-native-track-player';
 
 type Step = 'idea' | 'lyrics' | 'style' | 'generate' | 'publish';
 
@@ -276,28 +277,51 @@ export default function CreateScreen() {
     setStep('idea');
   };
 
+  // Reentrancy guard: rapid double-tap can otherwise spawn two
+  // createAsync calls in flight; the second's `previewSound.current`
+  // assignment overwrites the first, leaking the original sound with no
+  // way to unload it.
+  const previewBusyRef = useRef(false);
+
   const togglePreview = async () => {
     if (!generation?.audioUrl) return;
-    if (playingPreview && previewSound.current) {
-      await previewSound.current.pauseAsync();
-      setPlayingPreview(false);
-      return;
+    if (previewBusyRef.current) return;
+    previewBusyRef.current = true;
+    try {
+      if (playingPreview && previewSound.current) {
+        await previewSound.current.pauseAsync();
+        setPlayingPreview(false);
+        return;
+      }
+      // Pause the main music player so the user doesn't hear two streams
+      // simultaneously when previewing a generation while a track is
+      // playing.
+      try { await TrackPlayer.pause(); } catch { /* player not initialized */ }
+
+      if (previewSound.current && previewAudioUrlRef.current !== generation.audioUrl) {
+        await previewSound.current.unloadAsync?.().catch(() => {});
+        previewSound.current = null;
+        previewAudioUrlRef.current = null;
+      }
+      if (!previewSound.current) {
+        const { sound } = await Audio.Sound.createAsync({ uri: generation.audioUrl });
+        // If a faster tap already created another sound while we were
+        // awaiting createAsync, throw this one away.
+        if (previewSound.current) {
+          await sound.unloadAsync().catch(() => {});
+          return;
+        }
+        previewSound.current = sound;
+        previewAudioUrlRef.current = generation.audioUrl;
+        sound.setOnPlaybackStatusUpdate((status: any) => {
+          if (status.didJustFinish) setPlayingPreview(false);
+        });
+      }
+      await previewSound.current.playAsync();
+      setPlayingPreview(true);
+    } finally {
+      previewBusyRef.current = false;
     }
-    if (previewSound.current && previewAudioUrlRef.current !== generation.audioUrl) {
-      await previewSound.current.unloadAsync?.().catch(() => {});
-      previewSound.current = null;
-      previewAudioUrlRef.current = null;
-    }
-    if (!previewSound.current) {
-      const { sound } = await Audio.Sound.createAsync({ uri: generation.audioUrl });
-      previewSound.current = sound;
-      previewAudioUrlRef.current = generation.audioUrl;
-      sound.setOnPlaybackStatusUpdate((status: any) => {
-        if (status.didJustFinish) setPlayingPreview(false);
-      });
-    }
-    await previewSound.current.playAsync();
-    setPlayingPreview(true);
   };
 
   const [uploadingCover, setUploadingCover] = useState(false);
