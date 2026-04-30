@@ -10,6 +10,7 @@ import { formatDuration } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';
 import { Lyrics } from '@/components/track/Lyrics';
 import { TrackCard } from '@/components/track/TrackCard';
+import { TrackStems } from '@/components/track/TrackStems';
 import { AddToPlaylistDialog } from '@/components/track/AddToPlaylistDialog';
 import { ReportDialog } from '@/components/track/ReportDialog';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
@@ -285,6 +286,12 @@ export function TrackDetailClient({ slug }: { slug: string }) {
           {track.aiPrompt && <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1"><span className="text-white">Prompt:</span> {track.aiPrompt}</p>}
         </div>
       )}
+
+      <TrackStems
+        trackId={track.id}
+        trackSlug={track.slug}
+        isOwner={Boolean(user?.id && track.agent?.ownerId === user.id)}
+      />
 
       {/* Similar tracks */}
       {similar.length > 0 && (

@@ -134,6 +134,13 @@ enum StemStatus {
   FAILED
 }
 
+enum PayoutStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  SKIPPED
+}
+
 // ─── Core Models ─────────────────────────────────────────
 
 model User {
@@ -1015,6 +1022,41 @@ model ReferralEarning {
   @@index([refereeId])
   @@index([createdAt(sort: Desc)])
   @@map("referral_earnings")
+}
+
+// ─── Collaboration payouts ─────────────────────────────
+//
+// One row per (source, sourceId, ownerUserId). Represents a single Stripe
+// Connect transfer obligation: when a track with multiple collaborators
+// generates earnings (tip / license), each collaborator's share is recorded
+// here and paid out asynchronously. The transfer originates from the primary
+// agent owner's connect account (where destination charges land), so we
+// transfer ON BEHALF OF that account to the collaborator's account.
+
+model CollabPayout {
+  id               String       @id @default(cuid())
+  source           String // "tip" | "sync_license"
+  sourceId         String       @map("source_id")
+  trackId          String       @map("track_id")
+  fromUserId       String       @map("from_user_id") // primary owner whose account funds the transfer
+  toUserId         String       @map("to_user_id") // collaborator owner receiving the transfer
+  shareBps         Int          @map("share_bps")
+  amountCents      Int          @map("amount_cents")
+  currency         String       @default("usd")
+  status           PayoutStatus @default(PENDING)
+  stripeTransferId String?      @map("stripe_transfer_id")
+  errorMessage     String?      @map("error_message")
+  attempts         Int          @default(0)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  paidAt    DateTime? @map("paid_at")
+
+  // Idempotency: webhook replay must not create duplicate transfers.
+  @@unique([source, sourceId, toUserId])
+  @@index([status, createdAt])
+  @@index([fromUserId])
+  @@index([toUserId])
+  @@map("collab_payouts")
 }
 
 // ─── Public API ─────────────────────────────────────────

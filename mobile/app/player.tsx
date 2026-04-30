@@ -17,6 +17,7 @@ import {
   Share2,
   ListMusic,
   SlidersHorizontal,
+  Mic2,
 } from 'lucide-react-native';
 import TrackPlayer from 'react-native-track-player';
 import Slider from '../components/ui/Slider';
@@ -24,10 +25,12 @@ import { SwipeableDismiss } from '../components/ui/SwipeableDismiss';
 import { hapticLight } from '../services/hapticService';
 import { createTrackShareLink } from '../lib/linking';
 import PlayerSettingsModal from '../components/player/PlayerSettings';
+import { Karaoke } from '../components/player/Karaoke';
 
 export default function FullScreenPlayer() {
   const router = useRouter();
   const [showSettings, setShowSettings] = useState(false);
+  const [showKaraoke, setShowKaraoke] = useState(false);
   const [liked, setLiked] = useState(false);
   const [likeBusy, setLikeBusy] = useState(false);
   const { isAuthenticated } = useAuthStore();
@@ -333,6 +336,16 @@ export default function FullScreenPlayer() {
               <TouchableOpacity
                 className="p-3"
                 onPress={() => {
+                  setShowKaraoke(true);
+                  hapticLight();
+                }}
+                accessibilityLabel="Karaoke"
+              >
+                <Mic2 size={20} color="#a1a1aa" />
+              </TouchableOpacity>
+              <TouchableOpacity
+                className="p-3"
+                onPress={() => {
                   setShowSettings(true);
                   hapticLight();
                 }}
@@ -352,6 +365,15 @@ export default function FullScreenPlayer() {
       <PlayerSettingsModal
         visible={showSettings}
         onClose={() => setShowSettings(false)}
+      />
+
+      {/* Karaoke Modal */}
+      <Karaoke
+        visible={showKaraoke}
+        onClose={() => setShowKaraoke(false)}
+        trackId={currentTrack.id}
+        trackTitle={currentTrack.title}
+        positionSec={progress}
       />
     </>
   );

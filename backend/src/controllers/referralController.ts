@@ -139,3 +139,100 @@ export async function recordReferralEarning(input: RecordReferralInput): Promise
     throw err;
   }
 }
+
+// Skip rows below this threshold to avoid wasting Stripe transfer fees on
+// pennies. The remainder accumulates against future earnings until it crosses
+// the threshold, then all unpaid rows for that referrer are paid in one
+// transfer.
+const MIN_PAYOUT_CENTS = parseInt(process.env.REFERRAL_MIN_PAYOUT_CENTS || '500', 10);
+
+export interface PayReferralsResult {
+  candidates: number;
+  paidReferrers: number;
+  totalCents: number;
+  failed: number;
+}
+
+// Cron-driven payout: groups unpaid referral earnings by referrer, transfers
+// the total to the referrer's Connect account, marks rows paidOut=true.
+// Idempotent — failed transfers leave rows unpaid for the next tick to retry.
+export async function payReferrals(): Promise<PayReferralsResult> {
+  const out: PayReferralsResult = { candidates: 0, paidReferrers: 0, totalCents: 0, failed: 0 };
+
+  const { getStripe } = await import('../utils/stripeClient');
+  const stripe = getStripe();
+  if (!stripe) {
+    logger.info('payReferrals skipped: Stripe not configured');
+    return out;
+  }
+
+  // Grab unpaid earnings grouped by referrer. Cap to a sane batch so a huge
+  // backlog doesn't blow the cron tick budget.
+  const unpaid = await prisma.referralEarning.findMany({
+    where: { paidOut: false },
+    select: { id: true, referrerId: true, amountCents: true },
+    take: 1000,
+    orderBy: { createdAt: 'asc' },
+  });
+  out.candidates = unpaid.length;
+  if (unpaid.length === 0) return out;
+
+  const byReferrer = new Map<string, { ids: string[]; totalCents: number }>();
+  for (const row of unpaid) {
+    const bucket = byReferrer.get(row.referrerId) || { ids: [], totalCents: 0 };
+    bucket.ids.push(row.id);
+    bucket.totalCents += row.amountCents;
+    byReferrer.set(row.referrerId, bucket);
+  }
+
+  for (const [referrerId, bucket] of byReferrer) {
+    if (bucket.totalCents < MIN_PAYOUT_CENTS) continue;
+
+    const referrer = await prisma.user.findUnique({
+      where: { id: referrerId },
+      include: { connectAccount: true },
+    });
+    if (
+      !referrer?.connectAccount?.stripeAccountId ||
+      referrer.connectAccount.status !== 'ACTIVE' ||
+      !referrer.connectAccount.payoutsEnabled
+    ) {
+      // Skip — referrer hasn't completed Connect onboarding. The earnings
+      // remain pending until they do.
+      continue;
+    }
+
+    let transferId: string | null = null;
+    try {
+      const transfer = await stripe.transfers.create({
+        amount: bucket.totalCents,
+        currency: 'usd',
+        destination: referrer.connectAccount.stripeAccountId,
+        description: `Referral earnings (${bucket.ids.length} entries)`,
+        metadata: {
+          kind: 'referral_payout',
+          referrerId,
+          earningCount: String(bucket.ids.length),
+        },
+      });
+      transferId = transfer.id;
+    } catch (err) {
+      logger.warn('payReferrals: transfer failed', {
+        referrerId,
+        cents: bucket.totalCents,
+        error: (err as Error).message,
+      });
+      out.failed += bucket.ids.length;
+      continue;
+    }
+
+    await prisma.referralEarning.updateMany({
+      where: { id: { in: bucket.ids } },
+      data: { paidOut: true, stripeTransferId: transferId },
+    });
+    out.paidReferrers += 1;
+    out.totalCents += bucket.totalCents;
+  }
+
+  return out;
+}

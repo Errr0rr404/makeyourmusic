@@ -172,6 +172,26 @@ export async function handleTipCheckoutCompleted(session: any) {
     logger.warn('Tip referral earning failed', { tipId: tip.id, error: (err as Error).message });
   }
 
+  // Multi-agent track: split the net tip across collaborators by issuing
+  // Stripe transfers on behalf of the primary's connect account. Best-effort —
+  // anything that fails persists in collab_payouts for cron retry.
+  if (tip.trackId) {
+    try {
+      const { splitTrackEarnings } = await import('../utils/collabSplits');
+      await splitTrackEarnings({
+        trackId: tip.trackId,
+        netCents: tip.netCents,
+        source: 'tip',
+        sourceId: tip.id,
+      });
+    } catch (err) {
+      logger.warn('Tip collab split failed', {
+        tipId: tip.id,
+        error: (err as Error).message,
+      });
+    }
+  }
+
   // Notify the creator.
   let fromName = 'Someone';
   if (tip.fromUserId) {

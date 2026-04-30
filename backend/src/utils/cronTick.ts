@@ -13,6 +13,8 @@ import { refreshTrendingScores } from './trending';
 import { recomputeAllFeatures } from './recommendations';
 import { generateWeeklyMixtapes } from './mixtape';
 import { pollPreviewVideos } from './previewVideoPoller';
+import { payReferrals } from '../controllers/referralController';
+import { processPendingCollabPayouts } from './collabSplits';
 
 let started = false;
 
@@ -30,6 +32,8 @@ const LOCK_FEATURES = 1002;
 const LOCK_PREVIEW = 1003;
 const LOCK_MIXTAPE = 1004;
 const LOCK_STUCK_GEN_SWEEP = 1005;
+const LOCK_REFERRAL_PAYOUT = 1006;
+const LOCK_COLLAB_PAYOUT = 1007;
 
 async function withLock(lockId: number, fn: () => Promise<void>): Promise<boolean> {
   const rows = await prisma.$queryRawUnsafe<Array<{ pg_try_advisory_lock: boolean }>>(
@@ -133,8 +137,36 @@ export function startCron(): void {
     });
   }, 5 * 60 * 1000);
 
+  // Referral payouts — once per hour. Issues Stripe Connect transfers for
+  // accumulated referral earnings; rows below the min-payout threshold or
+  // for referrers without an active Connect account stay pending.
+  const referralT = setInterval(async () => {
+    await withLock(LOCK_REFERRAL_PAYOUT, async () => {
+      try {
+        const r = await payReferrals();
+        if (r.candidates > 0) logger.info('cron: referral payouts processed', r);
+      } catch (err) {
+        logger.warn('cron: referral payout failed', { error: (err as Error).message });
+      }
+    });
+  }, 60 * 60 * 1000);
+
+  // Collab payout retry — every 15 minutes. Picks up any PENDING transfers
+  // that failed at webhook time (transient Stripe error, recipient not yet
+  // onboarded, etc.) and tries again until success or max attempts.
+  const collabT = setInterval(async () => {
+    await withLock(LOCK_COLLAB_PAYOUT, async () => {
+      try {
+        const r = await processPendingCollabPayouts();
+        if (r.attempted > 0) logger.info('cron: collab payouts processed', r);
+      } catch (err) {
+        logger.warn('cron: collab payout failed', { error: (err as Error).message });
+      }
+    });
+  }, 15 * 60 * 1000);
+
   // unref so the timers don't keep the process alive on graceful shutdown.
-  for (const t of [trendingT, featuresT, previewT, mixtapeT, sweepT]) {
+  for (const t of [trendingT, featuresT, previewT, mixtapeT, sweepT, referralT, collabT]) {
     if (typeof (t as any).unref === 'function') (t as any).unref();
   }
 

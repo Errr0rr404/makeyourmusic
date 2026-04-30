@@ -56,6 +56,8 @@ interface MusicPromptInput {
   /** Free-text legacy "extra style notes" field. */
   style?: string | null;
   isInstrumental?: boolean;
+  bpm?: number | null;
+  key?: string | null;
 }
 
 interface BuiltMusicPrompt {
@@ -110,6 +112,13 @@ async function buildMusicPrompt(input: MusicPromptInput): Promise<BuiltMusicProm
   if (vibeDescriptors) parts.push(`Sonic vibe: ${vibeDescriptors}`);
 
   if (input.style?.trim()) parts.push(`Style notes: ${input.style.trim()}`);
+
+  // BPM and key are passed through the prompt rather than as separate fields
+  // so we don't need a schema change. MiniMax respects these as constraints.
+  if (typeof input.bpm === 'number' && input.bpm > 0) {
+    parts.push(`Tempo: ${input.bpm} BPM`);
+  }
+  if (input.key?.trim()) parts.push(`Key: ${input.key.trim()}`);
 
   if (input.idea?.trim()) parts.push(`Concept: ${input.idea.trim()}`);
   if (input.title?.trim()) parts.push(`Working title: ${input.title.trim()}`);
@@ -471,7 +480,16 @@ export const startMusicGeneration = async (req: RequestWithUser, res: Response) 
       durationSec,
       isInstrumental,
       agentId,
+      bpm,
+      key,
     } = req.body || {};
+
+    // Validate optional bpm/key inputs.
+    const bpmVal =
+      typeof bpm === 'number' && Number.isFinite(bpm) && bpm >= 40 && bpm <= 240
+        ? Math.round(bpm)
+        : null;
+    const keyVal = typeof key === 'string' && key.trim().length <= 20 ? key.trim() || null : null;
 
     // For vocal tracks the user can either provide lyrics OR enough hints
     // (prompt/idea/genre) to drive auto-lyrics. When everything is empty
@@ -540,6 +558,8 @@ export const startMusicGeneration = async (req: RequestWithUser, res: Response) 
       vibeReference: personaPick(vibeReference, 'vibeReference'),
       style: personaPick(style, 'style'),
       isInstrumental: Boolean(isInstrumental),
+      bpm: bpmVal,
+      key: keyVal,
     });
 
     // Prefer the server-built prompt; fall back to any client-supplied prompt

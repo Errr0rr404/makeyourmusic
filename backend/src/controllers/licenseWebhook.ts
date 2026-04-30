@@ -59,6 +59,22 @@ export async function handleSyncLicenseCheckoutCompleted(session: any): Promise<
     }
   }
 
+  // Multi-agent track: split net licensing revenue across collaborators.
+  try {
+    const { splitTrackEarnings } = await import('../utils/collabSplits');
+    await splitTrackEarnings({
+      trackId: license.trackId,
+      netCents: license.netCents,
+      source: 'sync_license',
+      sourceId: license.id,
+    });
+  } catch (err) {
+    logger.warn('License collab split failed', {
+      licenseId,
+      error: (err as Error).message,
+    });
+  }
+
   logger.info('sync_license marked paid', { licenseId, amountCents: license.amountCents });
 }
 

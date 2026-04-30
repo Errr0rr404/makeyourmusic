@@ -6,10 +6,11 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { PublishGenerationDialog } from '@/components/studio/PublishGenerationDialog';
+import { ExtendGenerationDialog } from '@/components/studio/ExtendGenerationDialog';
 import { toast } from 'sonner';
 import {
   Sparkles, Wand2, Clock, Loader2, CheckCircle2, AlertCircle, XCircle,
-  Play, Globe, LockKeyhole, Trash2, Upload, RefreshCw, Lock, Repeat2,
+  Play, Globe, LockKeyhole, Trash2, Upload, RefreshCw, Lock, Repeat2, FastForward,
 } from 'lucide-react';
 
 interface Gen {
@@ -67,6 +68,7 @@ export default function GenerationsPage() {
   const [error, setError] = useState<string | null>(null);
   const [usage, setUsage] = useState<Usage | null>(null);
   const [publishGen, setPublishGen] = useState<Gen | null>(null);
+  const [extendGen, setExtendGen] = useState<Gen | null>(null);
 
   const load = useCallback(async () => {
     if (!isAuthenticated) {
@@ -277,6 +279,15 @@ export default function GenerationsPage() {
                       <Repeat2 className="w-3.5 h-3.5" /> Variation
                     </button>
                   )}
+                  {gen.status === 'COMPLETED' && gen.audioUrl && (
+                    <button
+                      onClick={() => setExtendGen(gen)}
+                      className="flex items-center justify-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500/15 text-amber-200 border border-amber-500/30 text-xs font-medium hover:bg-amber-500/25"
+                      title="Continue this track with a new section"
+                    >
+                      <FastForward className="w-3.5 h-3.5" /> Extend
+                    </button>
+                  )}
                   {gen.track && (
                     <Link
                       href={`/track/${gen.track.slug}`}
@@ -323,6 +334,16 @@ export default function GenerationsPage() {
             );
             setPublishGen(null);
           }}
+        />
+      )}
+
+      {extendGen && (
+        <ExtendGenerationDialog
+          generationId={extendGen.id}
+          generationTitle={extendGen.title || ''}
+          open
+          onClose={() => setExtendGen(null)}
+          onStarted={(newGen) => setGenerations((prev) => [newGen, ...prev])}
         />
       )}
     </div>

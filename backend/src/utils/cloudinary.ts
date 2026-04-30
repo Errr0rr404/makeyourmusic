@@ -1,5 +1,7 @@
 import { v2 as cloudinary } from 'cloudinary';
 import { Readable } from 'stream';
+import crypto from 'crypto';
+import logger from './logger';
 
 // Configure Cloudinary
 cloudinary.config({
@@ -7,6 +9,20 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+
+// Boot-time warning when Cloudinary is missing in production. We don't throw
+// to avoid taking the API down at boot when the operator is briefly without
+// creds — but we make the misconfiguration loud in logs. Provider-URL
+// fallbacks for audio uploads will produce 404s once the upstream URL
+// expires (typically a few hours).
+if (
+  process.env.NODE_ENV === 'production' &&
+  !(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET)
+) {
+  logger.error(
+    '[cloudinary] credentials missing in production — audio/cover uploads will fall back to provider URLs that expire'
+  );
+}
 
 export interface UploadResult {
   secure_url: string;
@@ -38,12 +54,18 @@ export const uploadBuffer = async (
 
   const cloudinaryFolder = `makeyourmusic/${folder}`;
 
+  // Collision-safe public_id. With overwrite:false, two same-millisecond
+  // uploads with the same filename would otherwise throw — append a short
+  // crypto-random suffix to keep them unique without changing semantics
+  // when callers pass a stable filename.
+  const uniqueId = filename ? `${filename}-${crypto.randomBytes(3).toString('hex')}` : undefined;
+
   return new Promise((resolve, reject) => {
     const uploadStream = cloudinary.uploader.upload_stream(
       {
         folder: cloudinaryFolder,
         resource_type: resourceType,
-        public_id: filename || undefined,
+        public_id: uniqueId,
         overwrite: false,
       },
       (error: any, result: any) => {

@@ -74,6 +74,8 @@ export default function CreatePage() {
   const [language, setLanguage] = useState('English');
   const [isInstrumental, setIsInstrumental] = useState(false);
   const [durationSec, setDurationSec] = useState(120);
+  const [bpm, setBpm] = useState<number | null>(null);
+  const [musicalKey, setMusicalKey] = useState('');
 
   // API state
   const [generatingLyrics, setGeneratingLyrics] = useState(false);
@@ -230,6 +232,8 @@ export default function CreatePage() {
         style,
         durationSec,
         isInstrumental,
+        bpm: bpm ?? undefined,
+        key: musicalKey || undefined,
       });
       const g: Generation = res.data.generation;
       activeGenerationIdRef.current = g.id;
@@ -333,6 +337,10 @@ export default function CreatePage() {
             setDurationSec={setDurationSec}
             language={language}
             setLanguage={setLanguage}
+            bpm={bpm}
+            setBpm={setBpm}
+            musicalKey={musicalKey}
+            setMusicalKey={setMusicalKey}
             onBack={() => setStep('lyrics')}
             onNext={handleGenerate}
             usage={usage}
@@ -652,6 +660,7 @@ function StyleStep({
   vocalStyle, setVocalStyle, vibeReference, setVibeReference,
   isInstrumental, style, setStyle,
   durationSec, setDurationSec, language, setLanguage,
+  bpm, setBpm, musicalKey, setMusicalKey,
   onBack, onNext, usage,
 }: {
   genre: string; setGenre: (v: string) => void;
@@ -665,6 +674,8 @@ function StyleStep({
   style: string; setStyle: (v: string) => void;
   durationSec: number; setDurationSec: (v: number) => void;
   language: string; setLanguage: (v: string) => void;
+  bpm: number | null; setBpm: (v: number | null) => void;
+  musicalKey: string; setMusicalKey: (v: string) => void;
   onBack: () => void; onNext: () => void;
   usage: Usage | null;
 }) {
@@ -887,6 +898,56 @@ function StyleStep({
               <div className="flex justify-between text-xs text-[hsl(var(--muted-foreground))] mt-1">
                 <span>0:30</span><span>4:00</span>
               </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-white mb-1.5">
+                Tempo {bpm ? <span className="text-[hsl(var(--muted-foreground))]">({bpm} BPM)</span> : <span className="text-[hsl(var(--muted-foreground))] font-normal">(optional)</span>}
+              </label>
+              <input
+                type="range"
+                min={60}
+                max={200}
+                step={1}
+                value={bpm ?? 120}
+                onChange={(e) => setBpm(parseInt(e.target.value))}
+                className="w-full accent-[hsl(var(--accent))]"
+              />
+              <div className="flex justify-between text-xs text-[hsl(var(--muted-foreground))] mt-1">
+                <span>60</span>
+                <button
+                  type="button"
+                  onClick={() => setBpm(null)}
+                  className="hover:text-white transition-colors"
+                >
+                  {bpm ? 'Clear' : 'Auto'}
+                </button>
+                <span>200</span>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-white mb-1.5">
+                Key <span className="text-[hsl(var(--muted-foreground))] font-normal">(optional)</span>
+              </label>
+              <select
+                value={musicalKey}
+                onChange={(e) => setMusicalKey(e.target.value)}
+                className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
+              >
+                <option value="">Auto</option>
+                <optgroup label="Major">
+                  {['C major', 'C# major', 'D major', 'D# major', 'E major', 'F major', 'F# major', 'G major', 'G# major', 'A major', 'A# major', 'B major'].map((k) => (
+                    <option key={k}>{k}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Minor">
+                  {['C minor', 'C# minor', 'D minor', 'D# minor', 'E minor', 'F minor', 'F# minor', 'G minor', 'G# minor', 'A minor', 'A# minor', 'B minor'].map((k) => (
+                    <option key={k}>{k}</option>
+                  ))}
+                </optgroup>
+              </select>
             </div>
           </div>
 

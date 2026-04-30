@@ -1,10 +1,125 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import {
+  View, Text, TouchableOpacity, TextInput, ScrollView, Image,
+  ActivityIndicator, KeyboardAvoidingView, Platform, Alert,
+} from 'react-native';
+import { Video, ResizeMode } from 'expo-av';
 import { useRouter } from 'expo-router';
-import { ArrowLeft, Sparkles, Film, Clock, Wand2 } from 'lucide-react-native';
+import {
+  ArrowLeft, Sparkles, Film, Wand2, AlertCircle, Loader2, Image as ImageIcon, X,
+} from 'lucide-react-native';
+import { getApi } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
+import { pickAndUploadImage } from '../../lib/uploadImage';
+import { hapticSelection, hapticSuccess } from '../../services/hapticService';
+
+type VideoStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+interface VideoGen {
+  id: string;
+  status: VideoStatus;
+  prompt?: string | null;
+  title?: string | null;
+  imageRefUrl?: string | null;
+  videoUrl?: string | null;
+  errorMessage?: string | null;
+}
+
+const RESOLUTIONS = ['720P', '768P', '1080P'] as const;
+type Resolution = typeof RESOLUTIONS[number];
+const MAX_PROMPT = 1500;
 
 export default function VideoStudioScreen() {
   const router = useRouter();
+  const api = getApi();
+
+  const [title, setTitle] = useState('');
+  const [prompt, setPrompt] = useState('');
+  const [imageRefUrl, setImageRefUrl] = useState('');
+  const [resolution, setResolution] = useState<Resolution>('768P');
+  const [duration, setDuration] = useState<6 | 10>(6);
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [gen, setGen] = useState<VideoGen | null>(null);
+  const [error, setError] = useState('');
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (pollTimer.current) clearTimeout(pollTimer.current);
+    };
+  }, []);
+
+  const startPolling = (id: string) => {
+    const tick = async () => {
+      try {
+        const r = await api.get(`/ai/video/${id}`);
+        const latest: VideoGen = r.data.generation;
+        setGen(latest);
+        if (latest.status === 'PENDING' || latest.status === 'PROCESSING') {
+          pollTimer.current = setTimeout(tick, 5000);
+        } else if (latest.status === 'COMPLETED') {
+          hapticSuccess();
+        }
+      } catch (err: any) {
+        setError(err?.response?.data?.error || 'Failed to fetch status');
+      }
+    };
+    pollTimer.current = setTimeout(tick, 3000);
+  };
+
+  const onSubmit = async () => {
+    if (!prompt.trim()) {
+      setError('Prompt is required');
+      return;
+    }
+    if (prompt.length > MAX_PROMPT) {
+      setError(`Prompt must be ${MAX_PROMPT} characters or less`);
+      return;
+    }
+    setError('');
+    setSubmitting(true);
+    try {
+      const res = await api.post('/ai/video', {
+        title: title.trim() || undefined,
+        prompt: prompt.trim(),
+        imageRefUrl: imageRefUrl || undefined,
+        resolution,
+        duration,
+      });
+      const created: VideoGen = res.data.generation;
+      setGen(created);
+      hapticSelection();
+      startPolling(created.id);
+    } catch (err: any) {
+      const msg = err?.response?.data?.error || 'Failed to start video generation';
+      setError(msg);
+      Alert.alert('Error', msg);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const reset = () => {
+    if (pollTimer.current) clearTimeout(pollTimer.current);
+    setGen(null);
+    setError('');
+  };
+
+  const onPickImage = async () => {
+    try {
+      setUploadingImage(true);
+      const asset = await pickAndUploadImage();
+      if (asset?.url) setImageRefUrl(asset.url);
+    } catch (e: any) {
+      Alert.alert('Upload failed', e?.message || 'Try a different image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const isWorking = gen && (gen.status === 'PENDING' || gen.status === 'PROCESSING');
+  const isDone = gen && gen.status === 'COMPLETED' && gen.videoUrl;
+  const failed = gen && gen.status === 'FAILED';
 
   return (
     <ScreenContainer scrollable={false}>
@@ -21,33 +136,209 @@ export default function VideoStudioScreen() {
         </View>
       </View>
 
-      <View className="flex-1 items-center justify-center px-6">
-        <View className="w-24 h-24 rounded-full bg-purple-600 items-center justify-center mb-6">
-          <Film size={40} color="#fff" />
-        </View>
-
-        <View className="flex-row items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 mb-4">
-          <Clock size={12} color="#d8b4fe" />
-          <Text className="text-purple-300 text-[10px] font-bold uppercase tracking-wider">
-            Coming soon
-          </Text>
-        </View>
-
-        <Text className="text-mym-text text-2xl font-bold text-center mb-3">
-          AI video generation is on its way
-        </Text>
-        <Text className="text-mym-muted text-sm text-center leading-relaxed mb-8 max-w-xs">
-          We&apos;re putting the finishing touches on text-to-video and image-to-video so your tracks can come alive with cinematic visuals. Stay tuned.
-        </Text>
-
-        <TouchableOpacity
-          onPress={() => router.replace('/create')}
-          className="flex-row items-center gap-2 px-5 py-3 rounded-xl bg-purple-600"
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView
+          className="flex-1 px-4"
+          contentContainerStyle={{ paddingBottom: 40 }}
+          keyboardShouldPersistTaps="handled"
         >
-          <Wand2 size={14} color="#fff" />
-          <Text className="text-white text-sm font-bold">Create music in the meantime</Text>
-        </TouchableOpacity>
-      </View>
+          {!gen && (
+            <View className="bg-mym-card border border-mym-border rounded-2xl p-4 gap-4">
+              <View>
+                <Text className="text-white text-sm font-medium mb-2">Title (optional)</Text>
+                <TextInput
+                  value={title}
+                  onChangeText={(v) => setTitle(v.slice(0, 200))}
+                  placeholder="e.g. Neon Skyline"
+                  placeholderTextColor="#71717a"
+                  className="bg-mym-bg border border-mym-border rounded-lg px-3 py-2.5 text-white"
+                />
+              </View>
+
+              <View>
+                <Text className="text-white text-sm font-medium mb-2">
+                  Prompt <Text className="text-rose-400">*</Text>
+                </Text>
+                <TextInput
+                  value={prompt}
+                  onChangeText={setPrompt}
+                  placeholder="Describe the scene, lighting, mood, motion…"
+                  placeholderTextColor="#71717a"
+                  multiline
+                  numberOfLines={5}
+                  className="bg-mym-bg border border-mym-border rounded-lg px-3 py-2.5 text-white"
+                  style={{ minHeight: 110, textAlignVertical: 'top' }}
+                />
+                <Text className="text-mym-muted text-xs text-right mt-1">
+                  {prompt.length}/{MAX_PROMPT}
+                </Text>
+              </View>
+
+              <View>
+                <Text className="text-white text-sm font-medium mb-2">
+                  Reference image (optional, used as first frame)
+                </Text>
+                {imageRefUrl ? (
+                  <View className="relative">
+                    <Image
+                      source={{ uri: imageRefUrl }}
+                      style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 12 }}
+                      resizeMode="cover"
+                    />
+                    <TouchableOpacity
+                      onPress={() => setImageRefUrl('')}
+                      className="absolute top-2 right-2 w-8 h-8 rounded-full bg-black/70 items-center justify-center"
+                    >
+                      <X size={16} color="#fff" />
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <TouchableOpacity
+                    onPress={onPickImage}
+                    disabled={uploadingImage}
+                    className="bg-mym-bg border border-dashed border-mym-border rounded-xl py-8 items-center justify-center"
+                  >
+                    {uploadingImage ? (
+                      <ActivityIndicator color="#a855f7" />
+                    ) : (
+                      <>
+                        <ImageIcon size={24} color="#71717a" />
+                        <Text className="text-mym-muted text-sm mt-2">Tap to upload image</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <View className="flex-row gap-3">
+                <View className="flex-1">
+                  <Text className="text-white text-sm font-medium mb-2">Resolution</Text>
+                  <View className="flex-row gap-1.5">
+                    {RESOLUTIONS.map((r) => (
+                      <TouchableOpacity
+                        key={r}
+                        onPress={() => setResolution(r)}
+                        className={`flex-1 py-2 rounded-lg ${
+                          resolution === r ? 'bg-purple-500' : 'bg-mym-bg border border-mym-border'
+                        }`}
+                      >
+                        <Text
+                          className={`text-center text-xs font-bold ${
+                            resolution === r ? 'text-white' : 'text-mym-muted'
+                          }`}
+                        >
+                          {r}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white text-sm font-medium mb-2">Duration</Text>
+                  <View className="flex-row gap-1.5">
+                    {[6, 10].map((d) => (
+                      <TouchableOpacity
+                        key={d}
+                        onPress={() => setDuration(d as 6 | 10)}
+                        className={`flex-1 py-2 rounded-lg ${
+                          duration === d ? 'bg-purple-500' : 'bg-mym-bg border border-mym-border'
+                        }`}
+                      >
+                        <Text
+                          className={`text-center text-xs font-bold ${
+                            duration === d ? 'text-white' : 'text-mym-muted'
+                          }`}
+                        >
+                          {d}s
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              </View>
+
+              {error && (
+                <View className="flex-row items-start gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30">
+                  <AlertCircle size={16} color="#fda4af" />
+                  <Text className="text-rose-300 text-sm flex-1">{error}</Text>
+                </View>
+              )}
+
+              <TouchableOpacity
+                onPress={onSubmit}
+                disabled={submitting || !prompt.trim()}
+                className={`flex-row items-center justify-center gap-2 px-5 py-3 rounded-xl ${
+                  submitting || !prompt.trim() ? 'bg-purple-500/40' : 'bg-purple-500'
+                }`}
+              >
+                {submitting ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Wand2 size={16} color="#fff" />
+                )}
+                <Text className="text-white font-bold">
+                  {submitting ? 'Submitting…' : 'Generate video'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          {gen && (
+            <View className="bg-mym-card border border-mym-border rounded-2xl p-4 gap-4">
+              <View className="flex-row items-center gap-3">
+                <View className="w-12 h-12 rounded-full bg-purple-500 items-center justify-center">
+                  <Film size={24} color="#fff" />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-white font-semibold" numberOfLines={1}>
+                    {gen.title || 'Untitled video'}
+                  </Text>
+                  <Text className="text-mym-muted text-xs" numberOfLines={1}>
+                    {gen.prompt}
+                  </Text>
+                </View>
+              </View>
+
+              {isWorking && (
+                <View className="flex-row items-center gap-3 py-3">
+                  <ActivityIndicator color="#a855f7" />
+                  <Text className="text-purple-300 text-sm flex-1">
+                    Rendering your video… this usually takes 1-3 minutes.
+                  </Text>
+                </View>
+              )}
+
+              {failed && (
+                <View className="flex-row items-start gap-2 px-3 py-2 rounded-lg bg-rose-500/10 border border-rose-500/30">
+                  <AlertCircle size={16} color="#fda4af" />
+                  <Text className="text-rose-300 text-sm flex-1">
+                    {gen.errorMessage || 'Video generation failed'}
+                  </Text>
+                </View>
+              )}
+
+              {isDone && gen.videoUrl && (
+                <Video
+                  source={{ uri: gen.videoUrl }}
+                  useNativeControls
+                  resizeMode={ResizeMode.CONTAIN}
+                  style={{ width: '100%', aspectRatio: 16 / 9, borderRadius: 12, backgroundColor: '#000' }}
+                />
+              )}
+
+              <TouchableOpacity
+                onPress={reset}
+                className="border border-mym-border rounded-xl py-3"
+              >
+                <Text className="text-white text-center font-medium">Generate another</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
     </ScreenContainer>
   );
 }

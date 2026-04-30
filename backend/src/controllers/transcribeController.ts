@@ -2,6 +2,22 @@ import { Response } from 'express';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 
+// MIME types Whisper / gpt-4o-mini-transcribe actually accept. Filtering
+// here saves an OpenAI quota call and avoids relaying user-controlled
+// binary garbage to a paid endpoint.
+const ALLOWED_AUDIO_MIME = new Set([
+  'audio/mpeg',
+  'audio/mp4',
+  'audio/m4a',
+  'audio/x-m4a',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/webm',
+  'audio/ogg',
+  'audio/aac',
+  'audio/flac',
+]);
+
 // Voice → text. Used by the mobile "hold to speak a song idea" flow.
 //
 // Two transcription backends are supported, picked by env:
@@ -19,6 +35,13 @@ export const transcribeAudio = async (req: RequestWithUser & { file?: any }, res
     }
     if (!req.file?.buffer) {
       res.status(400).json({ error: 'audio file is required' });
+      return;
+    }
+    const mimetype: string = req.file.mimetype || '';
+    if (!ALLOWED_AUDIO_MIME.has(mimetype)) {
+      res.status(400).json({
+        error: 'Unsupported audio format. Use mp3/m4a/wav/webm/ogg/aac/flac.',
+      });
       return;
     }
     const buf: Buffer = req.file.buffer;
