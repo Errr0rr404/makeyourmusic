@@ -66,6 +66,7 @@ export interface Track extends TrackItem {
   playCount: number;
   likeCount: number;
   shareCount: number;
+  downloadCount?: number;
   status: TrackStatus;
   createdAt: string;
   isLiked?: boolean;

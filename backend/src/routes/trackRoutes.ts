@@ -6,6 +6,7 @@ import {
   listMyTracks,
   updateTrackVisibility,
   recordPlay,
+  recordDownload,
   deleteTrack,
   getTrending,
   getHistory,
@@ -33,6 +34,8 @@ router.post('/', authenticate as any, createTrackRules, validateRequest, createT
 // Play counter is hot — protect with the social pump limiter so the in-process
 // dedup map can't be evaded by distributed/multi-tab pumping.
 router.post('/:trackId/play', optionalAuth as any, socialPumpLimiter, recordPlay as any);
+// Save-for-offline counter — auth required so we can attribute & dedup per user.
+router.post('/:trackId/download', authenticate as any, socialPumpLimiter, recordDownload as any);
 router.patch('/:id/visibility', authenticate as any, updateTrackVisibility as any);
 router.post('/:id/report', authenticate as any, reportTrack as any);
 router.delete('/:id', authenticate as any, deleteTrack as any);

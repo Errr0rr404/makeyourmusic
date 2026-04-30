@@ -209,6 +209,7 @@ model User {
   follows                    Follow[]
   plays                      Play[]
   shares                     Share[]
+  downloads                  Download[]
   subscription               Subscription?
   notifications              Notification[]
   reports                    Report[]
@@ -342,9 +343,10 @@ model Track {
   aiPrompt String? @map("ai_prompt") // the prompt used
 
   // Stats (denormalized)
-  playCount  Int @default(0) @map("play_count")
-  likeCount  Int @default(0) @map("like_count")
-  shareCount Int @default(0) @map("share_count")
+  playCount     Int @default(0) @map("play_count")
+  likeCount     Int @default(0) @map("like_count")
+  shareCount    Int @default(0) @map("share_count")
+  downloadCount Int @default(0) @map("download_count")
 
   // Trending score — recomputed periodically by a cron job using a
   // Hacker-News-style decay so freshness is rewarded. Indexed for ORDER BY.
@@ -394,6 +396,7 @@ model Track {
   comments       Comment[]
   plays          Play[]
   shares         Share[]
+  downloads      Download[]
   playlistTracks PlaylistTrack[]
   reports        Report[]
   generations    MusicGeneration[]
@@ -691,6 +694,24 @@ model Share {
   @@index([trackId])
   @@index([userId])
   @@map("shares")
+}
+
+// One row per (user, track) offline download. Unique tuple keeps re-downloads
+// of the same track from inflating the counter — re-downloading is idempotent
+// from an engagement-tracking perspective.
+model Download {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId  String @map("user_id")
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId String @map("track_id")
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trackId])
+  @@index([trackId])
+  @@index([userId, createdAt(sort: Desc)])
+  @@map("downloads")
 }
 
 // ─── Analytics Models ────────────────────────────────────

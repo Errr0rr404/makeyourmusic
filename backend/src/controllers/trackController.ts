@@ -486,6 +486,56 @@ export const recordPlay = async (req: RequestWithUser, res: Response) => {
   }
 };
 
+// Records that a logged-in user saved a track for offline playback. The
+// (userId, trackId) tuple is unique, so re-downloads are idempotent and
+// downloadCount only increments on first save per user.
+export const recordDownload = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
+
+    const trackId = req.params.trackId as string;
+    const userId = req.user.userId;
+
+    const track = await prisma.track.findUnique({
+      where: { id: trackId },
+      select: { id: true, status: true, isPublic: true, agent: { select: { ownerId: true } } },
+    });
+    if (!track || track.status !== 'ACTIVE') {
+      res.status(404).json({ error: 'Track not found' });
+      return;
+    }
+    if (!track.isPublic && track.agent.ownerId !== userId) {
+      res.status(404).json({ error: 'Track not found' });
+      return;
+    }
+
+    // Atomic: only bump downloadCount on first download per user. P2002 on a
+    // race means another request just won — treat as already-downloaded.
+    let firstDownload = false;
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.download.create({ data: { userId, trackId } });
+        await tx.track.update({
+          where: { id: trackId },
+          data: { downloadCount: { increment: 1 } },
+        });
+        firstDownload = true;
+      });
+    } catch (e) {
+      if ((e as { code?: string }).code === 'P2002') {
+        firstDownload = false;
+      } else {
+        throw e;
+      }
+    }
+
+    res.json({ downloaded: true, firstDownload });
+  } catch (error) {
+    logger.error('Record download error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to record download' });
+  }
+};
+
 export const deleteTrack = async (req: RequestWithUser, res: Response) => {
   try {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }

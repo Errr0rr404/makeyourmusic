@@ -19,6 +19,12 @@ import { getLocalUri } from './downloadService';
 
 let isInitialized = false;
 let playRecordedForTrackId: string | null = null;
+// True while syncQueue() is mid-flight. We use this to:
+//   1. Suppress syncPlayState() so it doesn't call play() on an empty queue.
+//   2. Suppress native→zustand PlaybackState updates that fire transiently
+//      while reset/add/skip are in progress (those would otherwise flip
+//      isPlaying:true→false and require a second tap from the user).
+let isSyncingQueue = false;
 
 /**
  * Initialize react-native-track-player with capabilities.
@@ -107,6 +113,7 @@ export function useSyncPlayerToNative() {
     syncQueue: async () => {
       if (!isInitialized || !currentTrack) return;
 
+      isSyncingQueue = true;
       try {
         const nativeTracks = queue.map(toNativeTrack);
         await TrackPlayer.reset();
@@ -118,13 +125,31 @@ export function useSyncPlayerToNative() {
           await TrackPlayer.skip(idx);
         }
         playRecordedForTrackId = null;
+
+        // Apply play state AFTER the queue is loaded. The separate
+        // syncPlayState effect fires on the same render, so without this
+        // the native player gets a play() on an empty queue, which fails
+        // silently and requires the user to tap a second time. Reading
+        // the latest store state (rather than the closed-over isPlaying)
+        // also captures any toggle the user issued mid-sync.
+        const desired = usePlayerStore.getState().isPlaying;
+        if (desired) {
+          await TrackPlayer.play();
+        } else {
+          await TrackPlayer.pause();
+        }
       } catch (err) {
         console.error('syncQueue error:', err);
+      } finally {
+        isSyncingQueue = false;
       }
     },
 
     syncPlayState: async () => {
       if (!isInitialized) return;
+      // Defer to syncQueue while it's loading the queue — calling play()
+      // here on an empty queue is what caused the double-tap bug.
+      if (isSyncingQueue) return;
       try {
         if (isPlaying) {
           await TrackPlayer.play();
@@ -192,6 +217,9 @@ export function setupNativePlayerListeners() {
   const playbackSub = TrackPlayer.addEventListener(
     Event.PlaybackState,
     (event) => {
+      // Ignore transient Paused/Playing events emitted during reset/add/skip;
+      // syncQueue applies the user's desired play state at the end of its run.
+      if (isSyncingQueue) return;
       const state = event.state;
       if (state === State.Playing) {
         store.setState({ isPlaying: true });

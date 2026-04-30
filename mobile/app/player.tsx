@@ -84,7 +84,14 @@ export default function FullScreenPlayer() {
   const handleLike = async () => {
     if (!currentTrack) return;
     if (!isAuthenticated) {
-      Alert.alert('Sign in required', 'Log in to save tracks to your library.');
+      Alert.alert(
+        'Sign in to like tracks',
+        'Create a free account to save tracks to your library.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
+        ],
+      );
       return;
     }
     if (likeBusy) return;

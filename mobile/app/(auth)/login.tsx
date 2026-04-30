@@ -5,6 +5,7 @@ import { useAuthStore } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { Logo } from '../../components/ui/Logo';
 import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
 import { useTokens, useIsVintage } from '../../lib/theme';
 
@@ -48,11 +49,13 @@ export default function LoginScreen() {
         >
           {/* Logo */}
           <View style={{ alignItems: 'center', marginBottom: 40 }}>
+            <Logo size={72} />
             <Text
               style={{
-                color: tokens.brand,
-                fontSize: 36,
+                color: tokens.text,
+                fontSize: 24,
                 fontWeight: '800',
+                marginTop: 16,
                 fontFamily: isVintage ? tokens.fontDisplay : undefined,
                 letterSpacing: isVintage ? 1 : -0.5,
                 textTransform: isVintage ? 'uppercase' : undefined,

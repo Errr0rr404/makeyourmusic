@@ -12,7 +12,7 @@ import {
   Play, Pause, Heart, Share2, MessageCircle, ArrowLeft, Cpu, Send, Download, Check, Music,
 } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import { downloadTrack, isTrackDownloaded, removeDownload } from '../../services/downloadService';
+import { downloadTrack, isTrackDownloaded, removeDownload, DownloadAuthRequiredError } from '../../services/downloadService';
 import { Lyrics } from '../../components/track/Lyrics';
 import { asSlug } from '../../lib/validateSlug';
 import { useTokens, useIsVintage } from '../../lib/theme';
@@ -44,6 +44,17 @@ export default function TrackDetailScreen() {
 
   const handleDownload = async () => {
     if (!track) return;
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Sign in to save offline',
+        'Create a free account to download tracks for offline listening.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
+        ],
+      );
+      return;
+    }
     if (downloaded) {
       Alert.alert('Remove download?', 'This track will no longer be available offline.', [
         { text: 'Cancel', style: 'cancel' },
@@ -64,7 +75,18 @@ export default function TrackDetailScreen() {
       setDownloaded(true);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (err: any) {
-      Alert.alert('Download failed', err.message || 'Could not save for offline');
+      if (err instanceof DownloadAuthRequiredError) {
+        Alert.alert(
+          'Sign in to save offline',
+          'Create a free account to download tracks.',
+          [
+            { text: 'Not now', style: 'cancel' },
+            { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
+          ],
+        );
+      } else {
+        Alert.alert('Download failed', err.message || 'Could not save for offline');
+      }
     } finally {
       setDownloading(false);
     }
@@ -130,17 +152,33 @@ export default function TrackDetailScreen() {
   };
 
   const handleLike = async () => {
-    if (!isAuthenticated || !track) {
-      Alert.alert('Sign in required', 'Log in to like tracks.');
+    if (!track) return;
+    if (!isAuthenticated) {
+      Alert.alert(
+        'Sign in to like tracks',
+        'Create a free account to save tracks to your library.',
+        [
+          { text: 'Not now', style: 'cancel' },
+          { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
+        ],
+      );
       return;
     }
+    // Optimistic toggle so the heart fills instantly
+    const wasLiked = liked;
+    setLiked(!wasLiked);
+    setLikeCount((c) => (wasLiked ? Math.max(0, c - 1) : c + 1));
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     try {
       const api = getApi();
       const res = await api.post(`/social/likes/${track.id}`);
+      // Sync to authoritative response in case the optimistic guess was wrong
+      // (e.g. concurrent like from another device).
       setLiked(res.data.liked);
-      setLikeCount((c) => (res.data.liked ? c + 1 : c - 1));
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     } catch (err) {
+      // Roll back on failure
+      setLiked(wasLiked);
+      setLikeCount((c) => (wasLiked ? c + 1 : Math.max(0, c - 1)));
       console.error('Like error:', err);
     }
   };
@@ -397,7 +435,7 @@ export default function TrackDetailScreen() {
               </Text>
             </View>
 
-            {isAuthenticated && (
+            {isAuthenticated ? (
               <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 16 }}>
                 <TextInput
                   style={{
@@ -429,6 +467,27 @@ export default function TrackDetailScreen() {
                   <Send size={20} color={newComment.trim() ? tokens.accent : tokens.borderStrong} />
                 </TouchableOpacity>
               </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => router.push('/(auth)/login')}
+                style={{
+                  marginBottom: 16,
+                  paddingHorizontal: 16,
+                  paddingVertical: 14,
+                  backgroundColor: tokens.card,
+                  borderRadius: tokens.radiusLg,
+                  borderWidth: 1,
+                  borderColor: tokens.border,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Sign in to comment"
+              >
+                <Text style={{ color: tokens.textMute, fontSize: 14 }}>Sign in to leave a comment</Text>
+                <Text style={{ color: tokens.accent, fontSize: 14, fontWeight: '600' }}>Sign in</Text>
+              </TouchableOpacity>
             )}
 
             {comments.length === 0 ? (

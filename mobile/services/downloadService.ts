@@ -1,5 +1,6 @@
 import { File, Directory, Paths } from 'expo-file-system';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { getApi, useAuthStore } from '@makeyourmusic/shared';
 import type { TrackItem } from '@makeyourmusic/shared';
 
 const DOWNLOADS_DIR_NAME = 'makeyourmusic-downloads';
@@ -72,12 +73,30 @@ export async function isTrackDownloaded(trackId: string): Promise<boolean> {
 }
 
 /**
- * Download a track for offline playback.
+ * Thrown when an unauthenticated user tries to download. Callers should catch
+ * this and redirect to login rather than show a generic "download failed".
+ */
+export class DownloadAuthRequiredError extends Error {
+  constructor() {
+    super('Sign in to save tracks for offline playback');
+    this.name = 'DownloadAuthRequiredError';
+  }
+}
+
+/**
+ * Download a track for offline playback. Requires the user to be logged in
+ * — the server records a Download row so we can show download counts and
+ * attribute engagement back to users. The local file write only happens
+ * after the auth check, so guests never end up with orphan offline copies.
  */
 export async function downloadTrack(
   track: TrackItem,
   onProgress?: (progress: number) => void,
 ): Promise<DownloadedTrack> {
+  if (!useAuthStore.getState().isAuthenticated) {
+    throw new DownloadAuthRequiredError();
+  }
+
   const dir = getDownloadsDir();
   const filename = `${track.id}.mp3`;
   const file = new File(dir, filename);
@@ -110,6 +129,13 @@ export async function downloadTrack(
 
   // Update the in-memory cache so playback can immediately use the offline URI
   localUriCache.set(track.id, downloadedTrack.localAudioUri);
+
+  // Tell the server — best-effort, don't fail the download if this errors.
+  // Server uses a unique (userId, trackId) constraint so re-downloads are
+  // idempotent and won't pump the engagement counter.
+  void getApi()
+    .post(`/tracks/${track.id}/download`)
+    .catch(() => {});
 
   onProgress?.(1);
   return downloadedTrack;
