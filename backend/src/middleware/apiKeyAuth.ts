@@ -6,6 +6,12 @@ import { hashApiKey } from '../utils/apiKey';
 // header, hashes it, and matches against ApiKey.keyHash. Sets
 // req.apiKey + req.user (synthetic from key.userId) so downstream handlers
 // can use the standard userId surface.
+
+// Throttle lastUsedAt updates to once per minute per key — without this,
+// a torrent of requests would write to the same row on every call.
+const lastUsedTouchedAt = new Map<string, number>();
+const TOUCH_INTERVAL_MS = 60_000;
+
 export const requireApiKey = async (req: any, res: Response, next: NextFunction) => {
   const auth = req.headers.authorization || '';
   const m = /^Bearer\s+(.+)$/i.exec(auth.trim());
@@ -23,10 +29,14 @@ export const requireApiKey = async (req: any, res: Response, next: NextFunction)
     res.status(401).json({ error: 'Invalid or revoked API key' });
     return;
   }
-  // Touch lastUsedAt asynchronously — failure here shouldn't break the request.
-  prisma.apiKey
-    .update({ where: { id: key.id }, data: { lastUsedAt: new Date() } })
-    .catch(() => {});
+  // Throttled lastUsedAt update — failure here shouldn't break the request.
+  const last = lastUsedTouchedAt.get(key.id) || 0;
+  if (Date.now() - last > TOUCH_INTERVAL_MS) {
+    lastUsedTouchedAt.set(key.id, Date.now());
+    prisma.apiKey
+      .update({ where: { id: key.id }, data: { lastUsedAt: new Date() } })
+      .catch(() => {});
+  }
 
   req.apiKey = key;
   req.user = {
@@ -36,4 +46,18 @@ export const requireApiKey = async (req: any, res: Response, next: NextFunction)
     tv: key.user.tokenVersion,
   };
   next();
+};
+
+// Per-route scope check. Apply after `requireApiKey` to restrict access
+// to keys with the named scope.
+export const requireScope = (scope: string) => {
+  return (req: any, res: Response, next: NextFunction) => {
+    const scopes: string[] = Array.isArray(req.apiKey?.scopes) ? req.apiKey.scopes : [];
+    // Empty scopes array on a key means "full access" (legacy behavior for
+    // dashboard-issued keys) — preserved so old keys keep working. New keys
+    // should request explicit scopes.
+    if (scopes.length === 0) return next();
+    if (scopes.includes(scope)) return next();
+    res.status(403).json({ error: `Missing required scope: ${scope}` });
+  };
 };

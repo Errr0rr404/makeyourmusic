@@ -21,7 +21,7 @@ import {
   lookupEraHint,
 } from '../utils/musicCatalog';
 import { assertCanGenerate, getDailyUsage } from '../utils/aiUsage';
-import { slugify, uniqueSuffix } from '../utils/slugify';
+import { slugify, uniqueSuffix, createWithUniqueSlug } from '../utils/slugify';
 import { uploadAudio, uploadImageBase64, uploadCoverArt } from '../utils/cloudinary';
 import { moderateLyrics, moderationToError } from '../utils/moderation';
 import { computeAndPersistTrackFeatures } from '../utils/recommendations';
@@ -255,6 +255,18 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
     // occasionally emit "(strings enter)" or "[Guitar Solo]" lines. Stripping
     // them here guarantees nothing non-singable reaches the music model.
     const sanitized = sanitizeLyrics(result.lyrics);
+    // Tight loop: if the model produces obviously out-of-policy content
+    // (rare with the system prompt, but possible on adversarial inputs),
+    // refuse to surface it. The /v1/lyrics endpoint is unauthenticated for
+    // dashboard users but rate-limited, so this is the right place to
+    // gate.
+    if (sanitized) {
+      const check = moderateLyrics(sanitized);
+      if (!check.allowed && check.severity === 'BLOCK') {
+        res.status(400).json({ error: 'Generated content violates content policy. Try a different prompt.' });
+        return;
+      }
+    }
 
     res.json({ lyrics: sanitized, plan });
   } catch (error) {
@@ -541,6 +553,17 @@ export const startMusicGeneration = async (req: RequestWithUser, res: Response) 
     const sanitizedLyrics =
       typeof lyrics === 'string' ? sanitizeLyrics(lyrics) || null : null;
 
+    // Moderate user lyrics BEFORE billing a generation slot or sending to the
+    // provider. CSAM / threat patterns must never reach the music model.
+    if (sanitizedLyrics) {
+      const check = moderateLyrics(sanitizedLyrics);
+      const err = moderationToError(check);
+      if (err && check.severity === 'BLOCK') {
+        res.status(400).json({ error: err });
+        return;
+      }
+    }
+
     const generation = await prisma.musicGeneration.create({
       data: {
         userId: req.user.userId,
@@ -722,36 +745,70 @@ export const publishGeneration = async (req: RequestWithUser, res: Response) => 
       return;
     }
 
-    let slug = slugify(finalTitle, 80) || `track-${uniqueSuffix()}`;
-    const existing = await prisma.track.findUnique({ where: { slug } });
-    if (existing) slug = `${slug}-${uniqueSuffix()}`;
+    const seedSlug = slugify(finalTitle, 80) || `track-${uniqueSuffix()}`;
 
-    const created = await prisma.$transaction(async (tx) => {
-      const track = await tx.track.create({
-        data: {
-          title: finalTitle,
-          slug,
-          duration: gen.durationSec || 120,
-          audioUrl: gen.audioUrl as string,
-          coverArt: typeof coverArt === 'string' ? coverArt : null,
-          status: 'ACTIVE',
-          isPublic: isPublic === false ? false : true,
-          mood: typeof mood === 'string' ? mood : gen.mood,
-          lyrics: gen.lyrics,
-          aiModel: gen.providerModel,
-          aiPrompt: gen.prompt,
-          agentId: agent.id,
-          genreId: typeof genreId === 'string' ? genreId : null,
-        },
-      });
+    // Slug uniqueness via P2002 retry. We also re-check `gen.trackId === null`
+    // inside the transaction so two concurrent publish requests for the same
+    // generation can't both create a track. The conditional update at the
+    // end fails with P2025 if another request beat us; we surface that as a
+    // 409 Conflict.
+    const created = await createWithUniqueSlug(seedSlug, (slug) =>
+      prisma.$transaction(async (tx) => {
+        const fresh = await tx.musicGeneration.findUnique({
+          where: { id: gen.id },
+          select: { trackId: true },
+        });
+        if (!fresh) throw new Error('Generation disappeared');
+        if (fresh.trackId) {
+          const dupErr: any = new Error('Generation already published');
+          dupErr.code = 'ALREADY_PUBLISHED';
+          throw dupErr;
+        }
 
-      await tx.musicGeneration.update({
-        where: { id: gen.id },
-        data: { trackId: track.id, agentId: agent.id },
-      });
+        const track = await tx.track.create({
+          data: {
+            title: finalTitle,
+            slug,
+            duration: gen.durationSec || 120,
+            audioUrl: gen.audioUrl as string,
+            coverArt: typeof coverArt === 'string' ? coverArt : null,
+            status: 'ACTIVE',
+            isPublic: isPublic === false ? false : true,
+            mood: typeof mood === 'string' ? mood : gen.mood,
+            lyrics: gen.lyrics,
+            aiModel: gen.providerModel,
+            aiPrompt: gen.prompt,
+            agentId: agent.id,
+            genreId: typeof genreId === 'string' ? genreId : null,
+          },
+        });
 
-      return track;
+        // Conditional update — `updateMany` so we can include trackId in
+        // the filter. Returns count = 0 if another concurrent publish beat
+        // us to it; we treat that as a duplicate-publish race.
+        const r = await tx.musicGeneration.updateMany({
+          where: { id: gen.id, trackId: null },
+          data: { trackId: track.id, agentId: agent.id },
+        });
+        if (r.count === 0) {
+          const dupErr: any = new Error('Generation already published');
+          dupErr.code = 'ALREADY_PUBLISHED';
+          throw dupErr;
+        }
+
+        return track;
+      })
+    ).catch((err) => {
+      if (err?.code === 'ALREADY_PUBLISHED' || err?.code === 'P2025') {
+        return null;
+      }
+      throw err;
     });
+
+    if (!created) {
+      res.status(409).json({ error: 'Generation already published' });
+      return;
+    }
 
     // Best-effort: compute feature vector for recommendations. We do this
     // outside the transaction so a hiccup here doesn't fail the publish.
@@ -1053,6 +1110,14 @@ export const startMusicCover = async (req: RequestWithUser, res: Response) => {
 
     const sanitizedCoverLyrics =
       typeof lyrics === 'string' ? sanitizeLyrics(lyrics) || null : null;
+    if (sanitizedCoverLyrics) {
+      const check = moderateLyrics(sanitizedCoverLyrics);
+      const err = moderationToError(check);
+      if (err && check.severity === 'BLOCK') {
+        res.status(400).json({ error: err });
+        return;
+      }
+    }
 
     const generation = await prisma.musicGeneration.create({
       data: {
@@ -1307,6 +1372,20 @@ export const regenerateSection = async (req: RequestWithUser, res: Response) => 
       return;
     }
 
+    // Moderate the rewritten section + the rewrite directions before
+    // accepting. Direction text from the user is the most likely vector for
+    // injecting policy-violating content.
+    const directions = typeof instructions === 'string' ? instructions : '';
+    for (const t of [newBody, directions]) {
+      if (!t) continue;
+      const check = moderateLyrics(t);
+      const err = moderationToError(check);
+      if (err && check.severity === 'BLOCK') {
+        res.status(400).json({ error: err });
+        return;
+      }
+    }
+
     const patched = replaceSection(source.lyrics, section, newBody);
 
     // Spawn a new music generation seeded with the patched lyrics. The
@@ -1380,13 +1459,25 @@ export const extendGeneration = async (req: RequestWithUser, res: Response) => {
       `Pick up where the reference audio leaves off and extend for another 30-60 seconds. ` +
       (typeof instructions === 'string' && instructions.trim() ? `Direction: ${instructions.trim()}` : '');
 
+    const sanitizedExtraLyrics =
+      typeof extraLyrics === 'string' && extraLyrics.trim()
+        ? sanitizeLyrics(extraLyrics)
+        : null;
+    if (sanitizedExtraLyrics) {
+      const check = moderateLyrics(sanitizedExtraLyrics);
+      const err = moderationToError(check);
+      if (err && check.severity === 'BLOCK') {
+        res.status(400).json({ error: err });
+        return;
+      }
+    }
     const generation = await prisma.musicGeneration.create({
       data: {
         userId: req.user.userId,
         agentId: source.agentId,
         title: source.title ? `${source.title} (extended)` : 'Extension',
         prompt: continuationPrompt,
-        lyrics: typeof extraLyrics === 'string' && extraLyrics.trim() ? sanitizeLyrics(extraLyrics) : null,
+        lyrics: sanitizedExtraLyrics,
         genre: source.genre,
         subGenre: source.subGenre,
         mood: source.mood,

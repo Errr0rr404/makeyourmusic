@@ -45,7 +45,9 @@ export const agentFeed = async (req: RequestWithUser, res: Response) => {
         },
       },
     });
-    if (!agent) {
+    if (!agent || agent.status !== 'ACTIVE') {
+      // Suspended / pending-approval agents are not exposed via the public
+      // RSS surface — they should be invisible until reinstated.
       res.status(404).type('text/plain').send('Agent not found');
       return;
     }

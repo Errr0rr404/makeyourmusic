@@ -326,26 +326,10 @@ export async function handleChannelSubCheckoutCompleted(session: any) {
     },
   });
 
-  // Queue referral earning if the creator was referred. Channel subs pay
-  // the creator monthly; we record one cut per renewal — but the initial
-  // signup also lands here (Stripe fires checkout.session.completed for
-  // subscription kickoff). Best-effort; non-fatal on failure.
-  try {
-    const { recordReferralEarning } = await import('./referralController');
-    const fee = platformFeeBps();
-    const netCents = Math.floor((amountCents * (10000 - fee)) / 10000);
-    await recordReferralEarning({
-      refereeId: creatorUserId,
-      amountCents: netCents,
-      source: 'channel_sub',
-      sourceId: typeof session.subscription === 'string' ? session.subscription : session.id,
-    });
-  } catch (err) {
-    logger.warn('Channel-sub referral earning failed', {
-      sessionId: session.id,
-      error: (err as Error).message,
-    });
-  }
+  // Referral earnings are now credited per-invoice in
+  // handleChannelSubInvoicePaid (one row per Stripe invoice id), which
+  // covers both the kickoff invoice and every renewal. Crediting here
+  // would double-pay the first month.
 
   // Notify creator.
   const fan = await prisma.user.findUnique({
@@ -406,6 +390,45 @@ export async function handleChannelSubDeleted(stripeSub: any) {
     where: { id: sub.id },
     data: { status: 'EXPIRED' },
   });
+}
+
+// Stripe invoice.payment_succeeded for a channel subscription invoice.
+// Credits the referrer once per invoice. The unique constraint on
+// ReferralEarning(source, sourceId, referrerId) guarantees exactly-once
+// credit even on Stripe webhook retries that escape the WebhookEvent
+// dedup (e.g. across DB resets).
+export async function handleChannelSubInvoicePaid(invoice: any): Promise<void> {
+  if (!invoice?.subscription) return;
+  const sub = await prisma.channelSubscription.findUnique({
+    where: { stripeSubscriptionId: invoice.subscription },
+  });
+  if (!sub) return;
+  // Restore from PAST_DUE if the renewal succeeds.
+  if (sub.status === 'PAST_DUE') {
+    await prisma.channelSubscription.update({
+      where: { id: sub.id },
+      data: { status: 'ACTIVE' },
+    });
+  }
+  const amountCents: number =
+    typeof invoice.amount_paid === 'number' ? invoice.amount_paid : sub.amountCents;
+  if (amountCents <= 0) return;
+  const netCents = Math.floor((amountCents * (10000 - sub.platformFeeBps)) / 10000);
+  if (netCents <= 0) return;
+  try {
+    const { recordReferralEarning } = await import('./referralController');
+    await recordReferralEarning({
+      refereeId: sub.creatorUserId,
+      amountCents: netCents,
+      source: 'channel_sub',
+      sourceId: typeof invoice.id === 'string' ? invoice.id : `sub:${sub.id}`,
+    });
+  } catch (err) {
+    logger.warn('Channel-sub invoice referral failed', {
+      invoiceId: invoice.id,
+      error: (err as Error).message,
+    });
+  }
 }
 
 /** Cancel a channel sub at end of current period. */

@@ -7,6 +7,7 @@ import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 import { sendEmail, buildVerificationEmail, buildPasswordResetEmail } from '../utils/email';
 import { verifyFirebaseIdToken } from '../utils/firebaseAdmin';
+import { invalidateTokenVersionCache } from '../middleware/auth';
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -405,6 +406,7 @@ export const logout = async (req: RequestWithUser, res: Response) => {
         where: { id: userId },
         data: { tokenVersion: { increment: 1 } },
       });
+      invalidateTokenVersionCache(userId);
     } catch (error) {
       logger.warn('Failed to bump tokenVersion on logout', {
         userId,
@@ -541,6 +543,8 @@ export const resetPassword = async (req: RequestWithUser, res: Response) => {
         tokenVersion: { increment: 1 },
       },
     });
+    invalidateTokenVersionCache(user.id);
+    clearRefreshTokenCookie(res);
 
     res.json({ message: 'Password reset successfully. You can now log in.' });
   } catch (error) {
@@ -677,6 +681,8 @@ export const changePassword = async (req: RequestWithUser, res: Response) => {
         tokenVersion: { increment: 1 },
       },
     });
+    invalidateTokenVersionCache(user.id);
+    clearRefreshTokenCookie(res);
 
     res.json({ message: 'Password changed successfully' });
   } catch (error) {

@@ -14,7 +14,7 @@ const router = Router();
 router.get('/browse', browseLicenseable as any);
 router.put('/tracks/:trackId/enable', authenticate as any, enableLicensing as any);
 router.put('/tracks/:trackId/disable', authenticate as any, disableLicensing as any);
-router.post('/checkout', optionalAuth as any, startCheckout as any);
+router.post('/checkout', authenticate as any, startCheckout as any);
 router.get('/download/:token', downloadLicensedFiles as any);
 
 // Stems (the paid bundle is a license tier)

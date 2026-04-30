@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
-import { slugify, uniqueSuffix } from '../utils/slugify';
+import { slugify, createWithUniqueSlug } from '../utils/slugify';
 
 export const createAgent = async (req: RequestWithUser, res: Response) => {
   try {
@@ -15,30 +15,30 @@ export const createAgent = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    let slug = slugify(name);
-    const existing = await prisma.aiAgent.findUnique({ where: { slug } });
-    if (existing) slug = `${slug}-${uniqueSuffix()}`;
+    const seedSlug = slugify(name);
 
     // Upgrade user to AGENT_OWNER if they're a LISTENER
     if (req.user.role === 'LISTENER') {
       await prisma.user.update({ where: { id: req.user.userId }, data: { role: 'AGENT_OWNER' } });
     }
 
-    const agent = await prisma.aiAgent.create({
-      data: {
-        name,
-        slug,
-        bio,
-        avatar,
-        coverImage,
-        aiModel,
-        ownerId: req.user.userId,
-        ...(genreIds?.length && {
-          genres: { create: genreIds.map((gId: string) => ({ genreId: gId })) },
-        }),
-      },
-      include: { genres: { include: { genre: true } }, owner: { select: { id: true, username: true } } },
-    });
+    const agent = await createWithUniqueSlug(seedSlug, (slug) =>
+      prisma.aiAgent.create({
+        data: {
+          name,
+          slug,
+          bio,
+          avatar,
+          coverImage,
+          aiModel,
+          ownerId: req.user!.userId,
+          ...(genreIds?.length && {
+            genres: { create: genreIds.map((gId: string) => ({ genreId: gId })) },
+          }),
+        },
+        include: { genres: { include: { genre: true } }, owner: { select: { id: true, username: true } } },
+      })
+    );
 
     res.status(201).json({ agent });
   } catch (error) {

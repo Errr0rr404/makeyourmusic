@@ -136,8 +136,18 @@ export const errorHandler = (
     });
   }
 
+  // For unexpected 500s, never echo the raw error message to the client —
+  // Prisma errors leak schema/column names + paths. Operational errors
+  // (AppError) and JSON parse errors keep their messages because those are
+  // intentionally human-friendly.
+  const isOperational = err instanceof AppError || (err instanceof SyntaxError && 'body' in err);
+  const clientMessage =
+    isOperational || process.env.NODE_ENV === 'development'
+      ? errorMessage
+      : 'Internal server error';
+
   const response: ErrorResponse = {
-    error: errorMessage,
+    error: clientMessage,
     errorCode,
     category,
     timestamp: new Date().toISOString(),

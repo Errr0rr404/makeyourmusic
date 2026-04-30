@@ -1,5 +1,4 @@
 import { Response } from 'express';
-import crypto from 'crypto';
 import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
@@ -29,6 +28,10 @@ export const enableLicensing = async (req: RequestWithUser, res: Response) => {
     });
     if (!track || track.agent?.ownerId !== req.user.userId) {
       res.status(403).json({ error: 'Only the track owner can enable licensing' });
+      return;
+    }
+    if (track.takedownStatus) {
+      res.status(409).json({ error: 'Track has an open takedown and cannot be licensed' });
       return;
     }
     const updated = await prisma.track.update({
@@ -78,9 +81,13 @@ export const disableLicensing = async (req: RequestWithUser, res: Response) => {
 // Create a Stripe Checkout session for a sync license purchase. The
 // resulting payment is split via Stripe Connect: platform takes
 // PLATFORM_FEE_BPS, the rest is transferred to the agent owner's
-// connected account.
+// connected account. Auth required — see route mount.
 export const startCheckout = async (req: RequestWithUser, res: Response) => {
   try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
     const stripe = getStripe();
     if (!stripe) {
       res.status(503).json({ error: 'Payments are not configured' });
@@ -89,6 +96,10 @@ export const startCheckout = async (req: RequestWithUser, res: Response) => {
     const { trackId, kind = 'sync', buyerEmail, buyerName, intendedUse } = req.body || {};
     if (kind !== 'sync' && kind !== 'stems') {
       res.status(400).json({ error: 'kind must be "sync" or "stems"' });
+      return;
+    }
+    if (typeof trackId !== 'string' || trackId.length === 0) {
+      res.status(400).json({ error: 'trackId is required' });
       return;
     }
     const track = await prisma.track.findUnique({
@@ -100,6 +111,10 @@ export const startCheckout = async (req: RequestWithUser, res: Response) => {
     });
     if (!track) {
       res.status(404).json({ error: 'Track not found' });
+      return;
+    }
+    if (track.takedownStatus) {
+      res.status(409).json({ error: 'Track has an open takedown and cannot be licensed' });
       return;
     }
 
@@ -133,9 +148,48 @@ export const startCheckout = async (req: RequestWithUser, res: Response) => {
     const { fee, net } = applyPlatformFee(priceCents);
     const currency = track.licenseCurrency || 'usd';
 
-    const downloadToken = crypto.randomBytes(32).toString('hex');
+    // Note: downloadToken is now issued in the webhook on PAID — never
+    // before payment. The success_url returns the licenseId only; the
+    // frontend should call a token-protected endpoint to retrieve the
+    // download URL after polling for status === 'PAID'.
+    let session;
+    try {
+      session = await stripe.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        customer_email: typeof buyerEmail === 'string' ? buyerEmail : undefined,
+        line_items: [
+          {
+            price_data: {
+              currency,
+              product_data: { name: label },
+              unit_amount: priceCents,
+            },
+            quantity: 1,
+          },
+        ],
+        payment_intent_data: {
+          application_fee_amount: fee,
+          transfer_data: { destination: owner.connectAccount.stripeAccountId },
+          metadata: {
+            kind: kind === 'stems' ? 'stem_purchase' : 'sync_license',
+            trackId: track.id,
+          },
+        },
+        metadata: {
+          kind: kind === 'stems' ? 'stem_purchase' : 'sync_license',
+          trackId: track.id,
+          // licenseId added below after row creation.
+        },
+        success_url: `${frontendUrl()}/track/${track.slug}?license=pending`,
+        cancel_url: `${frontendUrl()}/track/${track.slug}?canceled=1`,
+      });
+    } catch (err) {
+      logger.error('Stripe checkout creation failed', { error: (err as Error).message });
+      res.status(502).json({ error: 'Failed to create checkout session' });
+      return;
+    }
 
-    // Pre-create the row so we can reference id in metadata
     const license = await prisma.syncLicense.create({
       data: {
         trackId: track.id,
@@ -144,45 +198,30 @@ export const startCheckout = async (req: RequestWithUser, res: Response) => {
         netCents: net,
         currency,
         licenseTier: kind === 'stems' ? 'stems' : 'standard',
-        buyerId: req.user?.userId || null,
-        buyerEmail: typeof buyerEmail === 'string' ? buyerEmail : null,
-        buyerName: typeof buyerName === 'string' ? buyerName : null,
+        buyerId: req.user.userId,
+        buyerEmail: typeof buyerEmail === 'string' ? buyerEmail.slice(0, 200) : null,
+        buyerName: typeof buyerName === 'string' ? buyerName.slice(0, 200) : null,
         intendedUse: typeof intendedUse === 'string' ? intendedUse.slice(0, 1000) : null,
-        downloadToken,
+        stripeCheckoutSessionId: session.id,
       },
     });
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card'],
-      customer_email: typeof buyerEmail === 'string' ? buyerEmail : undefined,
-      line_items: [
-        {
-          price_data: {
-            currency,
-            product_data: { name: label },
-            unit_amount: priceCents,
-          },
-          quantity: 1,
+    // Patch the metadata to include the licenseId so the webhook can find it.
+    try {
+      await stripe.checkout.sessions.update(session.id, {
+        metadata: {
+          kind: kind === 'stems' ? 'stem_purchase' : 'sync_license',
+          trackId: track.id,
+          licenseId: license.id,
         },
-      ],
-      payment_intent_data: {
-        application_fee_amount: fee,
-        transfer_data: { destination: owner.connectAccount.stripeAccountId },
-      },
-      metadata: {
-        kind: kind === 'stems' ? 'stem_purchase' : 'sync_license',
-        licenseId: license.id,
-        trackId: track.id,
-      },
-      success_url: `${frontendUrl()}/track/${track.slug}?license=${license.id}&token=${downloadToken}`,
-      cancel_url: `${frontendUrl()}/track/${track.slug}?canceled=1`,
-    });
-
-    await prisma.syncLicense.update({
-      where: { id: license.id },
-      data: { stripeCheckoutSessionId: session.id },
-    });
+      });
+    } catch (err) {
+      // Non-fatal — the webhook can still find the row by stripeCheckoutSessionId.
+      logger.warn('Failed to patch license session metadata', {
+        sessionId: session.id,
+        error: (err as Error).message,
+      });
+    }
 
     res.json({ checkoutUrl: session.url, licenseId: license.id });
   } catch (error) {
@@ -203,6 +242,13 @@ export const downloadLicensedFiles = async (req: RequestWithUser, res: Response)
     });
     if (!license || license.status !== 'PAID') {
       res.status(404).json({ error: 'License not found or not paid' });
+      return;
+    }
+    // Enforce the 24h download window from licenseWebhook. Without this, any
+    // leaked token (e.g. via referer/log) gives an attacker permanent access
+    // to the master files.
+    if (license.downloadExpiresAt && license.downloadExpiresAt.getTime() < Date.now()) {
+      res.status(410).json({ error: 'Download link expired' });
       return;
     }
     if (license.licenseTier === 'stems' && license.track.stems?.status === 'READY') {

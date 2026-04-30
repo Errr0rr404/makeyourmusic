@@ -12,9 +12,14 @@ import {
   handleChannelSubCheckoutCompleted,
   handleChannelSubUpdated,
   handleChannelSubDeleted,
+  handleChannelSubInvoicePaid,
 } from './channelSubController';
 import { syncConnectAccount } from './connectController';
-import { handleSyncLicenseCheckoutCompleted } from './licenseWebhook';
+import {
+  handleSyncLicenseCheckoutCompleted,
+  handleSyncLicensePaymentFailed,
+  handleSyncLicenseRefunded,
+} from './licenseWebhook';
 
 const stripe = () => getStripe();
 
@@ -136,7 +141,11 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
 
     const sig = req.headers['stripe-signature'] as string;
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    const isProduction = process.env.NODE_ENV === 'production';
+    // Treat Railway as production even when NODE_ENV isn't explicitly set —
+    // otherwise an unsigned POST to /webhook could mint platform subscriptions
+    // by impersonating Stripe.
+    const isProduction =
+      process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
 
     let event;
     if (endpointSecret && sig) {
@@ -148,14 +157,35 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
         });
         res.status(400).json({ error: 'Webhook signature verification failed' }); return;
       }
-    } else if (isProduction) {
-      logger.error('Stripe webhook received without signature in production', {
+    } else if (isProduction || process.env.NODE_ENV === 'test') {
+      logger.error('Stripe webhook received without signature', {
         hasSecret: Boolean(endpointSecret),
         hasSig: Boolean(sig),
+        env: process.env.NODE_ENV,
       });
-      res.status(400).json({ error: 'Webhook signature required in production' }); return;
+      res.status(400).json({ error: 'Webhook signature required' }); return;
     } else {
       event = req.body;
+    }
+
+    // Idempotency: try to record the event id. If it already exists, Stripe
+    // is replaying — return 200 and skip processing. This prevents
+    // double-crediting referrals on retries.
+    if (event?.id) {
+      try {
+        await prisma.webhookEvent.create({
+          data: { stripeEventId: event.id, eventType: event.type || 'unknown' },
+        });
+      } catch (err: any) {
+        if (err?.code === 'P2002') {
+          logger.info('Stripe webhook duplicate, skipping', { eventId: event.id, type: event.type });
+          res.json({ received: true, duplicate: true });
+          return;
+        }
+        // Other DB error — log and continue (don't block the webhook on a
+        // transient DB issue, just lose idempotency for this one).
+        logger.warn('Webhook idempotency record failed', { error: (err as Error).message });
+      }
     }
 
     switch (event.type) {
@@ -175,8 +205,23 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
           await handleSyncLicenseCheckoutCompleted(session);
           break;
         }
-        // Default: platform subscription (legacy sessions also land here).
-        await handlePlatformCheckoutCompleted(session);
+        if (kind === 'platform_subscription') {
+          await handlePlatformCheckoutCompleted(session);
+          break;
+        }
+        // Default: only legacy `mode === 'subscription'` sessions without a
+        // kind are platform subscriptions. Refusing other modes (payment)
+        // prevents a tip session with stripped metadata from accidentally
+        // upgrading the tipper to PREMIUM.
+        if (session.mode === 'subscription') {
+          await handlePlatformCheckoutCompleted(session);
+        } else {
+          logger.warn('Unknown checkout.session.completed kind', {
+            sessionId: session.id,
+            mode: session.mode,
+            kind,
+          });
+        }
         break;
       }
 
@@ -187,11 +232,16 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
           await handleChannelSubUpdated(sub);
           break;
         }
-        // Try platform first.
         const platformSub = await prisma.subscription.findUnique({
           where: { stripeSubId: sub.id },
         });
         if (platformSub) {
+          // Determine new status — Stripe statuses map to ours.
+          const stripeStatus = sub.status as string | undefined;
+          let newStatus = platformSub.status;
+          if (stripeStatus === 'past_due') newStatus = 'PAST_DUE';
+          else if (stripeStatus === 'canceled') newStatus = 'CANCELLED';
+          else if (stripeStatus === 'active' || stripeStatus === 'trialing') newStatus = 'ACTIVE';
           await prisma.subscription.update({
             where: { id: platformSub.id },
             data: {
@@ -203,11 +253,12 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
                 typeof sub.current_period_end === 'number'
                   ? new Date(sub.current_period_end * 1000)
                   : platformSub.currentPeriodEnd,
-              status: sub.status === 'past_due' ? 'PAST_DUE' : platformSub.status,
+              cancelAtPeriodEnd: Boolean(sub.cancel_at_period_end),
+              status: newStatus,
             },
           });
         } else {
-          // Fallback: maybe a channel sub without metadata.kind set.
+          // Not a platform sub — try channel sub.
           await handleChannelSubUpdated(sub);
         }
         break;
@@ -226,7 +277,7 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
         if (platformSub) {
           await prisma.subscription.update({
             where: { id: platformSub.id },
-            data: { tier: 'FREE', status: 'EXPIRED', stripeSubId: null },
+            data: { tier: 'FREE', status: 'EXPIRED', stripeSubId: null, cancelAtPeriodEnd: false },
           });
         } else {
           await handleChannelSubDeleted(sub);
@@ -234,10 +285,31 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
         break;
       }
 
+      case 'invoice.payment_succeeded': {
+        const invoice = event.data.object;
+        if (invoice.subscription) {
+          // Restore platform subs that were PAST_DUE.
+          const platformSub = await prisma.subscription.findUnique({
+            where: { stripeSubId: invoice.subscription },
+          });
+          if (platformSub) {
+            if (platformSub.status === 'PAST_DUE') {
+              await prisma.subscription.update({
+                where: { id: platformSub.id },
+                data: { status: 'ACTIVE' },
+              });
+            }
+            break;
+          }
+          // Channel sub renewals: credit referrer once per invoice.
+          await handleChannelSubInvoicePaid(invoice);
+        }
+        break;
+      }
+
       case 'invoice.payment_failed': {
         const invoice = event.data.object;
         if (invoice.subscription) {
-          // Try platform sub first.
           const platformSub = await prisma.subscription.findUnique({
             where: { stripeSubId: invoice.subscription },
           });
@@ -262,12 +334,30 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
       }
 
       case 'payment_intent.payment_failed': {
-        await handleTipPaymentFailed(event.data.object);
+        const pi = event.data.object;
+        const piKind = pi?.metadata?.kind || '';
+        if (piKind === 'sync_license' || piKind === 'stem_purchase') {
+          await handleSyncLicensePaymentFailed(pi);
+        } else {
+          // Default: tip (matches existing tip metadata.kind).
+          await handleTipPaymentFailed(pi);
+        }
         break;
       }
 
       case 'charge.refunded': {
-        await handleTipRefunded(event.data.object);
+        const charge = event.data.object;
+        const chKind = charge?.metadata?.kind || '';
+        if (chKind === 'sync_license' || chKind === 'stem_purchase') {
+          await handleSyncLicenseRefunded(charge);
+        } else if (chKind === 'tip') {
+          await handleTipRefunded(charge);
+        } else {
+          // Unknown — try both handlers; each one is a no-op when its
+          // payment_intent doesn't match.
+          await handleTipRefunded(charge);
+          await handleSyncLicenseRefunded(charge);
+        }
         break;
       }
 

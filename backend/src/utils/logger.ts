@@ -8,23 +8,33 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-// Sensitive fields that should be masked in logs
+// Sensitive fields that should be masked in logs. Substring match (case-insensitive),
+// so `passwordHash`, `keyHash`, `webhookSecret`, `clientSecret`, `setCookie` are all caught.
 const SENSITIVE_FIELDS = [
   'password',
   'passwordHash',
   'token',
   'accessToken',
   'refreshToken',
+  'idToken',
   'apiKey',
+  'keyHash',
   'secret',
+  'webhookSecret',
+  'clientSecret',
   'authorization',
+  'bearer',
+  'cookie',
+  'setCookie',
+  'signature',
   'creditCard',
   'cardNumber',
   'cvv',
   'ssn',
 ];
 
-// Mask sensitive data in log objects
+// Mask sensitive data in log objects. Recurses into arrays so a list of
+// authorization headers or token strings doesn't sneak through.
 const maskSensitiveData = (obj: Record<string, unknown>): Record<string, unknown> => {
   if (!obj || typeof obj !== 'object') return obj;
 
@@ -33,7 +43,13 @@ const maskSensitiveData = (obj: Record<string, unknown>): Record<string, unknown
     const lowerKey = key.toLowerCase();
     if (SENSITIVE_FIELDS.some(field => lowerKey.includes(field.toLowerCase()))) {
       masked[key] = '[REDACTED]';
-    } else if (value && typeof value === 'object' && !Array.isArray(value)) {
+    } else if (Array.isArray(value)) {
+      masked[key] = value.map((v) =>
+        v && typeof v === 'object' && !Array.isArray(v)
+          ? maskSensitiveData(v as Record<string, unknown>)
+          : v
+      );
+    } else if (value && typeof value === 'object') {
       masked[key] = maskSensitiveData(value as Record<string, unknown>);
     } else {
       masked[key] = value;

@@ -14,13 +14,47 @@ const userOrIpKey = (req: Request): string => {
   return req.ip ?? 'anonymous';
 };
 
+// Login-only limiter — `skipSuccessfulRequests` is safe here because
+// a successful login means the credentials were correct, not a guess.
 export const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: isDevelopment ? 50 : 5, // More lenient in development
+  max: isDevelopment ? 50 : 5,
   message: 'Too many login attempts, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
-  skipSuccessfulRequests: true, // Don't count successful logins
+  skipSuccessfulRequests: true,
+});
+
+// For endpoints that ALWAYS return 200 (forgot-password, resend-verification)
+// — `skipSuccessfulRequests` would effectively disable the limiter here,
+// letting attackers spam emails and inflate provider bills.
+export const writeAuthLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevelopment ? 50 : 5,
+  message: 'Too many requests. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Forgot-password / verification email — tighter cap to deter abuse since
+// each successful request sends an email.
+export const emailDispatchLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  max: isDevelopment ? 20 : 3,
+  message: 'Too many email requests. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Admin login — independent counter so a brute-force on /auth/login can't
+// burn the admin's window and a brute-force on /admin/auth/verify can't
+// burn the user's window.
+export const adminLoginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: isDevelopment ? 20 : 5,
+  message: 'Too many admin login attempts. Please try again later.',
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 export const apiLimiter = rateLimit({

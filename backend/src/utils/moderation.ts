@@ -53,27 +53,51 @@ export interface ModerationResult {
   severity: 'OK' | 'REVIEW' | 'BLOCK';
 }
 
+// NFKC normalization + combining-mark strip + a small homoglyph-fold so the
+// classifier doesn't trivially break on `nіgger` (Cyrillic і) or
+// `ｎｉｇｇｅｒ` (full-width). This is still a basic filter — the broader
+// strategy is takedown + admin review — but the previous version would miss
+// any obfuscated input.
+const HOMOGLYPH_MAP: Record<string, string> = {
+  // Cyrillic → Latin
+  а: 'a', е: 'e', і: 'i', о: 'o', р: 'p', с: 'c', у: 'y', х: 'x',
+  // Greek lookalikes
+  α: 'a', ο: 'o', ρ: 'p', τ: 't',
+  // Common digit/punct substitutions are already handled by the regex
+  // [i!1] / [a@] / [o0] groups.
+};
+function normalizeForModeration(text: string): string {
+  let n = text.normalize('NFKC').toLowerCase();
+  // Strip combining marks (e.g. zero-width diacritics that hide letters).
+  n = n.replace(/[̀-ͯ]/g, '');
+  // Drop zero-width / invisible chars commonly used to defeat regexes.
+  n = n.replace(/[​‌‍⁠﻿]/g, '');
+  // Homoglyph fold.
+  return n.replace(/./g, (ch) => HOMOGLYPH_MAP[ch] || ch);
+}
+
 export function moderateLyrics(text: string | null | undefined): ModerationResult {
   if (!text || typeof text !== 'string') {
     return { allowed: true, reasons: [], severity: 'OK' };
   }
+  const normalized = normalizeForModeration(text);
   const reasons: string[] = [];
   let severity: ModerationResult['severity'] = 'OK';
 
   for (const re of CSAM_PATTERNS) {
-    if (re.test(text)) {
+    if (re.test(normalized)) {
       reasons.push('Possible CSAM-related content');
       severity = 'BLOCK';
     }
   }
   for (const re of SLUR_PATTERNS) {
-    if (re.test(text)) {
+    if (re.test(normalized)) {
       reasons.push('Slur detected');
       if (severity !== 'BLOCK') severity = 'REVIEW';
     }
   }
   for (const re of VIOLENT_INTENT_PATTERNS) {
-    if (re.test(text)) {
+    if (re.test(normalized)) {
       reasons.push('Threats / violent intent');
       if (severity !== 'BLOCK') severity = 'REVIEW';
     }

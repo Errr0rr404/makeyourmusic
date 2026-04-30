@@ -112,10 +112,14 @@ export default function FullScreenPlayer() {
     return () => clearInterval(interval);
   }, [sleepTimerEnd]);
 
-  if (!currentTrack) {
-    router.back();
-    return null;
-  }
+  // Navigate away in an effect — calling router.back() during render causes
+  // "Cannot update a component while rendering" warnings and a navigation
+  // race when the modal is dismissed concurrently with other navigation.
+  useEffect(() => {
+    if (!currentTrack) router.back();
+  }, [currentTrack]);
+
+  if (!currentTrack) return null;
 
   const handleTogglePlay = () => {
     togglePlay();

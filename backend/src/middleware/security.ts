@@ -35,7 +35,10 @@ export const securityHeaders = helmet({
   // Additional banking-level security headers
   frameguard: { action: 'deny' }, // Prevent clickjacking
   noSniff: true, // Prevent MIME type sniffing
-  xssFilter: true, // Enable XSS filter
+  // X-XSS-Protection is deprecated and ignored by modern browsers; older IE
+  // versions had bugs where setting it could ENABLE XSS reflection. Rely on
+  // CSP instead.
+  xssFilter: false,
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' }, // Control referrer information
   // Note: permissionsPolicy is not supported in helmet v8 - if needed, use a separate middleware
 });

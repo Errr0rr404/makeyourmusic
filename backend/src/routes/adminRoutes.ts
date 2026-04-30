@@ -15,24 +15,31 @@ import {
 } from '../controllers/adminController';
 import { listTakedowns, resolveTakedown } from '../controllers/takedownController';
 import { requireAdminPanelToken } from '../utils/adminAuth';
+import { authenticate, requireAdmin } from '../middleware/auth';
 import {
   updateRoleRules,
   resolveReportRules,
   paginationRules,
   validateRequest,
 } from '../middleware/validation';
-import { authLimiter } from '../middleware/rateLimiter';
+import { adminLoginLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
 // Password verify is the only public endpoint — it's how a token is obtained.
-// Heavy rate-limit it because brute-force is the obvious attack.
-router.post('/auth/verify', authLimiter, verifyAdminPanelPassword);
+// Heavy rate-limit it because brute-force is the obvious attack. Uses a
+// dedicated limiter (no skipSuccessfulRequests) so successful brute-force
+// guesses still get throttled.
+router.post('/auth/verify', adminLoginLimiter, verifyAdminPanelPassword);
 
-// Everything else requires a valid admin-panel token. The middleware lets
-// /auth/verify through unconditionally so the password endpoint remains
-// reachable; any other path 401s without a token.
-router.use(requireAdminPanelToken as any);
+// Defense in depth: every admin endpoint must satisfy ALL of:
+//   1) authenticate — caller has a valid user JWT (so actions are attributable)
+//   2) requireAdmin  — caller's role is ADMIN (revokeable per-user without rotating env)
+//   3) requireAdminPanelToken — caller has typed ADMIN_PASSWORD recently
+//
+// Previously only (3) was enforced, meaning anyone with the panel password
+// could act with no user identity attached.
+router.use(authenticate as any, requireAdmin as any, requireAdminPanelToken as any);
 
 router.get('/dashboard', getDashboard as any);
 router.get('/stats', getStats as any);

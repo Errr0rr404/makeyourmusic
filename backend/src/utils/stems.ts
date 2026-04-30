@@ -14,19 +14,27 @@ import logger from './logger';
 
 const REPLICATE_BASE = 'https://api.replicate.com/v1';
 // htdemucs is the production-grade Demucs variant — 4 stems, MP3 output by
-// default. Bump the version hash when Replicate releases a newer pin.
-const DEMUCS_MODEL_VERSION =
-  process.env.REPLICATE_DEMUCS_VERSION ||
-  'cd128044b8a6c7e2d2dba6fdcfc1afe6d2a86e35afd0f6a09f4a4d0a37f1d4d2';
+// default. Replicate model version pins must be set via env so we don't ship
+// a stale or fabricated hash. The previous default was a placeholder that
+// would 422 on every call.
+function getDemucsVersion(): string {
+  const v = process.env.REPLICATE_DEMUCS_VERSION;
+  if (!v || !/^[a-f0-9]{64}$/i.test(v)) {
+    throw new Error(
+      'REPLICATE_DEMUCS_VERSION must be set to a 64-hex Replicate version pin'
+    );
+  }
+  return v;
+}
 
 export class StemProviderUnavailable extends Error {
   constructor() {
-    super('Stem separation provider is not configured (REPLICATE_API_TOKEN missing)');
+    super('Stem separation provider is not configured (REPLICATE_API_TOKEN or REPLICATE_DEMUCS_VERSION missing)');
   }
 }
 
 function isConfigured(): boolean {
-  return Boolean(process.env.REPLICATE_API_TOKEN);
+  return Boolean(process.env.REPLICATE_API_TOKEN && process.env.REPLICATE_DEMUCS_VERSION);
 }
 
 interface StartResult {
@@ -44,7 +52,7 @@ export async function startStemsJob(audioUrl: string): Promise<StartResult> {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      version: DEMUCS_MODEL_VERSION,
+      version: getDemucsVersion(),
       input: {
         audio: audioUrl,
         stem: 'none', // emit all four stems

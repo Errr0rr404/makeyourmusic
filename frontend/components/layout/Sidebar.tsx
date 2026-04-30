@@ -35,6 +35,10 @@ export function Sidebar() {
 
   const isAgentOwner = user?.role === 'AGENT_OWNER' || user?.role === 'ADMIN';
 
+  // Re-fetch on auth change only, not on every navigation. The previous
+  // [pathname] dep meant every internal route change spammed the API with
+  // a `/social/playlists/mine` call — the sidebar contents almost never
+  // depend on the current path.
   useEffect(() => {
     if (!isAuthenticated) {
       setPlaylists([]);
@@ -48,7 +52,7 @@ export function Sidebar() {
       })
       .catch(() => undefined);
     return () => { cancelled = true; };
-  }, [isAuthenticated, pathname]);
+  }, [isAuthenticated]);
 
   const handleCreatePlaylist = async () => {
     if (creatingPlaylist) return;

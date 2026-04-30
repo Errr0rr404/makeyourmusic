@@ -12,8 +12,32 @@ import logger from './logger';
 import { minimaxQueryVideo, minimaxRetrieveFile } from './minimax';
 
 const MAX_PER_TICK = 20;
+const STUCK_AFTER_MS = 30 * 60 * 1000; // 30 min — Hailuo Fast jobs finish in 30-90s.
+
+// Module-level mutex prevents two cron ticks of the SAME process from
+// running pollPreviewVideos concurrently (when a previous tick takes longer
+// than the 5-min interval). Cross-process safety is via the advisory lock
+// in cronTick.ts.
+let running = false;
 
 export async function pollPreviewVideos(): Promise<{ processed: number; resolved: number }> {
+  if (running) {
+    return { processed: 0, resolved: 0 };
+  }
+  running = true;
+  try {
+  // First sweep: age out jobs that have been PROCESSING for too long. The
+  // upstream might have lost the task; better to FAIL than to keep polling.
+  const stuckCutoff = new Date(Date.now() - STUCK_AFTER_MS);
+  await prisma.videoGeneration.updateMany({
+    where: {
+      purpose: 'preview',
+      status: 'PROCESSING',
+      createdAt: { lt: stuckCutoff },
+    },
+    data: { status: 'FAILED', errorMessage: 'Preview video timed out' },
+  });
+
   const pending = await prisma.videoGeneration.findMany({
     where: { purpose: 'preview', status: 'PROCESSING', providerJobId: { not: null } },
     take: MAX_PER_TICK,
@@ -56,4 +80,7 @@ export async function pollPreviewVideos(): Promise<{ processed: number; resolved
     }
   }
   return { processed: pending.length, resolved };
+  } finally {
+    running = false;
+  }
 }

@@ -56,6 +56,10 @@ export default function AdminUsersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  // Bumped to force a re-fetch when the user clicks Refresh — without
+  // this, calling `setPage(p => p)` is a no-op (zustand/React batches
+  // identity-equal updates) so the effect never re-fires.
+  const [refreshNonce, setRefreshNonce] = useState(0);
 
   const params = useMemo(() => {
     const p = new URLSearchParams({ page: String(page), limit: '25' });
@@ -87,7 +91,7 @@ export default function AdminUsersPage() {
       }
     }, 250); // debounce search
     return () => { cancelled = true; clearTimeout(t); };
-  }, [params]);
+  }, [params, refreshNonce]);
 
   const handleRoleChange = async (userId: string, newRole: AdminUserRow['role']) => {
     const prev = users.find((u) => u.id === userId)?.role;
@@ -113,7 +117,7 @@ export default function AdminUsersPage() {
         </div>
 
         <button
-          onClick={() => { setRefreshing(true); setPage((p) => p); /* re-trigger via params */ setSearch((s) => s); }}
+          onClick={() => { setRefreshing(true); setRefreshNonce((n) => n + 1); }}
           className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[hsl(var(--card))] border border-white/10 hover:bg-white/5 transition-colors"
         >
           <RefreshCw className={`w-3 h-3 ${refreshing ? 'animate-spin' : ''}`} />

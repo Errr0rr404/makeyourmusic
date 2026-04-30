@@ -3,7 +3,8 @@ import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 import { createNotification } from '../utils/notifications';
-import { slugify, uniqueSuffix } from '../utils/slugify';
+import { slugify, uniqueSuffix, createWithUniqueSlug } from '../utils/slugify';
+import { moderateLyrics, moderationToError } from '../utils/moderation';
 
 // ─── Likes ───────────────────────────────────────────────
 
@@ -232,6 +233,18 @@ export const createComment = async (req: RequestWithUser, res: Response) => {
       res.status(400).json({ error: 'Comment must be 2000 characters or less' }); return;
     }
 
+    // Run user-supplied comment text through the same moderation gate as
+    // lyrics. Without this, the comment surface was a free channel for
+    // slurs / threats / CSAM solicitations. BLOCK severity is rejected;
+    // REVIEW-tier hits are allowed through (admin review can mop up).
+    {
+      const check = moderateLyrics(trimmed);
+      if (!check.allowed && check.severity === 'BLOCK') {
+        res.status(400).json({ error: moderationToError(check) || 'Comment violates content policy' });
+        return;
+      }
+    }
+
     // Only permit comments on visible tracks (public, or owned by commenter, or admin)
     const track = await prisma.track.findUnique({
       where: { id: trackId },
@@ -307,6 +320,13 @@ export const updateComment = async (req: RequestWithUser, res: Response) => {
       res.status(400).json({ error: 'Comment must be 2000 characters or less' });
       return;
     }
+    {
+      const check = moderateLyrics(trimmed);
+      if (!check.allowed && check.severity === 'BLOCK') {
+        res.status(400).json({ error: moderationToError(check) || 'Comment violates content policy' });
+        return;
+      }
+    }
 
     const existing = await prisma.comment.findUnique({ where: { id } });
     if (!existing) { res.status(404).json({ error: 'Comment not found' }); return; }
@@ -356,21 +376,20 @@ export const createPlaylist = async (req: RequestWithUser, res: Response) => {
     const { title, description, isPublic } = req.body;
     if (!title) { res.status(400).json({ error: 'Title is required' }); return; }
 
-    let slug = slugify(title);
-    if (!slug) slug = `playlist-${uniqueSuffix()}`;
-    const existingSlug = await prisma.playlist.findUnique({ where: { slug } });
-    if (existingSlug) slug = `${slug}-${uniqueSuffix()}`;
+    const seedSlug = slugify(title) || `playlist-${uniqueSuffix()}`;
 
-    const playlist = await prisma.playlist.create({
-      data: {
-        title,
-        slug,
-        description,
-        isPublic: isPublic !== false,
-        accessTier: isPublic === false ? 'PRIVATE' : 'PUBLIC',
-        userId: req.user.userId,
-      },
-    });
+    const playlist = await createWithUniqueSlug(seedSlug, (slug) =>
+      prisma.playlist.create({
+        data: {
+          title,
+          slug,
+          description,
+          isPublic: isPublic !== false,
+          accessTier: isPublic === false ? 'PRIVATE' : 'PUBLIC',
+          userId: req.user!.userId,
+        },
+      })
+    );
 
     res.status(201).json({ playlist });
   } catch (error) {
@@ -504,11 +523,34 @@ export const addToPlaylist = async (req: RequestWithUser, res: Response) => {
 
     const track = await prisma.track.findUnique({
       where: { id: trackId },
-      select: { id: true, isPublic: true, agent: { select: { ownerId: true } } },
+      select: {
+        id: true,
+        isPublic: true,
+        status: true,
+        takedownStatus: true,
+        agent: { select: { ownerId: true } },
+      },
     });
     if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
     if (!track.isPublic && track.agent.ownerId !== req.user.userId) {
       res.status(404).json({ error: 'Track not found' }); return;
+    }
+    // Reject non-ACTIVE or taken-down tracks. Without this, a taken-down or
+    // PROCESSING/REMOVED track can be added to a paid playlist where it
+    // surfaces to subscribers as a broken row.
+    if (track.status !== 'ACTIVE' || track.takedownStatus) {
+      res.status(409).json({ error: 'Only active, non-takedown tracks can be added' });
+      return;
+    }
+
+    // Cap playlist size — without this a single playlist row can grow
+    // unboundedly large; getPlaylist returns all tracks via Prisma include
+    // with no `take` limit, so a 100k-track playlist would crash the API.
+    const MAX_TRACKS_PER_PLAYLIST = 500;
+    const currentCount = await prisma.playlistTrack.count({ where: { playlistId } });
+    if (currentCount >= MAX_TRACKS_PER_PLAYLIST) {
+      res.status(409).json({ error: `Playlist is full (max ${MAX_TRACKS_PER_PLAYLIST} tracks)` });
+      return;
     }
 
     try {

@@ -97,7 +97,10 @@ export const clearCachePattern = (pattern: string) => {
   }
 };
 
-// Periodic cache cleanup (every 10 minutes)
-if (typeof setInterval !== 'undefined') {
-  setInterval(cleanupCache, 10 * 60 * 1000);
+// Periodic cache cleanup (every 10 minutes). Skip in test runs so Jest can
+// exit cleanly without --forceExit, and call .unref() so the interval never
+// keeps the event loop alive on graceful shutdown.
+if (typeof setInterval !== 'undefined' && process.env.NODE_ENV !== 'test') {
+  const t = setInterval(cleanupCache, 10 * 60 * 1000);
+  if (typeof (t as any).unref === 'function') (t as any).unref();
 }

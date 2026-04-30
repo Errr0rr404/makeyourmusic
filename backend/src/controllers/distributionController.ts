@@ -26,8 +26,18 @@ export const requestDistribution = async (req: RequestWithUser, res: Response) =
       where: { id: trackId },
       include: { agent: { select: { ownerId: true } } },
     });
-    if (!track || track.agent?.ownerId !== req.user.userId) {
+    if (!track || !track.agent || track.agent.ownerId !== req.user.userId) {
       res.status(403).json({ error: 'Only the track owner can request distribution' });
+      return;
+    }
+    if (track.takedownStatus) {
+      res.status(409).json({
+        error: 'Track has an open takedown and cannot be distributed',
+      });
+      return;
+    }
+    if (track.status !== 'ACTIVE') {
+      res.status(409).json({ error: 'Only active tracks can be distributed' });
       return;
     }
 

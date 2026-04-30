@@ -2,7 +2,7 @@ import { Response } from 'express';
 import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
-import { slugify, uniqueSuffix } from '../utils/slugify';
+import { slugify, createWithUniqueSlug } from '../utils/slugify';
 
 export const createTrack = async (req: RequestWithUser, res: Response) => {
   try {
@@ -22,9 +22,7 @@ export const createTrack = async (req: RequestWithUser, res: Response) => {
       res.status(403).json({ error: 'Not authorized' }); return;
     }
 
-    let slug = slugify(title);
-    const existingSlug = await prisma.track.findUnique({ where: { slug } });
-    if (existingSlug) slug = `${slug}-${uniqueSuffix()}`;
+    const seedSlug = slugify(title);
 
     const parsedDuration = parseInt(duration);
     if (isNaN(parsedDuration) || parsedDuration <= 0) {
@@ -35,34 +33,37 @@ export const createTrack = async (req: RequestWithUser, res: Response) => {
       res.status(400).json({ error: 'BPM must be a positive number' }); return;
     }
 
-    const track = await prisma.track.create({
-      data: {
-        title,
-        slug,
-        audioUrl,
-        coverArt,
-        duration: parsedDuration,
-        mood,
-        tags: tags || [],
-        bpm: parsedBpm,
-        key,
-        aiModel,
-        aiPrompt,
-        lyrics: typeof lyrics === 'string' ? lyrics : null,
-        status: 'ACTIVE',
-        isPublic: isPublic === false ? false : true,
-        agentId,
-        genreId: genreId || null,
-        ...(videoUrl && {
-          video: { create: { videoUrl, thumbnail: videoThumbnail } },
-        }),
-      },
-      include: {
-        agent: { select: { id: true, name: true, slug: true, avatar: true } },
-        genre: true,
-        video: true,
-      },
-    });
+    // Slug uniqueness via P2002 retry — atomic, no TOCTOU window.
+    const track = await createWithUniqueSlug(seedSlug, (slug) =>
+      prisma.track.create({
+        data: {
+          title,
+          slug,
+          audioUrl,
+          coverArt,
+          duration: parsedDuration,
+          mood,
+          tags: tags || [],
+          bpm: parsedBpm,
+          key,
+          aiModel,
+          aiPrompt,
+          lyrics: typeof lyrics === 'string' ? lyrics : null,
+          status: 'ACTIVE',
+          isPublic: isPublic === false ? false : true,
+          agentId,
+          genreId: genreId || null,
+          ...(videoUrl && {
+            video: { create: { videoUrl, thumbnail: videoThumbnail } },
+          }),
+        },
+        include: {
+          agent: { select: { id: true, name: true, slug: true, avatar: true } },
+          genre: true,
+          video: true,
+        },
+      })
+    );
 
     res.status(201).json({ track });
   } catch (error) {
@@ -89,6 +90,17 @@ export const getTrack = async (req: RequestWithUser, res: Response) => {
 
     // Respect privacy: private tracks are only visible to their owner + admins
     if (!track.isPublic) {
+      const isOwner = req.user && track.agent.ownerId === req.user.userId;
+      const isAdmin = req.user && req.user.role === 'ADMIN';
+      if (!isOwner && !isAdmin) {
+        res.status(404).json({ error: 'Track not found' });
+        return;
+      }
+    }
+    // Hide tracks under DMCA review from non-owners (consistent with the
+    // takedown policy of "hide while pending"). Owners still see the page so
+    // they can counter-notice.
+    if (track.takedownStatus) {
       const isOwner = req.user && track.agent.ownerId === req.user.userId;
       const isAdmin = req.user && req.user.role === 'ADMIN';
       if (!isOwner && !isAdmin) {
@@ -127,7 +139,7 @@ export const listTracks = async (req: RequestWithUser, res: Response) => {
     const mood = req.query.mood as string | undefined;
     const search = req.query.search as string | undefined;
 
-    const where: any = { status: 'ACTIVE', isPublic: true };
+    const where: any = { status: 'ACTIVE', isPublic: true, takedownStatus: null };
     if (genreSlug) where.genre = { slug: genreSlug };
     if (agentId) where.agentId = agentId;
     if (mood) where.mood = mood;
@@ -292,10 +304,33 @@ export const updateTrackVisibility = async (req: RequestWithUser, res: Response)
   }
 };
 
+// Minimum seconds-of-audio that count toward playCount (Spotify-style).
+// Plays under this threshold still get a Play row (useful for analytics)
+// but don't pump the denormalized counters or trending score.
+const PLAY_COUNT_THRESHOLD_SEC = 30;
+
+// Per-track de-dup window — same (trackId, viewer) within this window
+// only gets one play. Hard cap on the most obvious pump attack.
+const PLAY_DEDUP_WINDOW_MS = 60_000;
+const recentPlays = new Map<string, number>();
+function shouldDedupPlay(key: string): boolean {
+  const now = Date.now();
+  const last = recentPlays.get(key);
+  if (last && now - last < PLAY_DEDUP_WINDOW_MS) return true;
+  recentPlays.set(key, now);
+  // Cheap GC: when map gets big, drop entries older than the window.
+  if (recentPlays.size > 5000) {
+    for (const [k, t] of recentPlays.entries()) {
+      if (now - t > PLAY_DEDUP_WINDOW_MS) recentPlays.delete(k);
+    }
+  }
+  return false;
+}
+
 export const recordPlay = async (req: RequestWithUser, res: Response) => {
   try {
     const trackId = req.params.trackId as string;
-    const { durationPlayed, completed } = req.body;
+    const { durationPlayed, completed } = req.body || {};
 
     const track = await prisma.track.findUnique({
       where: { id: trackId },
@@ -314,26 +349,56 @@ export const recordPlay = async (req: RequestWithUser, res: Response) => {
       }
     }
 
-    await prisma.$transaction([
+    // Self-plays by the track's own agent owner shouldn't pump counters.
+    const isSelfPlay =
+      req.user?.userId !== undefined && req.user.userId === track.agent.ownerId;
+
+    // Clamp duration so a malicious client can't pass `durationPlayed: 999999`
+    // — only durations within track length + small slack make sense.
+    const rawDuration = typeof durationPlayed === 'number' ? durationPlayed : parseInt(String(durationPlayed || 0), 10);
+    const clampedDuration = Math.max(
+      0,
+      Math.min(track.duration + 5, Number.isFinite(rawDuration) ? rawDuration : 0)
+    );
+    const isCompleted = completed === true || completed === 'true';
+
+    // Dedup key — userId if logged in, else IP.
+    const dedupId = req.user?.userId || req.ip || 'anon';
+    const isDuplicate = shouldDedupPlay(`${trackId}:${dedupId}`);
+
+    // Always create a Play row for analytics, but only bump counters/trending
+    // when the listen meets the threshold AND isn't self-play AND isn't a
+    // dedup hit.
+    const shouldCount =
+      !isSelfPlay &&
+      !isDuplicate &&
+      (clampedDuration >= PLAY_COUNT_THRESHOLD_SEC || isCompleted);
+
+    const ops: any[] = [
       prisma.play.create({
         data: {
           trackId,
           userId: req.user?.userId || null,
-          durationPlayed: durationPlayed || 0,
-          completed: completed || false,
+          durationPlayed: clampedDuration,
+          completed: isCompleted,
         },
       }),
-      prisma.track.update({
-        where: { id: trackId },
-        data: { playCount: { increment: 1 } },
-      }),
-      prisma.aiAgent.update({
-        where: { id: track.agentId },
-        data: { totalPlays: { increment: 1 } },
-      }),
-    ]);
+    ];
+    if (shouldCount) {
+      ops.push(
+        prisma.track.update({
+          where: { id: trackId },
+          data: { playCount: { increment: 1 } },
+        }),
+        prisma.aiAgent.update({
+          where: { id: track.agentId },
+          data: { totalPlays: { increment: 1 } },
+        })
+      );
+    }
+    await prisma.$transaction(ops);
 
-    res.json({ message: 'Play recorded' });
+    res.json({ message: 'Play recorded', counted: shouldCount });
   } catch (error) {
     logger.error('Record play error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to record play' });
@@ -351,7 +416,18 @@ export const deleteTrack = async (req: RequestWithUser, res: Response) => {
       res.status(403).json({ error: 'Not authorized' }); return;
     }
 
-    await prisma.track.delete({ where: { id } });
+    // Decrement the agent's denormalized counters by this track's contribution
+    // before deleting. Otherwise totalPlays/totalLikes drift permanently up.
+    await prisma.$transaction([
+      prisma.aiAgent.update({
+        where: { id: track.agentId },
+        data: {
+          totalPlays: { decrement: track.playCount },
+          totalLikes: { decrement: track.likeCount },
+        },
+      }),
+      prisma.track.delete({ where: { id } }),
+    ]);
     res.json({ message: 'Track deleted' });
   } catch (error) {
     logger.error('Delete track error', { error: (error as Error).message });
@@ -386,6 +462,7 @@ export const getTrending = async (req: RequestWithUser, res: Response) => {
         id: { in: trackIds },
         status: 'ACTIVE',
         isPublic: true,
+        takedownStatus: null,
       },
       include: {
         agent: { select: { id: true, name: true, slug: true, avatar: true } },
@@ -476,12 +553,10 @@ export const getSimilarTracks = async (req: RequestWithUser, res: Response) => {
       select: { id: true, genreId: true, agentId: true, mood: true, isPublic: true },
     });
 
-    if (!source) {
+    // Return identical 404 for both "doesn't exist" and "private/taken-down"
+    // so unauthenticated callers can't enumerate IDs.
+    if (!source || !source.isPublic) {
       res.status(404).json({ error: 'Track not found' });
-      return;
-    }
-    if (!source.isPublic) {
-      res.json({ tracks: [] });
       return;
     }
 

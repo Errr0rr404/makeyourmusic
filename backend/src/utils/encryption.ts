@@ -8,6 +8,12 @@ if (!ENCRYPTION_KEY && process.env.NODE_ENV === 'production') {
   logger.error('ENCRYPTION_KEY is not set in production! This will cause data decryption failures.');
   throw new Error('ENCRYPTION_KEY environment variable is required in production');
 }
+// Reject malformed keys early — silently zero-padding a short key was a
+// catastrophic security flaw (operators with `ENCRYPTION_KEY=foo` got fake
+// 256-bit encryption with effective 24 bits of entropy).
+if (ENCRYPTION_KEY && !/^[0-9a-fA-F]{64}$/.test(ENCRYPTION_KEY)) {
+  throw new Error('ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes) for AES-256');
+}
 // Fallback for development only - generates a new key each time (data will not persist)
 const FALLBACK_KEY = ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
 if (!ENCRYPTION_KEY && process.env.NODE_ENV !== 'production') {
@@ -16,12 +22,13 @@ if (!ENCRYPTION_KEY && process.env.NODE_ENV !== 'production') {
 const ALGORITHM = 'aes-256-gcm';
 
 /**
- * Get 32-byte key from hex string
+ * Get 32-byte key from hex string. Throws on malformed input.
  */
 function getKey(hexKey: string): Buffer {
-  // Ensure the key is exactly 64 hex chars (32 bytes)
-  const normalizedKey = hexKey.padEnd(64, '0').slice(0, 64);
-  return Buffer.from(normalizedKey, 'hex');
+  if (!/^[0-9a-fA-F]{64}$/.test(hexKey)) {
+    throw new Error('Encryption key is malformed — must be 64 hex chars');
+  }
+  return Buffer.from(hexKey, 'hex');
 }
 
 /**
@@ -70,13 +77,15 @@ export function decrypt(encryptedText: string): string {
     
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
-    
+
     return decrypted;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     logger.error('Decryption error', { error: errorMessage });
-    // Return original if decryption fails (backward compatibility)
-    return encryptedText;
+    // Fail closed — returning the original ciphertext as if it were plaintext
+    // would silently leak ciphertext into provider calls (Stripe acct ids,
+    // refresh tokens, agent API keys). Callers must handle the throw.
+    throw new Error('Failed to decrypt data');
   }
 }
 

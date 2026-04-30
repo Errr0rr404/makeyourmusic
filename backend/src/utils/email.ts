@@ -91,18 +91,30 @@ async function sendViaSmtp(msg: EmailMessage): Promise<void> {
   });
 }
 
+// Crude scrubber: replace the token portion of verification/reset links so
+// console output / structured logs don't echo a working secret if log
+// shipping is misconfigured. We deliberately keep the path so devs can tell
+// which email fired.
+function scrubTokens(text: string): string {
+  return text.replace(/(token=)([A-Za-z0-9_-]{16,})/g, '$1[REDACTED]');
+}
+
 function logEmailToConsole(msg: EmailMessage): void {
   logger.info('📧 Email (console fallback — no provider configured)', {
     to: msg.to,
     subject: msg.subject,
-    preview: msg.text.slice(0, 200),
+    preview: scrubTokens(msg.text).slice(0, 200),
   });
-  if (process.env.NODE_ENV !== 'production') {
+  // Refuse to print full email text in any non-`development` environment.
+  // Previously we'd print plaintext reset/verify URLs to stdout in
+  // staging/preview, where logs are typically aggregated and readable by
+  // every engineer.
+  if (process.env.NODE_ENV === 'development') {
     console.log('\n──── EMAIL ────');
     console.log(`To:      ${msg.to}`);
     console.log(`Subject: ${msg.subject}`);
     console.log('');
-    console.log(msg.text);
+    console.log(scrubTokens(msg.text));
     console.log('───────────────\n');
   }
 }

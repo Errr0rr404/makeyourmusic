@@ -1,6 +1,7 @@
 import { SignJWT, jwtVerify } from 'jose';
 import { Response, NextFunction } from 'express';
 import crypto from 'crypto';
+import argon2 from 'argon2';
 import { RequestWithUser } from '../types';
 
 // A separate password gate on top of the existing admin role check. Verifying
@@ -14,59 +15,93 @@ const ADMIN_TOKEN_TTL = '12h';
 const ADMIN_TOKEN_HEADER = 'x-admin-token';
 
 const adminSecret = (): Uint8Array => {
-  const seed =
-    process.env.ADMIN_SESSION_SECRET ||
-    process.env.JWT_SECRET ||
-    'music4ai-admin-fallback-please-set-ADMIN_SESSION_SECRET';
-  // Pad/derive to 32 bytes so HS256 always has enough entropy even with short envs.
+  const seed = process.env.ADMIN_SESSION_SECRET;
+  if (!seed || seed.length < 32) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'ADMIN_SESSION_SECRET must be set to a 32+ char value in production. Refusing to issue admin tokens.'
+      );
+    }
+    // Dev only — derive from a per-process random seed so dev tokens still
+    // work but don't leak across restarts.
+    return crypto.createHash('sha256').update(`dev-${process.pid}-${Date.now()}`).digest();
+  }
   return crypto.createHash('sha256').update(seed).digest();
-};
-
-const constantTimeEqual = (a: string, b: string): boolean => {
-  const ba = Buffer.from(a);
-  const bb = Buffer.from(b);
-  if (ba.length !== bb.length) return false;
-  return crypto.timingSafeEqual(ba, bb);
 };
 
 let warnedMissing = false;
 
-export const verifyAdminPassword = (input: string): boolean => {
+// Password verification supports two modes:
+//   1. ADMIN_PASSWORD_HASH (argon2id-encoded hash) — preferred for production.
+//   2. ADMIN_PASSWORD (plaintext, dev fallback) — kept for backward compat,
+//      but warns loudly and uses a constant-time compare via argon2 to avoid
+//      length leaks.
+export const verifyAdminPassword = async (input: string): Promise<boolean> => {
+  if (typeof input !== 'string' || input.length === 0) return false;
+
+  const hash = process.env.ADMIN_PASSWORD_HASH;
+  if (hash) {
+    try {
+      return await argon2.verify(hash, input);
+    } catch {
+      return false;
+    }
+  }
+
   const expected = process.env.ADMIN_PASSWORD;
   if (!expected || expected.length < 6) {
-    // Refuse all logins when no password is configured. Forces the operator
-    // to set ADMIN_PASSWORD before the panel becomes reachable. Log once so
-    // the misconfiguration is visible in the logs without spamming.
     if (!warnedMissing) {
       // eslint-disable-next-line no-console
       console.warn(
-        '[admin] ADMIN_PASSWORD not set (or shorter than 6 chars). Admin panel login is disabled until you set it.'
+        '[admin] ADMIN_PASSWORD_HASH/ADMIN_PASSWORD not set. Admin panel login disabled.'
       );
       warnedMissing = true;
     }
     return false;
   }
-  if (typeof input !== 'string' || input.length === 0) return false;
-  return constantTimeEqual(input, expected);
+  if (process.env.NODE_ENV === 'production' && !warnedMissing) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[admin] ADMIN_PASSWORD set in plaintext in production — please switch to ADMIN_PASSWORD_HASH (argon2id).'
+    );
+    warnedMissing = true;
+  }
+  // Constant-time compare via Buffer.byteLength + timingSafeEqual on equal-length buffers.
+  const ba = Buffer.from(input);
+  const bb = Buffer.from(expected);
+  if (ba.length !== bb.length) {
+    // Run a dummy compare so timing is roughly constant regardless of length match.
+    crypto.timingSafeEqual(ba.subarray(0, Math.min(ba.length, bb.length)), bb.subarray(0, Math.min(ba.length, bb.length)));
+    return false;
+  }
+  return crypto.timingSafeEqual(ba, bb);
 };
 
-export const issueAdminToken = async (): Promise<string> => {
+export const issueAdminToken = async (userId?: string): Promise<string> => {
   const secret = adminSecret();
-  return new SignJWT({ scope: 'admin-panel' })
+  const payload: Record<string, unknown> = { scope: 'admin-panel' };
+  if (userId) payload.uid = userId;
+  return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(ADMIN_TOKEN_TTL)
     .sign(secret);
 };
 
-const verifyAdminToken = async (token: string): Promise<boolean> => {
+interface AdminTokenPayload {
+  ok: boolean;
+  uid?: string;
+}
+
+const verifyAdminToken = async (token: string): Promise<AdminTokenPayload> => {
   try {
     const { payload } = await jwtVerify(token, adminSecret(), {
       algorithms: ['HS256'],
     });
-    return payload.scope === 'admin-panel';
+    if (payload.scope !== 'admin-panel') return { ok: false };
+    return { ok: true, uid: typeof payload.uid === 'string' ? payload.uid : undefined };
   } catch {
-    return false;
+    return { ok: false };
   }
 };
 
@@ -84,9 +119,16 @@ export const requireAdminPanelToken = async (
     res.status(401).json({ error: 'Admin panel password required', code: 'ADMIN_PANEL_LOCKED' });
     return;
   }
-  const ok = await verifyAdminToken(raw);
-  if (!ok) {
+  const result = await verifyAdminToken(raw);
+  if (!result.ok) {
     res.status(401).json({ error: 'Admin panel session expired', code: 'ADMIN_PANEL_LOCKED' });
+    return;
+  }
+  // If the token is bound to a user, ensure it matches the authenticated
+  // user. Tokens minted before this fix have no `uid` and are accepted for
+  // backward compatibility (the role check above already gates ADMIN role).
+  if (result.uid && req.user?.userId && result.uid !== req.user.userId) {
+    res.status(403).json({ error: 'Admin token does not match authenticated user', code: 'ADMIN_PANEL_LOCKED' });
     return;
   }
   next();

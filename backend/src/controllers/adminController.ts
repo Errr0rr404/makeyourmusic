@@ -1,4 +1,4 @@
-import { Response, Request } from 'express';
+import { Response } from 'express';
 import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
@@ -7,17 +7,21 @@ import { COSTS, SUB_PRICE_USD, estimateMusicCost, estimateVideoCost } from '../u
 
 // ─── Admin password gate ──────────────────────────────────
 
-export const verifyAdminPanelPassword = async (req: Request, res: Response) => {
+export const verifyAdminPanelPassword = async (req: RequestWithUser, res: Response) => {
   try {
     const password = (req.body?.password as string) || '';
-    if (!verifyAdminPassword(password)) {
+    // verifyAdminPassword is now async (argon2.verify) — must await.
+    const ok = await verifyAdminPassword(password);
+    if (!ok) {
       // Small jitter so brute-force timing is messier. Real defense is the
-      // global rate limiter; this is just belt-and-braces.
+      // dedicated admin login rate limiter; this is just belt-and-braces.
       await new Promise((r) => setTimeout(r, 250 + Math.random() * 250));
       res.status(401).json({ error: 'Incorrect admin password' });
       return;
     }
-    const token = await issueAdminToken();
+    // Bind the issued token to a user so admin actions are attributable.
+    // Falls back to anonymous when called pre-login (legacy clients).
+    const token = await issueAdminToken(req.user?.userId);
     res.json({ token, expiresIn: '12h' });
   } catch (error) {
     logger.error('Admin password verify error', { error: (error as Error).message });

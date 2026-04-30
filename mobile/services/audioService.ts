@@ -4,6 +4,10 @@ import TrackPlayer, {
   Event,
   State,
   RepeatMode,
+  IOSCategory,
+  IOSCategoryMode,
+  IOSCategoryOptions,
+  AndroidAudioContentType,
   usePlaybackState,
   useProgress,
   useActiveTrack,
@@ -24,8 +28,19 @@ export async function setupPlayer(): Promise<boolean> {
   if (isInitialized) return true;
 
   try {
+    // Configure iOS audio session BEFORE setupPlayer so background audio,
+    // silent-mode playback, and proper interruption handling all work
+    // on the first track. Without this, iOS silences the player when the
+    // ringer switch is off and audio doesn't duck for Siri/calls.
     await TrackPlayer.setupPlayer({
       maxCacheSize: 1024 * 10, // 10 MB cache
+      iosCategory: IOSCategory.Playback,
+      iosCategoryMode: IOSCategoryMode.Default,
+      iosCategoryOptions: [
+        IOSCategoryOptions.AllowBluetooth,
+        IOSCategoryOptions.AllowAirPlay,
+      ],
+      androidAudioContentType: AndroidAudioContentType.Music,
     });
 
     await TrackPlayer.updateOptions({

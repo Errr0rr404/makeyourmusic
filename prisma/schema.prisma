@@ -575,6 +575,10 @@ model Subscription {
 
   currentPeriodStart DateTime? @map("current_period_start")
   currentPeriodEnd   DateTime? @map("current_period_end")
+  // Mirrors Stripe's `cancel_at_period_end` so the UI can show
+  // "ending Apr 30" without a Stripe round-trip. Synced on
+  // customer.subscription.updated and the cancel endpoint.
+  cancelAtPeriodEnd  Boolean   @default(false) @map("cancel_at_period_end")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -583,6 +587,20 @@ model Subscription {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
+}
+
+// Stripe webhook idempotency. We `create` with the event id at the start
+// of webhook handling; the unique constraint makes Stripe's automatic
+// retries no-ops without burning provider quota or double-crediting
+// referral earnings.
+model WebhookEvent {
+  id           String   @id @default(cuid())
+  stripeEventId String  @unique @map("stripe_event_id")
+  eventType    String   @map("event_type")
+  processedAt  DateTime @default(now()) @map("processed_at")
+
+  @@index([processedAt(sort: Desc)])
+  @@map("webhook_events")
 }
 
 model ConnectAccount {
@@ -628,6 +646,8 @@ model Tip {
   @@index([toUserId, createdAt(sort: Desc)])
   @@index([fromUserId])
   @@index([status])
+  @@index([trackId])
+  @@index([stripeTransferId])
   @@map("tips")
 }
 
@@ -656,6 +676,7 @@ model ChannelSubscription {
   @@unique([subscriberUserId, playlistId])
   @@index([creatorUserId, status])
   @@index([playlistId, status])
+  @@index([stripeCustomerId])
   @@map("channel_subscriptions")
 }
 
@@ -932,6 +953,7 @@ model SyncLicense {
   @@index([trackId])
   @@index([buyerId])
   @@index([status])
+  @@index([stripeTransferId])
   @@map("sync_licenses")
 }
 
@@ -959,6 +981,7 @@ model TrackDistribution {
 
   @@index([status])
   @@index([trackId])
+  @@index([partnerJobId])
   @@map("track_distributions")
 }
 
@@ -985,6 +1008,9 @@ model ReferralEarning {
   refereeId  String @map("referee_id")
   referee    User   @relation("ReferralEarningSource", fields: [refereeId], references: [id], onDelete: Cascade)
 
+  // Prevent double-credit: webhook retries with the same source/sourceId
+  // will collide on this constraint instead of creating duplicate earnings.
+  @@unique([source, sourceId, referrerId])
   @@index([referrerId, paidOut])
   @@index([refereeId])
   @@index([createdAt(sort: Desc)])

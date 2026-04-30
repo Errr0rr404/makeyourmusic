@@ -111,6 +111,10 @@ export async function recordReferralEarning(input: RecordReferralInput): Promise
     select: { id: true, referredById: true, createdAt: true },
   });
   if (!referee?.referredById) return;
+  // Self-referral guard. Defense in depth — should be impossible since
+  // referredById is set at signup and email/username are unique, but a stray
+  // admin SQL update could break it.
+  if (referee.referredById === referee.id) return;
 
   // Window enforcement: stop crediting after REFERRAL_WINDOW_DAYS from signup.
   const ageDays = (Date.now() - referee.createdAt.getTime()) / (24 * 3_600_000);
@@ -118,13 +122,20 @@ export async function recordReferralEarning(input: RecordReferralInput): Promise
 
   const cut = Math.floor((input.amountCents * REFERRAL_BPS) / 10000);
   if (cut <= 0) return;
-  await prisma.referralEarning.create({
-    data: {
-      referrerId: referee.referredById,
-      refereeId: referee.id,
-      amountCents: cut,
-      source: input.source,
-      sourceId: input.sourceId,
-    },
-  });
+  try {
+    await prisma.referralEarning.create({
+      data: {
+        referrerId: referee.referredById,
+        refereeId: referee.id,
+        amountCents: cut,
+        source: input.source,
+        sourceId: input.sourceId,
+      },
+    });
+  } catch (err: any) {
+    // P2002 = unique violation on (source, sourceId, referrerId). Webhook
+    // replay — silently skip.
+    if (err?.code === 'P2002') return;
+    throw err;
+  }
 }

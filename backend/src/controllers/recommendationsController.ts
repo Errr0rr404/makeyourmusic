@@ -73,10 +73,14 @@ export const radio = async (req: RequestWithUser, res: Response) => {
     const genreSlug = req.query.genre as string | undefined;
     const mood = req.query.mood as string | undefined;
     const limit = Math.min(parseInt(String(req.query.limit ?? '30'), 10) || 30, 60);
+    // Cap excludeIds to prevent a malicious client from passing 50,000 ids
+    // and blowing up Prisma's query planner / hitting Postgres parameter limit.
+    // Validate shape too — silently dropping garbage saves a query.
     const excludeIds = String(req.query.excludeIds || '')
       .split(',')
       .map((s) => s.trim())
-      .filter(Boolean);
+      .filter((s) => s.length > 0 && s.length <= 36)
+      .slice(0, 200);
 
     let seedVec: number[] | null = null;
 

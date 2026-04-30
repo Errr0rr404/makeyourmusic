@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
@@ -16,8 +16,18 @@ export function Topbar() {
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
+  // AppProviders already runs the initial `fetchUser` on mount, so this
+  // effect would otherwise duplicate the request — and if the auth store
+  // returns a new `fetchUser` reference each render, it could re-fire in
+  // a loop. Guard with a one-shot ref so we attempt at most once per
+  // mount when authenticated-but-userless.
+  const fetchedUserRef = useRef(false);
   useEffect(() => {
-    if (!user && isAuthenticated) fetchUser();
+    if (fetchedUserRef.current) return;
+    if (!user && isAuthenticated) {
+      fetchedUserRef.current = true;
+      fetchUser();
+    }
   }, [user, isAuthenticated, fetchUser]);
 
   useEffect(() => {

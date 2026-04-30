@@ -86,7 +86,17 @@ app.use(
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-token'],
-    exposedHeaders: ['Content-Type', 'Authorization'],
+    // Expose request/cache/rate-limit metadata so the frontend can surface
+    // them. Authorization is intentionally NOT exposed — the server should
+    // never echo bearer tokens back in headers.
+    exposedHeaders: [
+      'Content-Type',
+      'X-Request-ID',
+      'X-Cache',
+      'RateLimit-Limit',
+      'RateLimit-Remaining',
+      'RateLimit-Reset',
+    ],
     maxAge: 86400,
   })
 );
@@ -130,6 +140,13 @@ app.use('/api/referrals', referralRoutes);
 app.use('/api/v1', publicApiRoutes);
 app.use('/embed', publicEmbedRoutes);
 app.use('/api/niches', nicheRoutes);
+
+// 404 handler for unmatched routes — keep before errorHandler so
+// unhandled paths return a clean JSON response instead of leaking
+// Express's default HTML "Cannot GET /..." page.
+app.use((_req, res) => {
+  res.status(404).json({ error: 'Not found' });
+});
 
 // Error handling
 app.use(errorHandler);

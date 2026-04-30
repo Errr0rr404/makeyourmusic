@@ -42,6 +42,7 @@ export const setCollaborators = async (req: RequestWithUser, res: Response) => {
     // Validate input shape
     const cleaned: Array<{ agentId: string; shareBps: number; role?: string | null }> = [];
     let totalBps = 0;
+    const seenIds = new Set<string>();
     for (const c of collaborators) {
       const agentId = typeof c?.agentId === 'string' ? c.agentId : null;
       const shareBps = parseInt(String(c?.shareBps), 10);
@@ -49,6 +50,14 @@ export const setCollaborators = async (req: RequestWithUser, res: Response) => {
         res.status(400).json({ error: 'each collaborator needs an agentId' });
         return;
       }
+      // Deduplicate: schema has @@unique([trackId, agentId]) so duplicate
+      // input would throw P2002 → 500 to client. Catch it earlier with a
+      // friendly 400.
+      if (seenIds.has(agentId)) {
+        res.status(400).json({ error: 'Duplicate agent in collaborator list' });
+        return;
+      }
+      seenIds.add(agentId);
       if (!Number.isFinite(shareBps) || shareBps <= 0 || shareBps > 10000) {
         res.status(400).json({ error: 'shareBps must be between 1 and 10000' });
         return;
@@ -65,15 +74,29 @@ export const setCollaborators = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Ensure all referenced agents exist and at least one is the primary
-    // (track.agentId) so the lineage is preserved.
+    // Ensure all referenced agents exist AND that the caller has permission
+    // to assign earnings to them. Without this check, a malicious track owner
+    // could split earnings to a competitor's agent (the competitor would
+    // receive transfers but the schema would lie about authorship).
+    //
+    // Policy: the caller must own each collaborator agent. If we later add
+    // a true invite/accept handshake, this can relax to "owner OR has accepted
+    // an invite from this track owner".
     const ids = cleaned.map((c) => c.agentId);
     const agents = await prisma.aiAgent.findMany({
       where: { id: { in: ids } },
-      select: { id: true },
+      select: { id: true, ownerId: true },
     });
     if (agents.length !== ids.length) {
       res.status(400).json({ error: 'One or more agents do not exist' });
+      return;
+    }
+    const notOwned = agents.filter((a) => a.ownerId !== req.user!.userId);
+    if (notOwned.length > 0) {
+      res.status(403).json({
+        error: 'You can only add agents you own as collaborators',
+        agentIds: notOwned.map((a) => a.id),
+      });
       return;
     }
     if (!cleaned.some((c) => c.agentId === track.agentId)) {

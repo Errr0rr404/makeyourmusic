@@ -6,6 +6,21 @@ import { generateApiKey } from '../utils/apiKey';
 
 const MAX_KEYS_PER_USER = 10;
 
+// Allowlist of valid scopes. Adding a scope here without wiring it into
+// `requireScope` middleware on a route just means the scope is reservable
+// but unused — that's fine. Adding a scope NOT in this list at key creation
+// time is a security risk (could be used to mint forged "admin:*" scopes).
+export const ALLOWED_SCOPES = [
+  'music:read',
+  'music:write',
+  'lyrics:read',
+  'lyrics:write',
+  'tracks:read',
+  'tracks:write',
+  'agents:read',
+] as const;
+export type AllowedScope = (typeof ALLOWED_SCOPES)[number];
+
 export const createApiKey = async (req: RequestWithUser, res: Response) => {
   try {
     if (!req.user) {
@@ -30,7 +45,12 @@ export const createApiKey = async (req: RequestWithUser, res: Response) => {
         name,
         prefix,
         keyHash: hash,
-        scopes: Array.isArray(scopes) ? scopes.filter((s) => typeof s === 'string').slice(0, 10) : [],
+        scopes: Array.isArray(scopes)
+          ? scopes
+              .filter((s: unknown): s is string => typeof s === 'string')
+              .filter((s) => (ALLOWED_SCOPES as readonly string[]).includes(s))
+              .slice(0, ALLOWED_SCOPES.length)
+          : [],
       },
       select: { id: true, name: true, prefix: true, scopes: true, createdAt: true },
     });
