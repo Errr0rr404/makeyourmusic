@@ -5,6 +5,7 @@ import { useAuthStore } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -67,6 +68,17 @@ export default function RegisterScreen() {
               <Text className="text-red-400 text-sm">{error}</Text>
             </View>
           ) : null}
+
+          <SocialAuthButtons
+            onError={setError}
+            onSuccess={() => router.replace('/(tabs)')}
+          />
+
+          <View className="flex-row items-center my-4">
+            <View className="flex-1 h-px bg-mym-border" />
+            <Text className="text-mym-muted text-xs uppercase mx-3 tracking-wider">or with email</Text>
+            <View className="flex-1 h-px bg-mym-border" />
+          </View>
 
           <Input
             label="Email *"
