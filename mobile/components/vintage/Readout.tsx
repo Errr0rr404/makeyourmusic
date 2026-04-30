@@ -5,12 +5,14 @@ interface ReadoutProps {
   value: string;
   size?: 'sm' | 'md' | 'lg';
   glow?: 'red' | 'amber' | 'green';
+  /** Override the alignment if the parent uses a different cross-axis layout. */
+  align?: 'flex-start' | 'flex-end' | 'center';
 }
 
 const sizes = { sm: 14, md: 18, lg: 26 };
 
 /** LED-style digital readout. Red glow by default. */
-export function Readout({ value, size = 'md', glow = 'red' }: ReadoutProps) {
+export function Readout({ value, size = 'md', glow = 'red', align = 'flex-start' }: ReadoutProps) {
   const tokens = useTokens();
   const color =
     glow === 'amber' ? tokens.ledAmber : glow === 'green' ? tokens.ledGreen : tokens.ledOn;
@@ -21,7 +23,7 @@ export function Readout({ value, size = 'md', glow = 'red' }: ReadoutProps) {
         borderRadius: 2,
         paddingHorizontal: 8,
         paddingVertical: 2,
-        alignSelf: 'flex-start',
+        alignSelf: align,
       }}
     >
       <Text

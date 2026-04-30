@@ -360,23 +360,45 @@ export default function FullScreenPlayer() {
             {/* Progress + counter */}
             <View style={{ marginTop: 20 }}>
               <Slider value={progress} max={duration || 1} onValueChange={setProgress} />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
-                {isVintage ? (
-                  <>
+              {isVintage ? (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
+                  <View style={{ alignItems: 'flex-start', gap: 2 }}>
+                    <Text
+                      style={{
+                        color: onMuted,
+                        fontSize: 9,
+                        fontFamily: tokens.fontLabel,
+                        letterSpacing: 1.5,
+                      }}
+                    >
+                      TAPE POS
+                    </Text>
                     <Readout size="sm" value={formatDuration(Math.floor(progress))} />
-                    <Readout size="sm" value={`-${formatDuration(Math.max(0, Math.floor(duration - progress)))}`} glow="amber" />
-                  </>
-                ) : (
-                  <>
-                    <Text style={{ color: onMuted, fontSize: 12 }}>
-                      {formatDuration(Math.floor(progress))}
+                  </View>
+                  <View style={{ alignItems: 'flex-end', gap: 2 }}>
+                    <Text
+                      style={{
+                        color: onMuted,
+                        fontSize: 9,
+                        fontFamily: tokens.fontLabel,
+                        letterSpacing: 1.5,
+                      }}
+                    >
+                      REMAIN
                     </Text>
-                    <Text style={{ color: onMuted, fontSize: 12 }}>
-                      {formatDuration(Math.floor(duration))}
-                    </Text>
-                  </>
-                )}
-              </View>
+                    <Readout size="sm" value={`-${formatDuration(Math.max(0, Math.floor(duration - progress)))}`} glow="amber" align="flex-end" />
+                  </View>
+                </View>
+              ) : (
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                  <Text style={{ color: onMuted, fontSize: 12 }}>
+                    {formatDuration(Math.floor(progress))}
+                  </Text>
+                  <Text style={{ color: onMuted, fontSize: 12 }}>
+                    {formatDuration(Math.floor(duration))}
+                  </Text>
+                </View>
+              )}
             </View>
 
             {/* Controls */}
