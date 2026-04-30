@@ -122,14 +122,14 @@ export function VibePromptTile() {
       </form>
 
       {!result && (
-        <div className="mt-3 flex min-w-0 gap-1.5 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible">
+        <div className="mt-3 grid min-w-0 grid-cols-1 gap-1.5 min-[430px]:grid-cols-2 md:flex md:flex-wrap md:overflow-visible">
           {SUGGESTIONS.map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => applySuggestion(s)}
               disabled={loading}
-              className="shrink-0 whitespace-nowrap text-[11px] px-2.5 py-1 rounded-full bg-white/5 text-white/70 hover:bg-white/15 hover:text-white transition-colors disabled:opacity-50 disabled:pointer-events-none"
+              className="min-w-0 truncate text-left text-[11px] px-2.5 py-1 rounded-full bg-white/5 text-white/70 hover:bg-white/15 hover:text-white transition-colors disabled:opacity-50 disabled:pointer-events-none md:shrink-0 md:whitespace-nowrap"
             >
               {s}
             </button>

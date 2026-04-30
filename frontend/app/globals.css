@@ -365,6 +365,21 @@ html.skin-vintage input[type="range"]::-webkit-slider-thumb {
 }
 .animate-slide-up { animation: mym-slide-up 0.5s ease-out both; }
 
+@keyframes mym-shimmer {
+  0%   { background-position: -220% 0; }
+  100% { background-position: 220% 0; }
+}
+.shimmer {
+  background-image: linear-gradient(
+    90deg,
+    color-mix(in srgb, var(--bg-elev-2) 80%, transparent) 0%,
+    color-mix(in srgb, var(--text) 8%, var(--bg-elev-3)) 50%,
+    color-mix(in srgb, var(--bg-elev-2) 80%, transparent) 100%
+  );
+  background-size: 220% 100%;
+  animation: mym-shimmer 1.45s ease-in-out infinite;
+}
+
 @keyframes mym-equalize {
   0%, 100% { transform: scaleY(0.4); }
   50%      { transform: scaleY(1); }
@@ -810,6 +825,14 @@ html.skin-vintage.light .vintage-label {
 html.skin-modern .vintage-only { display: none !important; }
 html.skin-vintage .modern-only { display: none !important; }
 
+/* Vintage shape language: keep pills/circles round, but bring big generic
+   cards and panels back to the squared-off cassette-deck radius. */
+html.skin-vintage .rounded-3xl,
+html.skin-vintage .rounded-2xl,
+html.skin-vintage .rounded-xl { border-radius: var(--radius-lg); }
+html.skin-vintage .rounded-lg,
+html.skin-vintage .rounded-md { border-radius: var(--radius-md); }
+
 /* Vintage text remap — `text-white` is used hundreds of places to mean
    "primary foreground." In vintage that's cream (night) or espresso (day),
    not literal white. Pure-white needs (red CTAs, brand chips) come from
@@ -874,30 +897,262 @@ html.skin-vintage:not(.light) .hover\:bg-white\/\[0\.08\]:hover { background-col
 html.skin-vintage.light .hover\:bg-white\/5:hover  { background-color: rgba(43, 29, 16, 0.05); }
 html.skin-vintage.light .hover\:bg-white\/10:hover { background-color: rgba(43, 29, 16, 0.10); }
 
-/* Modern brand-color tailwind classes recolored to vintage brand. About 100
-   call sites use purple-/pink-/violet- variants for badges, gradients, and
-   focus rings — they all become the active vintage brand (deck red / amber)
-   so the palette stays cohesive without a per-file rewrite. */
-html.skin-vintage [class*="text-purple-"],
-html.skin-vintage [class*="text-pink-"],
-html.skin-vintage [class*="text-violet-"],
-html.skin-vintage [class*="text-fuchsia-"] { color: var(--brand); }
+/* Modern brand-color Tailwind classes recolored to vintage brand. Token-boundary
+   selectors avoid treating `hover:bg-*` as an always-on background. */
+html.skin-vintage :where(
+  [class^="text-purple-"], [class*=" text-purple-"],
+  [class^="text-pink-"], [class*=" text-pink-"],
+  [class^="text-violet-"], [class*=" text-violet-"],
+  [class^="text-fuchsia-"], [class*=" text-fuchsia-"]
+) { color: var(--brand); }
 
-html.skin-vintage [class*="bg-purple-"],
-html.skin-vintage [class*="bg-pink-"],
-html.skin-vintage [class*="bg-violet-"],
-html.skin-vintage [class*="bg-fuchsia-"] { background-color: var(--brand-soft); }
+html.skin-vintage :where(
+  [class^="hover:text-purple-"], [class*=" hover:text-purple-"],
+  [class^="hover:text-pink-"], [class*=" hover:text-pink-"],
+  [class^="hover:text-violet-"], [class*=" hover:text-violet-"],
+  [class^="hover:text-fuchsia-"], [class*=" hover:text-fuchsia-"]
+):hover { color: var(--brand); }
 
-html.skin-vintage [class*="border-purple-"],
-html.skin-vintage [class*="border-pink-"],
-html.skin-vintage [class*="border-violet-"],
-html.skin-vintage [class*="border-fuchsia-"] { border-color: var(--brand); }
+html.skin-vintage :where(
+  [class^="bg-purple-"], [class*=" bg-purple-"],
+  [class^="bg-pink-"], [class*=" bg-pink-"],
+  [class^="bg-violet-"], [class*=" bg-violet-"],
+  [class^="bg-fuchsia-"], [class*=" bg-fuchsia-"]
+) { background-color: var(--brand-soft); }
 
-/* Gradient stops — `from-purple-*` etc. compile to CSS vars Tailwind reads
-   into `linear-gradient(...)`. We can't redirect those without redefining
-   `--tw-gradient-stops`, but the common pattern is mostly background washes
-   that we already handle via `--aurora`. Where a per-component gradient is
-   crucial (e.g. avatar tile), the source uses `var(--aurora)` directly. */
+html.skin-vintage :where(
+  [class^="border-purple-"], [class*=" border-purple-"],
+  [class^="border-pink-"], [class*=" border-pink-"],
+  [class^="border-violet-"], [class*=" border-violet-"],
+  [class^="border-fuchsia-"], [class*=" border-fuchsia-"]
+) { border-color: var(--brand); }
+
+/* Semantic colors stay semantic in vintage, but use deck-dial pigments instead
+   of neon web hues. These selectors catch legacy Tailwind call sites without
+   forcing every page to know about both skins. */
+html.skin-vintage :where(
+  [class^="text-blue-"], [class*=" text-blue-"],
+  [class^="text-cyan-"], [class*=" text-cyan-"],
+  [class^="text-sky-"], [class*=" text-sky-"],
+  [class^="text-teal-"], [class*=" text-teal-"]
+) { color: var(--brand-2); }
+
+html.skin-vintage :where(
+  [class^="text-green-"], [class*=" text-green-"],
+  [class^="text-emerald-"], [class*=" text-emerald-"],
+  [class^="text-lime-"], [class*=" text-lime-"]
+) { color: var(--led-green); }
+
+html.skin-vintage :where(
+  [class^="text-yellow-"], [class*=" text-yellow-"],
+  [class^="text-amber-"], [class*=" text-amber-"],
+  [class^="text-orange-"], [class*=" text-orange-"]
+) { color: var(--led-amber); }
+
+html.skin-vintage :where(
+  [class^="text-red-"], [class*=" text-red-"],
+  [class^="text-rose-"], [class*=" text-rose-"]
+) { color: var(--brand); }
+
+html.skin-vintage :where(
+  [class^="hover:text-blue-"], [class*=" hover:text-blue-"],
+  [class^="hover:text-cyan-"], [class*=" hover:text-cyan-"],
+  [class^="hover:text-sky-"], [class*=" hover:text-sky-"],
+  [class^="hover:text-teal-"], [class*=" hover:text-teal-"]
+):hover { color: var(--brand-2); }
+
+html.skin-vintage :where(
+  [class^="hover:text-green-"], [class*=" hover:text-green-"],
+  [class^="hover:text-emerald-"], [class*=" hover:text-emerald-"],
+  [class^="hover:text-lime-"], [class*=" hover:text-lime-"]
+):hover { color: var(--led-green); }
+
+html.skin-vintage :where(
+  [class^="hover:text-yellow-"], [class*=" hover:text-yellow-"],
+  [class^="hover:text-amber-"], [class*=" hover:text-amber-"],
+  [class^="hover:text-orange-"], [class*=" hover:text-orange-"]
+):hover { color: var(--led-amber); }
+
+html.skin-vintage :where(
+  [class^="hover:text-red-"], [class*=" hover:text-red-"],
+  [class^="hover:text-rose-"], [class*=" hover:text-rose-"]
+):hover { color: var(--brand); }
+
+html.skin-vintage :where(
+  [class^="bg-blue-"], [class*=" bg-blue-"],
+  [class^="bg-cyan-"], [class*=" bg-cyan-"],
+  [class^="bg-sky-"], [class*=" bg-sky-"],
+  [class^="bg-teal-"], [class*=" bg-teal-"]
+) { background-color: color-mix(in srgb, var(--brand-2) 16%, transparent); }
+
+html.skin-vintage :where(
+  [class^="bg-green-"], [class*=" bg-green-"],
+  [class^="bg-emerald-"], [class*=" bg-emerald-"],
+  [class^="bg-lime-"], [class*=" bg-lime-"]
+) { background-color: color-mix(in srgb, var(--led-green) 16%, transparent); }
+
+html.skin-vintage :where(
+  [class^="bg-yellow-"], [class*=" bg-yellow-"],
+  [class^="bg-amber-"], [class*=" bg-amber-"],
+  [class^="bg-orange-"], [class*=" bg-orange-"]
+) { background-color: color-mix(in srgb, var(--led-amber) 18%, transparent); }
+
+html.skin-vintage :where(
+  [class^="bg-red-"], [class*=" bg-red-"],
+  [class^="bg-rose-"], [class*=" bg-rose-"]
+) { background-color: color-mix(in srgb, var(--brand) 16%, transparent); }
+
+html.skin-vintage :where(
+  [class^="border-blue-"], [class*=" border-blue-"],
+  [class^="border-cyan-"], [class*=" border-cyan-"],
+  [class^="border-sky-"], [class*=" border-sky-"],
+  [class^="border-teal-"], [class*=" border-teal-"]
+) { border-color: color-mix(in srgb, var(--brand-2) 50%, transparent); }
+
+html.skin-vintage :where(
+  [class^="border-green-"], [class*=" border-green-"],
+  [class^="border-emerald-"], [class*=" border-emerald-"],
+  [class^="border-lime-"], [class*=" border-lime-"]
+) { border-color: color-mix(in srgb, var(--led-green) 50%, transparent); }
+
+html.skin-vintage :where(
+  [class^="border-yellow-"], [class*=" border-yellow-"],
+  [class^="border-amber-"], [class*=" border-amber-"],
+  [class^="border-orange-"], [class*=" border-orange-"]
+) { border-color: color-mix(in srgb, var(--led-amber) 52%, transparent); }
+
+html.skin-vintage :where(
+  [class^="border-red-"], [class*=" border-red-"],
+  [class^="border-rose-"], [class*=" border-rose-"]
+) { border-color: color-mix(in srgb, var(--brand) 52%, transparent); }
+
+html.skin-vintage :where(
+  [class^="hover:bg-blue-"], [class*=" hover:bg-blue-"],
+  [class^="hover:bg-cyan-"], [class*=" hover:bg-cyan-"],
+  [class^="hover:bg-sky-"], [class*=" hover:bg-sky-"],
+  [class^="hover:bg-teal-"], [class*=" hover:bg-teal-"]
+):hover { background-color: color-mix(in srgb, var(--brand-2) 22%, transparent); }
+
+html.skin-vintage :where(
+  [class^="hover:bg-green-"], [class*=" hover:bg-green-"],
+  [class^="hover:bg-emerald-"], [class*=" hover:bg-emerald-"],
+  [class^="hover:bg-lime-"], [class*=" hover:bg-lime-"]
+):hover { background-color: color-mix(in srgb, var(--led-green) 22%, transparent); }
+
+html.skin-vintage :where(
+  [class^="hover:bg-yellow-"], [class*=" hover:bg-yellow-"],
+  [class^="hover:bg-amber-"], [class*=" hover:bg-amber-"],
+  [class^="hover:bg-orange-"], [class*=" hover:bg-orange-"]
+):hover { background-color: color-mix(in srgb, var(--led-amber) 24%, transparent); }
+
+html.skin-vintage :where(
+  [class^="hover:bg-red-"], [class*=" hover:bg-red-"],
+  [class^="hover:bg-rose-"], [class*=" hover:bg-rose-"]
+):hover { background-color: color-mix(in srgb, var(--brand) 24%, transparent); }
+
+html.skin-vintage :where(
+  [class^="hover:border-blue-"], [class*=" hover:border-blue-"],
+  [class^="hover:border-cyan-"], [class*=" hover:border-cyan-"],
+  [class^="hover:border-sky-"], [class*=" hover:border-sky-"],
+  [class^="hover:border-teal-"], [class*=" hover:border-teal-"]
+):hover { border-color: color-mix(in srgb, var(--brand-2) 55%, transparent); }
+
+html.skin-vintage :where(
+  [class^="hover:border-red-"], [class*=" hover:border-red-"],
+  [class^="hover:border-rose-"], [class*=" hover:border-rose-"]
+):hover { border-color: color-mix(in srgb, var(--brand) 55%, transparent); }
+
+html.skin-vintage :where(
+  [class^="focus:border-red-"], [class*=" focus:border-red-"],
+  [class^="focus:border-rose-"], [class*=" focus:border-rose-"]
+):focus { border-color: var(--brand); }
+
+html.skin-vintage :where(
+  [class^="ring-purple-"], [class*=" ring-purple-"],
+  [class^="ring-pink-"], [class*=" ring-pink-"],
+  [class^="ring-violet-"], [class*=" ring-violet-"],
+  [class^="ring-fuchsia-"], [class*=" ring-fuchsia-"],
+  [class^="ring-red-"], [class*=" ring-red-"],
+  [class^="ring-rose-"], [class*=" ring-rose-"]
+) { --tw-ring-color: color-mix(in srgb, var(--brand) 38%, transparent); }
+
+html.skin-vintage :where(
+  [class^="ring-green-"], [class*=" ring-green-"],
+  [class^="ring-emerald-"], [class*=" ring-emerald-"],
+  [class^="ring-lime-"], [class*=" ring-lime-"]
+) { --tw-ring-color: color-mix(in srgb, var(--led-green) 38%, transparent); }
+
+html.skin-vintage :where(
+  [class^="ring-yellow-"], [class*=" ring-yellow-"],
+  [class^="ring-amber-"], [class*=" ring-amber-"],
+  [class^="ring-orange-"], [class*=" ring-orange-"]
+) { --tw-ring-color: color-mix(in srgb, var(--led-amber) 40%, transparent); }
+
+html.skin-vintage :where(
+  [class^="focus:ring-purple-"], [class*=" focus:ring-purple-"],
+  [class^="focus:ring-pink-"], [class*=" focus:ring-pink-"],
+  [class^="focus:ring-violet-"], [class*=" focus:ring-violet-"],
+  [class^="focus:ring-fuchsia-"], [class*=" focus:ring-fuchsia-"]
+):focus { --tw-ring-color: color-mix(in srgb, var(--brand) 40%, transparent); }
+
+/* Tailwind gradient stop remaps for vintage. This keeps call sites like
+   `from-purple-500 to-pink-500` cohesive without replacing each gradient. */
+html.skin-vintage :where(
+  [class^="from-purple-"], [class*=" from-purple-"],
+  [class^="from-pink-"], [class*=" from-pink-"],
+  [class^="from-violet-"], [class*=" from-violet-"],
+  [class^="from-fuchsia-"], [class*=" from-fuchsia-"]
+) { --tw-gradient-from: var(--brand); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html.skin-vintage :where(
+  [class^="to-purple-"], [class*=" to-purple-"],
+  [class^="to-pink-"], [class*=" to-pink-"],
+  [class^="to-violet-"], [class*=" to-violet-"],
+  [class^="to-fuchsia-"], [class*=" to-fuchsia-"]
+) { --tw-gradient-to: var(--brand-2); }
+
+html.skin-vintage :where(
+  [class^="from-blue-"], [class*=" from-blue-"],
+  [class^="from-cyan-"], [class*=" from-cyan-"],
+  [class^="from-sky-"], [class*=" from-sky-"],
+  [class^="from-teal-"], [class*=" from-teal-"]
+) { --tw-gradient-from: var(--brand-2); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html.skin-vintage :where(
+  [class^="to-blue-"], [class*=" to-blue-"],
+  [class^="to-cyan-"], [class*=" to-cyan-"],
+  [class^="to-sky-"], [class*=" to-sky-"],
+  [class^="to-teal-"], [class*=" to-teal-"]
+) { --tw-gradient-to: var(--led-green); }
+
+html.skin-vintage :where(
+  [class^="from-green-"], [class*=" from-green-"],
+  [class^="from-emerald-"], [class*=" from-emerald-"],
+  [class^="from-lime-"], [class*=" from-lime-"]
+) { --tw-gradient-from: var(--led-green); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html.skin-vintage :where(
+  [class^="to-green-"], [class*=" to-green-"],
+  [class^="to-emerald-"], [class*=" to-emerald-"],
+  [class^="to-lime-"], [class*=" to-lime-"]
+) { --tw-gradient-to: var(--brand-2); }
+
+html.skin-vintage :where(
+  [class^="from-yellow-"], [class*=" from-yellow-"],
+  [class^="from-amber-"], [class*=" from-amber-"],
+  [class^="from-orange-"], [class*=" from-orange-"]
+) { --tw-gradient-from: var(--led-amber); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html.skin-vintage :where(
+  [class^="to-yellow-"], [class*=" to-yellow-"],
+  [class^="to-amber-"], [class*=" to-amber-"],
+  [class^="to-orange-"], [class*=" to-orange-"]
+) { --tw-gradient-to: var(--brand); }
+
+html.skin-vintage :where(
+  [class^="from-red-"], [class*=" from-red-"],
+  [class^="from-rose-"], [class*=" from-rose-"]
+) { --tw-gradient-from: var(--brand); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html.skin-vintage :where(
+  [class^="to-red-"], [class*=" to-red-"],
+  [class^="to-rose-"], [class*=" to-rose-"]
+) { --tw-gradient-to: var(--brand-strong); }
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {

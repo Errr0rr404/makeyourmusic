@@ -5,7 +5,10 @@ import Svg, {
   Defs,
   LinearGradient,
   Stop,
+  G,
+  Line,
 } from 'react-native-svg';
+import { useIsVintage, useTokens } from '../../lib/theme';
 
 interface LogoProps {
   size?: number;
@@ -14,6 +17,49 @@ interface LogoProps {
 }
 
 export function Logo({ size = 56, bare = false }: LogoProps) {
+  const isVintage = useIsVintage();
+  const tokens = useTokens();
+
+  if (isVintage) {
+    return (
+      <Svg width={size} height={size} viewBox="0 0 512 512">
+        {!bare && (
+          <Rect
+            width="512"
+            height="512"
+            rx="40"
+            fill={tokens.bg}
+            stroke={tokens.wood}
+            strokeWidth="6"
+          />
+        )}
+        <Rect x="60" y="80" width="392" height="14" fill={tokens.brand} />
+        <Rect x="60" y="100" width="392" height="120" fill={tokens.paper} />
+        <Rect x="80" y="125" width="220" height="10" fill={tokens.text} />
+        <Rect x="80" y="150" width="160" height="6" fill={tokens.text} opacity="0.55" />
+        <Rect x="350" y="120" width="80" height="80" fill="none" stroke={tokens.text} strokeWidth="3" />
+        <Rect x="60" y="240" width="392" height="180" fill="#0a0604" />
+        <G transform="translate(150 330)">
+          <Circle r="58" fill={tokens.card} />
+          <Circle r="22" fill={tokens.bg} />
+          <Circle r="6" fill="#0a0604" />
+          <Line x1="0" y1="0" x2="0" y2="-15" stroke={tokens.surface} strokeWidth="6" strokeLinecap="round" />
+          <Line x1="0" y1="0" x2="13" y2="7" stroke={tokens.surface} strokeWidth="6" strokeLinecap="round" />
+          <Line x1="0" y1="0" x2="-13" y2="7" stroke={tokens.surface} strokeWidth="6" strokeLinecap="round" />
+        </G>
+        <G transform="translate(362 330)">
+          <Circle r="58" fill={tokens.card} />
+          <Circle r="22" fill={tokens.bg} />
+          <Circle r="6" fill="#0a0604" />
+          <Line x1="0" y1="0" x2="0" y2="-15" stroke={tokens.surface} strokeWidth="6" strokeLinecap="round" />
+          <Line x1="0" y1="0" x2="13" y2="7" stroke={tokens.surface} strokeWidth="6" strokeLinecap="round" />
+          <Line x1="0" y1="0" x2="-13" y2="7" stroke={tokens.surface} strokeWidth="6" strokeLinecap="round" />
+        </G>
+        <Line x1="208" y1="330" x2="304" y2="330" stroke={tokens.card} strokeWidth="3" />
+      </Svg>
+    );
+  }
+
   return (
     <Svg width={size} height={size} viewBox="0 0 512 512">
       <Defs>

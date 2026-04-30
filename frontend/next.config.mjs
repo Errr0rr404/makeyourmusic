@@ -44,7 +44,7 @@ const nextConfig = {
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob: data: https:",
       "font-src 'self' data: https:",
-      "style-src 'self' 'unsafe-inline'",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       // unsafe-eval is unfortunate but Next.js + some libs (motion, recharts)
       // rely on Function() in production builds. unsafe-inline covers small
       // bootstrap snippets injected by Next.

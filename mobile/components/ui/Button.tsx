@@ -42,6 +42,8 @@ export function Button({
   const textColor =
     variant === 'primary' ? tokens.brandText : variant === 'secondary' ? tokens.text : tokens.accent;
   const spinnerColor = variant === 'primary' ? tokens.brandText : tokens.accent;
+  const vintagePrimary = isVintage && variant === 'primary';
+  const vintageSecondary = isVintage && variant === 'secondary';
 
   return (
     <TouchableOpacity
@@ -59,9 +61,14 @@ export function Button({
           paddingVertical: padY,
           minHeight,
           backgroundColor: bg,
-          borderWidth,
-          borderColor,
+          borderWidth: vintagePrimary || vintageSecondary ? 1 : borderWidth,
+          borderColor: vintagePrimary ? tokens.brandStrong : borderColor,
           opacity: disabled || loading ? 0.5 : 1,
+          shadowColor: vintagePrimary ? tokens.brand : '#000',
+          shadowOpacity: vintagePrimary ? 0.35 : 0,
+          shadowRadius: vintagePrimary ? 8 : 0,
+          shadowOffset: { width: 0, height: vintagePrimary ? 3 : 0 },
+          elevation: vintagePrimary ? 3 : 0,
         },
         style,
       ]}

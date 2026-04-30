@@ -87,7 +87,7 @@ export default function TabLayout() {
                   shadowOffset: { width: 0, height: 4 },
                   elevation: 8,
                   borderWidth: isVintage ? 1 : 0,
-                  borderColor: '#1a1009',
+                  borderColor: tokens.brandStrong,
                 }}
               >
                 <Wand2 size={20} color={tokens.brandText} />
