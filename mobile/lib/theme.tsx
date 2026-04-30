@@ -109,6 +109,17 @@ const MODERN_LIGHT: ThemeTokens = {
   isDark: false,
 };
 
+// Mobile uses platform fallbacks for vintage typography until we ship
+// expo-google-fonts (Anton/Plex/SpecialElite/VT323). The fallbacks chosen here
+// are bundled with iOS and (mostly) Android, so they give the right vibe
+// without any font-loading work:
+//   - Impact-style: 'Impact' (iOS, Android — though Android lacks a true match)
+//   - Typewriter:   'AmericanTypewriter' on iOS, 'monospace' on Android
+//   - Mono LED:     'Courier' on iOS, 'monospace' on Android
+const FONT_DISPLAY = 'Impact';
+const FONT_LABEL = 'AmericanTypewriter';
+const FONT_MONO = 'Courier';
+
 const VINTAGE_NIGHT: ThemeTokens = {
   bg: '#15110b',
   surface: '#231a10',
@@ -132,10 +143,10 @@ const VINTAGE_NIGHT: ThemeTokens = {
   ledOn: '#ff5a3c',
   ledAmber: '#ffb347',
   ledGreen: '#5b8a3a',
-  fontDisplay: 'Anton',
-  fontBody: 'IBMPlexSans',
-  fontLabel: 'SpecialElite',
-  fontMono: 'VT323',
+  fontDisplay: FONT_DISPLAY,
+  fontBody: 'System',
+  fontLabel: FONT_LABEL,
+  fontMono: FONT_MONO,
   radiusLg: 6,
   radiusMd: 4,
   radiusSm: 2,
