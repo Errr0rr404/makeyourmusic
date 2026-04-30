@@ -11,6 +11,10 @@ import { sanitizeBody } from './middleware/validation';
 import { performanceMonitor } from './middleware/performance';
 import { requestLogger } from './middleware/requestLogger';
 import logger from './utils/logger';
+import { initFirebaseAdmin } from './utils/firebaseAdmin';
+
+// Initialize Firebase Admin SDK once on startup. Safe no-op if credentials are absent.
+initFirebaseAdmin();
 
 // Global error handlers
 process.on('uncaughtException', (error) => {

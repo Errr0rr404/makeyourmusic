@@ -18,6 +18,8 @@ export interface AuthActions {
   logout: () => Promise<void>;
   fetchUser: () => Promise<void>;
   setAuth: (data: { user: User; accessToken: string }) => Promise<void>;
+  /** Exchange a Firebase ID token (Google/Apple sign-in) for an app session */
+  firebaseSignIn: (idToken: string) => Promise<void>;
   /** Update just the access token (e.g. after a silent refresh) */
   setAccessToken: (token: string) => void;
   /** Called once on boot to hydrate token from storage */
@@ -66,6 +68,21 @@ export const useAuthStore = create<AuthStore>((set) => ({
     } catch (error: any) {
       set({ isLoading: false });
       throw new Error(error.response?.data?.error || 'Login failed');
+    }
+  },
+
+  firebaseSignIn: async (idToken) => {
+    set({ isLoading: true });
+    try {
+      const api = getApi();
+      const res = await api.post('/auth/firebase/exchange', { idToken });
+      const { user, accessToken } = res.data;
+      const storage = getStorage();
+      await storage.setItem(TOKEN_KEY, accessToken);
+      set({ user, accessToken, isAuthenticated: true, isLoading: false });
+    } catch (error: any) {
+      set({ isLoading: false });
+      throw new Error(error.response?.data?.error || 'Sign-in failed');
     }
   },
 

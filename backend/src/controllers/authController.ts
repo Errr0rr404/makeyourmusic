@@ -6,6 +6,7 @@ import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 import { sendEmail, buildVerificationEmail, buildPasswordResetEmail } from '../utils/email';
+import { verifyFirebaseIdToken } from '../utils/firebaseAdmin';
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
@@ -158,7 +159,8 @@ export const login = async (req: RequestWithUser, res: Response) => {
       },
     });
 
-    if (!user) {
+    if (!user || !user.passwordHash) {
+      // No user, or user signed up with OAuth and has no password
       res.status(401).json({ error: 'Invalid credentials' });
       return;
     }
@@ -214,6 +216,123 @@ export const me = async (req: RequestWithUser, res: Response) => {
   } catch (error) {
     logger.error('Get me error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get user' });
+  }
+};
+
+function deriveUsernameFromEmail(email: string): string {
+  const local = email.split('@')[0] || 'user';
+  return local.replace(/[^a-zA-Z0-9_]/g, '_').slice(0, 24) || 'user';
+}
+
+async function uniqueUsername(base: string): Promise<string> {
+  let candidate = base.length >= 3 ? base : `${base}_user`;
+  let suffix = 0;
+  while (await prisma.user.findUnique({ where: { username: candidate }, select: { id: true } })) {
+    suffix += 1;
+    const tail = String(suffix);
+    candidate = `${base.slice(0, 30 - tail.length - 1)}_${tail}`;
+  }
+  return candidate;
+}
+
+export const firebaseExchange = async (req: RequestWithUser, res: Response) => {
+  try {
+    const { idToken } = req.body;
+
+    if (!idToken || typeof idToken !== 'string') {
+      res.status(400).json({ error: 'idToken is required' });
+      return;
+    }
+
+    let claims;
+    try {
+      claims = await verifyFirebaseIdToken(idToken);
+    } catch (err) {
+      logger.warn('Firebase token verification failed', { error: (err as Error).message });
+      res.status(401).json({ error: 'Invalid Firebase token' });
+      return;
+    }
+
+    if (!claims.email) {
+      res.status(400).json({ error: 'Firebase account is missing an email address' });
+      return;
+    }
+
+    // Find by firebaseUid first (fastest, most stable). Fall back to email.
+    let user = await prisma.user.findUnique({
+      where: { firebaseUid: claims.uid },
+      select: {
+        id: true, email: true, username: true, displayName: true, role: true,
+        avatar: true, emailVerified: true, tokenVersion: true, firebaseUid: true,
+      },
+    });
+
+    if (!user) {
+      const byEmail = await prisma.user.findUnique({
+        where: { email: claims.email },
+        select: {
+          id: true, email: true, username: true, displayName: true, role: true,
+          avatar: true, emailVerified: true, tokenVersion: true, firebaseUid: true,
+        },
+      });
+
+      if (byEmail) {
+        // Existing email/password user signing in with OAuth for the first time —
+        // link the accounts by attaching the firebaseUid.
+        user = await prisma.user.update({
+          where: { id: byEmail.id },
+          data: {
+            firebaseUid: claims.uid,
+            authProvider: claims.provider,
+            emailVerified: byEmail.emailVerified || !!claims.emailVerified,
+            ...(byEmail.avatar ? {} : { avatar: claims.picture }),
+          },
+          select: {
+            id: true, email: true, username: true, displayName: true, role: true,
+            avatar: true, emailVerified: true, tokenVersion: true, firebaseUid: true,
+          },
+        });
+      } else {
+        // Brand new user — create from Firebase claims.
+        const baseUsername = deriveUsernameFromEmail(claims.email);
+        const username = await uniqueUsername(baseUsername);
+        const displayName = claims.name || username;
+
+        user = await prisma.user.create({
+          data: {
+            email: claims.email,
+            username,
+            displayName,
+            avatar: claims.picture,
+            firebaseUid: claims.uid,
+            authProvider: claims.provider,
+            emailVerified: !!claims.emailVerified,
+            emailVerifiedAt: claims.emailVerified ? new Date() : null,
+            role: 'LISTENER',
+            subscription: { create: { tier: 'FREE', status: 'ACTIVE' } },
+          },
+          select: {
+            id: true, email: true, username: true, displayName: true, role: true,
+            avatar: true, emailVerified: true, tokenVersion: true, firebaseUid: true,
+          },
+        });
+      }
+    }
+
+    const { accessToken, refreshToken } = await generateTokenPair({
+      userId: user.id,
+      email: user.email,
+      role: user.role,
+      tv: user.tokenVersion,
+    });
+
+    setRefreshTokenCookie(res, refreshToken);
+
+    const { tokenVersion: _tv, firebaseUid: _fb, ...safeUser } = user;
+    res.json({ user: safeUser, accessToken });
+  } catch (error) {
+    logger.error('Firebase exchange error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Authentication failed' });
   }
 };
 
@@ -517,6 +636,13 @@ export const changePassword = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
+    if (!user.passwordHash) {
+      res.status(400).json({
+        error: 'This account uses social sign-in and has no password. Use "Forgot password" to set one.',
+      });
+      return;
+    }
+
     const valid = await argon2.verify(user.passwordHash, currentPassword);
     if (!valid) {
       res.status(401).json({ error: 'Current password is incorrect' });
@@ -619,8 +745,8 @@ export const deleteAccount = async (req: RequestWithUser, res: Response) => {
     }
 
     const { password, confirmUsername } = req.body;
-    if (!password || !confirmUsername) {
-      res.status(400).json({ error: 'Password and username confirmation are required' });
+    if (!confirmUsername) {
+      res.status(400).json({ error: 'Username confirmation is required' });
       return;
     }
 
@@ -639,10 +765,18 @@ export const deleteAccount = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const valid = await argon2.verify(user.passwordHash, password);
-    if (!valid) {
-      res.status(401).json({ error: 'Password is incorrect' });
-      return;
+    // Password-based users must verify password. OAuth-only users skip this since
+    // re-authenticating via Firebase already happened to reach this authenticated request.
+    if (user.passwordHash) {
+      if (!password) {
+        res.status(400).json({ error: 'Password is required' });
+        return;
+      }
+      const valid = await argon2.verify(user.passwordHash, password);
+      if (!valid) {
+        res.status(401).json({ error: 'Password is incorrect' });
+        return;
+      }
     }
 
     await prisma.user.delete({ where: { id: user.id } });

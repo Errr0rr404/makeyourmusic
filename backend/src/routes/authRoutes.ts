@@ -14,6 +14,7 @@ import {
   deleteAccount,
   getEmailPreferences,
   updateEmailPreferences,
+  firebaseExchange,
 } from '../controllers/authController';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { authLimiter } from '../middleware/rateLimiter';
@@ -35,6 +36,7 @@ router.post('/register', authLimiter, registerRules, validateRequest, register a
 router.post('/login', authLimiter, loginRules, validateRequest, login as any);
 router.post('/logout', optionalAuth as any, logout as any);
 router.post('/refresh', authLimiter, refresh as any);
+router.post('/firebase/exchange', authLimiter, firebaseExchange as any);
 router.get('/me', authenticate as any, me as any);
 router.put('/profile', authenticate as any, profileUpdateRules, validateRequest, updateProfile as any);
 
