@@ -7,13 +7,13 @@ import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { asToken } from '../../lib/validateSlug';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 export default function ResetPasswordScreen() {
   const router = useRouter();
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const rawToken = useLocalSearchParams<{ token?: string }>().token;
-  // Validate at the boundary — at runtime the param may be a string array
-  // or undefined when the deep link is malformed. asToken returns null on
-  // anything that isn't a 8–256 char alphanumeric/url-safe token.
   const token = asToken(rawToken);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
@@ -58,34 +58,74 @@ export default function ResetPasswordScreen() {
   return (
     <ScreenContainer scrollable={false}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
       >
-        <TouchableOpacity onPress={() => router.back()} className="px-4 py-3 flex-row items-center">
-          <ArrowLeft size={20} color="#a1a1aa" />
-          <Text className="text-mym-muted ml-2">Back</Text>
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={{ paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center' }}
+          accessibilityRole="button"
+          accessibilityLabel="Go back"
+        >
+          <ArrowLeft size={20} color={tokens.textMute} />
+          <Text style={{ color: tokens.textMute, marginLeft: 8 }}>Back</Text>
         </TouchableOpacity>
 
-        <View className="flex-1 justify-center px-6">
-          <Text className="text-mym-text text-2xl font-bold mb-2">Choose a new password</Text>
-          <Text className="text-mym-muted text-sm mb-6">
+        <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
+          <Text
+            style={{
+              color: tokens.text,
+              fontSize: 22,
+              fontWeight: '700',
+              marginBottom: 8,
+              fontFamily: isVintage ? tokens.fontDisplay : undefined,
+              textTransform: isVintage ? 'uppercase' : undefined,
+            }}
+          >
+            Choose a new password
+          </Text>
+          <Text style={{ color: tokens.textMute, fontSize: 13, marginBottom: 24 }}>
             At least 8 characters with an uppercase letter, lowercase letter, and number.
           </Text>
 
           {success ? (
-            <View className="flex-row items-start gap-3 bg-green-900/30 border border-green-500/30 rounded-xl p-4">
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: 12,
+                backgroundColor: 'rgba(74, 222, 128, 0.12)',
+                borderColor: 'rgba(74, 222, 128, 0.3)',
+                borderWidth: 1,
+                borderRadius: tokens.radiusLg,
+                padding: 16,
+              }}
+            >
               <CheckCircle2 size={20} color="#4ade80" />
-              <View className="flex-1">
-                <Text className="text-green-400 font-semibold mb-1">Password updated</Text>
-                <Text className="text-green-300/80 text-sm">Redirecting to login…</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#4ade80', fontWeight: '600', marginBottom: 4 }}>Password updated</Text>
+                <Text style={{ color: 'rgba(74, 222, 128, 0.8)', fontSize: 13 }}>Redirecting to login…</Text>
               </View>
             </View>
           ) : (
             <>
               {error ? (
-                <View className="flex-row items-start gap-2 bg-red-900/30 border border-red-500/50 rounded-xl px-4 py-3 mb-4">
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    gap: 8,
+                    backgroundColor: 'rgba(248, 113, 113, 0.16)',
+                    borderColor: 'rgba(248, 113, 113, 0.5)',
+                    borderWidth: 1,
+                    borderRadius: tokens.radiusLg,
+                    paddingHorizontal: 16,
+                    paddingVertical: 12,
+                    marginBottom: 16,
+                  }}
+                >
                   <AlertCircle size={16} color="#f87171" />
-                  <Text className="text-red-400 text-sm flex-1">{error}</Text>
+                  <Text style={{ color: '#f87171', fontSize: 13, flex: 1 }}>{error}</Text>
                 </View>
               ) : null}
 

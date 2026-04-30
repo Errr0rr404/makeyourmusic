@@ -1,7 +1,8 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, Platform } from 'react-native';
 import { Image } from 'expo-image';
-import { Play, Pause, SkipForward, ListMusic } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Play, Pause, SkipForward, Music } from 'lucide-react-native';
+import { useRouter, useSegments } from 'expo-router';
 import { usePlayerStore } from '@makeyourmusic/shared';
 import { useTokens, useIsVintage } from '../../lib/theme';
 import { TapeProgress } from '../vintage/TapeProgress';
@@ -10,24 +11,42 @@ export function MiniPlayer() {
   const router = useRouter();
   const tokens = useTokens();
   const isVintage = useIsVintage();
+  const insets = useSafeAreaInsets();
+  const segments = useSegments();
   const { currentTrack, isPlaying, togglePlay, nextTrack, progress, duration } = usePlayerStore();
 
   if (!currentTrack) return null;
 
+  // Hide on the full-screen player itself.
+  if (segments[segments.length - 1] === 'player') return null;
+
+  // Match the (tabs) tab-bar formula so the mini-player floats just above it
+  // on tab screens. On non-tab screens (track/agent/etc.) the tab bar is gone,
+  // so we sit on the safe-area inset instead.
+  const onTabs = segments[0] === '(tabs)';
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 8 : 12);
+  const tabBarHeight = 56 + bottomInset;
+  const bottom = onTabs ? tabBarHeight : Math.max(insets.bottom, 8);
+
   const progressPercent = duration > 0 ? progress / duration : 0;
 
-  const containerStyle = {
-    position: 'absolute' as const,
-    bottom: 85,
-    left: 0,
-    right: 0,
-    backgroundColor: tokens.surface,
-    borderTopWidth: 1,
-    borderTopColor: tokens.border,
-  };
-
   return (
-    <View style={containerStyle}>
+    <View
+      style={{
+        position: 'absolute',
+        bottom,
+        left: 0,
+        right: 0,
+        backgroundColor: tokens.surface,
+        borderTopWidth: 1,
+        borderTopColor: tokens.border,
+        shadowColor: '#000',
+        shadowOpacity: 0.15,
+        shadowRadius: 8,
+        shadowOffset: { width: 0, height: -2 },
+        elevation: 8,
+      }}
+    >
       {/* Progress bar */}
       {isVintage ? (
         <TapeProgress progress={progressPercent} height={3} />
@@ -40,9 +59,11 @@ export function MiniPlayer() {
       )}
 
       <TouchableOpacity
-        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 }}
+        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8 }}
         onPress={() => router.push('/player')}
         activeOpacity={0.8}
+        accessibilityRole="button"
+        accessibilityLabel={`Open player. Now playing ${currentTrack.title} by ${currentTrack.agent.name}`}
       >
         {/* Cover art / cassette window */}
         <View
@@ -67,13 +88,13 @@ export function MiniPlayer() {
             />
           ) : (
             <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-              <ListMusic size={20} color={tokens.textMute} />
+              <Music size={20} color={tokens.textMute} />
             </View>
           )}
         </View>
 
         {/* Track info */}
-        <View style={{ flex: 1, marginRight: 12 }}>
+        <View style={{ flex: 1, marginRight: 8 }}>
           <Text
             numberOfLines={1}
             style={{
@@ -124,9 +145,17 @@ export function MiniPlayer() {
           }
         >
           {isPlaying ? (
-            <Pause size={isVintage ? 18 : 22} color={isVintage ? tokens.brandText : tokens.text} fill={isVintage ? tokens.brandText : tokens.text} />
+            <Pause
+              size={isVintage ? 18 : 22}
+              color={isVintage ? tokens.brandText : tokens.text}
+              fill={isVintage ? tokens.brandText : tokens.text}
+            />
           ) : (
-            <Play size={isVintage ? 18 : 22} color={isVintage ? tokens.brandText : tokens.text} fill={isVintage ? tokens.brandText : tokens.text} />
+            <Play
+              size={isVintage ? 18 : 22}
+              color={isVintage ? tokens.brandText : tokens.text}
+              fill={isVintage ? tokens.brandText : tokens.text}
+            />
           )}
         </TouchableOpacity>
 

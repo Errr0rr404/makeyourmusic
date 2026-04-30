@@ -20,6 +20,7 @@ import { pickAndUploadImage } from '../../lib/uploadImage';
 import { hapticSelection, hapticSuccess } from '../../services/hapticService';
 import { Audio } from 'expo-av';
 import TrackPlayer from 'react-native-track-player';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 type Step = 'idea' | 'lyrics' | 'style' | 'generate' | 'publish';
 
@@ -347,7 +348,7 @@ export default function CreateScreen() {
     <ScreenContainer scrollable={false}>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1"
+        style={{ flex: 1 }}
       >
         <Header usage={usage} />
         <Stepper current={step} />
@@ -527,6 +528,8 @@ function Stepper({ current }: { current: Step }) {
 // ─── Step 1: Idea ────────────────────────────────────────
 
 function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
+  const tokens = useTokens();
+  const mutedHex = tokens.textMute;
   return (
     <View className="px-4 pt-2">
       <View className="bg-mym-card rounded-xl border border-mym-border p-4">
@@ -538,7 +541,7 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
           numberOfLines={5}
           maxLength={1000}
           placeholder="e.g. a nostalgic drive through the city at midnight, neon signs reflecting in the rain"
-          placeholderTextColor="#71717a"
+          placeholderTextColor={mutedHex}
           className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2 text-mym-text text-sm"
           style={{ minHeight: 100, textAlignVertical: 'top' }}
         />
@@ -552,7 +555,7 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
           onChangeText={setTitle}
           maxLength={200}
           placeholder="You can change this later"
-          placeholderTextColor="#71717a"
+          placeholderTextColor={mutedHex}
           className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm"
         />
       </View>
@@ -573,6 +576,8 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
 // ─── Step 2: Lyrics ──────────────────────────────────────
 
 function LyricsStep({ lyrics, setLyrics, generating, error, isInstrumental, setIsInstrumental, onGenerate, onBack, onNext }: any) {
+  const tokens = useTokens();
+  const mutedHex = tokens.textMute;
   return (
     <View className="px-4 pt-2">
       <View className="bg-mym-card rounded-xl border border-mym-border p-4">
@@ -622,7 +627,7 @@ function LyricsStep({ lyrics, setLyrics, generating, error, isInstrumental, setI
               multiline
               maxLength={3500}
               placeholder={'[Verse 1]\nNeon bleeds across the windshield glass\n...\n\n[Chorus]\n...'}
-              placeholderTextColor="#71717a"
+              placeholderTextColor={mutedHex}
               className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2 text-mym-text text-sm"
               style={{ minHeight: 240, textAlignVertical: 'top', fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}
             />
@@ -668,6 +673,8 @@ function StyleStep({
   durationSec, setDurationSec, language, setLanguage,
   usage, onBack, onNext,
 }: any) {
+  const tokens = useTokens();
+  const mutedHex = tokens.textMute;
   const insufficient = usage && usage.remaining <= 0;
   const [showAdvanced, setShowAdvanced] = useState(false);
   const selectedGenre = GENRE_TREE.find((g: any) => g.name === genre);
@@ -774,7 +781,7 @@ function StyleStep({
           onChangeText={setVibeReference}
           maxLength={300}
           placeholder='e.g. "Daft Punk, Tame Impala, early M83"'
-          placeholderTextColor="#71717a"
+          placeholderTextColor={mutedHex}
           className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm"
         />
         <Text className="text-mym-muted text-xs mt-1 mb-4">
@@ -861,7 +868,7 @@ function StyleStep({
               onChangeText={setStyle}
               maxLength={300}
               placeholder='e.g. "dreamy synth pads, trap drums, slow-burn outro"'
-              placeholderTextColor="#71717a"
+              placeholderTextColor={mutedHex}
               className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm"
             />
           </View>
@@ -964,6 +971,8 @@ function PublishStep({
   publishCover, uploadCover, uploadingCover, publishPublic, setPublishPublic,
   publishing, playingPreview, togglePreview, onPublish, onStartOver,
 }: any) {
+  const tokens = useTokens();
+  const mutedHex = tokens.textMute;
   useEffect(() => {
     if (agents.length > 0 && !publishAgentId) {
       setPublishAgentId(agents[0].id);

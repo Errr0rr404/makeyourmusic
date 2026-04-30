@@ -1,14 +1,17 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 export default function LoginScreen() {
   const router = useRouter();
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const login = useAuthStore((s) => s.login);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -33,24 +36,59 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer scrollable={false}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
       >
-        <View className="flex-1 justify-center px-6">
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 32 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {/* Logo */}
-          <View className="items-center mb-10">
-            <Text className="text-mym-accent text-4xl font-bold">MakeYourMusic</Text>
-            <Text className="text-mym-muted text-sm mt-1">AI-Generated Music</Text>
+          <View style={{ alignItems: 'center', marginBottom: 40 }}>
+            <Text
+              style={{
+                color: tokens.brand,
+                fontSize: 36,
+                fontWeight: '800',
+                fontFamily: isVintage ? tokens.fontDisplay : undefined,
+                letterSpacing: isVintage ? 1 : -0.5,
+                textTransform: isVintage ? 'uppercase' : undefined,
+              }}
+            >
+              MakeYourMusic
+            </Text>
+            <Text style={{ color: tokens.textMute, fontSize: 13, marginTop: 4 }}>AI-Generated Music</Text>
           </View>
 
           {/* Form */}
-          <Text className="text-mym-text text-2xl font-bold mb-6">Welcome back</Text>
+          <Text
+            style={{
+              color: tokens.text,
+              fontSize: 22,
+              fontWeight: '700',
+              marginBottom: 24,
+              fontFamily: isVintage ? tokens.fontDisplay : undefined,
+            }}
+          >
+            Welcome back
+          </Text>
 
           {error ? (
-            <View className="bg-red-900/30 border border-red-500/50 rounded-xl px-4 py-3 mb-4">
-              <Text className="text-red-400 text-sm">{error}</Text>
+            <View
+              style={{
+                backgroundColor: 'rgba(248, 113, 113, 0.16)',
+                borderColor: 'rgba(248, 113, 113, 0.5)',
+                borderWidth: 1,
+                borderRadius: tokens.radiusLg,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                marginBottom: 16,
+              }}
+            >
+              <Text style={{ color: '#f87171', fontSize: 13 }}>{error}</Text>
             </View>
           ) : null}
 
@@ -59,10 +97,20 @@ export default function LoginScreen() {
             onSuccess={() => router.replace('/(tabs)')}
           />
 
-          <View className="flex-row items-center my-4">
-            <View className="flex-1 h-px bg-mym-border" />
-            <Text className="text-mym-muted text-xs uppercase mx-3 tracking-wider">or with email</Text>
-            <View className="flex-1 h-px bg-mym-border" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 16 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: tokens.border }} />
+            <Text
+              style={{
+                color: tokens.textMute,
+                fontSize: 11,
+                textTransform: 'uppercase',
+                marginHorizontal: 12,
+                letterSpacing: 1,
+              }}
+            >
+              or with email
+            </Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: tokens.border }} />
           </View>
 
           <Input
@@ -85,28 +133,31 @@ export default function LoginScreen() {
 
           <TouchableOpacity
             onPress={() => router.push('/(auth)/forgot-password')}
-            className="mb-4 -mt-2 self-end"
+            style={{ marginBottom: 16, marginTop: -8, alignSelf: 'flex-end' }}
+            accessibilityRole="button"
+            accessibilityLabel="Forgot password"
           >
-            <Text className="text-mym-accent text-xs font-semibold">Forgot password?</Text>
+            <Text style={{ color: tokens.accent, fontSize: 12, fontWeight: '600' }}>Forgot password?</Text>
           </TouchableOpacity>
 
           <Button title="Sign In" onPress={handleLogin} loading={loading} size="lg" />
 
-          <View className="flex-row items-center justify-center mt-6">
-            <Text className="text-mym-muted text-sm">Don't have an account? </Text>
-            <TouchableOpacity onPress={() => router.replace('/(auth)/register')}>
-              <Text className="text-mym-accent text-sm font-semibold">Sign up</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 24 }}>
+            <Text style={{ color: tokens.textMute, fontSize: 13 }}>Don&apos;t have an account? </Text>
+            <TouchableOpacity onPress={() => router.replace('/(auth)/register')} accessibilityRole="button">
+              <Text style={{ color: tokens.accent, fontSize: 13, fontWeight: '600' }}>Sign up</Text>
             </TouchableOpacity>
           </View>
 
           {/* Skip */}
           <TouchableOpacity
             onPress={() => router.replace('/(tabs)')}
-            className="items-center mt-4"
+            style={{ alignItems: 'center', marginTop: 16 }}
+            accessibilityRole="button"
           >
-            <Text className="text-mym-muted text-sm">Continue as guest</Text>
+            <Text style={{ color: tokens.textMute, fontSize: 13 }}>Continue as guest</Text>
           </TouchableOpacity>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </ScreenContainer>
   );

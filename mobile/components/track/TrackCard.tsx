@@ -1,9 +1,10 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { Play } from 'lucide-react-native';
+import { Play, Pause, Music } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { usePlayerStore, formatDuration } from '@makeyourmusic/shared';
 import type { TrackItem } from '@makeyourmusic/shared';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 interface TrackCardProps {
   track: TrackItem;
@@ -13,21 +14,37 @@ interface TrackCardProps {
 
 export function TrackCard({ track, queue, size = 'md' }: TrackCardProps) {
   const router = useRouter();
-  const playTrack = usePlayerStore((s) => s.playTrack);
-  const cardWidth = size === 'sm' ? 'w-36' : 'w-44';
-  const imageSize = size === 'sm' ? 'h-36' : 'h-44';
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
+  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayerStore();
+  const isActive = currentTrack?.id === track.id;
+  const dim = size === 'sm' ? 144 : 176;
 
   const handlePlay = () => {
-    playTrack(track, queue);
+    if (isActive) togglePlay();
+    else playTrack(track, queue);
   };
 
   return (
     <TouchableOpacity
-      className={`${cardWidth} mr-3`}
+      style={{ width: dim, marginRight: 12 }}
       onPress={() => router.push(`/track/${track.slug}`)}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`Open ${track.title} by ${track.agent.name}`}
     >
-      <View className={`${imageSize} ${cardWidth} rounded-xl overflow-hidden bg-mym-card mb-2 relative`}>
+      <View
+        style={{
+          width: dim,
+          height: dim,
+          borderRadius: isVintage ? tokens.radiusMd : 14,
+          overflow: 'hidden',
+          backgroundColor: tokens.card,
+          marginBottom: 8,
+          borderWidth: isVintage ? 1 : 0,
+          borderColor: tokens.border,
+        }}
+      >
         {track.coverArt ? (
           <Image
             source={{ uri: track.coverArt }}
@@ -38,25 +55,76 @@ export function TrackCard({ track, queue, size = 'md' }: TrackCardProps) {
             recyclingKey={track.id}
           />
         ) : (
-          <View className="flex-1 items-center justify-center bg-mym-surface">
-            <Text className="text-3xl">🎵</Text>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.surface }}>
+            <Music size={36} color={tokens.textMute} />
           </View>
         )}
+
+        {isActive && (
+          <View
+            style={{
+              position: 'absolute',
+              top: 8,
+              left: 8,
+              backgroundColor: tokens.brand,
+              paddingHorizontal: 8,
+              paddingVertical: 3,
+              borderRadius: 999,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 4,
+            }}
+          >
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' }} />
+            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 }}>
+              {isPlaying ? 'PLAYING' : 'PAUSED'}
+            </Text>
+          </View>
+        )}
+
         <TouchableOpacity
           onPress={handlePlay}
-          className="absolute bottom-2 right-2 bg-mym-accent rounded-full w-9 h-9 items-center justify-center"
+          style={{
+            position: 'absolute',
+            bottom: 8,
+            right: 8,
+            width: 36,
+            height: 36,
+            borderRadius: 18,
+            backgroundColor: tokens.brand,
+            alignItems: 'center',
+            justifyContent: 'center',
+            shadowColor: '#000',
+            shadowOpacity: 0.3,
+            shadowRadius: 6,
+            shadowOffset: { width: 0, height: 2 },
+            elevation: 4,
+          }}
           activeOpacity={0.8}
-          accessibilityLabel={`Play ${track.title}`}
+          accessibilityLabel={isActive && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
           accessibilityRole="button"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Play size={16} color="#fff" fill="#fff" />
+          {isActive && isPlaying ? (
+            <Pause size={16} color={tokens.brandText} fill={tokens.brandText} />
+          ) : (
+            <Play size={16} color={tokens.brandText} fill={tokens.brandText} />
+          )}
         </TouchableOpacity>
       </View>
-      <Text className="text-mym-text text-sm font-semibold" numberOfLines={1}>
+      <Text
+        numberOfLines={1}
+        style={{
+          color: isActive ? tokens.accent : tokens.text,
+          fontSize: 14,
+          fontWeight: '600',
+          fontFamily: isVintage ? tokens.fontDisplay : undefined,
+          letterSpacing: isVintage ? 0.5 : undefined,
+        }}
+      >
         {track.title}
       </Text>
-      <Text className="text-mym-muted text-xs mt-0.5" numberOfLines={1}>
+      <Text numberOfLines={1} style={{ color: tokens.textMute, fontSize: 12, marginTop: 2 }}>
         {track.agent.name} · {formatDuration(track.duration)}
       </Text>
     </TouchableOpacity>

@@ -1,7 +1,9 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
+import { Bot } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { formatCount } from '@makeyourmusic/shared';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 interface AgentCardProps {
   agent: {
@@ -16,15 +18,30 @@ interface AgentCardProps {
 
 export function AgentCard({ agent }: AgentCardProps) {
   const router = useRouter();
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const followers = agent._count?.followers ?? agent.followerCount ?? 0;
 
   return (
     <TouchableOpacity
-      className="items-center mr-4 w-28"
+      style={{ width: 112, marginRight: 16, alignItems: 'center' }}
       onPress={() => router.push(`/agent/${agent.slug}`)}
       activeOpacity={0.7}
+      accessibilityRole="button"
+      accessibilityLabel={`View ${agent.name} agent profile`}
     >
-      <View className="w-20 h-20 rounded-full overflow-hidden bg-mym-card mb-2">
+      <View
+        style={{
+          width: 80,
+          height: 80,
+          borderRadius: isVintage ? tokens.radiusMd : 40,
+          overflow: 'hidden',
+          backgroundColor: tokens.card,
+          marginBottom: 8,
+          borderWidth: isVintage ? 1 : 0,
+          borderColor: tokens.border,
+        }}
+      >
         {agent.avatar ? (
           <Image
             source={{ uri: agent.avatar }}
@@ -35,16 +52,25 @@ export function AgentCard({ agent }: AgentCardProps) {
             recyclingKey={agent.id}
           />
         ) : (
-          <View className="flex-1 items-center justify-center bg-mym-surface">
-            <Text className="text-2xl">🤖</Text>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.surface }}>
+            <Bot size={32} color={tokens.textMute} />
           </View>
         )}
       </View>
-      <Text className="text-mym-text text-sm font-semibold text-center" numberOfLines={1}>
+      <Text
+        numberOfLines={1}
+        style={{
+          color: tokens.text,
+          fontSize: 13,
+          fontWeight: '600',
+          textAlign: 'center',
+          fontFamily: isVintage ? tokens.fontDisplay : undefined,
+        }}
+      >
         {agent.name}
       </Text>
-      <Text className="text-mym-muted text-xs">
-        {formatCount(followers)} followers
+      <Text style={{ color: tokens.textMute, fontSize: 11, marginTop: 2 }}>
+        {formatCount(followers)} {followers === 1 ? 'follower' : 'followers'}
       </Text>
     </TouchableOpacity>
   );

@@ -1,6 +1,7 @@
 import { View, ScrollView, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { ReactNode } from 'react';
+import { useTokens } from '../../lib/theme';
 
 interface ScreenContainerProps {
   children: ReactNode;
@@ -17,11 +18,13 @@ export function ScreenContainer({
   onRefresh,
   padBottom = true,
 }: ScreenContainerProps) {
+  const tokens = useTokens();
+
   if (scrollable) {
     return (
-      <SafeAreaView className="flex-1 bg-mym-bg" edges={['top']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={['top']}>
         <ScrollView
-          className="flex-1"
+          style={{ flex: 1 }}
           contentContainerStyle={{ paddingBottom: padBottom ? 140 : 20 }}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -29,8 +32,8 @@ export function ScreenContainer({
               <RefreshControl
                 refreshing={refreshing}
                 onRefresh={onRefresh}
-                tintColor="#8b5cf6"
-                colors={['#8b5cf6']}
+                tintColor={tokens.brand}
+                colors={[tokens.brand]}
               />
             ) : undefined
           }
@@ -42,8 +45,8 @@ export function ScreenContainer({
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-mym-bg" edges={['top']}>
-      <View className="flex-1">{children}</View>
+    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={['top']}>
+      <View style={{ flex: 1 }}>{children}</View>
     </SafeAreaView>
   );
 }

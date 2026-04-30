@@ -1,24 +1,53 @@
 import { TextInput, View, Text, TextInputProps } from 'react-native';
 import { useState } from 'react';
-import { useTokens } from '../../lib/theme';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
 }
 
-export function Input({ label, error, accessibilityLabel, ...props }: InputProps) {
+export function Input({ label, error, accessibilityLabel, style, ...props }: InputProps) {
   const tokens = useTokens();
+  const isVintage = useIsVintage();
   const [focused, setFocused] = useState(false);
 
+  const borderColor = focused
+    ? tokens.accent
+    : error
+      ? '#ef4444'
+      : tokens.border;
+
   return (
-    <View className="mb-4">
-      {label && <Text className="text-mym-muted text-sm mb-2 font-medium">{label}</Text>}
+    <View style={{ marginBottom: 16 }}>
+      {label && (
+        <Text
+          style={{
+            color: tokens.textMute,
+            fontSize: 13,
+            marginBottom: 8,
+            fontWeight: '500',
+            fontFamily: isVintage ? tokens.fontLabel : undefined,
+          }}
+        >
+          {label}
+        </Text>
+      )}
       <TextInput
-        className={`bg-mym-card border rounded-xl px-4 py-3 text-mym-text text-base ${
-          focused ? 'border-mym-accent' : error ? 'border-red-500' : 'border-mym-border'
-        }`}
-        style={{ minHeight: 48 }}
+        style={[
+          {
+            backgroundColor: tokens.card,
+            borderWidth: 1,
+            borderRadius: tokens.radiusLg,
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            color: tokens.text,
+            fontSize: 15,
+            minHeight: 48,
+            borderColor,
+          },
+          style,
+        ]}
         placeholderTextColor={tokens.textMute}
         accessibilityLabel={accessibilityLabel ?? label}
         onFocus={(e) => {
@@ -31,7 +60,11 @@ export function Input({ label, error, accessibilityLabel, ...props }: InputProps
         }}
         {...props}
       />
-      {error && <Text className="text-red-500 text-xs mt-1" accessibilityRole="alert">{error}</Text>}
+      {error && (
+        <Text style={{ color: '#ef4444', fontSize: 11, marginTop: 4 }} accessibilityRole="alert">
+          {error}
+        </Text>
+      )}
     </View>
   );
 }

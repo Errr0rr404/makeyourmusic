@@ -1,14 +1,18 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@makeyourmusic/shared';
+import { Check } from 'lucide-react-native';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 export default function RegisterScreen() {
   const router = useRouter();
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const register = useAuthStore((s) => s.register);
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -49,23 +53,58 @@ export default function RegisterScreen() {
   };
 
   return (
-    <ScreenContainer>
+    <ScreenContainer scrollable={false}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        className="flex-1"
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={{ flex: 1 }}
       >
-        <View className="flex-1 justify-center px-6">
+        <ScrollView
+          contentContainerStyle={{ flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 24 }}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
           {/* Logo */}
-          <View className="items-center mb-10">
-            <Text className="text-mym-accent text-4xl font-bold">MakeYourMusic</Text>
-            <Text className="text-mym-muted text-sm mt-1">AI-Generated Music</Text>
+          <View style={{ alignItems: 'center', marginBottom: 32 }}>
+            <Text
+              style={{
+                color: tokens.brand,
+                fontSize: 36,
+                fontWeight: '800',
+                fontFamily: isVintage ? tokens.fontDisplay : undefined,
+                letterSpacing: isVintage ? 1 : -0.5,
+                textTransform: isVintage ? 'uppercase' : undefined,
+              }}
+            >
+              MakeYourMusic
+            </Text>
+            <Text style={{ color: tokens.textMute, fontSize: 13, marginTop: 4 }}>AI-Generated Music</Text>
           </View>
 
-          <Text className="text-mym-text text-2xl font-bold mb-6">Create account</Text>
+          <Text
+            style={{
+              color: tokens.text,
+              fontSize: 22,
+              fontWeight: '700',
+              marginBottom: 24,
+              fontFamily: isVintage ? tokens.fontDisplay : undefined,
+            }}
+          >
+            Create account
+          </Text>
 
           {error ? (
-            <View className="bg-red-900/30 border border-red-500/50 rounded-xl px-4 py-3 mb-4">
-              <Text className="text-red-400 text-sm">{error}</Text>
+            <View
+              style={{
+                backgroundColor: 'rgba(248, 113, 113, 0.16)',
+                borderColor: 'rgba(248, 113, 113, 0.5)',
+                borderWidth: 1,
+                borderRadius: tokens.radiusLg,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                marginBottom: 16,
+              }}
+            >
+              <Text style={{ color: '#f87171', fontSize: 13 }}>{error}</Text>
             </View>
           ) : null}
 
@@ -74,10 +113,20 @@ export default function RegisterScreen() {
             onSuccess={() => router.replace('/(tabs)')}
           />
 
-          <View className="flex-row items-center my-4">
-            <View className="flex-1 h-px bg-mym-border" />
-            <Text className="text-mym-muted text-xs uppercase mx-3 tracking-wider">or with email</Text>
-            <View className="flex-1 h-px bg-mym-border" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginVertical: 16 }}>
+            <View style={{ flex: 1, height: 1, backgroundColor: tokens.border }} />
+            <Text
+              style={{
+                color: tokens.textMute,
+                fontSize: 11,
+                textTransform: 'uppercase',
+                marginHorizontal: 12,
+                letterSpacing: 1,
+              }}
+            >
+              or with email
+            </Text>
+            <View style={{ flex: 1, height: 1, backgroundColor: tokens.border }} />
           </View>
 
           <Input
@@ -116,28 +165,41 @@ export default function RegisterScreen() {
 
           <TouchableOpacity
             onPress={() => setAcceptTerms(!acceptTerms)}
-            className="flex-row items-start gap-3 mb-4 py-2"
+            style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16, paddingVertical: 8 }}
             accessibilityRole="checkbox"
             accessibilityState={{ checked: acceptTerms }}
             accessibilityLabel="Accept terms of service and privacy policy"
           >
-            <View className={`w-6 h-6 rounded border-2 items-center justify-center mt-0.5 ${acceptTerms ? 'bg-mym-accent border-mym-accent' : 'border-mym-border bg-mym-card'}`}>
-              {acceptTerms && <Text className="text-white text-sm font-bold">✓</Text>}
+            <View
+              style={{
+                width: 24,
+                height: 24,
+                borderRadius: 6,
+                borderWidth: 2,
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: 2,
+                backgroundColor: acceptTerms ? tokens.brand : tokens.card,
+                borderColor: acceptTerms ? tokens.brand : tokens.border,
+              }}
+            >
+              {acceptTerms && <Check size={14} color={tokens.brandText} strokeWidth={3} />}
             </View>
-            <Text className="text-mym-muted text-sm flex-1 leading-5">
-              I agree to the <Text className="text-mym-accent font-semibold">Terms of Service</Text> and <Text className="text-mym-accent font-semibold">Privacy Policy</Text>
+            <Text style={{ color: tokens.textMute, fontSize: 13, flex: 1, lineHeight: 19 }}>
+              I agree to the <Text style={{ color: tokens.accent, fontWeight: '600' }}>Terms of Service</Text> and{' '}
+              <Text style={{ color: tokens.accent, fontWeight: '600' }}>Privacy Policy</Text>
             </Text>
           </TouchableOpacity>
 
           <Button title="Create Account" onPress={handleRegister} loading={loading} disabled={!acceptTerms} size="lg" />
 
-          <View className="flex-row items-center justify-center mt-6">
-            <Text className="text-mym-muted text-sm">Already have an account? </Text>
-            <TouchableOpacity onPress={() => router.replace('/(auth)/login')}>
-              <Text className="text-mym-accent text-sm font-semibold">Sign in</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 24 }}>
+            <Text style={{ color: tokens.textMute, fontSize: 13 }}>Already have an account? </Text>
+            <TouchableOpacity onPress={() => router.replace('/(auth)/login')} accessibilityRole="button">
+              <Text style={{ color: tokens.accent, fontSize: 13, fontWeight: '600' }}>Sign in</Text>
             </TouchableOpacity>
           </View>
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </ScreenContainer>
   );

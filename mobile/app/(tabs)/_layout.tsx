@@ -1,5 +1,6 @@
 import { Tabs, useRouter } from 'expo-router';
-import { View, TouchableOpacity, Text } from 'react-native';
+import { View, TouchableOpacity, Text, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Home, Search, Library, User, Wand2 } from 'lucide-react-native';
 import { useAuthStore } from '@makeyourmusic/shared';
 import { hapticMedium } from '../../services/hapticService';
@@ -10,6 +11,12 @@ export default function TabLayout() {
   const { isAuthenticated } = useAuthStore();
   const tokens = useTokens();
   const isVintage = useIsVintage();
+  const insets = useSafeAreaInsets();
+
+  // Adaptive tab bar height: tighter on Android (no home indicator), padded
+  // on iOS for the home indicator.
+  const bottomInset = Math.max(insets.bottom, Platform.OS === 'android' ? 8 : 12);
+  const barHeight = 56 + bottomInset;
 
   return (
     <Tabs
@@ -21,8 +28,8 @@ export default function TabLayout() {
           backgroundColor: isVintage ? tokens.metal : tokens.surface,
           borderTopColor: isVintage ? tokens.metalShadow : tokens.border,
           borderTopWidth: 1,
-          height: 85,
-          paddingBottom: 30,
+          height: barHeight,
+          paddingBottom: bottomInset,
           paddingTop: 8,
         },
         tabBarLabelStyle: {
@@ -60,14 +67,16 @@ export default function TabLayout() {
                 hapticMedium();
                 router.push(isAuthenticated ? '/create' : '/(auth)/login');
               }}
-              className="flex-1 items-center justify-center"
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Create new track"
             >
               <View
                 style={{
                   width: 48,
                   height: 48,
-                  borderRadius: isVintage ? 24 : 24,
+                  borderRadius: isVintage ? tokens.radiusMd : 24,
                   backgroundColor: tokens.brand,
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -81,7 +90,7 @@ export default function TabLayout() {
                   borderColor: '#1a1009',
                 }}
               >
-                <Wand2 size={20} color="#fff" />
+                <Wand2 size={20} color={tokens.brandText} />
               </View>
               <Text
                 style={{
@@ -120,8 +129,10 @@ export default function TabLayout() {
                 hapticMedium();
                 router.push(isAuthenticated ? '/profile' : '/(auth)/login');
               }}
-              className="flex-1 items-center justify-center pt-2"
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 8 }}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel="Open profile"
             >
               <User size={24} color={tokens.textMute} />
               <Text

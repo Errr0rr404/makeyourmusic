@@ -7,9 +7,12 @@ import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { asToken } from '../../lib/validateSlug';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const rawToken = useLocalSearchParams<{ token?: string }>().token;
   const token = asToken(rawToken);
   const { user, fetchUser } = useAuthStore();
@@ -45,7 +48,7 @@ export default function VerifyEmailScreen() {
       await getApi().post('/auth/resend-verification', { email: emailToUse });
       setResent(true);
     } catch {
-      setResent(true); // match backend privacy model
+      setResent(true);
     } finally {
       setResending(false);
     }
@@ -53,21 +56,33 @@ export default function VerifyEmailScreen() {
 
   return (
     <ScreenContainer scrollable={false}>
-      <View className="flex-1 justify-center px-6">
+      <View style={{ flex: 1, justifyContent: 'center', paddingHorizontal: 24 }}>
         {status === 'loading' && (
-          <View className="items-center">
-            <ActivityIndicator size="large" color="#8b5cf6" />
-            <Text className="text-mym-muted mt-4">Verifying your email…</Text>
+          <View style={{ alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={tokens.brand} />
+            <Text style={{ color: tokens.textMute, marginTop: 16 }}>Verifying your email…</Text>
           </View>
         )}
 
         {status === 'success' && (
           <View>
-            <View className="flex-row items-start gap-3 bg-green-900/30 border border-green-500/30 rounded-xl p-4 mb-6">
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: 12,
+                backgroundColor: 'rgba(74, 222, 128, 0.12)',
+                borderColor: 'rgba(74, 222, 128, 0.3)',
+                borderWidth: 1,
+                borderRadius: tokens.radiusLg,
+                padding: 16,
+                marginBottom: 24,
+              }}
+            >
               <CheckCircle2 size={20} color="#4ade80" />
-              <View className="flex-1">
-                <Text className="text-green-400 font-semibold mb-1">Email verified</Text>
-                <Text className="text-green-300/80 text-sm">{message}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#4ade80', fontWeight: '600', marginBottom: 4 }}>Email verified</Text>
+                <Text style={{ color: 'rgba(74, 222, 128, 0.8)', fontSize: 13 }}>{message}</Text>
               </View>
             </View>
             <Button title="Continue to MakeYourMusic" onPress={() => router.replace('/(tabs)')} size="lg" />
@@ -76,14 +91,26 @@ export default function VerifyEmailScreen() {
 
         {status === 'error' && (
           <View>
-            <View className="flex-row items-start gap-3 bg-red-900/30 border border-red-500/30 rounded-xl p-4 mb-6">
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: 12,
+                backgroundColor: 'rgba(248, 113, 113, 0.16)',
+                borderColor: 'rgba(248, 113, 113, 0.3)',
+                borderWidth: 1,
+                borderRadius: tokens.radiusLg,
+                padding: 16,
+                marginBottom: 24,
+              }}
+            >
               <AlertCircle size={20} color="#f87171" />
-              <View className="flex-1">
-                <Text className="text-red-400 font-semibold mb-1">Verification failed</Text>
-                <Text className="text-red-300/80 text-sm">{message}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ color: '#f87171', fontWeight: '600', marginBottom: 4 }}>Verification failed</Text>
+                <Text style={{ color: 'rgba(248, 113, 113, 0.8)', fontSize: 13 }}>{message}</Text>
               </View>
             </View>
-            <Text className="text-mym-muted text-sm mb-4 text-center">
+            <Text style={{ color: tokens.textMute, fontSize: 13, marginBottom: 16, textAlign: 'center' }}>
               The link may be expired. Request a new one below.
             </Text>
             <ResendBlock
@@ -93,18 +120,39 @@ export default function VerifyEmailScreen() {
               resending={resending}
               resent={resent}
               onResend={handleResend}
+              tokens={tokens}
             />
           </View>
         )}
 
         {status === 'pending' && (
           <View>
-            <View className="items-center mb-8">
-              <View className="w-16 h-16 rounded-full bg-mym-accent/10 items-center justify-center mb-4">
-                <Mail size={28} color="#8b5cf6" />
+            <View style={{ alignItems: 'center', marginBottom: 32 }}>
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 32,
+                  backgroundColor: tokens.accentSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 16,
+                }}
+              >
+                <Mail size={28} color={tokens.brand} />
               </View>
-              <Text className="text-mym-text text-2xl font-bold">Check your inbox</Text>
-              <Text className="text-mym-muted text-sm mt-1 text-center">
+              <Text
+                style={{
+                  color: tokens.text,
+                  fontSize: 24,
+                  fontWeight: '700',
+                  fontFamily: isVintage ? tokens.fontDisplay : undefined,
+                  textTransform: isVintage ? 'uppercase' : undefined,
+                }}
+              >
+                Check your inbox
+              </Text>
+              <Text style={{ color: tokens.textMute, fontSize: 13, marginTop: 4, textAlign: 'center' }}>
                 {user?.email
                   ? `We sent a verification link to ${user.email}`
                   : 'We sent a verification link to your email'}
@@ -117,12 +165,16 @@ export default function VerifyEmailScreen() {
               resending={resending}
               resent={resent}
               onResend={handleResend}
+              tokens={tokens}
             />
             <TouchableOpacity
               onPress={() => router.replace('/(tabs)')}
-              className="items-center mt-6"
+              style={{ alignItems: 'center', marginTop: 24 }}
+              accessibilityRole="button"
             >
-              <Text className="text-mym-muted text-sm">Skip for now and explore MakeYourMusic →</Text>
+              <Text style={{ color: tokens.textMute, fontSize: 13 }}>
+                Skip for now and explore MakeYourMusic →
+              </Text>
             </TouchableOpacity>
           </View>
         )}
@@ -132,7 +184,7 @@ export default function VerifyEmailScreen() {
 }
 
 function ResendBlock({
-  user, resendEmail, setResendEmail, resending, resent, onResend,
+  user, resendEmail, setResendEmail, resending, resent, onResend, tokens,
 }: {
   user: any;
   resendEmail: string;
@@ -140,11 +192,20 @@ function ResendBlock({
   resending: boolean;
   resent: boolean;
   onResend: () => void;
+  tokens: ReturnType<typeof useTokens>;
 }) {
   if (resent) {
     return (
-      <View className="bg-green-900/30 border border-green-500/30 rounded-xl p-4">
-        <Text className="text-green-400 text-sm text-center">
+      <View
+        style={{
+          backgroundColor: 'rgba(74, 222, 128, 0.12)',
+          borderColor: 'rgba(74, 222, 128, 0.3)',
+          borderWidth: 1,
+          borderRadius: tokens.radiusLg,
+          padding: 16,
+        }}
+      >
+        <Text style={{ color: '#4ade80', fontSize: 13, textAlign: 'center' }}>
           If an unverified account exists with that email, a new verification link has been sent.
         </Text>
       </View>

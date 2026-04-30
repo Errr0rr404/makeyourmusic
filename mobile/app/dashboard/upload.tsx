@@ -5,8 +5,8 @@ import { getApi } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
-import { useTokens } from '../../lib/theme';
-import { ArrowLeft, Upload } from 'lucide-react-native';
+import { useTokens, useIsVintage } from '../../lib/theme';
+import { ArrowLeft, Upload, Globe, LockKeyhole } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 
 interface AgentOption {
@@ -22,6 +22,7 @@ interface GenreOption {
 export default function UploadScreen() {
   const router = useRouter();
   const tokens = useTokens();
+  const isVintage = useIsVintage();
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [genres, setGenres] = useState<GenreOption[]>([]);
@@ -75,7 +76,6 @@ export default function UploadScreen() {
     try {
       const api = getApi();
 
-      // Upload audio file first
       const formData = new FormData();
       formData.append('file', {
         uri: audioFile.uri,
@@ -88,7 +88,6 @@ export default function UploadScreen() {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      // Create track (use duration from Cloudinary response, fall back to 120s)
       await api.post('/tracks', {
         title: title.trim(),
         agentId: selectedAgent,
@@ -119,58 +118,83 @@ export default function UploadScreen() {
           headerTintColor: tokens.text,
           headerTitle: 'Upload Track',
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} className="p-2" accessibilityLabel="Go back" accessibilityRole="button">
+            <TouchableOpacity
+              onPress={() => router.back()}
+              style={{ padding: 8 }}
+              accessibilityLabel="Go back"
+              accessibilityRole="button"
+            >
               <ArrowLeft size={24} color={tokens.text} />
             </TouchableOpacity>
           ),
         }}
       />
       <ScreenContainer>
-        <ScrollView className="px-4">
+        <ScrollView style={{ paddingHorizontal: 16 }}>
           {/* Agent Selector */}
-          <Text className="text-mym-muted text-sm mb-2 font-medium">Agent</Text>
-          <View className="flex-row flex-wrap mb-4">
-            {agents.map((a) => (
-              <TouchableOpacity
-                key={a.id}
-                onPress={() => setSelectedAgent(a.id)}
-                className={`mr-2 mb-2 px-4 py-2 rounded-full border ${
-                  selectedAgent === a.id
-                    ? 'bg-mym-accent border-mym-accent'
-                    : 'bg-mym-card border-mym-border'
-                }`}
-              >
-                <Text
-                  className={`text-sm font-medium ${
-                    selectedAgent === a.id ? 'text-white' : 'text-mym-muted'
-                  }`}
+          <Text style={{ color: tokens.textMute, fontSize: 13, marginBottom: 8, fontWeight: '500' }}>Agent</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16, gap: 8 }}>
+            {agents.map((a) => {
+              const active = selectedAgent === a.id;
+              return (
+                <TouchableOpacity
+                  key={a.id}
+                  onPress={() => setSelectedAgent(a.id)}
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    backgroundColor: active ? tokens.brand : tokens.card,
+                    borderColor: active ? tokens.brand : tokens.border,
+                  }}
                 >
-                  {a.name}
-                </Text>
-              </TouchableOpacity>
-            ))}
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '500',
+                      color: active ? tokens.brandText : tokens.textMute,
+                    }}
+                  >
+                    {a.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <Input label="Title *" placeholder="Track title" value={title} onChangeText={setTitle} />
 
           {/* Genre selector */}
-          <Text className="text-mym-muted text-sm mb-2 font-medium">Genre</Text>
-          <View className="flex-row flex-wrap mb-4">
-            <TouchableOpacity
-              onPress={() => setSelectedGenreId('')}
-              className={`mr-2 mb-2 px-4 py-2 rounded-full border ${!selectedGenreId ? 'bg-mym-accent border-mym-accent' : 'bg-mym-card border-mym-border'}`}
-            >
-              <Text className={`text-sm font-medium ${!selectedGenreId ? 'text-white' : 'text-mym-muted'}`}>None</Text>
-            </TouchableOpacity>
-            {genres.map((g) => (
-              <TouchableOpacity
-                key={g.id}
-                onPress={() => setSelectedGenreId(g.id)}
-                className={`mr-2 mb-2 px-4 py-2 rounded-full border ${selectedGenreId === g.id ? 'bg-mym-accent border-mym-accent' : 'bg-mym-card border-mym-border'}`}
-              >
-                <Text className={`text-sm font-medium ${selectedGenreId === g.id ? 'text-white' : 'text-mym-muted'}`}>{g.name}</Text>
-              </TouchableOpacity>
-            ))}
+          <Text style={{ color: tokens.textMute, fontSize: 13, marginBottom: 8, fontWeight: '500' }}>Genre</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', marginBottom: 16, gap: 8 }}>
+            {[{ id: '', name: 'None' }, ...genres].map((g) => {
+              const active = selectedGenreId === g.id;
+              return (
+                <TouchableOpacity
+                  key={g.id || 'none'}
+                  onPress={() => setSelectedGenreId(g.id)}
+                  style={{
+                    paddingHorizontal: 14,
+                    paddingVertical: 8,
+                    borderRadius: 999,
+                    borderWidth: 1,
+                    backgroundColor: active ? tokens.brand : tokens.card,
+                    borderColor: active ? tokens.brand : tokens.border,
+                  }}
+                >
+                  <Text
+                    style={{
+                      fontSize: 13,
+                      fontWeight: '500',
+                      color: active ? tokens.brandText : tokens.textMute,
+                    }}
+                  >
+                    {g.name}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
           </View>
 
           <Input label="AI Model" placeholder="e.g. Suno v3, Udio" value={aiModel} onChangeText={setAiModel} />
@@ -184,42 +208,85 @@ export default function UploadScreen() {
           />
 
           {/* Audio file picker */}
-          <Text className="text-mym-muted text-sm mb-2 font-medium">Audio File *</Text>
+          <Text style={{ color: tokens.textMute, fontSize: 13, marginBottom: 8, fontWeight: '500' }}>Audio File *</Text>
           <TouchableOpacity
             onPress={pickAudio}
-            className="border-2 border-dashed border-mym-border rounded-xl p-6 items-center mb-6"
+            style={{
+              borderWidth: 2,
+              borderStyle: 'dashed',
+              borderColor: audioFile ? tokens.accent : tokens.border,
+              borderRadius: tokens.radiusLg,
+              padding: 24,
+              alignItems: 'center',
+              marginBottom: 24,
+              backgroundColor: tokens.card,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Select audio file"
           >
-            <Upload size={32} color={audioFile ? '#8b5cf6' : '#71717a'} />
-            <Text className={`mt-2 text-sm ${audioFile ? 'text-mym-accent' : 'text-mym-muted'}`}>
+            <Upload size={32} color={audioFile ? tokens.accent : tokens.textMute} />
+            <Text
+              style={{
+                marginTop: 8,
+                fontSize: 13,
+                color: audioFile ? tokens.accent : tokens.textMute,
+                fontWeight: audioFile ? '600' : '500',
+              }}
+              numberOfLines={1}
+            >
               {audioFile ? audioFile.name : 'Tap to select audio file'}
             </Text>
           </TouchableOpacity>
 
           {/* Visibility */}
-          <Text className="text-mym-muted text-sm mb-2 font-medium">Visibility</Text>
-          <View className="flex-row gap-2 mb-6">
+          <Text style={{ color: tokens.textMute, fontSize: 13, marginBottom: 8, fontWeight: '500' }}>Visibility</Text>
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 24 }}>
             <TouchableOpacity
               onPress={() => setIsPublic(true)}
-              className={`flex-1 p-3 rounded-xl border ${isPublic ? 'bg-mym-accent/10 border-mym-accent' : 'bg-mym-card border-mym-border'}`}
+              style={{
+                flex: 1,
+                padding: 12,
+                borderRadius: tokens.radiusLg,
+                borderWidth: 1,
+                backgroundColor: isPublic ? tokens.accentSoft : tokens.card,
+                borderColor: isPublic ? tokens.accent : tokens.border,
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isPublic }}
             >
-              <Text className={`text-sm font-semibold ${isPublic ? 'text-mym-accent' : 'text-mym-text'}`}>
-                🌍 Public
-              </Text>
-              <Text className="text-mym-muted text-xs mt-0.5">Anyone can listen</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Globe size={14} color={isPublic ? tokens.accent : tokens.textMute} />
+                <Text style={{ color: isPublic ? tokens.accent : tokens.text, fontSize: 13, fontWeight: '600' }}>
+                  Public
+                </Text>
+              </View>
+              <Text style={{ color: tokens.textMute, fontSize: 11, marginTop: 4 }}>Anyone can listen</Text>
             </TouchableOpacity>
             <TouchableOpacity
               onPress={() => setIsPublic(false)}
-              className={`flex-1 p-3 rounded-xl border ${!isPublic ? 'bg-mym-accent/10 border-mym-accent' : 'bg-mym-card border-mym-border'}`}
+              style={{
+                flex: 1,
+                padding: 12,
+                borderRadius: tokens.radiusLg,
+                borderWidth: 1,
+                backgroundColor: !isPublic ? tokens.accentSoft : tokens.card,
+                borderColor: !isPublic ? tokens.accent : tokens.border,
+              }}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: !isPublic }}
             >
-              <Text className={`text-sm font-semibold ${!isPublic ? 'text-mym-accent' : 'text-mym-text'}`}>
-                🔒 Private
-              </Text>
-              <Text className="text-mym-muted text-xs mt-0.5">Only you</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <LockKeyhole size={14} color={!isPublic ? tokens.accent : tokens.textMute} />
+                <Text style={{ color: !isPublic ? tokens.accent : tokens.text, fontSize: 13, fontWeight: '600' }}>
+                  Private
+                </Text>
+              </View>
+              <Text style={{ color: tokens.textMute, fontSize: 11, marginTop: 4 }}>Only you</Text>
             </TouchableOpacity>
           </View>
 
           <Button title="Upload Track" onPress={handleUpload} loading={uploading} size="lg" />
-          <View className="h-32" />
+          <View style={{ height: 128 }} />
         </ScrollView>
       </ScreenContainer>
     </>

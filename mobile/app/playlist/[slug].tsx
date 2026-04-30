@@ -1,7 +1,8 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, Image, FlatList, ActivityIndicator, Alert,
+  View, Text, TouchableOpacity, FlatList, ActivityIndicator, Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import { useAuthStore, usePlayerStore, getApi } from '@makeyourmusic/shared';
 import {
@@ -12,6 +13,7 @@ import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { hapticSelection, hapticSuccess } from '../../services/hapticService';
 import { asSlug } from '../../lib/validateSlug';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 interface Track {
   id: string;
@@ -42,6 +44,8 @@ function formatDuration(seconds: number): string {
 export default function PlaylistScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const { user } = useAuthStore();
   const playTrack = usePlayerStore((s) => s.playTrack);
 
@@ -84,6 +88,16 @@ export default function PlaylistScreen() {
 
   const isOwner = !!(user?.id && playlist && playlist.userId === user.id);
   const tracks: Track[] = (playlist?.tracks || []).map((pt) => pt.track);
+
+  // Build a 2x2 mosaic from the first few tracks for the cover.
+  const mosaicCovers = (() => {
+    const out: string[] = [];
+    for (const t of tracks) {
+      if (t.coverArt && !out.includes(t.coverArt)) out.push(t.coverArt);
+      if (out.length >= 4) break;
+    }
+    return out;
+  })();
 
   const handlePlayAll = () => {
     if (tracks.length > 0 && tracks[0]) {
@@ -172,8 +186,8 @@ export default function PlaylistScreen() {
   if (loading) {
     return (
       <ScreenContainer scrollable={false}>
-        <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#8b5cf6" size="large" />
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={tokens.brand} size="large" />
         </View>
       </ScreenContainer>
     );
@@ -182,11 +196,13 @@ export default function PlaylistScreen() {
   if (error || !playlist) {
     return (
       <ScreenContainer scrollable={false}>
-        <View className="flex-1 items-center justify-center px-6">
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
           <AlertCircle size={40} color="#f87171" />
-          <Text className="text-mym-text text-lg font-bold mt-3">{error || 'Playlist not found'}</Text>
-          <TouchableOpacity onPress={() => router.back()} className="mt-4">
-            <Text className="text-mym-accent text-sm font-semibold">← Back</Text>
+          <Text style={{ color: tokens.text, fontSize: 17, fontWeight: '700', marginTop: 12 }}>
+            {error || 'Playlist not found'}
+          </Text>
+          <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }} accessibilityRole="button">
+            <Text style={{ color: tokens.accent, fontSize: 13, fontWeight: '600' }}>← Back</Text>
           </TouchableOpacity>
         </View>
       </ScreenContainer>
@@ -202,15 +218,25 @@ export default function PlaylistScreen() {
         ListHeaderComponent={
           <View>
             {/* Header */}
-            <View className="flex-row items-center justify-between px-4 py-3">
-              <TouchableOpacity onPress={() => router.back()}>
-                <ArrowLeft size={20} color="#a1a1aa" />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+              }}
+            >
+              <TouchableOpacity onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={6}>
+                <ArrowLeft size={20} color={tokens.textMute} />
               </TouchableOpacity>
               {isOwner && !editing && (
-                <View className="flex-row gap-2">
+                <View style={{ flexDirection: 'row', gap: 8 }}>
                   <TouchableOpacity
                     onPress={handleToggleVisibility}
-                    className="p-2 rounded-full bg-mym-card"
+                    style={{ padding: 8, borderRadius: 999, backgroundColor: tokens.card }}
+                    accessibilityRole="button"
+                    accessibilityLabel={playlist.isPublic ? 'Make private' : 'Make public'}
                   >
                     {playlist.isPublic ? (
                       <Globe size={18} color="#4ade80" />
@@ -220,11 +246,22 @@ export default function PlaylistScreen() {
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={() => setEditing(true)}
-                    className="p-2 rounded-full bg-mym-card"
+                    style={{ padding: 8, borderRadius: 999, backgroundColor: tokens.card }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Edit title"
                   >
-                    <Pencil size={18} color="#a1a1aa" />
+                    <Pencil size={18} color={tokens.textMute} />
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleDelete} className="p-2 rounded-full bg-red-900/20">
+                  <TouchableOpacity
+                    onPress={handleDelete}
+                    style={{
+                      padding: 8,
+                      borderRadius: 999,
+                      backgroundColor: 'rgba(248, 113, 113, 0.16)',
+                    }}
+                    accessibilityRole="button"
+                    accessibilityLabel="Delete playlist"
+                  >
                     <Trash2 size={18} color="#f87171" />
                   </TouchableOpacity>
                 </View>
@@ -232,55 +269,139 @@ export default function PlaylistScreen() {
             </View>
 
             {/* Cover + title */}
-            <View className="items-center px-6 py-6">
-              <View className="w-40 h-40 rounded-2xl bg-gradient-to-br from-purple-800 to-pink-800 items-center justify-center overflow-hidden">
-                <ListMusic size={56} color="#8b5cf6" />
+            <View style={{ alignItems: 'center', paddingHorizontal: 24, paddingVertical: 24 }}>
+              <View
+                style={{
+                  width: 160,
+                  height: 160,
+                  borderRadius: isVintage ? tokens.radiusLg : 20,
+                  backgroundColor: tokens.accentSoft,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  overflow: 'hidden',
+                  shadowColor: '#000',
+                  shadowOpacity: tokens.isDark ? 0.4 : 0.15,
+                  shadowRadius: 14,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: 8,
+                }}
+              >
+                {mosaicCovers.length >= 2 ? (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', width: '100%', height: '100%' }}>
+                    {[0, 1, 2, 3].map((i) => {
+                      const url = mosaicCovers[i] ?? mosaicCovers[i % mosaicCovers.length];
+                      return url ? (
+                        <Image
+                          key={i}
+                          source={{ uri: url }}
+                          style={{ width: '50%', height: '50%' }}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                        />
+                      ) : (
+                        <View
+                          key={i}
+                          style={{ width: '50%', height: '50%', backgroundColor: tokens.brand, opacity: 0.4 }}
+                        />
+                      );
+                    })}
+                  </View>
+                ) : mosaicCovers[0] ? (
+                  <Image
+                    source={{ uri: mosaicCovers[0] }}
+                    style={{ width: '100%', height: '100%' }}
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                  />
+                ) : (
+                  <ListMusic size={56} color={tokens.brand} />
+                )}
               </View>
 
               {editing ? (
-                <View className="w-full mt-5">
+                <View style={{ width: '100%', marginTop: 20 }}>
                   <Input
                     value={editTitle}
                     onChangeText={setEditTitle}
                     maxLength={100}
                     autoFocus
                   />
-                  <View className="flex-row gap-2 justify-center">
+                  <View style={{ flexDirection: 'row', gap: 8, justifyContent: 'center' }}>
                     <TouchableOpacity
                       onPress={() => {
                         setEditing(false);
                         setEditTitle(playlist.title);
                       }}
-                      className="px-4 py-2"
+                      style={{ paddingHorizontal: 16, paddingVertical: 8 }}
+                      accessibilityRole="button"
                     >
-                      <Text className="text-mym-muted text-sm">Cancel</Text>
+                      <Text style={{ color: tokens.textMute, fontSize: 13 }}>Cancel</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       onPress={handleSaveTitle}
                       disabled={saving}
-                      className="px-4 py-2 bg-mym-accent rounded-lg"
+                      style={{
+                        paddingHorizontal: 16,
+                        paddingVertical: 8,
+                        backgroundColor: tokens.brand,
+                        borderRadius: tokens.radiusMd,
+                      }}
+                      accessibilityRole="button"
                     >
-                      <Text className="text-white text-sm font-semibold">{saving ? 'Saving…' : 'Save'}</Text>
+                      <Text style={{ color: tokens.brandText, fontSize: 13, fontWeight: '600' }}>
+                        {saving ? 'Saving…' : 'Save'}
+                      </Text>
                     </TouchableOpacity>
                   </View>
                 </View>
               ) : (
                 <>
-                  <Text className="text-xs text-mym-muted uppercase font-bold mt-4">Playlist</Text>
-                  <Text className="text-mym-text text-2xl font-bold mt-1">{playlist.title}</Text>
-                  <Text className="text-mym-muted text-sm mt-1">
+                  <Text
+                    style={{
+                      color: tokens.textMute,
+                      fontSize: 11,
+                      fontWeight: '700',
+                      letterSpacing: 1.2,
+                      textTransform: 'uppercase',
+                      marginTop: 16,
+                      fontFamily: isVintage ? tokens.fontLabel : undefined,
+                    }}
+                  >
+                    Playlist
+                  </Text>
+                  <Text
+                    style={{
+                      color: tokens.text,
+                      fontSize: 24,
+                      fontWeight: '700',
+                      marginTop: 4,
+                      fontFamily: isVintage ? tokens.fontDisplay : undefined,
+                    }}
+                  >
+                    {playlist.title}
+                  </Text>
+                  <Text style={{ color: tokens.textMute, fontSize: 13, marginTop: 4 }}>
                     {playlist.user?.displayName || playlist.user?.username} · {tracks.length} track
                     {tracks.length !== 1 ? 's' : ''}
                   </Text>
                   <View
-                    className={`flex-row items-center gap-1 mt-2 px-2 py-0.5 rounded-full ${playlist.isPublic ? 'bg-green-900/30' : 'bg-amber-900/30'}`}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 4,
+                      marginTop: 8,
+                      paddingHorizontal: 8,
+                      paddingVertical: 2,
+                      borderRadius: 999,
+                      backgroundColor: playlist.isPublic ? 'rgba(74, 222, 128, 0.16)' : 'rgba(251, 191, 36, 0.16)',
+                    }}
                   >
                     {playlist.isPublic ? (
                       <Globe size={11} color="#4ade80" />
                     ) : (
                       <Lock size={11} color="#fbbf24" />
                     )}
-                    <Text className={`text-xs ${playlist.isPublic ? 'text-green-300' : 'text-amber-300'}`}>
+                    <Text style={{ fontSize: 11, color: playlist.isPublic ? '#86efac' : '#fcd34d' }}>
                       {playlist.isPublic ? 'Public' : 'Private'}
                     </Text>
                   </View>
@@ -290,26 +411,51 @@ export default function PlaylistScreen() {
               {tracks.length > 0 && !editing && (
                 <TouchableOpacity
                   onPress={handlePlayAll}
-                  className="mt-5 flex-row items-center gap-2 bg-mym-accent px-6 py-3 rounded-full"
+                  style={{
+                    marginTop: 20,
+                    flexDirection: 'row',
+                    alignItems: 'center',
+                    gap: 8,
+                    backgroundColor: tokens.brand,
+                    paddingHorizontal: 24,
+                    paddingVertical: 12,
+                    borderRadius: 999,
+                    shadowColor: tokens.brand,
+                    shadowOpacity: 0.4,
+                    shadowRadius: 8,
+                    shadowOffset: { width: 0, height: 4 },
+                    elevation: 6,
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Play all tracks"
                 >
-                  <Play size={16} color="#fff" fill="#fff" />
-                  <Text className="text-white font-semibold">Play all</Text>
+                  <Play size={16} color={tokens.brandText} fill={tokens.brandText} />
+                  <Text style={{ color: tokens.brandText, fontWeight: '600' }}>Play all</Text>
                 </TouchableOpacity>
               )}
             </View>
           </View>
         }
         ListEmptyComponent={
-          <View className="py-12 items-center px-6">
-            <Music size={36} color="#71717a" />
-            <Text className="text-mym-muted text-sm mt-3 text-center">
+          <View style={{ paddingVertical: 48, alignItems: 'center', paddingHorizontal: 24 }}>
+            <Music size={36} color={tokens.textMute} />
+            <Text style={{ color: tokens.textMute, fontSize: 13, marginTop: 12, textAlign: 'center' }}>
               This playlist is empty
             </Text>
             <TouchableOpacity
               onPress={() => router.push('/(tabs)/search')}
-              className="mt-4 px-5 py-2 rounded-full bg-mym-card border border-mym-border"
+              style={{
+                marginTop: 16,
+                paddingHorizontal: 20,
+                paddingVertical: 8,
+                borderRadius: 999,
+                backgroundColor: tokens.card,
+                borderWidth: 1,
+                borderColor: tokens.border,
+              }}
+              accessibilityRole="button"
             >
-              <Text className="text-mym-accent text-sm font-semibold">Find tracks to add</Text>
+              <Text style={{ color: tokens.accent, fontSize: 13, fontWeight: '600' }}>Find tracks to add</Text>
             </TouchableOpacity>
           </View>
         }
@@ -317,30 +463,76 @@ export default function PlaylistScreen() {
           <TouchableOpacity
             onPress={() => playTrack(item as any, tracks as any)}
             onLongPress={isOwner ? () => handleRemoveTrack(item) : undefined}
-            className="flex-row items-center gap-3 px-4 py-2 active:bg-white/5"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 8,
+            }}
+            activeOpacity={0.6}
+            accessibilityRole="button"
+            accessibilityLabel={`Play ${item.title}`}
           >
-            <Text className="text-mym-muted text-xs w-6 text-right">{index + 1}</Text>
-            <View className="w-10 h-10 rounded bg-mym-card overflow-hidden">
+            <Text
+              style={{
+                color: tokens.textMute,
+                fontSize: 11,
+                width: 24,
+                textAlign: 'right',
+                fontFamily: isVintage ? tokens.fontMono : undefined,
+              }}
+            >
+              {index + 1}
+            </Text>
+            <View
+              style={{
+                width: 40,
+                height: 40,
+                borderRadius: isVintage ? tokens.radiusSm : 6,
+                backgroundColor: tokens.card,
+                overflow: 'hidden',
+                alignItems: 'center',
+                justifyContent: 'center',
+              }}
+            >
               {item.coverArt ? (
-                <Image source={{ uri: item.coverArt }} className="w-full h-full" />
+                <Image
+                  source={{ uri: item.coverArt }}
+                  style={{ width: '100%', height: '100%' }}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  recyclingKey={item.id}
+                />
               ) : (
-                <View className="flex-1 items-center justify-center">
-                  <Music size={14} color="#71717a" />
-                </View>
+                <Music size={14} color={tokens.textMute} />
               )}
             </View>
-            <View className="flex-1 min-w-0">
-              <Text className="text-mym-text text-sm font-semibold" numberOfLines={1}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={{ color: tokens.text, fontSize: 13, fontWeight: '600' }} numberOfLines={1}>
                 {item.title}
               </Text>
-              <Text className="text-mym-muted text-xs" numberOfLines={1}>
+              <Text style={{ color: tokens.textMute, fontSize: 11, marginTop: 1 }} numberOfLines={1}>
                 {item.agent?.name}
               </Text>
             </View>
-            <Text className="text-mym-muted text-xs">{formatDuration(item.duration)}</Text>
+            <Text
+              style={{
+                color: tokens.textMute,
+                fontSize: 11,
+                fontFamily: isVintage ? tokens.fontMono : undefined,
+              }}
+            >
+              {formatDuration(item.duration)}
+            </Text>
             {isOwner && (
-              <TouchableOpacity onPress={() => handleRemoveTrack(item)} className="p-2">
-                <Trash2 size={14} color="#a1a1aa" />
+              <TouchableOpacity
+                onPress={() => handleRemoveTrack(item)}
+                style={{ padding: 8 }}
+                accessibilityRole="button"
+                accessibilityLabel="Remove from playlist"
+              >
+                <Trash2 size={14} color={tokens.textMute} />
               </TouchableOpacity>
             )}
           </TouchableOpacity>

@@ -7,10 +7,10 @@ import { useRouter } from 'expo-router';
 import { useAuthStore, usePlayerStore, getApi } from '@makeyourmusic/shared';
 import {
   ArrowLeft, LogOut, KeyRound, Trash2, ChevronRight, Mail,
-  Volume2, Sliders, AlertCircle, CheckCircle2, Lock, FileText,
+  Volume2, Sliders, AlertCircle, Lock, FileText,
   ShieldCheck, Cookie, Sun, Moon, Monitor, Disc3, Radio,
 } from 'lucide-react-native';
-import { useTheme, useTokens } from '../../lib/theme';
+import { useTheme, useTokens, useIsVintage } from '../../lib/theme';
 import Slider from '../../components/ui/Slider';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
@@ -26,6 +26,7 @@ export default function SettingsScreen() {
   const { volume, setVolume, crossfade, setCrossfade, eqEnabled } = usePlayerStore();
   const { skin, palette, setSkin, setPalette } = useTheme();
   const tokens = useTokens();
+  const isVintage = useIsVintage();
 
   const [showPassword, setShowPassword] = useState(false);
   const [pwdForm, setPwdForm] = useState({ current: '', next: '', confirm: '' });
@@ -43,10 +44,10 @@ export default function SettingsScreen() {
   if (!isAuthenticated) {
     return (
       <ScreenContainer scrollable={false}>
-        <View className="flex-1 items-center justify-center px-6">
-          <Lock size={48} color="#71717a" />
-          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Settings</Text>
-          <Text className="text-mym-muted text-sm mb-6">Log in to access settings</Text>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+          <Lock size={48} color={tokens.textMute} />
+          <Text style={{ color: tokens.text, fontSize: 20, fontWeight: '700', marginTop: 16, marginBottom: 8 }}>Settings</Text>
+          <Text style={{ color: tokens.textMute, fontSize: 13, marginBottom: 24 }}>Log in to access settings</Text>
           <Button title="Sign in" onPress={() => router.push('/(auth)/login')} size="lg" />
         </View>
       </ScreenContainer>
@@ -155,31 +156,62 @@ export default function SettingsScreen() {
     <ScreenContainer>
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        className="flex-1"
+        style={{ flex: 1 }}
       >
         {/* Header */}
-        <View className="flex-row items-center gap-3 px-4 py-3">
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={20} color="#a1a1aa" />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12 }}>
+          <TouchableOpacity onPress={() => router.back()} accessibilityRole="button" accessibilityLabel="Go back" hitSlop={6}>
+            <ArrowLeft size={20} color={tokens.textMute} />
           </TouchableOpacity>
-          <Text className="text-mym-text text-lg font-bold">Settings</Text>
+          <Text
+            style={{
+              color: tokens.text,
+              fontSize: 17,
+              fontWeight: '700',
+              fontFamily: isVintage ? tokens.fontDisplay : undefined,
+              textTransform: isVintage ? 'uppercase' : undefined,
+            }}
+          >
+            Settings
+          </Text>
         </View>
 
         {/* Email verification banner */}
         {user && emailVerified === false && (
-          <View className="mx-4 mb-4 bg-amber-900/20 border border-amber-500/30 rounded-xl p-4 flex-row items-start gap-3">
+          <View
+            style={{
+              marginHorizontal: 16,
+              marginBottom: 16,
+              backgroundColor: 'rgba(251, 191, 36, 0.12)',
+              borderColor: 'rgba(251, 191, 36, 0.3)',
+              borderWidth: 1,
+              borderRadius: tokens.radiusLg,
+              padding: 16,
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 12,
+            }}
+          >
             <Mail size={18} color="#fbbf24" />
-            <View className="flex-1">
-              <Text className="text-amber-300 font-semibold text-sm mb-0.5">Verify your email</Text>
-              <Text className="text-amber-200/80 text-xs mb-2">
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: '#fcd34d', fontWeight: '600', fontSize: 13, marginBottom: 2 }}>Verify your email</Text>
+              <Text style={{ color: 'rgba(252, 211, 77, 0.8)', fontSize: 12, marginBottom: 8 }}>
                 Confirm {user.email} to unlock all features.
               </Text>
               <TouchableOpacity
                 onPress={handleResend}
                 disabled={resendLoading}
-                className="bg-amber-500/20 self-start px-3 py-1.5 rounded-lg"
+                style={{
+                  backgroundColor: 'rgba(251, 191, 36, 0.2)',
+                  alignSelf: 'flex-start',
+                  paddingHorizontal: 12,
+                  paddingVertical: 6,
+                  borderRadius: tokens.radiusMd,
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Resend verification email"
               >
-                <Text className="text-amber-200 text-xs font-semibold">
+                <Text style={{ color: '#fcd34d', fontSize: 12, fontWeight: '600' }}>
                   {resendLoading ? 'Sending…' : 'Resend'}
                 </Text>
               </TouchableOpacity>
@@ -188,7 +220,7 @@ export default function SettingsScreen() {
         )}
 
         {/* Appearance */}
-        <Section title="Appearance">
+        <Section title="Appearance" tokens={tokens}>
           <View className="px-4 py-3 border-b border-mym-border/60">
             <Text style={{ color: tokens.text, fontSize: 14, fontWeight: '600', marginBottom: 4 }}>Style</Text>
             <Text style={{ color: tokens.textMute, fontSize: 12, marginBottom: 10 }}>
@@ -274,18 +306,19 @@ export default function SettingsScreen() {
         </Section>
 
         {/* Audio */}
-        <Section title="Audio">
-          <Row icon={<Volume2 size={18} color="#a1a1aa" />} label="Volume" sublabel={`${Math.round(volume * 100)}%`}>
-            <View className="w-32">
+        <Section title="Audio" tokens={tokens}>
+          <Row icon={<Volume2 size={18} color={tokens.textMute} />} label="Volume" sublabel={`${Math.round(volume * 100)}%`} tokens={tokens}>
+            <View style={{ width: 128 }}>
               <Slider value={volume} max={1} onValueChange={setVolume} />
             </View>
           </Row>
           <Row
-            icon={<Sliders size={18} color="#a1a1aa" />}
+            icon={<Sliders size={18} color={tokens.textMute} />}
             label="Crossfade"
             sublabel={crossfade === 0 ? 'Off' : `${crossfade}s`}
+            tokens={tokens}
           >
-            <View className="w-32">
+            <View style={{ width: 128 }}>
               <Slider
                 value={crossfade}
                 max={12}
@@ -293,24 +326,44 @@ export default function SettingsScreen() {
               />
             </View>
           </Row>
-          {/* Equalizer — not yet wired to the native audio session on mobile.
-              The 7-band EQ state still syncs with your web account, so whatever
-              you've got configured on web follows you there. Native audio EQ
-              requires a Swift (AVAudioUnitEQ) / Kotlin (AudioEffect) module we
-              haven't shipped yet. */}
-          <View className="flex-row items-center justify-between px-4 py-3 opacity-60">
-            <View className="flex-row items-center gap-3 flex-1">
-              <Sliders size={18} color="#a1a1aa" />
-              <View className="flex-1">
-                <View className="flex-row items-center gap-2">
-                  <Text className="text-mym-text text-sm">Equalizer</Text>
-                  <View className="bg-mym-border/60 px-1.5 py-0.5 rounded">
-                    <Text className="text-[9px] font-bold uppercase text-mym-muted tracking-wider">
+          {/* Equalizer — not yet wired to the native audio session on mobile. */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              opacity: 0.6,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 }}>
+              <Sliders size={18} color={tokens.textMute} />
+              <View style={{ flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <Text style={{ color: tokens.text, fontSize: 13 }}>Equalizer</Text>
+                  <View
+                    style={{
+                      backgroundColor: tokens.border,
+                      paddingHorizontal: 6,
+                      paddingVertical: 2,
+                      borderRadius: 4,
+                    }}
+                  >
+                    <Text
+                      style={{
+                        fontSize: 9,
+                        fontWeight: '700',
+                        textTransform: 'uppercase',
+                        color: tokens.textMute,
+                        letterSpacing: 1,
+                      }}
+                    >
                       Web only
                     </Text>
                   </View>
                 </View>
-                <Text className="text-mym-muted text-xs">
+                <Text style={{ color: tokens.textMute, fontSize: 12, marginTop: 2 }}>
                   Native mobile EQ is coming soon. Configure on web for now.
                 </Text>
               </View>
@@ -318,30 +371,65 @@ export default function SettingsScreen() {
             <Switch
               value={eqEnabled}
               disabled
-              trackColor={{ false: '#2a2a2a', true: '#8b5cf6' }}
+              trackColor={{ false: tokens.border, true: tokens.accent }}
               thumbColor="#fff"
             />
           </View>
         </Section>
 
         {/* Security */}
-        <Section title="Security">
+        <Section title="Security" tokens={tokens}>
           <TouchableOpacity
             onPress={() => setShowPassword((v) => !v)}
-            className="flex-row items-center justify-between px-4 py-3 border-b border-mym-border/60"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderBottomWidth: 1,
+              borderBottomColor: tokens.border,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Change password"
           >
-            <View className="flex-row items-center gap-3">
-              <KeyRound size={18} color="#a1a1aa" />
-              <Text className="text-mym-text text-sm">Change password</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <KeyRound size={18} color={tokens.textMute} />
+              <Text style={{ color: tokens.text, fontSize: 13 }}>Change password</Text>
             </View>
-            <ChevronRight size={16} color="#71717a" style={{ transform: [{ rotate: showPassword ? '90deg' : '0deg' }] }} />
+            <ChevronRight
+              size={16}
+              color={tokens.textMute}
+              style={{ transform: [{ rotate: showPassword ? '90deg' : '0deg' }] }}
+            />
           </TouchableOpacity>
           {showPassword && (
-            <View className="px-4 pt-3 pb-2 bg-mym-bg/40 border-b border-mym-border/60">
+            <View
+              style={{
+                paddingHorizontal: 16,
+                paddingTop: 12,
+                paddingBottom: 8,
+                backgroundColor: tokens.bg,
+                borderBottomWidth: 1,
+                borderBottomColor: tokens.border,
+              }}
+            >
               {pwdError ? (
-                <View className="flex-row items-start gap-2 bg-red-900/30 border border-red-500/30 rounded-lg p-2 mb-2">
+                <View
+                  style={{
+                    flexDirection: 'row',
+                    alignItems: 'flex-start',
+                    gap: 8,
+                    backgroundColor: 'rgba(248, 113, 113, 0.16)',
+                    borderColor: 'rgba(248, 113, 113, 0.3)',
+                    borderWidth: 1,
+                    borderRadius: tokens.radiusMd,
+                    padding: 8,
+                    marginBottom: 8,
+                  }}
+                >
                   <AlertCircle size={14} color="#f87171" />
-                  <Text className="text-red-400 text-xs flex-1">{pwdError}</Text>
+                  <Text style={{ color: '#f87171', fontSize: 12, flex: 1 }}>{pwdError}</Text>
                 </View>
               ) : null}
               <Input
@@ -369,13 +457,13 @@ export default function SettingsScreen() {
         </Section>
 
         {/* About */}
-        <Section title="About">
-          <LinkRow icon={<FileText size={18} color="#a1a1aa" />} label="Terms of Service" onPress={() => Linking.openURL(`${SITE_URL}/terms`)} />
-          <LinkRow icon={<ShieldCheck size={18} color="#a1a1aa" />} label="Privacy Policy" onPress={() => Linking.openURL(`${SITE_URL}/privacy`)} />
-          <LinkRow icon={<Cookie size={18} color="#a1a1aa" />} label="Cookie Policy" onPress={() => Linking.openURL(`${SITE_URL}/cookies`)} />
-          <View className="px-4 py-3">
-            <Text className="text-mym-text text-sm font-semibold">MakeYourMusic</Text>
-            <Text className="text-mym-muted text-xs mt-0.5">AI-Generated Music Platform — v1.0.0</Text>
+        <Section title="About" tokens={tokens}>
+          <LinkRow icon={<FileText size={18} color={tokens.textMute} />} label="Terms of Service" onPress={() => Linking.openURL(`${SITE_URL}/terms`)} tokens={tokens} />
+          <LinkRow icon={<ShieldCheck size={18} color={tokens.textMute} />} label="Privacy Policy" onPress={() => Linking.openURL(`${SITE_URL}/privacy`)} tokens={tokens} />
+          <LinkRow icon={<Cookie size={18} color={tokens.textMute} />} label="Cookie Policy" onPress={() => Linking.openURL(`${SITE_URL}/cookies`)} tokens={tokens} />
+          <View style={{ paddingHorizontal: 16, paddingVertical: 12 }}>
+            <Text style={{ color: tokens.text, fontSize: 13, fontWeight: '600' }}>MakeYourMusic</Text>
+            <Text style={{ color: tokens.textMute, fontSize: 11, marginTop: 2 }}>AI-Generated Music Platform — v1.0.0</Text>
           </View>
         </Section>
 
@@ -386,27 +474,66 @@ export default function SettingsScreen() {
           animationType="fade"
           onRequestClose={() => setShowDeleteModal(false)}
         >
-          <View className="flex-1 bg-black/70 items-center justify-center px-5">
-            <View className="bg-mym-card border border-red-500/30 rounded-2xl w-full max-w-md overflow-hidden">
-              <View className="p-5 border-b border-mym-border">
-                <View className="flex-row items-start gap-3">
-                  <View className="w-10 h-10 rounded-full bg-red-500/10 items-center justify-center">
+          <View
+            style={{
+              flex: 1,
+              backgroundColor: 'rgba(0,0,0,0.7)',
+              alignItems: 'center',
+              justifyContent: 'center',
+              paddingHorizontal: 20,
+            }}
+          >
+            <View
+              style={{
+                backgroundColor: tokens.card,
+                borderColor: 'rgba(248, 113, 113, 0.3)',
+                borderWidth: 1,
+                borderRadius: tokens.radiusLg,
+                width: '100%',
+                maxWidth: 480,
+                overflow: 'hidden',
+              }}
+            >
+              <View style={{ padding: 20, borderBottomWidth: 1, borderBottomColor: tokens.border }}>
+                <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+                  <View
+                    style={{
+                      width: 40,
+                      height: 40,
+                      borderRadius: 20,
+                      backgroundColor: 'rgba(248, 113, 113, 0.1)',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     <Trash2 size={18} color="#f87171" />
                   </View>
-                  <View className="flex-1">
-                    <Text className="text-mym-text text-lg font-bold">Delete account</Text>
-                    <Text className="text-mym-muted text-sm mt-1">
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ color: tokens.text, fontSize: 17, fontWeight: '700' }}>Delete account</Text>
+                    <Text style={{ color: tokens.textMute, fontSize: 13, marginTop: 4 }}>
                       Permanently removes your account and all data. This cannot be undone.
                     </Text>
                   </View>
                 </View>
               </View>
 
-              <View className="p-5">
+              <View style={{ padding: 20 }}>
                 {deleteError ? (
-                  <View className="flex-row items-start gap-2 bg-red-900/30 border border-red-500/30 rounded-lg p-2 mb-3">
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'flex-start',
+                      gap: 8,
+                      backgroundColor: 'rgba(248, 113, 113, 0.16)',
+                      borderColor: 'rgba(248, 113, 113, 0.3)',
+                      borderWidth: 1,
+                      borderRadius: tokens.radiusMd,
+                      padding: 8,
+                      marginBottom: 12,
+                    }}
+                  >
                     <AlertCircle size={14} color="#f87171" />
-                    <Text className="text-red-400 text-xs flex-1">{deleteError}</Text>
+                    <Text style={{ color: '#f87171', fontSize: 12, flex: 1 }}>{deleteError}</Text>
                   </View>
                 ) : null}
                 <Input
@@ -424,8 +551,8 @@ export default function SettingsScreen() {
                 />
               </View>
 
-              <View className="flex-row gap-3 p-5 pt-0">
-                <View className="flex-1">
+              <View style={{ flexDirection: 'row', gap: 12, padding: 20, paddingTop: 0 }}>
+                <View style={{ flex: 1 }}>
                   <Button
                     title="Cancel"
                     variant="secondary"
@@ -435,13 +562,22 @@ export default function SettingsScreen() {
                 <TouchableOpacity
                   onPress={confirmDeleteAccount}
                   disabled={deleting}
-                  className="flex-1 items-center justify-center rounded-xl bg-red-600"
-                  style={{ opacity: deleting ? 0.6 : 1 }}
+                  style={{
+                    flex: 1,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    borderRadius: tokens.radiusLg,
+                    backgroundColor: '#dc2626',
+                    minHeight: 48,
+                    opacity: deleting ? 0.6 : 1,
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Delete account"
                 >
                   {deleting ? (
                     <ActivityIndicator size="small" color="#fff" />
                   ) : (
-                    <Text className="text-white font-semibold">Delete</Text>
+                    <Text style={{ color: '#fff', fontWeight: '600' }}>Delete</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -450,23 +586,68 @@ export default function SettingsScreen() {
         </Modal>
 
         {/* Danger zone */}
-        <View className="mx-4 mb-6 rounded-xl bg-mym-card border border-red-500/20 overflow-hidden">
-          <Text className="text-red-400/80 text-xs uppercase font-bold tracking-wider px-4 pt-3 pb-2">Danger zone</Text>
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 24,
+            borderRadius: tokens.radiusLg,
+            backgroundColor: tokens.card,
+            borderColor: 'rgba(248, 113, 113, 0.2)',
+            borderWidth: 1,
+            overflow: 'hidden',
+          }}
+        >
+          <Text
+            style={{
+              color: 'rgba(248, 113, 113, 0.8)',
+              fontSize: 11,
+              textTransform: 'uppercase',
+              fontWeight: '700',
+              letterSpacing: 1,
+              paddingHorizontal: 16,
+              paddingTop: 12,
+              paddingBottom: 8,
+            }}
+          >
+            Danger zone
+          </Text>
           <TouchableOpacity
             onPress={handleLogout}
-            className="flex-row items-center gap-3 px-4 py-3 border-t border-mym-border/60"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderTopWidth: 1,
+              borderTopColor: tokens.border,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Log out"
           >
             <LogOut size={18} color="#f87171" />
-            <Text className="text-red-400 text-sm">Log out</Text>
+            <Text style={{ color: '#f87171', fontSize: 13 }}>Log out</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={handleDeleteAccount}
-            className="flex-row items-start gap-3 px-4 py-3 border-t border-mym-border/60"
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 12,
+              paddingHorizontal: 16,
+              paddingVertical: 12,
+              borderTopWidth: 1,
+              borderTopColor: tokens.border,
+            }}
+            accessibilityRole="button"
+            accessibilityLabel="Delete account"
           >
             <Trash2 size={18} color="#f87171" />
             <View>
-              <Text className="text-red-400 text-sm font-semibold">Delete account</Text>
-              <Text className="text-red-400/60 text-xs">Permanently remove your account and all data</Text>
+              <Text style={{ color: '#f87171', fontSize: 13, fontWeight: '600' }}>Delete account</Text>
+              <Text style={{ color: 'rgba(248, 113, 113, 0.6)', fontSize: 11, marginTop: 2 }}>
+                Permanently remove your account and all data
+              </Text>
             </View>
           </TouchableOpacity>
         </View>
@@ -475,25 +656,67 @@ export default function SettingsScreen() {
   );
 }
 
-function Section({ title, children }: { title: string; children: any }) {
+function Section({ title, children, tokens }: { title: string; children: any; tokens: ReturnType<typeof useTokens> }) {
   return (
-    <View className="mx-4 mb-4">
-      <Text className="text-mym-muted text-xs uppercase font-bold tracking-wider mb-2 px-1">{title}</Text>
-      <View className="bg-mym-card border border-mym-border rounded-xl overflow-hidden">
+    <View style={{ marginHorizontal: 16, marginBottom: 16 }}>
+      <Text
+        style={{
+          color: tokens.textMute,
+          fontSize: 11,
+          textTransform: 'uppercase',
+          fontWeight: '700',
+          letterSpacing: 1,
+          marginBottom: 8,
+          paddingHorizontal: 4,
+        }}
+      >
+        {title}
+      </Text>
+      <View
+        style={{
+          backgroundColor: tokens.card,
+          borderColor: tokens.border,
+          borderWidth: 1,
+          borderRadius: tokens.radiusLg,
+          overflow: 'hidden',
+        }}
+      >
         {children}
       </View>
     </View>
   );
 }
 
-function Row({ icon, label, sublabel, children }: { icon: any; label: string; sublabel?: string; children?: any }) {
+function Row({
+  icon,
+  label,
+  sublabel,
+  children,
+  tokens,
+}: {
+  icon: any;
+  label: string;
+  sublabel?: string;
+  children?: any;
+  tokens: ReturnType<typeof useTokens>;
+}) {
   return (
-    <View className="flex-row items-center justify-between px-4 py-3 border-b border-mym-border/60">
-      <View className="flex-row items-center gap-3">
+    <View
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: tokens.border,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         {icon}
         <View>
-          <Text className="text-mym-text text-sm">{label}</Text>
-          {sublabel && <Text className="text-mym-muted text-xs">{sublabel}</Text>}
+          <Text style={{ color: tokens.text, fontSize: 13 }}>{label}</Text>
+          {sublabel && <Text style={{ color: tokens.textMute, fontSize: 11 }}>{sublabel}</Text>}
         </View>
       </View>
       {children}
@@ -501,14 +724,37 @@ function Row({ icon, label, sublabel, children }: { icon: any; label: string; su
   );
 }
 
-function LinkRow({ icon, label, onPress }: { icon: any; label: string; onPress: () => void }) {
+function LinkRow({
+  icon,
+  label,
+  onPress,
+  tokens,
+}: {
+  icon: any;
+  label: string;
+  onPress: () => void;
+  tokens: ReturnType<typeof useTokens>;
+}) {
   return (
-    <TouchableOpacity onPress={onPress} className="flex-row items-center justify-between px-4 py-3 border-b border-mym-border/60">
-      <View className="flex-row items-center gap-3">
+    <TouchableOpacity
+      onPress={onPress}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingHorizontal: 16,
+        paddingVertical: 12,
+        borderBottomWidth: 1,
+        borderBottomColor: tokens.border,
+      }}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
         {icon}
-        <Text className="text-mym-text text-sm">{label}</Text>
+        <Text style={{ color: tokens.text, fontSize: 13 }}>{label}</Text>
       </View>
-      <ChevronRight size={16} color="#71717a" />
+      <ChevronRight size={16} color={tokens.textMute} />
     </TouchableOpacity>
   );
 }

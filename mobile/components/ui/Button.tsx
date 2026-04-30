@@ -25,18 +25,22 @@ export function Button({
 }: ButtonProps) {
   const tokens = useTokens();
   const isVintage = useIsVintage();
-  const baseClass = 'items-center justify-center rounded-xl';
-  const sizeClass = size === 'sm' ? 'px-3 py-2' : size === 'lg' ? 'px-6 py-4' : 'px-5 py-3';
+
+  const padX = size === 'sm' ? 12 : size === 'lg' ? 24 : 20;
+  const padY = size === 'sm' ? 8 : size === 'lg' ? 16 : 12;
+  const fontSize = size === 'sm' ? 13 : size === 'lg' ? 16 : 15;
   const minHeight = size === 'sm' ? 36 : size === 'lg' ? 56 : 48;
-  const variantClass =
+
+  const bg =
     variant === 'primary'
-      ? 'bg-mym-accent'
+      ? tokens.brand
       : variant === 'secondary'
-        ? 'bg-mym-card border border-mym-border'
-        : 'bg-transparent';
+        ? tokens.card
+        : 'transparent';
+  const borderWidth = variant === 'secondary' ? 1 : 0;
+  const borderColor = tokens.border;
   const textColor =
-    variant === 'primary' ? 'text-white' : variant === 'secondary' ? 'text-mym-text' : 'text-mym-accent';
-  const textSize = size === 'sm' ? 'text-sm' : size === 'lg' ? 'text-lg' : 'text-base';
+    variant === 'primary' ? tokens.brandText : variant === 'secondary' ? tokens.text : tokens.accent;
   const spinnerColor = variant === 'primary' ? tokens.brandText : tokens.accent;
 
   return (
@@ -46,17 +50,36 @@ export function Button({
       accessibilityRole="button"
       accessibilityLabel={title}
       accessibilityState={{ disabled: disabled || loading }}
-      style={[{ opacity: disabled || loading ? 0.5 : 1, minHeight }, style]}
-      className={`${baseClass} ${sizeClass} ${variantClass}`}
+      style={[
+        {
+          alignItems: 'center',
+          justifyContent: 'center',
+          borderRadius: tokens.radiusLg,
+          paddingHorizontal: padX,
+          paddingVertical: padY,
+          minHeight,
+          backgroundColor: bg,
+          borderWidth,
+          borderColor,
+          opacity: disabled || loading ? 0.5 : 1,
+        },
+        style,
+      ]}
       activeOpacity={0.7}
     >
       {loading ? (
         <ActivityIndicator size="small" color={spinnerColor} />
       ) : (
         <Text
-          className={`${textColor} ${textSize} font-semibold`}
           style={[
-            isVintage ? { fontFamily: tokens.fontLabel, letterSpacing: 0.5, textTransform: 'uppercase' } : null,
+            {
+              color: textColor,
+              fontSize,
+              fontWeight: '600',
+            },
+            isVintage
+              ? { fontFamily: tokens.fontLabel, letterSpacing: 0.5, textTransform: 'uppercase' }
+              : null,
             textStyle,
           ]}
         >

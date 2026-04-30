@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { View, Text, TouchableOpacity } from 'react-native';
 import { BookOpen, ChevronDown, ChevronUp } from 'lucide-react-native';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 interface LyricsProps {
   lyrics?: string | null;
@@ -9,6 +10,9 @@ interface LyricsProps {
 
 export function Lyrics({ lyrics, defaultOpen = false }: LyricsProps) {
   const [open, setOpen] = useState(defaultOpen);
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
+
   if (!lyrics || !lyrics.trim()) return null;
 
   const lines = lyrics.split('\n');
@@ -16,10 +20,29 @@ export function Lyrics({ lyrics, defaultOpen = false }: LyricsProps) {
   const isLong = lines.length > 4;
 
   return (
-    <View className="bg-mym-card rounded-xl p-4 border border-mym-border">
-      <View className="flex-row items-center gap-2 mb-3">
-        <BookOpen size={14} color="#8b5cf6" />
-        <Text className="text-mym-text text-sm font-semibold">Lyrics</Text>
+    <View
+      style={{
+        backgroundColor: tokens.card,
+        borderRadius: tokens.radiusLg,
+        padding: 16,
+        borderWidth: 1,
+        borderColor: tokens.border,
+      }}
+    >
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+        <BookOpen size={14} color={tokens.accent} />
+        <Text
+          style={{
+            color: tokens.text,
+            fontSize: 13,
+            fontWeight: '600',
+            fontFamily: isVintage ? tokens.fontDisplay : undefined,
+            textTransform: isVintage ? 'uppercase' : undefined,
+            letterSpacing: isVintage ? 1 : undefined,
+          }}
+        >
+          Lyrics
+        </Text>
       </View>
 
       <View>
@@ -29,18 +52,25 @@ export function Lyrics({ lyrics, defaultOpen = false }: LyricsProps) {
             return (
               <Text
                 key={i}
-                className="text-[10px] font-bold uppercase tracking-widest text-mym-accent mt-3"
-                style={i === 0 ? { marginTop: 0 } : undefined}
+                style={{
+                  fontSize: 10,
+                  fontWeight: '700',
+                  letterSpacing: 1.5,
+                  textTransform: 'uppercase',
+                  color: tokens.accent,
+                  marginTop: i === 0 ? 0 : 12,
+                  fontFamily: isVintage ? tokens.fontLabel : undefined,
+                }}
               >
                 {trimmed}
               </Text>
             );
           }
           if (trimmed === '') {
-            return <View key={i} className="h-2" />;
+            return <View key={i} style={{ height: 8 }} />;
           }
           return (
-            <Text key={i} className="text-sm text-mym-text/80 leading-5">
+            <Text key={i} style={{ fontSize: 14, color: tokens.textSoft, lineHeight: 20 }}>
               {trimmed}
             </Text>
           );
@@ -50,15 +80,17 @@ export function Lyrics({ lyrics, defaultOpen = false }: LyricsProps) {
       {isLong && (
         <TouchableOpacity
           onPress={() => setOpen(!open)}
-          className="flex-row items-center gap-1 mt-3"
+          style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 12 }}
+          accessibilityRole="button"
+          accessibilityLabel={open ? 'Collapse lyrics' : 'Show all lyrics'}
         >
-          <Text className="text-mym-accent text-xs font-semibold">
+          <Text style={{ color: tokens.accent, fontSize: 12, fontWeight: '600' }}>
             {open ? 'Show less' : `Show all lyrics (${lines.length} lines)`}
           </Text>
           {open ? (
-            <ChevronUp size={12} color="#8b5cf6" />
+            <ChevronUp size={12} color={tokens.accent} />
           ) : (
-            <ChevronDown size={12} color="#8b5cf6" />
+            <ChevronDown size={12} color={tokens.accent} />
           )}
         </TouchableOpacity>
       )}

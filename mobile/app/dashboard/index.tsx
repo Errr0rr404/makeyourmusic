@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
-import { View, Text, TouchableOpacity, ActivityIndicator, FlatList, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
+import { Image } from 'expo-image';
 import { getApi, useAuthStore, formatCount } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
-import { useTokens } from '../../lib/theme';
+import { useTokens, useIsVintage } from '../../lib/theme';
 import { ArrowLeft, Plus, Bot, Music, BarChart3 } from 'lucide-react-native';
 
 interface AgentSummary {
@@ -21,7 +22,8 @@ interface AgentSummary {
 export default function DashboardScreen() {
   const router = useRouter();
   const tokens = useTokens();
-  const { user, isAuthenticated } = useAuthStore();
+  const isVintage = useIsVintage();
+  const { isAuthenticated } = useAuthStore();
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -61,27 +63,34 @@ export default function DashboardScreen() {
     }
   };
 
+  const headerOptions = {
+    headerShown: true as const,
+    headerStyle: { backgroundColor: tokens.bg },
+    headerTintColor: tokens.text,
+    headerTitle: 'Creator Studio',
+    headerLeft: () => (
+      <TouchableOpacity
+        onPress={() => router.back()}
+        style={{ padding: 8 }}
+        accessibilityLabel="Go back"
+        accessibilityRole="button"
+      >
+        <ArrowLeft size={24} color={tokens.text} />
+      </TouchableOpacity>
+    ),
+  };
+
   if (!isAuthenticated) {
     return (
       <>
-        <Stack.Screen
-          options={{
-            headerShown: true,
-            headerStyle: { backgroundColor: tokens.bg },
-            headerTintColor: tokens.text,
-            headerTitle: 'Creator Studio',
-            headerLeft: () => (
-              <TouchableOpacity onPress={() => router.back()} className="p-2" accessibilityLabel="Go back" accessibilityRole="button">
-                <ArrowLeft size={24} color={tokens.text} />
-              </TouchableOpacity>
-            ),
-          }}
-        />
+        <Stack.Screen options={headerOptions} />
         <ScreenContainer>
-          <View className="flex-1 items-center justify-center px-8 pt-32">
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: 96 }}>
             <Bot size={48} color={tokens.borderStrong} />
-            <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Creator Studio</Text>
-            <Text className="text-mym-muted text-center mb-6">
+            <Text style={{ color: tokens.text, fontSize: 20, fontWeight: '700', marginTop: 16, marginBottom: 8 }}>
+              Creator Studio
+            </Text>
+            <Text style={{ color: tokens.textMute, textAlign: 'center', marginBottom: 24, fontSize: 14, lineHeight: 20 }}>
               Sign in to manage your AI agents and upload music.
             </Text>
             <Button title="Sign In" onPress={() => router.push('/(auth)/login')} />
@@ -93,26 +102,13 @@ export default function DashboardScreen() {
 
   return (
     <>
-      <Stack.Screen
-        options={{
-          headerShown: true,
-          headerStyle: { backgroundColor: tokens.bg },
-          headerTintColor: tokens.text,
-          headerTitle: 'Creator Studio',
-          headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} className="p-2" accessibilityLabel="Go back" accessibilityRole="button">
-              <ArrowLeft size={24} color={tokens.text} />
-            </TouchableOpacity>
-          ),
-        }}
-      />
+      <Stack.Screen options={headerOptions} />
       <ScreenContainer>
-        <View className="px-4 pb-4">
-          <Text className="text-mym-muted text-sm mb-4">
+        <View style={{ paddingHorizontal: 16, paddingBottom: 16 }}>
+          <Text style={{ color: tokens.textMute, fontSize: 13, marginBottom: 16 }}>
             Manage your AI agents and their music
           </Text>
 
-          {/* Create Agent */}
           {!showCreateForm ? (
             <Button
               title="Create New Agent"
@@ -120,18 +116,27 @@ export default function DashboardScreen() {
               variant="secondary"
             />
           ) : (
-            <View className="bg-mym-card border border-mym-border rounded-xl p-4 mb-4">
+            <View
+              style={{
+                backgroundColor: tokens.card,
+                borderWidth: 1,
+                borderColor: tokens.border,
+                borderRadius: tokens.radiusLg,
+                padding: 16,
+                marginBottom: 16,
+              }}
+            >
               <Input
                 label="Agent Name"
                 placeholder="e.g. Neural Beats"
                 value={newAgentName}
                 onChangeText={setNewAgentName}
               />
-              <View className="flex-row space-x-3">
-                <View className="flex-1 mr-2">
+              <View style={{ flexDirection: 'row', gap: 12 }}>
+                <View style={{ flex: 1 }}>
                   <Button title="Create" onPress={handleCreateAgent} loading={creating} />
                 </View>
-                <View className="flex-1">
+                <View style={{ flex: 1 }}>
                   <Button
                     title="Cancel"
                     onPress={() => {
@@ -148,13 +153,13 @@ export default function DashboardScreen() {
 
         {/* Agents List */}
         {loading ? (
-          <View className="items-center py-12">
-            <ActivityIndicator size="large" color={tokens.accent} />
+          <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+            <ActivityIndicator size="large" color={tokens.brand} />
           </View>
         ) : agents.length === 0 ? (
-          <View className="items-center py-12 px-8">
+          <View style={{ alignItems: 'center', paddingVertical: 48, paddingHorizontal: 32 }}>
             <Bot size={48} color={tokens.borderStrong} />
-            <Text className="text-mym-muted text-center mt-4">
+            <Text style={{ color: tokens.textMute, textAlign: 'center', marginTop: 16, fontSize: 14, lineHeight: 20 }}>
               You don't have any AI agents yet. Create one to start uploading music!
             </Text>
           </View>
@@ -162,31 +167,82 @@ export default function DashboardScreen() {
           agents.map((agent) => (
             <TouchableOpacity
               key={agent.id}
-              className="flex-row items-center px-4 py-4 border-b border-mym-border"
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                paddingHorizontal: 16,
+                paddingVertical: 14,
+                borderBottomWidth: 1,
+                borderBottomColor: tokens.border,
+              }}
               onPress={() => router.push(`/agent/${agent.slug}`)}
               activeOpacity={0.7}
+              accessibilityRole="button"
+              accessibilityLabel={`Open ${agent.name} agent`}
             >
-              <View className="w-14 h-14 rounded-full bg-mym-surface items-center justify-center mr-4">
-                <Bot size={24} color="#8b5cf6" />
+              <View
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: isVintage ? tokens.radiusMd : 28,
+                  backgroundColor: tokens.surface,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 16,
+                  overflow: 'hidden',
+                }}
+              >
+                {agent.avatar ? (
+                  <Image
+                    source={{ uri: agent.avatar }}
+                    style={{ width: 56, height: 56 }}
+                    contentFit="cover"
+                    cachePolicy="memory-disk"
+                    recyclingKey={agent.id}
+                  />
+                ) : (
+                  <Bot size={24} color={tokens.accent} />
+                )}
               </View>
-              <View className="flex-1">
-                <Text className="text-mym-text text-base font-semibold">{agent.name}</Text>
-                <View className="flex-row items-center mt-1">
-                  <Music size={12} color="#a1a1aa" />
-                  <Text className="text-mym-muted text-xs ml-1 mr-3">
-                    {agent._count?.tracks || 0} tracks
-                  </Text>
-                  <BarChart3 size={12} color="#a1a1aa" />
-                  <Text className="text-mym-muted text-xs ml-1">
-                    {formatCount(agent.totalPlays)} plays
-                  </Text>
+              <View style={{ flex: 1 }}>
+                <Text
+                  style={{
+                    color: tokens.text,
+                    fontSize: 15,
+                    fontWeight: '600',
+                    fontFamily: isVintage ? tokens.fontDisplay : undefined,
+                  }}
+                  numberOfLines={1}
+                >
+                  {agent.name}
+                </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 4, gap: 12 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <Music size={12} color={tokens.textMute} />
+                    <Text style={{ color: tokens.textMute, fontSize: 12 }}>
+                      {agent._count?.tracks || 0} tracks
+                    </Text>
+                  </View>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                    <BarChart3 size={12} color={tokens.textMute} />
+                    <Text style={{ color: tokens.textMute, fontSize: 12 }}>
+                      {formatCount(agent.totalPlays)} plays
+                    </Text>
+                  </View>
                 </View>
               </View>
               <TouchableOpacity
                 onPress={() => router.push('/dashboard/upload')}
-                className="bg-mym-accent rounded-full p-2"
+                style={{
+                  backgroundColor: tokens.brand,
+                  borderRadius: 999,
+                  padding: 8,
+                }}
+                accessibilityLabel={`Upload track for ${agent.name}`}
+                accessibilityRole="button"
+                hitSlop={6}
               >
-                <Plus size={16} color="#fff" />
+                <Plus size={16} color={tokens.brandText} />
               </TouchableOpacity>
             </TouchableOpacity>
           ))

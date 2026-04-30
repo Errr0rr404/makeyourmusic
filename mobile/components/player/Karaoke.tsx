@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { X } from 'lucide-react-native';
 import { getApi } from '@makeyourmusic/shared';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 interface KaraokeLine {
   text: string;
@@ -21,6 +22,8 @@ interface Props {
 const LINE_HEIGHT = 44;
 
 export function Karaoke({ visible, onClose, trackId, trackTitle, positionSec }: Props) {
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const [lines, setLines] = useState<KaraokeLine[] | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -60,41 +63,77 @@ export function Karaoke({ visible, onClose, trackId, trackTitle, positionSec }: 
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View className="flex-1 bg-mym-bg">
-        <View className="flex-row items-center justify-between px-4 py-3 border-b border-mym-border">
-          <View className="flex-1">
-            <Text className="text-mym-muted text-[10px] uppercase font-bold tracking-wider">Karaoke</Text>
-            <Text className="text-white text-lg font-bold" numberOfLines={1}>
+      <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            paddingHorizontal: 16,
+            paddingVertical: 12,
+            borderBottomWidth: 1,
+            borderBottomColor: tokens.border,
+          }}
+        >
+          <View style={{ flex: 1 }}>
+            <Text
+              style={{
+                color: tokens.textMute,
+                fontSize: 10,
+                fontWeight: '700',
+                letterSpacing: 1.2,
+                textTransform: 'uppercase',
+                fontFamily: isVintage ? tokens.fontLabel : undefined,
+              }}
+            >
+              Karaoke
+            </Text>
+            <Text
+              style={{
+                color: tokens.text,
+                fontSize: 17,
+                fontWeight: '700',
+                fontFamily: isVintage ? tokens.fontDisplay : undefined,
+              }}
+              numberOfLines={1}
+            >
               {trackTitle}
             </Text>
           </View>
-          <TouchableOpacity onPress={onClose} className="p-2">
-            <X size={22} color="#fafafa" />
+          <TouchableOpacity
+            onPress={onClose}
+            style={{ padding: 8 }}
+            accessibilityRole="button"
+            accessibilityLabel="Close karaoke"
+          >
+            <X size={22} color={tokens.text} />
           </TouchableOpacity>
         </View>
 
         {loading && (
-          <View className="flex-1 items-center justify-center">
-            <ActivityIndicator color="#8b5cf6" />
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={tokens.brand} />
           </View>
         )}
 
         {error && !loading && (
-          <View className="flex-1 items-center justify-center px-6">
-            <Text className="text-mym-muted text-center">{error}</Text>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+            <Text style={{ color: tokens.textMute, textAlign: 'center', fontSize: 14 }}>{error}</Text>
           </View>
         )}
 
         {!loading && !error && lines && lines.length === 0 && (
-          <View className="flex-1 items-center justify-center px-6">
-            <Text className="text-mym-muted text-center">No lyrics available for this track.</Text>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+            <Text style={{ color: tokens.textMute, textAlign: 'center', fontSize: 14 }}>
+              No lyrics available for this track.
+            </Text>
           </View>
         )}
 
         {!loading && !error && lines && lines.length > 0 && (
           <ScrollView
             ref={scrollRef}
-            className="flex-1"
+            style={{ flex: 1 }}
             contentContainerStyle={{ paddingHorizontal: 24, paddingVertical: 32 }}
           >
             {lines.map((line, i) => {
@@ -104,7 +143,16 @@ export function Karaoke({ visible, onClose, trackId, trackTitle, positionSec }: 
                 return (
                   <Text
                     key={`${i}-${line.startSec}`}
-                    className="text-mym-muted text-[11px] uppercase font-bold tracking-wider mt-4 mb-2"
+                    style={{
+                      color: tokens.accent,
+                      fontSize: 11,
+                      fontWeight: '700',
+                      letterSpacing: 1.5,
+                      textTransform: 'uppercase',
+                      marginTop: 16,
+                      marginBottom: 8,
+                      fontFamily: isVintage ? tokens.fontLabel : undefined,
+                    }}
                   >
                     {line.text}
                   </Text>
@@ -116,7 +164,7 @@ export function Karaoke({ visible, onClose, trackId, trackTitle, positionSec }: 
                   style={{
                     fontSize: isActive ? 22 : 18,
                     lineHeight: 32,
-                    color: isActive ? '#fff' : isPast ? '#52525b' : '#a1a1aa',
+                    color: isActive ? tokens.text : isPast ? tokens.borderStrong : tokens.textMute,
                     fontWeight: isActive ? '700' : '500',
                     marginBottom: 8,
                   }}

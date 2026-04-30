@@ -122,7 +122,18 @@ export default function LibraryScreen() {
   return (
     <ScreenContainer scrollable={false}>
       <View className="px-4 pt-2 pb-3 flex-row items-center justify-between">
-        <Text style={{ color: tokens.text, fontSize: 24, fontWeight: '800' }}>Library</Text>
+        <Text
+          style={{
+            color: tokens.text,
+            fontSize: 24,
+            fontWeight: '800',
+            fontFamily: tokens.isVintage ? tokens.fontDisplay : undefined,
+            textTransform: tokens.isVintage ? 'uppercase' : undefined,
+            letterSpacing: tokens.isVintage ? 1 : undefined,
+          }}
+        >
+          Library
+        </Text>
         <TouchableOpacity
           onPress={() => setShowCreate(true)}
           style={{
@@ -221,9 +232,10 @@ export default function LibraryScreen() {
         transparent
         animationType="fade"
         onRequestClose={() => setShowCreate(false)}
+        statusBarTranslucent
       >
         <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}
         >
           <View

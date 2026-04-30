@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Share, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, Share, Alert, Modal, FlatList } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
 import { usePlayerStore, useAuthStore, getApi, formatDuration } from '@makeyourmusic/shared';
@@ -18,6 +18,8 @@ import {
   ListMusic,
   SlidersHorizontal,
   Mic2,
+  Music,
+  X,
 } from 'lucide-react-native';
 import TrackPlayer from 'react-native-track-player';
 import Slider from '../components/ui/Slider';
@@ -35,6 +37,7 @@ export default function FullScreenPlayer() {
   const isVintage = useIsVintage();
   const [showSettings, setShowSettings] = useState(false);
   const [showKaraoke, setShowKaraoke] = useState(false);
+  const [showQueue, setShowQueue] = useState(false);
   const [liked, setLiked] = useState(false);
   const [likeBusy, setLikeBusy] = useState(false);
   const { isAuthenticated } = useAuthStore();
@@ -234,8 +237,8 @@ export default function FullScreenPlayer() {
                 style={{ padding: 8 }}
                 accessibilityLabel="Queue"
                 onPress={() => {
-                  const queueNames = queue.map((t, i) => `${i + 1}. ${t.title}`).join('\n');
-                  Alert.alert('Queue', queueNames || 'Queue is empty');
+                  setShowQueue(true);
+                  hapticLight();
                 }}
               >
                 <ListMusic size={20} color={onMuted} />
@@ -501,6 +504,150 @@ export default function FullScreenPlayer() {
         </View>
       </SafeAreaView>
       </SwipeableDismiss>
+
+      {/* Queue Modal */}
+      <Modal
+        visible={showQueue}
+        animationType="slide"
+        presentationStyle="pageSheet"
+        onRequestClose={() => setShowQueue(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              borderBottomWidth: 1,
+              borderBottomColor: tokens.border,
+            }}
+          >
+            <View>
+              <Text
+                style={{
+                  color: tokens.textMute,
+                  fontSize: 10,
+                  fontWeight: '700',
+                  letterSpacing: 1.2,
+                  textTransform: 'uppercase',
+                  fontFamily: isVintage ? tokens.fontLabel : undefined,
+                }}
+              >
+                Up Next
+              </Text>
+              <Text
+                style={{
+                  color: tokens.text,
+                  fontSize: 17,
+                  fontWeight: '700',
+                  fontFamily: isVintage ? tokens.fontDisplay : undefined,
+                }}
+              >
+                {queue.length} track{queue.length === 1 ? '' : 's'}
+              </Text>
+            </View>
+            <TouchableOpacity
+              onPress={() => setShowQueue(false)}
+              style={{ padding: 8, borderRadius: 999, backgroundColor: tokens.surface }}
+              accessibilityRole="button"
+              accessibilityLabel="Close queue"
+            >
+              <X size={18} color={tokens.textMute} />
+            </TouchableOpacity>
+          </View>
+
+          {queue.length === 0 ? (
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+              <ListMusic size={40} color={tokens.textMute} />
+              <Text style={{ color: tokens.textMute, marginTop: 12, fontSize: 14 }}>
+                Queue is empty
+              </Text>
+            </View>
+          ) : (
+            <FlatList
+              data={queue}
+              keyExtractor={(t, i) => `${t.id}-${i}`}
+              contentContainerStyle={{ paddingVertical: 8 }}
+              renderItem={({ item, index }) => {
+                const active = currentTrack?.id === item.id;
+                return (
+                  <View
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      paddingHorizontal: 16,
+                      paddingVertical: 8,
+                      backgroundColor: active ? tokens.accentSoft : 'transparent',
+                    }}
+                  >
+                    <View style={{ width: 28, alignItems: 'center', marginRight: 8 }}>
+                      <Text
+                        style={{
+                          color: active ? tokens.accent : tokens.textMute,
+                          fontSize: 12,
+                          fontFamily: isVintage ? tokens.fontMono : undefined,
+                        }}
+                      >
+                        {index + 1}
+                      </Text>
+                    </View>
+                    <View
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: isVintage ? tokens.radiusSm : 6,
+                        overflow: 'hidden',
+                        backgroundColor: tokens.card,
+                        marginRight: 12,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      {item.coverArt ? (
+                        <Image
+                          source={{ uri: item.coverArt }}
+                          style={{ width: 44, height: 44 }}
+                          contentFit="cover"
+                          cachePolicy="memory-disk"
+                          recyclingKey={item.id}
+                        />
+                      ) : (
+                        <Music size={18} color={tokens.textMute} />
+                      )}
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text
+                        numberOfLines={1}
+                        style={{
+                          color: active ? tokens.accent : tokens.text,
+                          fontSize: 14,
+                          fontWeight: '600',
+                        }}
+                      >
+                        {item.title}
+                      </Text>
+                      <Text numberOfLines={1} style={{ color: tokens.textMute, fontSize: 12, marginTop: 1 }}>
+                        {item.agent.name}
+                      </Text>
+                    </View>
+                    <Text
+                      style={{
+                        color: tokens.textMute,
+                        fontSize: 12,
+                        fontFamily: isVintage ? tokens.fontMono : undefined,
+                      }}
+                    >
+                      {formatDuration(item.duration)}
+                    </Text>
+                  </View>
+                );
+              }}
+            />
+          )}
+        </View>
+      </Modal>
 
       {/* Settings Modal */}
       <PlayerSettingsModal

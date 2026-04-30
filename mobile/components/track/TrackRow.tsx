@@ -1,9 +1,10 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { Play, Heart } from 'lucide-react-native';
+import { Music } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { usePlayerStore, formatDuration } from '@makeyourmusic/shared';
 import type { TrackItem } from '@makeyourmusic/shared';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 interface TrackRowProps {
   track: TrackItem;
@@ -14,6 +15,8 @@ interface TrackRowProps {
 
 export function TrackRow({ track, queue, index, showAgent = true }: TrackRowProps) {
   const router = useRouter();
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const { playTrack, currentTrack, isPlaying } = usePlayerStore();
   const isActive = currentTrack?.id === track.id;
 
@@ -24,18 +27,58 @@ export function TrackRow({ track, queue, index, showAgent = true }: TrackRowProp
   return (
     <TouchableOpacity
       onPress={handlePlay}
-      className={`flex-row items-center px-4 py-3 ${isActive ? 'bg-mym-accent/10' : ''}`}
+      style={{
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        backgroundColor: isActive ? tokens.accentSoft : 'transparent',
+      }}
       activeOpacity={0.6}
+      accessibilityRole="button"
+      accessibilityLabel={`Play ${track.title} by ${track.agent.name}`}
     >
       {index !== undefined && (
-        <Text
-          className={`w-8 text-center text-sm font-medium ${isActive ? 'text-mym-accent' : 'text-mym-muted'}`}
-        >
-          {isActive && isPlaying ? '▶' : index + 1}
-        </Text>
+        <View style={{ width: 28, alignItems: 'center', marginRight: 4 }}>
+          {isActive && isPlaying ? (
+            <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 2, height: 14 }}>
+              {[6, 10, 7].map((h, i) => (
+                <View
+                  key={i}
+                  style={{
+                    width: 2,
+                    height: h,
+                    backgroundColor: tokens.accent,
+                    borderRadius: 1,
+                  }}
+                />
+              ))}
+            </View>
+          ) : (
+            <Text
+              style={{
+                color: isActive ? tokens.accent : tokens.textMute,
+                fontSize: 13,
+                fontWeight: '500',
+                fontFamily: isVintage ? tokens.fontMono : undefined,
+              }}
+            >
+              {index + 1}
+            </Text>
+          )}
+        </View>
       )}
 
-      <View className="w-12 h-12 rounded-lg overflow-hidden bg-mym-card mr-3">
+      <View
+        style={{
+          width: 48,
+          height: 48,
+          borderRadius: isVintage ? tokens.radiusSm : 8,
+          overflow: 'hidden',
+          backgroundColor: tokens.card,
+          marginRight: 12,
+        }}
+      >
         {track.coverArt ? (
           <Image
             source={{ uri: track.coverArt }}
@@ -45,29 +88,43 @@ export function TrackRow({ track, queue, index, showAgent = true }: TrackRowProp
             recyclingKey={track.id}
           />
         ) : (
-          <View className="flex-1 items-center justify-center bg-mym-surface">
-            <Text className="text-lg">🎵</Text>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.surface }}>
+            <Music size={18} color={tokens.textMute} />
           </View>
         )}
       </View>
 
-      <View className="flex-1 mr-3">
+      <View style={{ flex: 1, marginRight: 12 }}>
         <Text
-          className={`text-sm font-semibold ${isActive ? 'text-mym-accent' : 'text-mym-text'}`}
           numberOfLines={1}
+          style={{
+            color: isActive ? tokens.accent : tokens.text,
+            fontSize: 14,
+            fontWeight: '600',
+            fontFamily: isVintage ? tokens.fontDisplay : undefined,
+          }}
         >
           {track.title}
         </Text>
         {showAgent && (
-          <TouchableOpacity onPress={() => router.push(`/agent/${track.agent.slug}`)}>
-            <Text className="text-mym-muted text-xs mt-0.5" numberOfLines={1}>
+          <TouchableOpacity onPress={() => router.push(`/agent/${track.agent.slug}`)} hitSlop={4}>
+            <Text numberOfLines={1} style={{ color: tokens.textMute, fontSize: 12, marginTop: 2 }}>
               {track.agent.name}
             </Text>
           </TouchableOpacity>
         )}
       </View>
 
-      <Text className="text-mym-muted text-xs mr-3">{formatDuration(track.duration)}</Text>
+      <Text
+        style={{
+          color: tokens.textMute,
+          fontSize: 12,
+          marginRight: 8,
+          fontFamily: isVintage ? tokens.fontMono : undefined,
+        }}
+      >
+        {formatDuration(track.duration)}
+      </Text>
     </TouchableOpacity>
   );
 }
