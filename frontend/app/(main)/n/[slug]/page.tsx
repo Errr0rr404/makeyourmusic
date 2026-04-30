@@ -50,7 +50,7 @@ export default function NichePage() {
     };
   }, [slug]);
 
-  const useTemplate = (template: string) => {
+  const applyTemplate = (template: string) => {
     router.push(`/create?prompt=${encodeURIComponent(template)}`);
   };
 
@@ -80,7 +80,7 @@ export default function NichePage() {
           {niche.promptTemplates.map((t) => (
             <button
               key={t}
-              onClick={() => useTemplate(t)}
+              onClick={() => applyTemplate(t)}
               className="text-sm px-3 py-2 rounded-md bg-[hsl(var(--bg-elev-2))] border border-[hsl(var(--border))] hover:bg-[hsl(var(--bg-elev-3))] inline-flex items-center gap-2 max-w-md text-left"
             >
               <Sparkles className="w-4 h-4 flex-shrink-0 text-[hsl(var(--primary))]" />
