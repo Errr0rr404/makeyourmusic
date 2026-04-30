@@ -372,10 +372,14 @@ Base URL: `http://localhost:3001/api`
 Configuration is in `railway.json`. Set environment variables in the Railway dashboard.
 
 ```
-Build:  cd backend && npm install && npx prisma generate --schema=../prisma/schema.prisma && npm run build
-Start:  cd backend && npm start
+Build:      cd backend && npm ci && npx prisma generate --schema=../prisma/schema.prisma && npm run build
+Predeploy:  cd backend && npx prisma db push --schema=../prisma/schema.prisma --skip-generate --accept-data-loss
+Start:      cd backend && npm start
 Health: /api/health
 ```
+
+The API service syncs the Prisma schema during Railway predeploy, not during
+container startup, so runtime restarts do not re-run schema changes.
 
 ### Frontend (Netlify)
 

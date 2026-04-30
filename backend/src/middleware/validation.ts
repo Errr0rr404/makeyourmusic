@@ -77,6 +77,13 @@ const URL_FIELDS = [
   'imageRefUrl', 'referenceAudioUrl', 'coverImage', 'thumbnail', 'url',
 ];
 
+const PASSWORD_FIELDS = new Set([
+  'password',
+  'currentPassword',
+  'newPassword',
+  'confirmPassword',
+]);
+
 // Trim-only sanitization for display text (no HTML escaping)
 const trimOnly = (str: string | null | undefined): string | null => {
   if (str === null || str === undefined || str === '') {
@@ -123,7 +130,7 @@ export const sanitizeBody = (req: Request, _res: Response, next: NextFunction): 
         const sanitized: Record<string, unknown> = {};
         for (const key in obj) {
           // Skip password fields - don't sanitize them
-          if (key === 'password') {
+          if (PASSWORD_FIELDS.has(key)) {
             sanitized[key] = obj[key];
           } 
           // Handle email specifically

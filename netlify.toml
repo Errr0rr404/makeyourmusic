@@ -12,7 +12,7 @@
 # the Railway backend URL changes.
 [[redirects]]
   from = "/api/*"
-  to = "https://makeyourmusic-api-production.up.railway.app/api/:splat"
+  to = "https://morlo-api-production.up.railway.app/api/:splat"
   status = 200
   force = true
 

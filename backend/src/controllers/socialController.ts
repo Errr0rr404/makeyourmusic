@@ -367,6 +367,7 @@ export const createPlaylist = async (req: RequestWithUser, res: Response) => {
         slug,
         description,
         isPublic: isPublic !== false,
+        accessTier: isPublic === false ? 'PRIVATE' : 'PUBLIC',
         userId: req.user.userId,
       },
     });
@@ -403,13 +404,16 @@ export const getPlaylist = async (req: RequestWithUser, res: Response) => {
 
     const viewerId = req.user?.userId;
     const isOwner = viewerId && playlist.userId === viewerId;
+    const isPrivatePlaylist =
+      playlist.accessTier === 'PRIVATE' ||
+      (playlist.accessTier === 'PUBLIC' && playlist.isPublic === false);
 
     // Access control by tier:
     //  PUBLIC  → anyone (also surface tracks to anyone)
     //  PRIVATE → owner only
     //  PAID    → owner OR active ChannelSubscription. Non-subscribers see metadata
     //            but no tracks, so the UI can render a paywall.
-    if (playlist.accessTier === 'PRIVATE' && !isOwner) {
+    if (isPrivatePlaylist && !isOwner) {
       res.status(403).json({ error: 'This playlist is private' });
       return;
     }
@@ -564,7 +568,12 @@ export const updatePlaylist = async (req: RequestWithUser, res: Response) => {
     const data: any = {};
     if (title !== undefined) data.title = title;
     if (description !== undefined) data.description = description;
-    if (isPublic !== undefined) data.isPublic = isPublic;
+    if (isPublic !== undefined) {
+      data.isPublic = isPublic;
+      if (playlist.accessTier !== 'PAID') {
+        data.accessTier = isPublic ? 'PUBLIC' : 'PRIVATE';
+      }
+    }
 
     const updated = await prisma.playlist.update({ where: { id }, data });
     res.json({ playlist: updated });

@@ -2,7 +2,7 @@ import Constants from 'expo-constants';
 import { setStorageAdapter, createApi } from '@makeyourmusic/shared';
 import { SecureStorageAdapter } from './secureStorage';
 
-const PROD_API_URL = 'https://makeyourmusic-production.up.railway.app/api';
+const PROD_API_URL = 'https://morlo-api-production.up.railway.app/api';
 const DEV_BACKEND_PORT = 3001;
 
 /**

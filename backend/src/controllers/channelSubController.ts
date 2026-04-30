@@ -247,8 +247,8 @@ export const subscribeToPlaylist = async (req: RequestWithUser, res: Response) =
           subscriberUserId: req.user.userId,
         },
       },
-      success_url: `${fe}/playlists/${playlist.slug}?subscribed=1`,
-      cancel_url: `${fe}/playlists/${playlist.slug}?cancelled=1`,
+      success_url: `${fe}/playlist/${playlist.slug}?subscribed=1`,
+      cancel_url: `${fe}/playlist/${playlist.slug}?cancelled=1`,
       metadata: {
         kind: 'channel_subscription',
         playlistId: playlist.id,

@@ -196,7 +196,7 @@ export default function PlaylistPage() {
                 <Play className="w-4 h-4" /> Play All
               </button>
             )}
-            {isAuthenticated && (
+            {isOwner && (
               <>
                 {!editing && (
                   <button onClick={() => setEditing(true)} className="p-2 rounded-full hover:bg-white/5 text-[hsl(var(--muted-foreground))]" aria-label="Edit playlist">
