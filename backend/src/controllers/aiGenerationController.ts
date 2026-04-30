@@ -10,7 +10,9 @@ import {
   minimaxQueryVideo,
   minimaxRetrieveFile,
   minimaxTranslateVibeReference,
+  minimaxOrchestrate,
   MinimaxRateLimitError,
+  type OrchestrationPlan,
 } from '../utils/minimax';
 import {
   lookupSubgenreHint,
@@ -21,6 +23,7 @@ import {
 import { assertCanGenerate, getDailyUsage } from '../utils/aiUsage';
 import { slugify, uniqueSuffix } from '../utils/slugify';
 import { uploadAudio, uploadImageBase64, uploadCoverArt } from '../utils/cloudinary';
+import { sanitizeLyrics } from '../utils/lyricsSanitizer';
 
 const MAX_LYRICS_LEN = 3500;
 const MAX_PROMPT_LEN = 2000;
@@ -168,6 +171,7 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
 
     const {
       idea,
+      title,
       genre,
       subGenre,
       mood,
@@ -187,10 +191,39 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Translate any artist references into descriptors before we hand them
-    // to the lyrics model. Failures are non-fatal — we just skip the field.
-    let vibeDescriptors: string | undefined;
-    if (typeof vibeReference === 'string' && vibeReference.trim()) {
+    const lang = typeof language === 'string' ? language : 'English';
+
+    // Orchestrate first: turn raw inputs into a coherent plan that includes a
+    // lyricsBrief (theme, perspective, imagery, hooks). The lyrics generator
+    // uses that brief as primary direction. Best-effort — fall back to the
+    // simple path on failure.
+    let plan: OrchestrationPlan | null = null;
+    try {
+      plan = await minimaxOrchestrate({
+        idea,
+        title: typeof title === 'string' ? title : null,
+        genre: typeof genre === 'string' ? genre : null,
+        subGenre: typeof subGenre === 'string' ? subGenre : null,
+        mood: typeof mood === 'string' ? mood : null,
+        energy: typeof energy === 'string' ? energy : null,
+        era: typeof era === 'string' ? era : null,
+        vocalStyle: typeof vocalStyle === 'string' ? vocalStyle : null,
+        vibeReference: typeof vibeReference === 'string' ? vibeReference : null,
+        style: typeof style === 'string' ? style : null,
+        isInstrumental: false,
+        language: lang,
+      });
+    } catch (err) {
+      logger.warn('Orchestration failed in lyrics path, falling back', {
+        error: (err as Error).message,
+      });
+    }
+
+    // If orchestration didn't supply vibe descriptors, try the standalone
+    // translator so we still strip artist names before they reach the lyric
+    // model. Both calls are best-effort.
+    let vibeDescriptors: string | undefined = plan?.vibeDescriptors || undefined;
+    if (!vibeDescriptors && typeof vibeReference === 'string' && vibeReference.trim()) {
       try {
         vibeDescriptors = await minimaxTranslateVibeReference(vibeReference);
       } catch (err) {
@@ -201,19 +234,27 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
     }
 
     const result = await minimaxGenerateLyrics({
-      idea,
-      genre: typeof genre === 'string' ? genre : undefined,
-      subGenre: typeof subGenre === 'string' ? subGenre : undefined,
+      idea: plan?.refinedConcept?.trim() || idea,
+      genre: plan?.genre || (typeof genre === 'string' ? genre : undefined),
+      subGenre: plan?.subGenre || (typeof subGenre === 'string' ? subGenre : undefined),
       mood: typeof mood === 'string' ? mood : undefined,
       energy: typeof energy === 'string' ? energy : undefined,
       era: typeof era === 'string' ? era : undefined,
-      vocalStyle: typeof vocalStyle === 'string' ? vocalStyle : undefined,
+      vocalStyle:
+        plan?.vocalDirection ||
+        (typeof vocalStyle === 'string' ? vocalStyle : undefined),
       vibeDescriptors,
       style: typeof style === 'string' ? style : undefined,
-      language: typeof language === 'string' ? language : 'English',
+      language: lang,
+      lyricsBrief: plan?.lyricsBrief || undefined,
     });
 
-    res.json({ lyrics: result.lyrics });
+    // Always sanitize: even with the tightened system prompt, models
+    // occasionally emit "(strings enter)" or "[Guitar Solo]" lines. Stripping
+    // them here guarantees nothing non-singable reaches the music model.
+    const sanitized = sanitizeLyrics(result.lyrics);
+
+    res.json({ lyrics: sanitized, plan });
   } catch (error) {
     logger.error('Generate lyrics error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to generate lyrics' });
@@ -221,6 +262,103 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
 };
 
 // ─── Music generation (async via background task) ─────────
+
+// Run orchestration + lyric autogeneration as part of background processing
+// so the API can return 202 immediately. Mutates the persisted generation row
+// when it improves the prompt or fills in auto-generated lyrics. Best-effort:
+// if any step fails we log and continue with whatever the user supplied.
+async function orchestrateAndPrepareLyrics(gen: {
+  id: string;
+  prompt: string | null;
+  lyrics: string | null;
+  isInstrumental: boolean;
+  title: string | null;
+  genre: string | null;
+  subGenre: string | null;
+  mood: string | null;
+  energy: string | null;
+  era: string | null;
+  vocalStyle: string | null;
+  vibeReference: string | null;
+  referenceAudioUrl: string | null;
+  providerModel: string | null;
+}): Promise<{ prompt: string | null; lyrics: string | null }> {
+  // Audio-to-audio cover mode: the music model uses the reference audio for
+  // arrangement; orchestration adds little here and a heavy planning prompt
+  // can override the user's intent. Skip orchestration in that path.
+  const isCover =
+    gen.providerModel === 'music-cover' || !!gen.referenceAudioUrl;
+  if (isCover) {
+    return {
+      prompt: gen.prompt,
+      lyrics: gen.lyrics ? sanitizeLyrics(gen.lyrics) : null,
+    };
+  }
+
+  let plan: OrchestrationPlan | null = null;
+  try {
+    plan = await minimaxOrchestrate({
+      idea: gen.prompt,
+      title: gen.title,
+      genre: gen.genre,
+      subGenre: gen.subGenre,
+      mood: gen.mood,
+      energy: gen.energy,
+      era: gen.era,
+      vocalStyle: gen.vocalStyle,
+      vibeReference: gen.vibeReference,
+      isInstrumental: gen.isInstrumental,
+    });
+  } catch (err) {
+    logger.warn('Orchestration failed, proceeding with original prompt', {
+      generationId: gen.id,
+      error: (err as Error).message,
+    });
+  }
+
+  // Auto-generate lyrics when the user didn't supply any and the track has
+  // vocals. Doing this ourselves (rather than relying on MiniMax's
+  // lyrics_optimizer flag) gives us a sanitized, plan-aligned result.
+  let nextLyrics = gen.lyrics ? sanitizeLyrics(gen.lyrics) : null;
+  if (!gen.isInstrumental && !nextLyrics && plan) {
+    try {
+      const result = await minimaxGenerateLyrics({
+        idea: plan.refinedConcept || gen.prompt || gen.title || 'song',
+        genre: plan.genre || gen.genre || undefined,
+        subGenre: plan.subGenre || gen.subGenre || undefined,
+        mood: gen.mood || undefined,
+        energy: gen.energy || undefined,
+        era: gen.era || undefined,
+        vocalStyle: plan.vocalDirection || gen.vocalStyle || undefined,
+        vibeDescriptors: plan.vibeDescriptors || undefined,
+        lyricsBrief: plan.lyricsBrief || undefined,
+      });
+      nextLyrics = sanitizeLyrics(result.lyrics);
+    } catch (err) {
+      logger.warn('Auto-lyrics from orchestration failed, falling back', {
+        generationId: gen.id,
+        error: (err as Error).message,
+      });
+    }
+  }
+
+  // Prefer the orchestration's dense music prompt when present.
+  const nextPrompt = plan?.musicPrompt?.trim() || gen.prompt;
+
+  // Persist the refined prompt + auto-generated lyrics so the generation row
+  // reflects what was actually sent to the music model.
+  if (nextPrompt !== gen.prompt || nextLyrics !== gen.lyrics) {
+    await prisma.musicGeneration.update({
+      where: { id: gen.id },
+      data: {
+        prompt: nextPrompt,
+        lyrics: nextLyrics,
+      },
+    });
+  }
+
+  return { prompt: nextPrompt, lyrics: nextLyrics };
+}
 
 async function processMusicGeneration(generationId: string): Promise<void> {
   const gen = await prisma.musicGeneration.findUnique({ where: { id: generationId } });
@@ -232,12 +370,15 @@ async function processMusicGeneration(generationId: string): Promise<void> {
       data: { status: 'PROCESSING' },
     });
 
+    const { prompt: orchestratedPrompt, lyrics: preparedLyrics } =
+      await orchestrateAndPrepareLyrics(gen);
+
     const isCover = gen.providerModel === 'music-cover' || !!gen.referenceAudioUrl;
     const primaryModel =
       gen.providerModel || (isCover ? 'music-cover' : MUSIC_MODEL());
     const baseRequest = {
-      prompt: providerPromptForGeneration(gen.prompt, generationId),
-      lyrics: gen.lyrics || undefined,
+      prompt: providerPromptForGeneration(orchestratedPrompt, generationId),
+      lyrics: preparedLyrics || undefined,
       isInstrumental: gen.isInstrumental,
       audioUrl: gen.referenceAudioUrl || undefined,
       outputFormat: 'url' as const,
@@ -376,13 +517,19 @@ export const startMusicGeneration = async (req: RequestWithUser, res: Response) 
     const finalPrompt =
       built.prompt.trim() || (typeof prompt === 'string' ? prompt : null);
 
+    // User-supplied lyrics may already contain stage directions (e.g. seeded
+    // from another tool). Sanitize at the boundary so the persisted record
+    // matches what we'll actually feed the music model.
+    const sanitizedLyrics =
+      typeof lyrics === 'string' ? sanitizeLyrics(lyrics) || null : null;
+
     const generation = await prisma.musicGeneration.create({
       data: {
         userId: req.user.userId,
         agentId: typeof agentId === 'string' ? agentId : null,
         title: typeof title === 'string' ? title.slice(0, 200) : null,
         prompt: finalPrompt,
-        lyrics: typeof lyrics === 'string' ? lyrics : null,
+        lyrics: sanitizedLyrics,
         genre: typeof genre === 'string' ? genre.slice(0, 50) : null,
         subGenre: typeof subGenre === 'string' ? subGenre.slice(0, 50) : null,
         mood: typeof mood === 'string' ? mood.slice(0, 50) : null,
@@ -620,7 +767,7 @@ export const createVariation = async (req: RequestWithUser, res: Response) => {
         agentId: source.agentId,
         title: finalTitle,
         prompt: typeof prompt === 'string' ? prompt : source.prompt,
-        lyrics: source.lyrics,
+        lyrics: source.lyrics ? sanitizeLyrics(source.lyrics) || null : null,
         genre: typeof genre === 'string' ? genre.slice(0, 50) : source.genre,
         subGenre: source.subGenre,
         mood: typeof mood === 'string' ? mood.slice(0, 50) : source.mood,
@@ -830,13 +977,16 @@ export const startMusicCover = async (req: RequestWithUser, res: Response) => {
       }
     }
 
+    const sanitizedCoverLyrics =
+      typeof lyrics === 'string' ? sanitizeLyrics(lyrics) || null : null;
+
     const generation = await prisma.musicGeneration.create({
       data: {
         userId: req.user.userId,
         agentId: typeof agentId === 'string' ? agentId : null,
         title: typeof title === 'string' ? title.slice(0, 200) : null,
         prompt: prompt.trim(),
-        lyrics: typeof lyrics === 'string' ? lyrics : null,
+        lyrics: sanitizedCoverLyrics,
         genre: typeof genre === 'string' ? genre.slice(0, 50) : null,
         mood: typeof mood === 'string' ? mood.slice(0, 50) : null,
         isInstrumental: false,

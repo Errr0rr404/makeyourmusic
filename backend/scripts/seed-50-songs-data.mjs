@@ -127,7 +127,6 @@ export const SONGS = [
       'striking a garden gate at night, hot pink neon outline, motion blur. ' +
       'Gritty film grain, high contrast, no text, no logos.',
     lyrics: `[Intro]
-(Distorted guitar feedback, kick-snare count-in)
 
 [Verse 1]
 You came in like a thunderclap on a quiet summer night
@@ -164,8 +163,6 @@ Tear the night wide open, baby, take it all from me
 We were born for trouble, written in the rain
 Lightning in the garden, screaming out my name
 
-[Guitar Solo]
-
 [Bridge]
 The neighbours are sleeping, the rooftops are wet
 We're a story they'll tell us we'll learn to forget
@@ -198,7 +195,6 @@ Screaming out my name`,
       'Album cover: a metal eagle made of riveted iron plates soaring over a sunset desert ' +
       'highway, lens flare, anamorphic streaks, bold cinematic composition, no text.',
     lyrics: `[Intro]
-(Hammond swell, hi-hat pulse, eighth-note bass)
 
 [Verse 1]
 I was born in a town that the highway forgot
@@ -234,9 +230,7 @@ Every road that ran me ragged
 Every dream I had to bring
 I'm taking off tonight on steel wings
 
-[Guitar Solo]
-
-[Breakdown / Bridge — clean guitar]
+[Bridge]
 For everyone who told me I'd be nothing
 For everyone who said I'd never change
 This one's for the kid in the broken jacket
@@ -270,7 +264,6 @@ On steel wings`,
       'spilling over crumbling stone, deep red and bone-white palette, ' +
       'painterly oil-paint look, no text, no logos.',
     lyrics: `[Intro]
-(Tolling bell, distant choir, slow palm-muted riff)
 
 [Verse 1]
 He sits on a throne of forgotten names
@@ -306,9 +299,7 @@ Every banner, every ring
 Belongs to a man who feels nothing
 Hollow king
 
-[Guitar Solo]
-
-[Bridge — whispered]
+[Bridge]
 I built a country out of fear of being known
 I called it strength, I called it stone
 Now the stone is calling me
@@ -340,7 +331,6 @@ Hollow king`,
       'Album cover: a single red rose laid across a dusty Marshall amplifier in a ' +
       'sunbeam, soft 35mm film texture, warm autumn tones, no text, no logos.',
     lyrics: `[Intro]
-(Electric piano, clean guitar arpeggio)
 
 [Verse 1]
 I found an old setlist tucked into a sleeve
@@ -378,8 +368,6 @@ Sing it back to the rafters, sing it down to the floor
 Roses on the amplifier
 And a heart at the door
 
-[Guitar Solo]
-
 [Bridge]
 And if you're somewhere out there
 With a different song to sing
@@ -413,7 +401,6 @@ And a heart at the door`,
       'highway at dusk, cinematic wide-angle, headlights cutting across the desert, ' +
       'cinematic anamorphic frame, no text.',
     lyrics: `[Intro]
-(Slide guitar drone, tom hits)
 
 [Verse 1]
 They called him a sinner with a saint's tired eyes
@@ -451,8 +438,6 @@ Patron of the leaving
 The dust behind him is the prayer
 That keeps the rest believing
 
-[Guitar Solo]
-
 [Outro]
 Run, saint, run
 Run 'til the sun forgets your face
@@ -480,7 +465,6 @@ There's a kingdom in the chase`,
       'against a glittering static-noise background, hyperreal product photography, ' +
       'no text, no logos.',
     lyrics: `[Intro]
-(Plucked synth, gated reverb snare hits)
 
 [Verse 1]
 You text me at midnight, the screen lights the room
@@ -546,7 +530,6 @@ Tune you out, tune you out, tune you in again`,
       'on a sunlit kitchen table, warm 35mm film grain, soft yellow afternoon light, ' +
       'no text, no logos.',
     lyrics: `[Intro]
-(Tape hiss, finger-picked clean guitar)
 
 [Verse 1]
 I found a shoebox underneath the stairs
@@ -603,7 +586,6 @@ Postcards from June, postcards from June`,
       'Album cover: an iPhone in airplane mode laid on a candy-pink silk pillow, ' +
       'screen glowing soft blue, macro photography, soft bokeh, no text, no logos.',
     lyrics: `[Intro]
-(Vinyl crackle, pitched-down vocal sample, sparse 808)
 
 [Verse 1]
 You called twice and I let it go to nothing
@@ -667,7 +649,6 @@ Heart on airplane mode, baby, please don't read`,
       'Album cover: a tangerine sun melting into a soft pastel sky over a glittering ' +
       'ocean, kite silhouettes, hand-painted gouache style, no text, no logos.',
     lyrics: `[Intro]
-(Whistle melody, nylon guitar pluck)
 
 [Verse 1]
 Took the long way down to the boardwalk
@@ -696,8 +677,6 @@ Tangerine sky, tangerine sky
 Honey, today is a yes, no question why
 Pocket the blues, dance with the why
 Tangerine sky, tangerine sky
-
-[Whistle Solo]
 
 [Bridge]
 Maybe tomorrow has rain in the cards
@@ -730,7 +709,6 @@ Tangerine sky, tangerine sky`,
       'reflecting streetlights into rainbow points, intimate macro photography, ' +
       'no text, no logos.',
     lyrics: `[Intro]
-(Solo piano, soft pedal)
 
 [Verse 1]
 I wore the colour they said wasn't mine
@@ -796,7 +774,7 @@ Take me`,
       'Album cover: a concrete sidewalk with chalk-drawn constellations, lit by a ' +
       'distant streetlight, crushed soda can in the corner, urban street photography, ' +
       'soft film grain, no text.',
-    lyrics: `[Intro — sampled vinyl crackle, snare roll]
+    lyrics: `[Intro]
 
 [Verse 1]
 2 a.m. on a stoop with a notebook bent
@@ -837,7 +815,6 @@ The bodega's a planet that opens till noon
 The corner store saint with the lottery ticket
 He's a galaxy too — yo, you don't get to pick it
 
-[Outro Hook]
 Concrete constellations, every block a sky
 Every brother on the corner is a reason to write
 Map me, name me, let the late night testify
@@ -862,7 +839,6 @@ Concrete constellations, every block a sky`,
       'glittering skyline, silhouetted figure with their back to camera, lens flare, ' +
       'cinematic luxury photography, no text.',
     lyrics: `[Intro]
-(Cinematic strings, 808 hit)
 
 [Verse 1]
 View from the top floor, city like a heartbeat
@@ -896,7 +872,7 @@ Looking at the city that I was running for
 Every window an answer to a question I had
 Penthouse floor, penthouse floor
 
-[Verse 3 — half-time, soft piano]
+[Verse 3]
 And to the kid still busking on the platform stairs
 Believe in the air that you breathe like prayer
 The view's not the point, the view is the proof
@@ -925,7 +901,6 @@ Penthouse floor, penthouse floor`,
       'pool of ink that forms the shape of a city skyline, warm lamp light, ' +
       'painterly realism, no text.',
     lyrics: `[Intro]
-(Brushed drums, muted trumpet, vinyl crackle)
 
 [Verse 1]
 I keep a pen in my pocket, ink as inheritance
@@ -937,7 +912,7 @@ And the lady at the counter who refused to debate
 With the boy in the hoodie who paid in change
 Said, "Honey, your courage is the only exchange"
 
-[Hook — sung]
+[Hook]
 And the inkwell holds it all
 Every memory I almost let fall
 Pour me out, pour me out
@@ -953,13 +928,13 @@ I write because writing's the one way I know how
 To love what I'm made of and forgive what I'm not
 The inkwell stays open. I'm leaving the door unshut.
 
-[Hook — sung]
+[Hook]
 And the inkwell holds it all
 Every memory I almost let fall
 Pour me out, pour me out
 'Til the page is a hallway through the doubt
 
-[Outro — spoken]
+[Outro]
 Some folks pray with their hands.
 I pray with a margin.
 Some folks build a house.
@@ -983,7 +958,6 @@ I build a sentence to live in.`,
       'Album cover: a steel railroad track running into static television noise, ' +
       'high-contrast black and white, halftone print texture, urban grit, no text.',
     lyrics: `[Intro]
-(Scratch sample, chopped horn stab)
 
 [Verse 1]
 Yo — pen of a butcher, paper bleeds rusted
@@ -995,7 +969,7 @@ Tracks underneath me made of every kid dead
 On the news at eleven that we never grieved
 Now I rap with the names of the names that I keep believed
 
-[Hook — gang vocal + scratch]
+[Hook]
 Static — and steel
 Every line is a ledger of how I feel
 Static — and steel
@@ -1011,7 +985,7 @@ Hood — bigger than a forecast
 Brother — bigger than a podcast
 Bring the whole stack, bring the whole stack
 
-[Hook — gang vocal + scratch]
+[Hook]
 Static — and steel
 Every line is a ledger of how I feel
 Static — and steel
@@ -1036,7 +1010,7 @@ Tell the world I came out and I made it real
     coverPrompt:
       'Album cover: a single feather floating in still water, ripple expanding outward, ' +
       'cool blue tones, minimalist photography, no text, no logos.',
-    lyrics: `[Intro — looped female vocal sample, sparse Rhodes]
+    lyrics: `[Intro]
 
 [Verse 1]
 I been carrying weight that wasn't ever my size
@@ -1064,12 +1038,11 @@ Held space like a chapel, said, "Stay right here"
 And I felt for a moment what light is when bare —
 Featherweight, brother. Featherweight, dare.
 
-[Bridge — falsetto]
+[Bridge]
 Oh, I'm learning to land
 Oh, I'm learning the hand
 Oh, I'm learning to stand without the weight, without the weight
 
-[Final Hook]
 Lay it down, lay it down, featherweight
 Honey, the world's bigger than the version that you hate
 Lay it down, lay it down, featherweight
@@ -1097,9 +1070,7 @@ You don't owe a soul the heavy that they tried to make`,
       'sci-fi paperback aesthetic, no text.',
     isInstrumental: false,
     lyrics: `[Intro]
-(Tape hiss, gated snare hit, arpeggiator builds)
 
-[Pre-Verse — vocoder]
 …chrome…fever…
 …chrome…fever…
 
@@ -1113,7 +1084,7 @@ Tonight is a metal song made of gasoline and trust
 Run the redline, run the redline, ohh
 Run the redline, run the redline
 
-[Chorus — vocoder + lead]
+[Chorus]
 Chrome fever — burning through the dark
 Chrome fever — turning every street to spark
 Chrome fever — racing past the rest
@@ -1129,15 +1100,13 @@ Just the tail of the road and the lap of the light
 Run the redline, run the redline, ohh
 Run the redline, run the redline
 
-[Chorus — vocoder + lead]
+[Chorus]
 Chrome fever — burning through the dark
 Chrome fever — turning every street to spark
 Chrome fever — racing past the rest
 Chrome fever, chrome fever, chrome fever, chrome fever
 
-[Synth Solo]
-
-[Outro — vocoder, fading]
+[Outro]
 …chrome…fever…
 …chrome…fever…`,
   },
@@ -1159,7 +1128,6 @@ Chrome fever, chrome fever, chrome fever, chrome fever
       'in a long coat illuminated by sodium-vapor lamp, cyberpunk neon haze, ' +
       'cinematic 35mm photography, no text.',
     lyrics: `[Intro]
-(Distant city sounds, rain, low pad swell)
 
 [Verse 1]
 The schedule's a lie, the rain's making sense
@@ -1193,9 +1161,7 @@ Carry me past where the avenues align
 Take me where the towers don't shine
 Last bus to Sector 9
 
-[Synth Solo]
-
-[Bridge — spoken]
+[Bridge]
 And if I never come home
 Tell the boy I used to be
 That the rain was kind to me tonight
@@ -1225,7 +1191,6 @@ Last bus to Sector 9`,
       'Album cover: a faded Polaroid of two laughing teenagers in front of a sun-bleached ' +
       'arcade, soft pink and lilac analog photo bleed, retro 1986 nostalgia, no text.',
     lyrics: `[Intro]
-(Tape hiss, electric piano chord, soft pad)
 
 [Verse 1]
 The summer kept a copy of the way you used to laugh
@@ -1259,9 +1224,7 @@ Honey, you faded but you never came apart
 Holding you up to the kitchen window light
 Polaroid heart, polaroid heart, oh
 
-[Sax Solo]
-
-[Outro — vocoder + soft pad]
+[Outro]
 Polaroid heart…
 Polaroid heart…`,
   },
@@ -1282,7 +1245,6 @@ Polaroid heart…`,
       'Album cover: a rotating mirror ball composed of mirror shards forming a heart shape, ' +
       'silver and lavender lighting, 1985 disco poster aesthetic, no text.',
     lyrics: `[Intro]
-(Talkbox melody: "ohh, ohh, ohh", four-on-the-floor kick fade-in)
 
 [Verse 1]
 Mirror, mirror, who's the loudest tonight
@@ -1316,8 +1278,6 @@ Silver static, set me free
 Silver static, sweet and clean
 Silver static, ohh-ohh, ohh-ohh
 
-[Vocoder Breakdown]
-
 [Final Chorus]
 Silver static, dance with me
 Silver static, set me free
@@ -1341,7 +1301,6 @@ Silver static, ohh-ohh, ohh-ohh`,
       'Album cover: a futurist cathedral of glass and neon, columns of pink and cyan light ' +
       'rising into a starry sky, awe-inspiring scale, retro sci-fi paperback art, no text.',
     lyrics: `[Intro]
-(Soft pad, building arpeggio, distant tom roll)
 
 [Verse 1]
 I walked all night through a city of glass
@@ -1374,8 +1333,6 @@ Cathedral of lights, cathedral of lights
 Carry the chorus past the end of the night
 Every lit window's a soul in the choir
 Cathedral of lights, cathedral of lights
-
-[Synth Solo — euphoric]
 
 [Final Chorus]
 Cathedral of lights, cathedral of lights
@@ -1422,7 +1379,6 @@ Cathedral of lights, cathedral of lights, oh-oh`,
       'Album cover: a half-full mug of coffee gone cold beside an open notebook on a ' +
       'rumpled bed, warm morning light, watercolor and pencil illustration, no text.',
     lyrics: `[Intro]
-(Vinyl crackle, soft Rhodes loop)
 
 [Verse 1]
 Wake at noon, kiss the pillow
@@ -1487,7 +1443,6 @@ Mm…leftover song…`,
       'Album cover: a cable-knit sweater folded on a wooden bench beside a snowy window, ' +
       'soft pastel light, hand-painted illustration, no text, no logos.',
     lyrics: `[Intro]
-(Tape hiss, finger-picked guitar)
 
 [Verse 1]
 The radiator's humming an old hymn
@@ -1555,7 +1510,6 @@ La la… hand-me-down…`,
       'Album cover: an empty supper-club booth with a half-finished glass of red wine, ' +
       'a curl of cigarette smoke, golden lamplight, painterly noir realism, no text.',
     lyrics: `[Intro]
-(Piano arpeggio, upright bass walk-up)
 
 [Verse 1]
 The clocks have all forgotten what the hour was meant to mean
@@ -1580,8 +1534,6 @@ Honey, this is velvet curfew
 Where the city tucks its trouble away
 A song you only sing when you're already saying it
 And nobody's gonna say what you say
-
-[Sax Solo]
 
 [Bridge]
 There's a hush that the sea has, when it knows you've come to listen
@@ -1631,7 +1583,6 @@ Nobody's gonna say what you say`,
       'Album cover: an unsent letter folded in half on a piano lid, fountain pen beside it, ' +
       'a single rose, dim blue stage light, noir cinematic photography, no text.',
     lyrics: `[Intro]
-(Solo piano, slow rubato)
 
 [Verse 1]
 You said the door, and I heard the song
@@ -1657,7 +1608,7 @@ Belongs to the one who is brave enough to leave it
 The last word
 Is the one we both believe in but won't grieve it
 
-[Bridge — muted trumpet solo, then voice]
+[Bridge]
 And maybe that's love, the kind nobody writes
 The kind that just bows out of all of the lights
 
@@ -1705,7 +1656,6 @@ Won't grieve it`,
       'Album cover: a tropical balcony at sunset, white linen curtains catching the breeze, ' +
       'apricot and rose-gold sky over palms, mid-century travel-poster art, no text.',
     lyrics: `[Intro]
-(Nylon guitar, bossa pattern)
 
 [Verse 1]
 The afternoon is dressing for the evening above
@@ -1730,8 +1680,6 @@ Apricot dusk, apricot dusk
 Honey, the world is a glass and the world is up
 The horizon's a kiss without anyone watching
 Apricot dusk, apricot dusk
-
-[Sax Solo]
 
 [Outro]
 Apricot dusk… apricot dusk…`,
@@ -1852,7 +1800,6 @@ Apricot dusk… apricot dusk…`,
       'Album cover: a slow shutter of moonlit waves rolling onto a black-sand beach, ' +
       'silver light, minimalist long-exposure photography, no text.',
     lyrics: `[Intro]
-(Sub-bass, off-beat hi-hats)
 
 [Verse 1]
 Hands above water, head below the line
@@ -1860,7 +1807,7 @@ The dance floor a country I'm learning by sign
 The mirror is moving, the moon is on cue
 Tonight I'm a question, the answer is you
 
-[Chorus — sung]
+[Chorus]
 Move like the tide, baby, move like the tide
 Hold me a minute and let the world slide
 Move like the tide, baby, move like the tide
@@ -1872,19 +1819,16 @@ Friday's a gospel, Monday's a loss
 Saturday's perfect, the body knows why
 Tonight we just teach the world how to lie
 
-[Chorus — sung]
+[Chorus]
 Move like the tide, baby, move like the tide
 Hold me a minute and let the world slide
 Move like the tide, baby, move like the tide
 Slow, slow, slow, slow
 
-[Breakdown — vocal chops + filtered pad]
-
-[Final Chorus + ad-libs]
+[Final Chorus]
 Move like the tide, baby, move like the tide
 Hold me a minute and let the world slide
-Move like the tide, baby, move like the tide
-(slow, slow, slow…)`,
+Move like the tide, baby, move like the tide`,
   },
   {
     agentKey: 'sublimate',
@@ -1903,7 +1847,7 @@ Move like the tide, baby, move like the tide
     coverPrompt:
       'Album cover: a sunbeam shining onto a dance floor through stained-glass disco-ball ' +
       'reflections, joyful crowd silhouettes, vibrant gradient palette, no text.',
-    lyrics: `[Intro — filter sweep, bass build]
+    lyrics: `[Intro]
 
 [Verse 1]
 Five o'clock and the office is bleeding into night
@@ -1936,8 +1880,6 @@ Saturday religion, Saturday saint
 Tonight we ain't sinners, tonight we ain't faint
 Bass on the bones, hands on the high
 Saturday religion, baby, where you wanna fly
-
-[Breakdown — gospel ad-libs + filtered drop]
 
 [Final Chorus]
 Saturday religion, Saturday saint
@@ -1980,25 +1922,22 @@ Saturday religion, baby, where you wanna fly`,
     coverPrompt:
       'Album cover: a chrome hydraulic press squeezing a honeycomb into golden liquid, ' +
       'high-key product photography, gold and warm-grey palette, no text.',
-    lyrics: `[Intro — filter rise, talkbox]
+    lyrics: `[Intro]
 
-[Pre-Verse — talkbox]
 Honey…hydraulics…
 Honey…hydraulics…
 
-[Verse — funky vocal chops]
+[Verse]
 Slow like sap, sweet like spark
 Spinning that record from light to dark
 Bassline nodding, the city's awake
 Saturday, baby, the rules don't take
 
-[Chorus — talkbox + stacked vocal]
+[Chorus]
 Honey, honey, hydraulics
 Honey, honey, hydraulics
 Press it up, press it up
 Honey, honey, hydraulics
-
-[Breakdown — filter sweep + clap fill]
 
 [Final Chorus]
 Honey, honey, hydraulics
@@ -2024,31 +1963,29 @@ Honey, honey, hydraulics`,
       'Album cover: a subway train pulling into a station at first light, the platform ' +
       'flooded with golden sunrise, blurred figures running for the doors, cinematic ' +
       'photography, no text.',
-    lyrics: `[Intro — pad swell, vocal chop]
+    lyrics: `[Intro]
 
-[Vocal chop loop]
 We ride, we ride
 We ride, we ride
 
-[Verse — sung lightly]
+[Verse]
 Last train to daybreak
 The platform's a poem half-said
 The horizon a promise the night couldn't break
 And the morning is still in your head
 
-[Chorus — sung + supersaw drop]
+[Chorus]
 We ride, we ride
 Last train to daybreak, holding the sky
 Hands in the air for the friends who survived
 Last train to daybreak, we ride, we ride
 
-[Breakdown — piano + soft vocal]
 We ride…we ride…
 'Til the city wakes and remembers our names
 We ride…we ride…
 'Til the dark forgets what it claimed
 
-[Final Chorus + Drop]
+[Final Chorus]
 We ride, we ride
 Last train to daybreak, holding the sky
 Hands in the air for the friends who survived

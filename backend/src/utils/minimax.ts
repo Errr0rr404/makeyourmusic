@@ -373,6 +373,10 @@ export interface LyricsParams {
   vibeDescriptors?: string; // already-translated vibe reference (no artist names)
   language?: string;
   style?: string;
+  // Optional brief from the orchestration planner: emotional arc, perspective,
+  // imagery seeds, hooks. When present, we trust this as the primary direction
+  // and treat `idea` as raw context.
+  lyricsBrief?: string;
 }
 
 export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
@@ -390,6 +394,7 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
     vibeDescriptors,
     language = 'English',
     style,
+    lyricsBrief,
   } = params;
   const constraints: string[] = [];
   const genreLine = [genre, subGenre].filter(Boolean).join(' / ');
@@ -401,17 +406,30 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
   if (vibeDescriptors) constraints.push(`Sonic vibe: ${vibeDescriptors}`);
   if (style) constraints.push(`Extra notes: ${style}`);
 
+  // The MiniMax music model sings whatever is in the `lyrics` field — including
+  // parenthetical stage directions and tags like [Guitar Solo]. The system
+  // prompt has to forbid those explicitly; downstream code also runs a
+  // sanitizer pass as a defense in depth.
   const system =
-    `You are a talented songwriter. Write original song lyrics in ${language} that are evocative, radio-ready, and emotionally resonant. ` +
-    `Use clear structure tags on their own lines: [Intro], [Verse 1], [Pre-Chorus], [Chorus], [Verse 2], [Bridge], [Outro]. ` +
-    `Match the lyrical voice and cadence to the genre and mood — e.g. punchy short lines for trap, narrative imagery for indie folk, hooky chant choruses for dance pop. ` +
-    `Keep the total length between 200 and 800 words. ` +
-    `Avoid copyrighted lyrics. Output ONLY the lyrics — no commentary.`;
+    `You are a talented songwriter. Write original SUNG lyrics in ${language} that are evocative, radio-ready, and emotionally resonant. ` +
+    `Match the lyrical voice and cadence to the genre and mood — punchy short lines for trap, narrative imagery for indie folk, hooky chant choruses for dance pop, etc. ` +
+    `Keep the total length between 200 and 800 words. Avoid copyrighted lyrics. ` +
+    `\n\nFORMATTING RULES (these are HARD constraints — the lyrics are fed directly into a music model that will SING anything you write): ` +
+    `\n1. Use ONLY these section tags on their own lines: [Intro], [Verse 1], [Verse 2], [Pre-Chorus], [Chorus], [Post-Chorus], [Bridge], [Final Chorus], [Outro]. ` +
+    `\n2. NEVER write [Guitar Solo], [Instrumental], [Breakdown], [Drum Fill], or any other instrumental-section tag — instrumental sections are decided by the producer, not by you. ` +
+    `\n3. NEVER write parenthetical stage directions or production cues like "(Hammond swell, hi-hat pulse, eighth-note bass)", "(Tape hiss, finger-picked guitar)", "(808 hit, strings enter)". The model would sing those words. ` +
+    `\n4. Parentheses are allowed ONLY for short vocal ad-libs that are meant to be sung, e.g. "(woah)", "(yeah)", "(oh-oh-oh)". Never list instruments, drums, effects, or production techniques inside parentheses. ` +
+    `\n5. Output ONLY the lyrics — no commentary, no explanations, no production notes before or after. Every non-tag line must be singable text.`;
+
+  const briefBlock = lyricsBrief?.trim()
+    ? `Direction from the orchestration planner (theme, voice, imagery, hooks):\n${lyricsBrief.trim()}\n`
+    : '';
 
   const user =
     `Write a song about: ${idea}\n` +
+    (briefBlock ? `\n${briefBlock}` : '') +
     (constraints.length > 0 ? `\n${constraints.join('\n')}\n` : '') +
-    `\nReturn only lyrics with section tags on their own lines.`;
+    `\nReturn only lyrics with section tags on their own lines. Remember: NO parenthetical stage directions, NO instrument cues, NO [Guitar Solo]-style tags.`;
 
   const result = await minimaxChat({
     messages: [
@@ -425,6 +443,161 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
   });
 
   return { lyrics: result.text.trim(), raw: result.raw };
+}
+
+// ─── Orchestration planner ────────────────────────────────
+
+export interface OrchestrationInput {
+  idea?: string | null;
+  title?: string | null;
+  genre?: string | null;
+  subGenre?: string | null;
+  mood?: string | null;
+  energy?: string | null;
+  era?: string | null;
+  vocalStyle?: string | null;
+  vibeReference?: string | null;
+  style?: string | null;
+  isInstrumental?: boolean;
+  language?: string;
+}
+
+export interface OrchestrationPlan {
+  workingTitle: string;
+  refinedConcept: string;
+  genre: string;
+  subGenre: string | null;
+  bpm: number | null;
+  key: string | null;
+  timeSignature: string | null;
+  energyArc: string;
+  instrumentation: string[];
+  vocalDirection: string | null;
+  productionNotes: string;
+  structure: string[];
+  vibeDescriptors: string;
+  musicPrompt: string;
+  lyricsBrief: string;
+}
+
+function parseOrchestrationJson(text: string): OrchestrationPlan {
+  // Strip markdown fences if the model wrapped the JSON in ```.
+  const stripped = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/```\s*$/, '')
+    .trim();
+  const start = stripped.indexOf('{');
+  const end = stripped.lastIndexOf('}');
+  if (start < 0 || end < 0 || end <= start) {
+    throw new Error('Orchestration response did not contain JSON');
+  }
+  const parsed = JSON.parse(stripped.slice(start, end + 1));
+  const arrOfStrings = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+  const stringOrNull = (v: unknown): string | null =>
+    typeof v === 'string' && v.trim() ? v : null;
+  const stringOr = (v: unknown, fallback = ''): string =>
+    typeof v === 'string' ? v : fallback;
+  const numOrNull = (v: unknown): number | null =>
+    typeof v === 'number' && Number.isFinite(v) ? v : null;
+
+  return {
+    workingTitle: stringOr(parsed.workingTitle),
+    refinedConcept: stringOr(parsed.refinedConcept),
+    genre: stringOr(parsed.genre),
+    subGenre: stringOrNull(parsed.subGenre),
+    bpm: numOrNull(parsed.bpm),
+    key: stringOrNull(parsed.key),
+    timeSignature: stringOrNull(parsed.timeSignature),
+    energyArc: stringOr(parsed.energyArc),
+    instrumentation: arrOfStrings(parsed.instrumentation),
+    vocalDirection: stringOrNull(parsed.vocalDirection),
+    productionNotes: stringOr(parsed.productionNotes),
+    structure: arrOfStrings(parsed.structure),
+    vibeDescriptors: stringOr(parsed.vibeDescriptors),
+    musicPrompt: stringOr(parsed.musicPrompt),
+    lyricsBrief: stringOr(parsed.lyricsBrief),
+  };
+}
+
+// Pre-music orchestration: turn raw user inputs into a coherent production
+// plan (genre, BPM, key, structure, instrumentation, vocal direction, ready-
+// to-feed music prompt, and a lyrics brief). The result drives both the lyric
+// generator and the music-generation prompt.
+export async function minimaxOrchestrate(
+  input: OrchestrationInput
+): Promise<OrchestrationPlan> {
+  const language = input.language || 'English';
+  const isInstrumental = !!input.isInstrumental;
+
+  const inputs: string[] = [];
+  if (input.idea) inputs.push(`User concept: ${input.idea.slice(0, 1500)}`);
+  if (input.title) inputs.push(`Working title: ${input.title}`);
+  if (input.genre) {
+    inputs.push(
+      `Genre: ${input.genre}${input.subGenre ? ` / ${input.subGenre}` : ''}`
+    );
+  }
+  if (input.mood) inputs.push(`Mood: ${input.mood}`);
+  if (input.energy) inputs.push(`Energy: ${input.energy}`);
+  if (input.era) inputs.push(`Era: ${input.era}`);
+  if (!isInstrumental && input.vocalStyle) {
+    inputs.push(`Vocal style: ${input.vocalStyle}`);
+  }
+  if (input.vibeReference) {
+    inputs.push(`Vibe reference (artists/sounds): ${input.vibeReference}`);
+  }
+  if (input.style) inputs.push(`Extra style notes: ${input.style}`);
+  inputs.push(`Has lyrics: ${isInstrumental ? 'no (instrumental)' : 'yes'}`);
+
+  const system =
+    `You are a music producer and orchestration director. Given a user's raw song request, produce a complete orchestration plan as JSON. ` +
+    `You are reasoning about HOW the song should be produced — instruments, arrangement, structure, vocal direction — BEFORE any lyric or audio generation runs. ` +
+    `\n\nRULES: ` +
+    `\n(1) Translate any artist/band references into specific musical descriptors (instruments, production techniques, vocal qualities). NEVER output artist or band names anywhere in the JSON. ` +
+    `\n(2) Pick a coherent BPM, key, and time signature that fit the genre/mood. ` +
+    `\n(3) The structure should match the genre's conventions — short hook-driven structures for pop, longer dynamic builds for rock/electronic, etc. ` +
+    `\n(4) "musicPrompt" is fed verbatim to a music-generation model. Write it as a dense, comma-separated production brief covering genre, BPM, key, instrumentation, vocal direction, energy arc, and era. Do NOT include lyrics, section headings, or stage directions in musicPrompt. ` +
+    `\n(5) "lyricsBrief" is a paragraph for a lyric writer. Describe the emotional arc, narrative perspective, imagery, and any hook/refrain motifs. Do NOT write the actual lyrics. ` +
+    `\n(6) "instrumentation" is a 3-8 item list of short instrument/sound descriptors (e.g. "fingerpicked acoustic", "warm Rhodes", "brushed snare"). ` +
+    `\n(7) "structure" is a list of canonical section names: "Intro","Verse","Pre-Chorus","Chorus","Post-Chorus","Bridge","Final Chorus","Outro". Do NOT include "Guitar Solo" / "Instrumental" / "Breakdown" — those are arrangement details, not vocal sections. ` +
+    `\n(8) Output ONLY valid JSON. No commentary, no markdown fences.`;
+
+  const schema =
+    `{` +
+    `"workingTitle": string, ` +
+    `"refinedConcept": string (1-2 sentences), ` +
+    `"genre": string, ` +
+    `"subGenre": string | null, ` +
+    `"bpm": number | null, ` +
+    `"key": string | null, ` +
+    `"timeSignature": string | null, ` +
+    `"energyArc": string, ` +
+    `"instrumentation": string[], ` +
+    `"vocalDirection": ${isInstrumental ? 'null (instrumental)' : 'string | null'}, ` +
+    `"productionNotes": string, ` +
+    `"structure": string[], ` +
+    `"vibeDescriptors": string (comma-separated, no artist names), ` +
+    `"musicPrompt": string (dense production brief, no lyrics), ` +
+    `"lyricsBrief": ${isInstrumental ? 'string (empty since instrumental)' : 'string'}` +
+    `}`;
+
+  const user =
+    `Inputs:\n${inputs.join('\n')}\n\n` +
+    `Output language for any lyric brief: ${language}\n\n` +
+    `Return JSON matching this schema:\n${schema}`;
+
+  const result = await minimaxChat({
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    maxTokens: 1500,
+    temperature: 0.7,
+  });
+
+  return parseOrchestrationJson(result.text);
 }
 
 // ─── Vibe reference translator ────────────────────────────

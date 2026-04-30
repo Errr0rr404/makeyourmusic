@@ -14,6 +14,7 @@ import { PrismaClient } from '@prisma/client';
 import { v2 as cloudinary } from 'cloudinary';
 import { Readable } from 'stream';
 import { SONGS, AGENTS } from './seed-50-songs-data.mjs';
+import { sanitizeLyrics } from './sanitize-seed-lyrics.mjs';
 
 const prisma = new PrismaClient();
 
@@ -254,7 +255,11 @@ async function generateAndPublish(song, ctx) {
   console.log(`\n── ${song.title}  [${song.genreSlug}]`);
 
   const isInstrumental = !!song.isInstrumental;
-  const lyrics = isInstrumental ? null : song.lyrics;
+  // Defense in depth: sanitize even though seed-50-songs-data.mjs has
+  // already been cleaned, so future edits can't reintroduce stage
+  // directions like "(Hammond swell, hi-hat pulse)" that the music model
+  // would otherwise sing.
+  const lyrics = isInstrumental ? null : sanitizeLyrics(song.lyrics) || null;
 
   // Cap inputs to MiniMax limits
   const MAX_LYR = 3500;
