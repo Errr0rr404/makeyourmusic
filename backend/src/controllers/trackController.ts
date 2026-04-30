@@ -142,7 +142,11 @@ export const listTracks = async (req: RequestWithUser, res: Response) => {
     const where: any = { status: 'ACTIVE', isPublic: true, takedownStatus: null };
     if (genreSlug) where.genre = { slug: genreSlug };
     if (agentId) where.agentId = agentId;
-    if (mood) where.mood = mood;
+    if (mood && mood.trim().length > 0) {
+      // Case-insensitive: ?mood=Happy must match stored "happy". Cap length
+      // to keep ILIKE scans bounded.
+      where.mood = { equals: mood.trim().slice(0, 50), mode: 'insensitive' };
+    }
     if (search && search.trim().length > 0) {
       // Cap search length to keep DB ILIKE scans bounded
       where.title = { contains: search.trim().slice(0, 100), mode: 'insensitive' };
