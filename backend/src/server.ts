@@ -40,6 +40,13 @@ import creatorRoutes from './routes/creatorRoutes';
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
+// Railway and most production hosts terminate TLS/proxy before Express.
+// Trust exactly one proxy hop so req.ip and express-rate-limit use the real
+// client IP from X-Forwarded-For without accepting an arbitrary proxy chain.
+if (process.env.NODE_ENV === 'production' || process.env.RAILWAY_ENVIRONMENT) {
+  app.set('trust proxy', 1);
+}
+
 // Security middleware
 app.use(securityHeaders);
 app.use(requestId);
