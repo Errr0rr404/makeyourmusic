@@ -49,12 +49,12 @@ export function MiniPlayer() {
           style={{
             width: 44,
             height: 44,
-            borderRadius: isVintage ? 2 : 8,
+            borderRadius: isVintage ? tokens.radiusSm : 8,
             overflow: 'hidden',
-            backgroundColor: isVintage ? '#0a0604' : tokens.card,
+            backgroundColor: isVintage ? tokens.metalShadow : tokens.card,
             marginRight: 12,
             borderWidth: isVintage ? 1 : 0,
-            borderColor: '#1a1009',
+            borderColor: tokens.borderStrong,
           }}
         >
           {currentTrack.coverArt ? (
@@ -118,15 +118,15 @@ export function MiniPlayer() {
                   justifyContent: 'center',
                   marginRight: 4,
                   borderWidth: 1,
-                  borderColor: '#1a1009',
+                  borderColor: tokens.borderStrong,
                 }
               : { padding: 8, marginRight: 4 }
           }
         >
           {isPlaying ? (
-            <Pause size={isVintage ? 18 : 22} color={isVintage ? '#fff' : tokens.text} fill={isVintage ? '#fff' : tokens.text} />
+            <Pause size={isVintage ? 18 : 22} color={isVintage ? tokens.brandText : tokens.text} fill={isVintage ? tokens.brandText : tokens.text} />
           ) : (
-            <Play size={isVintage ? 18 : 22} color={isVintage ? '#fff' : tokens.text} fill={isVintage ? '#fff' : tokens.text} />
+            <Play size={isVintage ? 18 : 22} color={isVintage ? tokens.brandText : tokens.text} fill={isVintage ? tokens.brandText : tokens.text} />
           )}
         </TouchableOpacity>
 

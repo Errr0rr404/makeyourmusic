@@ -56,9 +56,14 @@ export default function LibraryPage() {
     return (
       <div className="text-center py-20 animate-fade-in">
         <Lock className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Your Library</h2>
-        <p className="text-[hsl(var(--muted-foreground))] mb-4">Log in to see your liked songs and playlists</p>
-        <Link href="/login" className="px-6 py-2.5 rounded-full bg-[hsl(var(--primary))] text-white font-medium">Log In</Link>
+        <h2 className="text-xl font-bold text-[color:var(--text)] mb-2">Your Library</h2>
+        <p className="text-[color:var(--text-mute)] mb-4">Log in to see your liked songs and playlists</p>
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-[hsl(var(--primary))] text-white font-medium hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))]"
+        >
+          Log In
+        </Link>
       </div>
     );
   }
@@ -84,17 +89,21 @@ export default function LibraryPage() {
 
   return (
     <div className="animate-fade-in">
-      <h1 className="text-2xl font-bold text-white mb-6">Your Library</h1>
+      <h1 className="text-2xl font-bold text-[color:var(--text)] mb-6">Your Library</h1>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 overflow-x-auto pb-1">
+      <div className="flex gap-2 mb-6 overflow-x-auto pb-1" role="tablist">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
             role="tab"
             aria-selected={tab === t.id}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap ${tab === t.id ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))] ${
+              tab === t.id
+                ? 'bg-[hsl(var(--primary))] text-white'
+                : 'bg-[hsl(var(--secondary))] text-[color:var(--text-mute)] hover:text-[color:var(--text)]'
+            }`}
           >
             {t.icon} {t.label}
           </button>
@@ -156,7 +165,7 @@ export default function LibraryPage() {
                   <div className="aspect-square rounded-lg bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center mb-3">
                     <ListMusic className="w-10 h-10 text-[hsl(var(--muted-foreground))]" />
                   </div>
-                  <h3 className="text-sm font-semibold text-white truncate">{pl.title}</h3>
+                  <h3 className="text-sm font-semibold text-[color:var(--text)] truncate">{pl.title}</h3>
                   <p className="text-xs text-[hsl(var(--muted-foreground))]">{pl._count?.tracks || 0} tracks</p>
                 </Link>
               ))}

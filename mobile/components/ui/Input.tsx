@@ -1,12 +1,14 @@
 import { TextInput, View, Text, TextInputProps } from 'react-native';
 import { useState } from 'react';
+import { useTokens } from '../../lib/theme';
 
 interface InputProps extends TextInputProps {
   label?: string;
   error?: string;
 }
 
-export function Input({ label, error, ...props }: InputProps) {
+export function Input({ label, error, accessibilityLabel, ...props }: InputProps) {
+  const tokens = useTokens();
   const [focused, setFocused] = useState(false);
 
   return (
@@ -16,7 +18,9 @@ export function Input({ label, error, ...props }: InputProps) {
         className={`bg-mym-card border rounded-xl px-4 py-3 text-mym-text text-base ${
           focused ? 'border-mym-accent' : error ? 'border-red-500' : 'border-mym-border'
         }`}
-        placeholderTextColor="#71717a"
+        style={{ minHeight: 48 }}
+        placeholderTextColor={tokens.textMute}
+        accessibilityLabel={accessibilityLabel ?? label}
         onFocus={(e) => {
           setFocused(true);
           props.onFocus?.(e);
@@ -27,7 +31,7 @@ export function Input({ label, error, ...props }: InputProps) {
         }}
         {...props}
       />
-      {error && <Text className="text-red-500 text-xs mt-1">{error}</Text>}
+      {error && <Text className="text-red-500 text-xs mt-1" accessibilityRole="alert">{error}</Text>}
     </View>
   );
 }

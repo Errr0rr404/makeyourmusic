@@ -78,9 +78,14 @@ export default function SettingsPage() {
     return (
       <div className="text-center py-20 animate-fade-in">
         <Lock className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Settings</h2>
-        <p className="text-[hsl(var(--muted-foreground))] mb-4">Log in to access settings</p>
-        <Link href="/login" className="px-6 py-2.5 rounded-full bg-[hsl(var(--primary))] text-white font-medium">Log In</Link>
+        <h2 className="text-xl font-bold text-[color:var(--text)] mb-2">Settings</h2>
+        <p className="text-[color:var(--text-mute)] mb-4">Log in to access settings</p>
+        <Link
+          href="/login"
+          className="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-[hsl(var(--primary))] text-white font-medium hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))]"
+        >
+          Log In
+        </Link>
       </div>
     );
   }
@@ -171,7 +176,7 @@ export default function SettingsPage() {
     <div className="max-w-2xl mx-auto animate-fade-in">
       <div className="flex items-center gap-2 mb-6">
         <Settings className="w-5 h-5 text-[hsl(var(--accent))]" />
-        <h1 className="text-2xl font-bold text-white">Settings</h1>
+        <h1 className="text-2xl font-bold text-[color:var(--text)]">Settings</h1>
       </div>
 
       {/* Email verification banner */}
@@ -202,7 +207,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <Volume2 className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
               <div>
-                <p className="text-sm text-white font-medium">Default Volume</p>
+                <p className="text-sm text-[color:var(--text)] font-medium">Default Volume</p>
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">{Math.round(volume * 100)}%</p>
               </div>
             </div>
@@ -219,7 +224,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <Sliders className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
               <div>
-                <p className="text-sm text-white font-medium">Crossfade</p>
+                <p className="text-sm text-[color:var(--text)] font-medium">Crossfade</p>
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">{crossfade === 0 ? 'Off' : `${crossfade}s`}</p>
               </div>
             </div>
@@ -236,7 +241,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <Sliders className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
               <div>
-                <p className="text-sm text-white font-medium">Equalizer</p>
+                <p className="text-sm text-[color:var(--text)] font-medium">Equalizer</p>
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">{eqEnabled ? 'Enabled' : 'Disabled'}</p>
               </div>
             </div>
@@ -256,7 +261,7 @@ export default function SettingsPage() {
             <div className="flex items-center gap-3">
               <Sparkles className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
               <div>
-                <p className="text-sm text-white font-medium">Autoplay (Radio)</p>
+                <p className="text-sm text-[color:var(--text)] font-medium">Autoplay (Radio)</p>
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">
                   {autoplay ? 'Auto-queue similar tracks when queue ends' : 'Stop when queue ends'}
                 </p>
@@ -377,23 +382,23 @@ export default function SettingsPage() {
         <h2 className="text-sm font-semibold uppercase text-[hsl(var(--muted-foreground))] mb-3 px-1">Account</h2>
         <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] divide-y divide-[hsl(var(--border))]">
           <Link href="/profile" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white">Edit Profile</span>
+            <span className="text-sm text-[color:var(--text)]">Edit Profile</span>
             <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
           </Link>
           <Link href="/library" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white">Your Library</span>
+            <span className="text-sm text-[color:var(--text)]">Your Library</span>
             <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
           </Link>
           <Link href="/notifications" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white">Notifications</span>
+            <span className="text-sm text-[color:var(--text)]">Notifications</span>
             <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
           </Link>
           <Link href="/settings/referrals" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white">Referrals</span>
+            <span className="text-sm text-[color:var(--text)]">Referrals</span>
             <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
           </Link>
           <Link href="/settings/developers" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white">Developer keys</span>
+            <span className="text-sm text-[color:var(--text)]">Developer keys</span>
             <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
           </Link>
         </div>
@@ -409,7 +414,7 @@ export default function SettingsPage() {
           >
             <div className="flex items-center gap-3">
               <KeyRound className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
-              <span className="text-sm text-white">Change password</span>
+              <span className="text-sm text-[color:var(--text)]">Change password</span>
             </div>
             <ChevronRight className={`w-4 h-4 text-[hsl(var(--muted-foreground))] transition-transform ${showChangePassword ? 'rotate-90' : ''}`} />
           </button>
@@ -429,7 +434,7 @@ export default function SettingsPage() {
                   value={passwordForm.currentPassword}
                   onChange={(e) => setPasswordForm((p) => ({ ...p, currentPassword: e.target.value }))}
                   required
-                  className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
+                  className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-[color:var(--text)] text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]/40"
                 />
               </div>
               <div>
@@ -438,7 +443,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="text-xs text-[hsl(var(--muted-foreground))] hover:text-white flex items-center gap-1"
+                    className="text-xs text-[hsl(var(--muted-foreground))] hover:text-[color:var(--text)] flex items-center gap-1 transition-colors"
                   >
                     {showPassword ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
                     {showPassword ? 'Hide' : 'Show'}
@@ -449,7 +454,7 @@ export default function SettingsPage() {
                   value={passwordForm.newPassword}
                   onChange={(e) => setPasswordForm((p) => ({ ...p, newPassword: e.target.value }))}
                   required
-                  className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
+                  className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-[color:var(--text)] text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]/40"
                   placeholder="8+ chars, 1 upper, 1 lower, 1 number"
                 />
               </div>
@@ -460,7 +465,7 @@ export default function SettingsPage() {
                   value={passwordForm.confirm}
                   onChange={(e) => setPasswordForm((p) => ({ ...p, confirm: e.target.value }))}
                   required
-                  className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
+                  className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-[color:var(--text)] text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))]/40"
                 />
               </div>
               <div className="flex gap-3 justify-end pt-1">
@@ -471,7 +476,7 @@ export default function SettingsPage() {
                     setPasswordForm({ currentPassword: '', newPassword: '', confirm: '' });
                     setPwdError('');
                   }}
-                  className="px-4 py-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-white transition-colors"
+                  className="px-4 py-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-[color:var(--text)] transition-colors"
                 >
                   Cancel
                 </button>
@@ -508,7 +513,7 @@ export default function SettingsPage() {
                   className="flex items-center justify-between px-5 py-4"
                 >
                   <div>
-                    <p className="text-sm text-white font-medium">{row.label}</p>
+                    <p className="text-sm text-[color:var(--text)] font-medium">{row.label}</p>
                     <p className="text-xs text-[hsl(var(--muted-foreground))]">{row.sub}</p>
                   </div>
                   <button
@@ -532,21 +537,21 @@ export default function SettingsPage() {
         <h2 className="text-sm font-semibold uppercase text-[hsl(var(--muted-foreground))] mb-3 px-1">About</h2>
         <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] divide-y divide-[hsl(var(--border))]">
           <div className="px-5 py-4">
-            <p className="text-sm text-white font-medium">MakeYourMusic</p>
+            <p className="text-sm text-[color:var(--text)] font-medium">MakeYourMusic</p>
             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
               AI-Generated Music Platform &mdash; Version 1.0.0
             </p>
           </div>
           <Link href="/terms" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white">Terms of Service</span>
+            <span className="text-sm text-[color:var(--text)]">Terms of Service</span>
             <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
           </Link>
           <Link href="/privacy" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white">Privacy Policy</span>
+            <span className="text-sm text-[color:var(--text)]">Privacy Policy</span>
             <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
           </Link>
           <Link href="/cookies" className="flex items-center justify-between px-5 py-4 hover:bg-white/5 transition-colors">
-            <span className="text-sm text-white">Cookie Policy</span>
+            <span className="text-sm text-[color:var(--text)]">Cookie Policy</span>
             <ChevronRight className="w-4 h-4 text-[hsl(var(--muted-foreground))]" />
           </Link>
         </div>

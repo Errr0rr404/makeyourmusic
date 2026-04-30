@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Sparkles, Headphones, Wand2, ArrowRight } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useTokens, useIsVintage } from '../lib/theme';
 
 const { width } = Dimensions.get('window');
 export const ONBOARDING_KEY = 'makeyourmusic-onboarded-v1';
@@ -33,8 +34,17 @@ const slides = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList>(null);
+
+  const themedSlides = isVintage
+    ? slides.map((s, i) => ({
+        ...s,
+        color: [tokens.brand, tokens.accent, tokens.ledAmber][i] || s.color,
+      }))
+    : slides;
 
   const viewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
     if (viewableItems.length > 0 && typeof viewableItems[0]?.index === 'number') {
@@ -70,7 +80,7 @@ export default function OnboardingScreen() {
 
       <FlatList
         ref={listRef}
-        data={slides}
+        data={themedSlides}
         keyExtractor={(s) => s.title}
         horizontal
         pagingEnabled
@@ -82,13 +92,37 @@ export default function OnboardingScreen() {
           return (
             <View style={{ width }} className="items-center justify-center px-10">
               <View
-                className="w-32 h-32 rounded-3xl items-center justify-center mb-8"
-                style={{ backgroundColor: `${item.color}20`, borderWidth: 1, borderColor: `${item.color}40` }}
+                style={{
+                  width: 128,
+                  height: 128,
+                  borderRadius: isVintage ? tokens.radiusLg : 24,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: 32,
+                  backgroundColor: `${item.color}20`,
+                  borderWidth: 1,
+                  borderColor: `${item.color}40`,
+                }}
               >
                 <Icon size={56} color={item.color} />
               </View>
-              <Text className="text-mym-text text-3xl font-bold text-center mb-3">{item.title}</Text>
-              <Text className="text-mym-muted text-base text-center leading-6">{item.description}</Text>
+              <Text
+                style={{
+                  color: tokens.text,
+                  fontSize: 28,
+                  fontWeight: '700',
+                  textAlign: 'center',
+                  marginBottom: 12,
+                  fontFamily: isVintage ? tokens.fontDisplay : undefined,
+                  textTransform: isVintage ? 'uppercase' : undefined,
+                  letterSpacing: isVintage ? 1 : undefined,
+                }}
+              >
+                {item.title}
+              </Text>
+              <Text style={{ color: tokens.textMute, fontSize: 16, textAlign: 'center', lineHeight: 24 }}>
+                {item.description}
+              </Text>
             </View>
           );
         }}
@@ -107,13 +141,33 @@ export default function OnboardingScreen() {
 
         <TouchableOpacity
           onPress={handleNext}
-          className="bg-mym-accent rounded-full py-4 flex-row items-center justify-center gap-2"
+          accessibilityRole="button"
+          accessibilityLabel={index === slides.length - 1 ? 'Get started' : 'Next slide'}
+          style={{
+            backgroundColor: tokens.accent,
+            borderRadius: 999,
+            paddingVertical: 16,
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 8,
+            minHeight: 52,
+          }}
           activeOpacity={0.85}
         >
-          <Text className="text-white font-bold text-base">
+          <Text
+            style={{
+              color: tokens.brandText,
+              fontWeight: '700',
+              fontSize: 16,
+              fontFamily: isVintage ? tokens.fontLabel : undefined,
+              letterSpacing: isVintage ? 0.5 : undefined,
+              textTransform: isVintage ? 'uppercase' : undefined,
+            }}
+          >
             {index === slides.length - 1 ? 'Get started' : 'Next'}
           </Text>
-          <ArrowRight size={18} color="#fff" />
+          <ArrowRight size={18} color={tokens.brandText} />
         </TouchableOpacity>
 
         {index < slides.length - 1 && (

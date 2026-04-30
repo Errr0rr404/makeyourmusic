@@ -7,10 +7,12 @@ import { TrackRow } from '../../components/track/TrackRow';
 import { ArrowLeft } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { asSlug } from '../../lib/validateSlug';
+import { useTokens } from '../../lib/theme';
 
 export default function GenreScreen() {
   const { slug } = useLocalSearchParams<{ slug: string }>();
   const router = useRouter();
+  const tokens = useTokens();
 
   const [tracks, setTracks] = useState<TrackItem[]>([]);
   const [genreName, setGenreName] = useState('');
@@ -49,12 +51,12 @@ export default function GenreScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          headerStyle: { backgroundColor: '#0a0a0a' },
-          headerTintColor: '#fafafa',
+          headerStyle: { backgroundColor: tokens.bg },
+          headerTintColor: tokens.text,
           headerTitle: genreName,
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} className="p-2">
-              <ArrowLeft size={24} color="#fafafa" />
+            <TouchableOpacity onPress={() => router.back()} className="p-2" accessibilityLabel="Go back" accessibilityRole="button">
+              <ArrowLeft size={24} color={tokens.text} />
             </TouchableOpacity>
           ),
         }}
@@ -62,7 +64,7 @@ export default function GenreScreen() {
       <SafeAreaView className="flex-1 bg-mym-bg" edges={['top']}>
         {loading ? (
           <View className="flex-1 items-center justify-center">
-            <ActivityIndicator size="large" color="#8b5cf6" />
+            <ActivityIndicator size="large" color={tokens.accent} />
           </View>
         ) : (
           <FlatList

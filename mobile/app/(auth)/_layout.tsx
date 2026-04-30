@@ -1,11 +1,13 @@
 import { Stack } from 'expo-router';
+import { useTokens } from '../../lib/theme';
 
 export default function AuthLayout() {
+  const tokens = useTokens();
   return (
     <Stack
       screenOptions={{
         headerShown: false,
-        contentStyle: { backgroundColor: '#0a0a0a' },
+        contentStyle: { backgroundColor: tokens.bg },
       }}
     >
       <Stack.Screen name="login" />

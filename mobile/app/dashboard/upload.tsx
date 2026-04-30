@@ -5,6 +5,7 @@ import { getApi } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { useTokens } from '../../lib/theme';
 import { ArrowLeft, Upload } from 'lucide-react-native';
 import * as DocumentPicker from 'expo-document-picker';
 
@@ -20,6 +21,7 @@ interface GenreOption {
 
 export default function UploadScreen() {
   const router = useRouter();
+  const tokens = useTokens();
   const [agents, setAgents] = useState<AgentOption[]>([]);
   const [selectedAgent, setSelectedAgent] = useState<string>('');
   const [genres, setGenres] = useState<GenreOption[]>([]);
@@ -113,12 +115,12 @@ export default function UploadScreen() {
       <Stack.Screen
         options={{
           headerShown: true,
-          headerStyle: { backgroundColor: '#0a0a0a' },
-          headerTintColor: '#fafafa',
+          headerStyle: { backgroundColor: tokens.bg },
+          headerTintColor: tokens.text,
           headerTitle: 'Upload Track',
           headerLeft: () => (
-            <TouchableOpacity onPress={() => router.back()} className="p-2">
-              <ArrowLeft size={24} color="#fafafa" />
+            <TouchableOpacity onPress={() => router.back()} className="p-2" accessibilityLabel="Go back" accessibilityRole="button">
+              <ArrowLeft size={24} color={tokens.text} />
             </TouchableOpacity>
           ),
         }}

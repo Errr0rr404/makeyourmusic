@@ -263,8 +263,8 @@ export default function FullScreenPlayer() {
                   borderRadius: 24,
                   overflow: 'hidden',
                   backgroundColor: tokens.card,
-                  shadowColor: '#000',
-                  shadowOpacity: 0.4,
+                  shadowColor: tokens.metalShadow,
+                  shadowOpacity: tokens.isDark ? 0.4 : 0.18,
                   shadowRadius: 20,
                   elevation: 12,
                 }}
@@ -329,8 +329,8 @@ export default function FullScreenPlayer() {
               >
                 <Heart
                   size={22}
-                  color={liked ? '#ef4444' : onMuted}
-                  fill={liked ? '#ef4444' : 'none'}
+                  color={liked ? (isVintage ? tokens.brand : '#ef4444') : onMuted}
+                  fill={liked ? (isVintage ? tokens.brand : '#ef4444') : 'none'}
                 />
               </TouchableOpacity>
             </View>
@@ -399,7 +399,7 @@ export default function FullScreenPlayer() {
                     <SkipBack size={20} color={onText} fill={onText} />
                   </TransportButton>
                   <TransportButton size="lg" variant="red" onPress={handleTogglePlay} accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
-                    {isPlaying ? <Pause size={28} color="#fff" fill="#fff" /> : <Play size={28} color="#fff" fill="#fff" />}
+                    {isPlaying ? <Pause size={28} color={tokens.brandText} fill={tokens.brandText} /> : <Play size={28} color={tokens.brandText} fill={tokens.brandText} />}
                   </TransportButton>
                   <TransportButton size="sm" onPress={handleNext} accessibilityLabel="Fast forward">
                     <SkipForward size={20} color={onText} fill={onText} />
@@ -407,11 +407,13 @@ export default function FullScreenPlayer() {
                 </>
               ) : (
                 <>
-                  <TouchableOpacity onPress={handlePrev} style={{ padding: 12 }}>
+                  <TouchableOpacity onPress={handlePrev} style={{ padding: 12 }} accessibilityLabel="Previous track" accessibilityRole="button">
                     <SkipBack size={28} color={onText} fill={onText} />
                   </TouchableOpacity>
                   <TouchableOpacity
                     onPress={handleTogglePlay}
+                    accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
+                    accessibilityRole="button"
                     style={{
                       backgroundColor: tokens.accent,
                       borderRadius: 32,
@@ -419,11 +421,16 @@ export default function FullScreenPlayer() {
                       height: 64,
                       alignItems: 'center',
                       justifyContent: 'center',
+                      shadowColor: tokens.accent,
+                      shadowOpacity: tokens.isDark ? 0.4 : 0.2,
+                      shadowRadius: 12,
+                      shadowOffset: { width: 0, height: 4 },
+                      elevation: 6,
                     }}
                   >
-                    {isPlaying ? <Pause size={28} color="#fff" fill="#fff" /> : <Play size={28} color="#fff" fill="#fff" />}
+                    {isPlaying ? <Pause size={28} color={tokens.brandText} fill={tokens.brandText} /> : <Play size={28} color={tokens.brandText} fill={tokens.brandText} />}
                   </TouchableOpacity>
-                  <TouchableOpacity onPress={handleNext} style={{ padding: 12 }}>
+                  <TouchableOpacity onPress={handleNext} style={{ padding: 12 }} accessibilityLabel="Next track" accessibilityRole="button">
                     <SkipForward size={28} color={onText} fill={onText} />
                   </TouchableOpacity>
                 </>

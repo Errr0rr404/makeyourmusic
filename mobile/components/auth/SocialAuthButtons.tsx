@@ -8,6 +8,7 @@ import {
   signInWithAppleNative,
   isAppleSignInAvailable,
 } from '../../lib/socialAuth';
+import { useTokens, useIsVintage } from '../../lib/theme';
 
 type Pending = 'google' | 'apple' | null;
 
@@ -18,6 +19,8 @@ export function SocialAuthButtons({
   onError: (msg: string) => void;
   onSuccess: () => void;
 }) {
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const firebaseSignIn = useAuthStore((s) => s.firebaseSignIn);
   const [pending, setPending] = useState<Pending>(null);
   const [appleAvailable, setAppleAvailable] = useState(false);
@@ -89,25 +92,52 @@ export function SocialAuthButtons({
     }
   };
 
+  const appleStyle = isVintage
+    ? AppleAuthentication.AppleAuthenticationButtonStyle.BLACK
+    : tokens.isDark
+      ? AppleAuthentication.AppleAuthenticationButtonStyle.WHITE
+      : AppleAuthentication.AppleAuthenticationButtonStyle.BLACK;
+
   return (
     <View className="space-y-3 mb-4">
       <TouchableOpacity
         onPress={onGoogle}
         disabled={!request || pending !== null}
-        className="h-12 rounded-xl bg-white flex-row items-center justify-center"
+        accessibilityRole="button"
+        accessibilityLabel="Continue with Google"
+        style={{
+          height: 48,
+          borderRadius: isVintage ? tokens.radiusMd : 12,
+          backgroundColor: tokens.surface,
+          borderWidth: 1,
+          borderColor: tokens.border,
+          flexDirection: 'row',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
         {pending === 'google' ? (
-          <ActivityIndicator color="#000" />
+          <ActivityIndicator color={tokens.text} />
         ) : (
-          <Text className="text-black font-semibold text-base">Continue with Google</Text>
+          <Text
+            style={{
+              color: tokens.text,
+              fontWeight: '600',
+              fontSize: 16,
+              fontFamily: isVintage ? tokens.fontLabel : undefined,
+              letterSpacing: isVintage ? 0.5 : undefined,
+            }}
+          >
+            Continue with Google
+          </Text>
         )}
       </TouchableOpacity>
 
       {appleAvailable && Platform.OS === 'ios' && (
         <AppleAuthentication.AppleAuthenticationButton
           buttonType={AppleAuthentication.AppleAuthenticationButtonType.SIGN_IN}
-          buttonStyle={AppleAuthentication.AppleAuthenticationButtonStyle.WHITE}
-          cornerRadius={12}
+          buttonStyle={appleStyle}
+          cornerRadius={isVintage ? tokens.radiusMd : 12}
           style={{ height: 48 }}
           onPress={onApple}
         />
