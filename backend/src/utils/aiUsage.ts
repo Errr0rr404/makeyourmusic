@@ -8,6 +8,37 @@ export interface UsageSummary {
   remaining: number;
   resetsAt: string;
   tier: Tier;
+  /** True when the user is on the internal-tester allowlist and the limit is a sentinel high value. */
+  unlimited?: boolean;
+}
+
+// Internal test accounts that should never hit the daily AI generation cap.
+// `AI_GEN_UNLIMITED_USER_IDS` is a comma-separated list of either user IDs or
+// email addresses. We support both because IDs are stable across renames but
+// emails are easier to set by a human ops operator. Empty / unset = no
+// allowlist (the previous behaviour).
+const UNLIMITED_LIMIT_SENTINEL = 99_999;
+
+function getUnlimitedAllowlist(): string[] {
+  const raw = process.env.AI_GEN_UNLIMITED_USER_IDS;
+  if (!raw) return [];
+  return raw
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length > 0);
+}
+
+async function isUnlimitedUser(userId: string): Promise<boolean> {
+  const allowlist = getUnlimitedAllowlist();
+  if (allowlist.length === 0) return false;
+  if (allowlist.includes(userId.toLowerCase())) return true;
+  // Only fetch the user record if at least one allowlist entry looks like an
+  // email — otherwise it's wasted DB load on every assertCanGenerate() call.
+  const hasEmailEntries = allowlist.some((e) => e.includes('@'));
+  if (!hasEmailEntries) return false;
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { email: true } });
+  if (!u?.email) return false;
+  return allowlist.includes(u.email.toLowerCase());
 }
 
 function startOfUtcDay(now: Date = new Date()): Date {
@@ -44,7 +75,11 @@ async function getUserTier(userId: string): Promise<Tier> {
 export async function getDailyUsage(userId: string): Promise<UsageSummary> {
   const since = startOfUtcDay();
   const tier = await getUserTier(userId);
-  const limit = limitForTier(tier);
+  const unlimited = await isUnlimitedUser(userId);
+  // Internal-tester allowlist short-circuits the per-tier cap. We keep the
+  // tier label honest (so admin views and downstream feature gates that key
+  // on tier behave as expected) and only inflate the limit + flag the row.
+  const limit = unlimited ? UNLIMITED_LIMIT_SENTINEL : limitForTier(tier);
 
   const [musicCount, videoCount] = await Promise.all([
     prisma.musicGeneration.count({
@@ -62,6 +97,7 @@ export async function getDailyUsage(userId: string): Promise<UsageSummary> {
     remaining: Math.max(0, limit - used),
     resetsAt: nextUtcDay().toISOString(),
     tier,
+    unlimited: unlimited || undefined,
   };
 }
 

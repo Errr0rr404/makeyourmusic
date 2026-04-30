@@ -471,8 +471,14 @@ async function orchestrateAndPrepareLyrics(gen: {
     }
   }
 
-  // Prefer the orchestration's dense music prompt when present.
-  const nextPrompt = plan?.musicPrompt?.trim() || gen.prompt;
+  // Merge the orchestration plan into the user-built structured prompt rather
+  // than letting `plan.musicPrompt` replace it outright. The structured prompt
+  // already carries user-explicit BPM / key / era / vocal style / vibe — we
+  // must NOT silently drop those when the planner authors a dense paragraph
+  // that omits them. The plan also exposes instrumentation, arrangementArc,
+  // structure[], productionNotes, energyArc, and vocalDirection that previously
+  // never reached the music model unless the planner happened to inline them.
+  const nextPrompt = mergePlanIntoPrompt(gen.prompt, plan);
 
   // Persist the refined prompt + auto-generated lyrics so the generation row
   // reflects what was actually sent to the music model.
@@ -487,6 +493,72 @@ async function orchestrateAndPrepareLyrics(gen: {
   }
 
   return { prompt: nextPrompt, lyrics: nextLyrics };
+}
+
+// Merge the orchestration plan into a user-built structured prompt. The plan
+// gives us rich production fields (instrumentation, arrangement arc, structure,
+// vocal direction, BPM/key defaults) that the plain `musicPrompt` paragraph
+// often elides. We keep the user's structured lines first (so explicit BPM /
+// key / era / vibe survive), then append the plan-derived production specifics
+// the user did NOT supply, then the planner's dense brief paragraph at the end
+// for completeness. The full result is capped at MAX_PROMPT_LEN so it fits the
+// downstream provider request body.
+export function mergePlanIntoPrompt(
+  userPrompt: string | null,
+  plan: OrchestrationPlan | null
+): string | null {
+  if (!plan) return userPrompt;
+
+  const userBlock = (userPrompt || '').trim();
+  // The user's structured prompt looks like "Genre: …\nMood: …\nTempo: 128 BPM"
+  // — line-prefix detection is good enough to know what the user already
+  // pinned and what we should backfill from the plan.
+  const userHas = (label: RegExp) => label.test(userBlock);
+  const additions: string[] = [];
+
+  // Backfill BPM / key / time signature only when the user didn't pin them.
+  if (!userHas(/^Tempo:\s/im) && typeof plan.bpm === 'number' && plan.bpm > 0) {
+    additions.push(`Tempo: ${Math.round(plan.bpm)} BPM`);
+  }
+  if (!userHas(/^Key:\s/im) && plan.key?.trim()) {
+    additions.push(`Key: ${plan.key.trim()}`);
+  }
+  if (!userHas(/^Time signature:\s/im) && plan.timeSignature?.trim()) {
+    additions.push(`Time signature: ${plan.timeSignature.trim()}`);
+  }
+
+  // Always layer plan-derived production specifics on top — these are net-new
+  // direction the music model otherwise wouldn't see.
+  if (plan.instrumentation?.length) {
+    // Cap at 12 to avoid overweighting; the plan rarely supplies more.
+    const insts = plan.instrumentation.slice(0, 12).join(', ');
+    if (insts) additions.push(`Instrumentation: ${insts}`);
+  }
+  if (plan.arrangementArc?.trim()) {
+    additions.push(`Arrangement arc: ${plan.arrangementArc.trim()}`);
+  }
+  if (plan.energyArc?.trim() && !userHas(/^Energy:\s/im)) {
+    additions.push(`Energy arc: ${plan.energyArc.trim()}`);
+  }
+  if (plan.structure?.length) {
+    additions.push(`Structure: ${plan.structure.join(' → ')}`);
+  }
+  if (plan.vocalDirection?.trim() && !userHas(/^Vocals:\s/im)) {
+    additions.push(`Vocals: ${plan.vocalDirection.trim()}`);
+  }
+  if (plan.productionNotes?.trim()) {
+    additions.push(`Production notes: ${plan.productionNotes.trim()}`);
+  }
+  // Append the planner's dense paragraph at the end so the music model gets a
+  // free-form summary it can lean on alongside the structured cues. Skip if
+  // empty or near-duplicate of what we already emitted (rare).
+  if (plan.musicPrompt?.trim()) {
+    additions.push(`Production brief: ${plan.musicPrompt.trim()}`);
+  }
+
+  const merged = [userBlock, additions.join('\n')].filter(Boolean).join('\n').trim();
+  if (!merged) return userPrompt;
+  return merged.length > MAX_PROMPT_LEN ? merged.slice(0, MAX_PROMPT_LEN) : merged;
 }
 
 async function processMusicGeneration(generationId: string): Promise<void> {
