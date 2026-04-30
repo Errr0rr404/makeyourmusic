@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import api from '@/lib/api';
+import { validatePaymentRedirect } from '@/lib/utils';
 import { toast } from '@/lib/store/toastStore';
 import { Music, Mic, Drum, Volume2, Loader2, Sparkles, DollarSign, Download, AlertCircle } from 'lucide-react';
 
@@ -87,8 +88,9 @@ export function TrackStems({ trackId, isOwner }: Props) {
     setRequesting(true);
     try {
       const r = await api.post(`/licenses/tracks/${trackId}/stems/checkout`);
-      if (r.data.checkoutUrl) {
-        window.location.href = r.data.checkoutUrl;
+      const safe = validatePaymentRedirect(r.data?.checkoutUrl);
+      if (safe) {
+        window.location.href = safe;
         return;
       }
       toast.error('Failed to start checkout');
@@ -135,7 +137,9 @@ export function TrackStems({ trackId, isOwner }: Props) {
         trackId,
         kind: 'stems',
       });
-      if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+      const safe = validatePaymentRedirect(data?.checkoutUrl);
+      if (safe) window.location.href = safe;
+      else toast.error('Could not start checkout');
     } catch (err: any) {
       toast.error(err?.response?.data?.error || 'Failed to start checkout');
     } finally {

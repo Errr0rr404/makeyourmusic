@@ -26,7 +26,12 @@ export const enableLicensing = async (req: RequestWithUser, res: Response) => {
       where: { id: trackId },
       include: { agent: { select: { ownerId: true } } },
     });
-    if (!track || track.agent?.ownerId !== req.user.userId) {
+    // Reject explicitly when track or its agent is missing — the previous
+    // optional-chain made `track.agent?.ownerId !== userId` true for an
+    // orphaned (agent === null) track even though the user clearly doesn't
+    // own it, which is fine; but it also lets the 403 path leak the fact
+    // that the track existed. Be explicit either way.
+    if (!track || !track.agent || track.agent.ownerId !== req.user.userId) {
       res.status(403).json({ error: 'Only the track owner can enable licensing' });
       return;
     }

@@ -18,6 +18,7 @@ import { requestDistribution, getDistribution } from '../controllers/distributio
 import { karaokeLyrics } from '../controllers/karaokeController';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { createTrackRules, paginationRules, validateRequest } from '../middleware/validation';
+import { socialPumpLimiter } from '../middleware/rateLimiter';
 
 const router = Router();
 
@@ -29,7 +30,9 @@ router.get('/recommendations', authenticate as any, getRecommendations as any);
 router.get('/:idOrSlug/similar', optionalAuth as any, getSimilarTracks as any);
 router.get('/:idOrSlug', optionalAuth as any, getTrack as any);
 router.post('/', authenticate as any, createTrackRules, validateRequest, createTrack as any);
-router.post('/:trackId/play', optionalAuth as any, recordPlay as any);
+// Play counter is hot — protect with the social pump limiter so the in-process
+// dedup map can't be evaded by distributed/multi-tab pumping.
+router.post('/:trackId/play', optionalAuth as any, socialPumpLimiter, recordPlay as any);
 router.patch('/:id/visibility', authenticate as any, updateTrackVisibility as any);
 router.post('/:id/report', authenticate as any, reportTrack as any);
 router.delete('/:id', authenticate as any, deleteTrack as any);

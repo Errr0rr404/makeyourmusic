@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Heart, Loader2, X } from 'lucide-react';
 import api from '@/lib/api';
+import { validatePaymentRedirect } from '@/lib/utils';
 import { useAuthStore } from '@/lib/store/authStore';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -60,8 +61,9 @@ export function TipButton({ creatorUserId, creatorName, trackId, variant = 'defa
         message: message.trim() || undefined,
         trackId,
       });
-      if (res.data?.url) {
-        window.location.href = res.data.url;
+      const safe = validatePaymentRedirect(res.data?.url);
+      if (safe) {
+        window.location.href = safe;
       } else {
         toast.error('Could not start checkout');
       }

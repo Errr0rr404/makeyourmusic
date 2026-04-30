@@ -53,17 +53,31 @@ export function createApi(baseURL: string): AxiosInstance {
     failedQueue = [];
   };
 
+  // Methods we'll retry on 5xx / network errors. Non-idempotent verbs (POST,
+  // PATCH, DELETE) are excluded — retrying a POST that the server already
+  // committed but failed to ACK can double-tip, double-comment, double-charge.
+  // A consumer that knows their POST is safe-to-retry can opt in by setting
+  // `config.metadata.idempotent = true` (or by using PUT with an idempotency
+  // key handled server-side).
+  const IDEMPOTENT_METHODS = new Set(['get', 'head', 'options', 'put']);
+
   api.interceptors.response.use(
     (res) => res,
     async (error: AxiosError) => {
       const original = error.config as InternalAxiosRequestConfig & {
         _retry?: boolean;
         _retryCount?: number;
+        metadata?: { idempotent?: boolean };
       };
 
-      // Retry 5xx / network errors
+      const method = (original?.method || 'get').toLowerCase();
+      const isIdempotent =
+        IDEMPOTENT_METHODS.has(method) || original?.metadata?.idempotent === true;
+
+      // Retry 5xx / network errors — only for idempotent methods.
       if (
         original &&
+        isIdempotent &&
         (!error.response || error.response.status >= 500) &&
         (!original._retryCount || original._retryCount < MAX_RETRIES)
       ) {

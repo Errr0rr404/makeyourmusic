@@ -142,11 +142,13 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
 
     const sig = req.headers['stripe-signature'] as string;
     const endpointSecret = process.env.STRIPE_WEBHOOK_SECRET;
-    // Treat Railway as production even when NODE_ENV isn't explicitly set —
-    // otherwise an unsigned POST to /webhook could mint platform subscriptions
-    // by impersonating Stripe.
-    const isProduction =
-      process.env.NODE_ENV === 'production' || !!process.env.RAILWAY_ENVIRONMENT;
+    // Fail-closed: signature verification is non-negotiable in any environment
+    // that is not explicitly local development. NODE_ENV is the source of
+    // truth — anything other than the literal string 'development' must enforce
+    // a signed body. Previously, a production deploy that forgot to set
+    // NODE_ENV (and isn't on Railway) would silently fall through and accept
+    // unsigned webhooks, allowing an attacker to mint platform subscriptions.
+    const isLocalDev = process.env.NODE_ENV === 'development';
 
     let event;
     if (endpointSecret && sig) {
@@ -158,7 +160,7 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
         });
         res.status(400).json({ error: 'Webhook signature verification failed' }); return;
       }
-    } else if (isProduction || process.env.NODE_ENV === 'test') {
+    } else if (!isLocalDev) {
       logger.error('Stripe webhook received without signature', {
         hasSecret: Boolean(endpointSecret),
         hasSig: Boolean(sig),
@@ -166,6 +168,7 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
       });
       res.status(400).json({ error: 'Webhook signature required' }); return;
     } else {
+      // Local dev only — accept unsigned bodies for ease of stripe-cli replay.
       event = req.body;
     }
 

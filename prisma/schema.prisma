@@ -627,6 +627,10 @@ model Like {
   @@unique([userId, trackId])
   @@index([trackId])
   @@index([createdAt(sort: Desc)])
+  // Liked-tracks list pages WHERE userId AND ORDER BY createdAt DESC. The
+  // single-column userId index is implicit via the unique tuple above (only
+  // for prefix scans), so an explicit composite is needed for sort.
+  @@index([userId, createdAt(sort: Desc)])
   @@map("likes")
 }
 
@@ -650,6 +654,9 @@ model Comment {
   @@index([trackId])
   @@index([userId])
   @@index([parentId])
+  // getComments fetches top-level comments for a track ordered by createdAt
+  // DESC; without this the planner has to sort after the trackId scan.
+  @@index([trackId, parentId, createdAt(sort: Desc)])
   @@map("comments")
 }
 
@@ -698,6 +705,9 @@ model Play {
   @@index([trackId])
   @@index([userId])
   @@index([createdAt])
+  // History endpoint: WHERE userId ORDER BY createdAt DESC LIMIT n. The
+  // composite turns it into an index-only range scan.
+  @@index([userId, createdAt(sort: Desc)])
   @@map("plays")
 }
 
@@ -849,6 +859,9 @@ model Notification {
 
   @@index([userId, read])
   @@index([createdAt(sort: Desc)])
+  // listNotifications: WHERE userId [AND read=false] ORDER BY createdAt DESC.
+  // The combined index covers both the read+unread filter and the sort.
+  @@index([userId, read, createdAt(sort: Desc)])
   @@map("notifications")
 }
 

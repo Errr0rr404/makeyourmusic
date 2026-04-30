@@ -69,15 +69,20 @@ function RootLayoutInner() {
       // Push notifications
       await registerForPushNotifications();
       cleanupNotifications = setupNotificationListeners((data) => {
-        // Navigate on notification tap
+        // Navigate on notification tap. Notification payloads are
+        // server-controlled, but we still validate before navigation so a
+        // compromised push or a misconfigured campaign can't drop arbitrary
+        // routes (or worse, weird strings interpreted as routes by expo-
+        // router).
+        const isSafeSlug = (s: unknown): s is string =>
+          typeof s === 'string' && /^[a-z0-9][a-z0-9-]{0,80}$/i.test(s);
+
         if (data?.url) {
           const route = parseDeepLink(data.url);
-          // parseDeepLink returns a validated runtime path string; typed routes
-          // can't narrow a dynamic string, so a cast here is intentional.
           if (route) router.push(route as Parameters<typeof router.push>[0]);
-        } else if (data?.trackSlug) {
+        } else if (isSafeSlug(data?.trackSlug)) {
           router.push(`/track/${data.trackSlug}`);
-        } else if (data?.agentSlug) {
+        } else if (isSafeSlug(data?.agentSlug)) {
           router.push(`/agent/${data.agentSlug}`);
         }
       });

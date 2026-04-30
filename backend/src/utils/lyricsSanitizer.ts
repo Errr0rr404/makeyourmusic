@@ -2,6 +2,11 @@
 // MiniMax music_generation sings whatever is in `lyrics` — parenthetical stage
 // directions like "(Hammond swell, hi-hat pulse, eighth-note bass)" or bracket
 // tags like "[Guitar Solo]" become sung words otherwise.
+//
+// Also strip raw HTML/script-y tokens. The lyrics aren't currently rendered as
+// HTML, but this is a defense-in-depth: if a future surface (e.g. an embed,
+// a plain `<div dangerouslySetInnerHTML={{__html: lyrics}}>` in a CMS) ever
+// inlines them, we don't want a stored payload like `<script>...` to execute.
 
 const STRUCTURE_TAGS = new Set([
   'intro',
@@ -80,9 +85,27 @@ function isProductionParenthetical(inner: string): boolean {
   return false;
 }
 
+// Strip HTML-shaped substrings that could activate script execution if the
+// lyrics are ever inlined into HTML. Conservative: drops `<script>...`,
+// `<iframe>...`, `<object>...`, `<embed>...`, and `<style>...` tags entirely
+// (with their contents), and leaves a-z text alone. Also rewrites bare `<` /
+// `>` so a careless renderer can't treat fragments as tags.
+function stripScriptyHtml(s: string): string {
+  return s
+    .replace(/<\s*(script|iframe|object|embed|style)\b[^>]*>[\s\S]*?<\s*\/\s*\1\s*>/gi, '')
+    .replace(/<\s*(script|iframe|object|embed|style)\b[^>]*\/?>/gi, '')
+    // Strip on-event handlers within other tags (e.g. <img onerror=...>).
+    .replace(/\son\w+\s*=\s*("[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    // javascript: / data:text/html URIs in href/src
+    .replace(/(href|src)\s*=\s*("|')\s*(javascript|data:text\/html)/gi, '$1=$2#');
+}
+
 export function sanitizeLyrics(input: string | null | undefined): string {
   if (!input) return '';
-  const lines = input.split(/\r?\n/);
+  // First pass: scrub anything that could turn into executable HTML if a
+  // future rendering surface escapes the wrong way around its template.
+  const cleaned = stripScriptyHtml(input);
+  const lines = cleaned.split(/\r?\n/);
   const out: string[] = [];
 
   for (const raw of lines) {

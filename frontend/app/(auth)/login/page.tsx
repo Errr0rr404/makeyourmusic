@@ -31,8 +31,18 @@ function LoginForm() {
     try {
       await login(email, password);
       const next = searchParams.get('next');
-      // Only honor relative paths to avoid open-redirect.
-      const dest = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+      // Only honor relative paths to avoid open-redirect. Reject anything
+      // starting with `//` or `/\` (some browsers parse the latter as a
+      // protocol-relative URL pointing to an attacker's host) and anything
+      // containing a `:` before the first `/` (data:, javascript:, etc.).
+      const dest =
+        typeof next === 'string' &&
+        next.startsWith('/') &&
+        !next.startsWith('//') &&
+        !next.startsWith('/\\') &&
+        !/^\/[^/]*:/.test(next)
+          ? next
+          : '/';
       router.push(dest);
     } catch (err: any) {
       setError(err.message);

@@ -144,18 +144,93 @@ function hasCloudinaryCredentials(): boolean {
   );
 }
 
+// SSRF guard: only fetch provider URLs whose hostname matches a known
+// AI-provider CDN. Without this, a compromised provider response (or a
+// crafted minimax-shaped reply via test fixtures) could point the server
+// at internal metadata services (169.254.169.254), localhost, or
+// arbitrary external hosts the server can reach but the user can't.
+//
+// Hostnames here are deliberately broad on the suffix side — MiniMax / its
+// CDN partners rotate exact subdomains. We require https:// and an
+// allowlisted suffix; anything else is rejected before connect() runs.
+const PROVIDER_HOST_ALLOWLIST = [
+  /\.minimax\.io$/i,
+  /\.minimaxi\.com$/i,
+  /\.minimax\.chat$/i,
+  /\.aliyuncs\.com$/i,        // MiniMax serves audio via Alibaba OSS
+  /\.aliyun\.com$/i,
+  /\.cloudinary\.com$/i,      // some flows may already go through Cloudinary
+];
+
+function assertSafeProviderUrl(rawUrl: string): URL {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error('provider returned a malformed URL');
+  }
+  if (url.protocol !== 'https:') {
+    throw new Error('provider URL must use https');
+  }
+  // Strip credentials — `https://user:pass@host/...` would otherwise be
+  // honored by node:fetch.
+  if (url.username || url.password) {
+    throw new Error('provider URL must not contain credentials');
+  }
+  const hostname = url.hostname.toLowerCase();
+  // Hard deny on link-local / loopback / private CIDRs even if they slip
+  // past the allowlist check below.
+  if (
+    hostname === 'localhost' ||
+    hostname === '0.0.0.0' ||
+    hostname === '169.254.169.254' ||
+    hostname.endsWith('.local') ||
+    /^127\./.test(hostname) ||
+    /^10\./.test(hostname) ||
+    /^192\.168\./.test(hostname) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+  ) {
+    throw new Error(`refusing to fetch from non-public host: ${hostname}`);
+  }
+  if (!PROVIDER_HOST_ALLOWLIST.some((re) => re.test(hostname))) {
+    throw new Error(`refusing to fetch from unapproved host: ${hostname}`);
+  }
+  return url;
+}
+
 async function persistProviderAudioUrl(url: string, generationId: string): Promise<string> {
   // No Cloudinary configured: keep the provider URL. The admin opted into this
   // tradeoff (provider URLs from MiniMax expire — typically within hours).
   if (!hasCloudinaryCredentials()) return url;
 
+  // SSRF guard before opening any socket.
+  const safe = assertSafeProviderUrl(url);
+
   // Cloudinary IS configured: any failure here is a real failure. Returning
   // the provider URL anyway would silently produce tracks that 404 once the
   // upstream URL expires.
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`failed to download provider audio (${res.status})`);
-  const audio = Buffer.from(await res.arrayBuffer());
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 30_000);
+  // Note: express's Response type is imported at the top of the file, which
+  // shadows the global fetch Response. Rely on inference from `await fetch()`
+  // instead of an explicit annotation.
+  const fetched = await (async () => {
+    try {
+      return await fetch(safe.toString(), {
+        signal: controller.signal,
+        redirect: 'error', // don't follow redirects — they could escape the allowlist
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+  })();
+  if (!fetched.ok) throw new Error(`failed to download provider audio (${fetched.status})`);
+  const audio = Buffer.from(await fetched.arrayBuffer());
   if (audio.length === 0) throw new Error('provider audio download was empty');
+  // Hard cap — refuse to materialize anything larger than 100MB.
+  if (audio.length > 100 * 1024 * 1024) {
+    throw new Error('provider audio exceeds 100MB cap');
+  }
   const uploaded = await uploadAudio(audio, `generation-${generationId}-${Date.now()}`);
   return uploaded.secure_url;
 }
@@ -1088,10 +1163,21 @@ async function persistMinimaxImage(
       // have no choice — surface them as-is and let the caller decide.
       return image.url;
     }
-    const res = await fetch(image.url);
-    if (!res.ok) throw new Error(`failed to download generated image (${res.status})`);
-    const buffer = Buffer.from(await res.arrayBuffer());
+    // SSRF guard — same allowlist as audio.
+    const safe = assertSafeProviderUrl(image.url);
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 30_000);
+    const fetched = await (async () => {
+      try {
+        return await fetch(safe.toString(), { signal: controller.signal, redirect: 'error' });
+      } finally {
+        clearTimeout(timeout);
+      }
+    })();
+    if (!fetched.ok) throw new Error(`failed to download generated image (${fetched.status})`);
+    const buffer = Buffer.from(await fetched.arrayBuffer());
     if (buffer.length === 0) throw new Error('generated image was empty');
+    if (buffer.length > 25 * 1024 * 1024) throw new Error('generated image exceeds 25MB cap');
     const uploaded = await uploadCoverArt(buffer, filename);
     return uploaded.secure_url;
   }

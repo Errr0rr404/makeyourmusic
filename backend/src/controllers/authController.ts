@@ -292,6 +292,22 @@ export const firebaseExchange = async (req: RequestWithUser, res: Response) => {
       });
 
       if (byEmail) {
+        // Account takeover guard: only link the existing local account to a
+        // Firebase identity if Firebase has verified the email. Without this,
+        // an attacker who can sign up to Firebase with the victim's email
+        // (some providers don't enforce verification) gains the linked
+        // account on next exchange.
+        if (!claims.emailVerified) {
+          logger.warn('Refusing to link unverified Firebase identity to existing account', {
+            userId: byEmail.id,
+            provider: claims.provider,
+          });
+          res.status(403).json({
+            error:
+              'An account with this email already exists. Please sign in with your password, or verify your email with this provider first.',
+          });
+          return;
+        }
         // Existing email/password user signing in with OAuth for the first time —
         // link the accounts by attaching the firebaseUid.
         user = await prisma.user.update({
@@ -492,7 +508,10 @@ export const forgotPassword = async (req: RequestWithUser, res: Response) => {
 
       await dispatchPasswordResetEmail(user.email, rawToken);
     } else {
-      logger.info('Password reset requested for unknown email', { email });
+      // Don't include the email in the log — even on the negative path, that
+      // would leak which addresses are not in the system to anyone with log
+      // access (the inverse of the response-side anti-enumeration).
+      logger.info('Password reset requested for unknown email');
     }
 
     res.json({
@@ -514,15 +533,18 @@ export const resetPassword = async (req: RequestWithUser, res: Response) => {
 
     const hashedToken = hashToken(token);
 
-    const user = await prisma.user.findFirst({
+    // Look up the user (still inside the valid-token window) so we have the
+    // userId for cache invalidation. The atomic claim below is what actually
+    // prevents two concurrent reset requests from racing — this is just an
+    // identifier read.
+    const candidate = await prisma.user.findFirst({
       where: {
         passwordResetToken: hashedToken,
         passwordResetExpires: { gt: new Date() },
       },
       select: { id: true },
     });
-
-    if (!user) {
+    if (!candidate) {
       res.status(400).json({ error: 'Invalid or expired reset token' });
       return;
     }
@@ -534,8 +556,16 @@ export const resetPassword = async (req: RequestWithUser, res: Response) => {
       parallelism: 4,
     });
 
-    await prisma.user.update({
-      where: { id: user.id },
+    // Atomic claim: updateMany over the same token+expiry predicate clears the
+    // token in the same statement, so a second concurrent request finds 0 rows
+    // and is rejected. Without this, two valid concurrent requests could both
+    // pass the findFirst above and write divergent password hashes.
+    const claimed = await prisma.user.updateMany({
+      where: {
+        id: candidate.id,
+        passwordResetToken: hashedToken,
+        passwordResetExpires: { gt: new Date() },
+      },
       data: {
         passwordHash,
         passwordResetToken: null,
@@ -543,7 +573,13 @@ export const resetPassword = async (req: RequestWithUser, res: Response) => {
         tokenVersion: { increment: 1 },
       },
     });
-    invalidateTokenVersionCache(user.id);
+
+    if (claimed.count === 0) {
+      res.status(400).json({ error: 'Invalid or expired reset token' });
+      return;
+    }
+
+    invalidateTokenVersionCache(candidate.id);
     clearRefreshTokenCookie(res);
 
     res.json({ message: 'Password reset successfully. You can now log in.' });

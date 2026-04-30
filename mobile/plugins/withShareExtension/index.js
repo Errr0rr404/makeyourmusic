@@ -28,7 +28,7 @@ const EXTENSION_NAME = 'Share';
 const APP_GROUP_DEFAULT = 'group.com.worldofz.makeyourmusic';
 
 const STORYBOARD = `<?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.CocoaTouch.XIB" version="3.0" toolsVersion="20037" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="ShareViewController">
+<document type="com.apple.InterfaceBuilder3.CocoaTouch.Storyboard.XIB" version="3.0" toolsVersion="20037" targetRuntime="iOS.CocoaTouch" propertyAccessControl="none" useAutolayout="YES" useTraitCollections="YES" useSafeAreas="YES" colorMatched="YES" initialViewController="ShareViewController">
   <device id="retina6_1" orientation="portrait" appearance="light"/>
   <dependencies>
     <plugIn identifier="com.apple.InterfaceBuilder.IBCocoaTouchPlugin" version="20020"/>
@@ -69,7 +69,7 @@ function withCopyExtensionFiles(config) {
       const infoPlist = fs.readFileSync(path.join(sourceDir, 'Info.plist'), 'utf8');
 
       fs.writeFileSync(path.join(targetDir, 'ShareViewController.swift'), swiftSource);
-      fs.writeFileSync(path.join(targetDir, 'Info.plist'), infoPlist);
+      fs.writeFileSync(path.join(targetDir, `${EXTENSION_NAME}-Info.plist`), infoPlist);
       fs.writeFileSync(path.join(targetDir, 'MainInterface.storyboard'), STORYBOARD);
 
       // Per-extension entitlements file mirrors the main app's app-group.
@@ -92,41 +92,67 @@ function withCopyExtensionFiles(config) {
 
 // Register the new target with the Xcode project so it compiles + signs.
 // We use the same xcode library Expo's prebuild does, accessed via the mod.
+// xcode lib's addTarget wires the target shell + a Sources phase, but does NOT
+// attach source/resource files or entitlements — we have to do that ourselves
+// or the appex builds as an empty stub and Xcode UI emits ghost
+// "SwiftGeneratePch emitted errors" / version-mismatch warnings.
 function withExtensionTarget(config) {
   return withXcodeProject(config, async (cfg) => {
     const project = cfg.modResults;
-    const projectName = cfg.modRequest.projectName;
+    const bundleId = `${cfg.ios?.bundleIdentifier || 'com.worldofz.makeyourmusic'}.${EXTENSION_NAME.toLowerCase()}`;
 
     // If target already exists (re-running prebuild), skip.
-    const existing = project.pbxTargetByName(EXTENSION_NAME);
-    if (existing) return cfg;
+    if (project.pbxTargetByName(EXTENSION_NAME)) return cfg;
 
-    const targetUuid = project.generateUuid();
-    const groupUuid = project.generateUuid();
-
-    // Create the source group inside the main project group
-    project.addPbxGroup(
+    // 1. Create the file/group for the extension's source files.
+    const pbxGroup = project.addPbxGroup(
       [
         'ShareViewController.swift',
         'MainInterface.storyboard',
-        'Info.plist',
+        `${EXTENSION_NAME}-Info.plist`,
         `${EXTENSION_NAME}.entitlements`,
       ],
       EXTENSION_NAME,
       EXTENSION_NAME,
     );
+    // Attach the new group to the project root group so it shows up.
+    project.addToPbxGroup(pbxGroup.uuid, project.getFirstProject().firstProject.mainGroup);
 
-    // Create the appex target. xcode lib helper:
-    project.addTarget(
-      EXTENSION_NAME,
-      'app_extension',
-      EXTENSION_NAME,
-      `${cfg.ios?.bundleIdentifier || 'com.worldofz.makeyourmusic'}.${EXTENSION_NAME.toLowerCase()}`,
+    // 2. Create the appex target shell. xcode lib creates a Sources phase but
+    //    leaves it empty; addTarget returns the new target object.
+    const target = project.addTarget(EXTENSION_NAME, 'app_extension', EXTENSION_NAME, bundleId);
+
+    // 3. Add a Sources build phase entry for ShareViewController.swift and a
+    //    Resources phase for the storyboard. addBuildPhase returns the phase
+    //    and pushes it onto the target's buildPhases.
+    project.addBuildPhase(
+      ['ShareViewController.swift'],
+      'PBXSourcesBuildPhase',
+      'Sources',
+      target.uuid,
     );
-    // Note: xcode lib's addTarget call wires Info.plist + entitlements via
-    // build settings; verify on first prebuild that the appex compiles. If
-    // it doesn't, the manual fallback is to open ios/<App>.xcworkspace and
-    // add the target by hand once — subsequent prebuilds preserve it.
+    project.addBuildPhase(
+      ['MainInterface.storyboard'],
+      'PBXResourcesBuildPhase',
+      'Resources',
+      target.uuid,
+    );
+
+    // 4. Patch build settings on the new target's Debug + Release configs:
+    //    - point INFOPLIST_FILE at the per-extension plist
+    //    - point CODE_SIGN_ENTITLEMENTS at the per-extension entitlements
+    //    - match deployment target / Swift version with the host app
+    const configurations = project.pbxXCBuildConfigurationSection();
+    for (const ref of Object.keys(configurations)) {
+      const cfgEntry = configurations[ref];
+      if (typeof cfgEntry !== 'object' || !cfgEntry.buildSettings) continue;
+      if (cfgEntry.buildSettings.PRODUCT_NAME !== EXTENSION_NAME) continue;
+      cfgEntry.buildSettings.INFOPLIST_FILE = `"${EXTENSION_NAME}/${EXTENSION_NAME}-Info.plist"`;
+      cfgEntry.buildSettings.CODE_SIGN_ENTITLEMENTS = `"${EXTENSION_NAME}/${EXTENSION_NAME}.entitlements"`;
+      cfgEntry.buildSettings.IPHONEOS_DEPLOYMENT_TARGET = '15.1';
+      cfgEntry.buildSettings.SWIFT_VERSION = '5.0';
+      cfgEntry.buildSettings.TARGETED_DEVICE_FAMILY = '"1,2"';
+    }
 
     return cfg;
   });

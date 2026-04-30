@@ -64,15 +64,34 @@ export const apiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   skip: (req) => req.method === 'OPTIONS', // Skip rate limiting for OPTIONS requests
+  // Key by user when authenticated so users behind a shared NAT don't share a
+  // bucket, and so a single user can't escape the limit by hopping IPs.
+  keyGenerator: userOrIpKey,
 });
 
 // Strict rate limiter for upload endpoints (prevent abuse)
 export const uploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: 50, // Limit each IP to 50 uploads per hour
-  message: 'Too many upload requests from this IP, please try again later.',
+  max: isDevelopment ? 200 : 50,
+  message: 'Too many upload requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  // Per-user (not per-IP) — uploads are always authenticated, and keying off
+  // userId stops a user from hopping IPs to extend their quota.
+  keyGenerator: userOrIpKey,
+});
+
+// Per-user (or per-IP) limiter for cheap social pump endpoints — view, share,
+// dedup-protected counters. The in-memory dedup windows already block the
+// "tight loop" case; this protects against distributed pumping (one device,
+// many tabs / sockets) and bounds the CPU spent in the dedup map.
+export const socialPumpLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: isDevelopment ? 600 : 60,
+  message: 'You are sending too many requests. Please slow down.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: userOrIpKey,
 });
 
 // Per-user limit on writes that can be used to spam other users (comments, shares).

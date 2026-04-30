@@ -6,17 +6,18 @@ import {
   shareTrack,
 } from '../controllers/socialController';
 import { authenticate, optionalAuth } from '../middleware/auth';
-import { commentLimiter } from '../middleware/rateLimiter';
+import { commentLimiter, socialPumpLimiter } from '../middleware/rateLimiter';
 import { createCommentRules, createPlaylistRules, validateRequest } from '../middleware/validation';
 
 const router = Router();
 
-// Likes
-router.post('/likes/:trackId', authenticate as any, toggleLike as any);
+// Likes — rate-limit toggles to bound trending-pump attacks even with the
+// in-memory dedup map (which is per-instance and per-process).
+router.post('/likes/:trackId', authenticate as any, socialPumpLimiter, toggleLike as any);
 router.get('/likes', authenticate as any, getLikedTracks as any);
 
-// Follows
-router.post('/follows/:agentId', authenticate as any, toggleFollow as any);
+// Follows — same reasoning as likes.
+router.post('/follows/:agentId', authenticate as any, socialPumpLimiter, toggleFollow as any);
 
 // Comments — per-user limiter prevents a single account from spamming across tracks
 router.get('/comments/:trackId', optionalAuth as any, getComments as any);
@@ -33,7 +34,8 @@ router.post('/playlists/:playlistId/tracks', authenticate as any, addToPlaylist 
 router.delete('/playlists/:playlistId/tracks/:trackId', authenticate as any, removeFromPlaylist as any);
 router.delete('/playlists/:id', authenticate as any, deletePlaylist as any);
 
-// Shares
-router.post('/shares/:trackId', optionalAuth as any, shareTrack as any);
+// Shares — share count feeds trending; protect with both per-(user,track)
+// dedup window in the controller and a coarser per-user/IP limiter here.
+router.post('/shares/:trackId', optionalAuth as any, socialPumpLimiter, shareTrack as any);
 
 export default router;

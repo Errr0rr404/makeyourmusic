@@ -49,14 +49,15 @@ export const requireApiKey = async (req: any, res: Response, next: NextFunction)
 };
 
 // Per-route scope check. Apply after `requireApiKey` to restrict access
-// to keys with the named scope.
+// to keys with the named scope. Empty scope arrays no longer get a free
+// pass — every key must list the scopes it needs. The previous "empty
+// means full" carve-out for legacy dashboard-issued keys was an unintended
+// privilege-escalation vector: a key could be created with `scopes: []`
+// and silently bypass every per-route check. If you have such legacy
+// keys, regenerate them with explicit scopes.
 export const requireScope = (scope: string) => {
   return (req: any, res: Response, next: NextFunction) => {
     const scopes: string[] = Array.isArray(req.apiKey?.scopes) ? req.apiKey.scopes : [];
-    // Empty scopes array on a key means "full access" (legacy behavior for
-    // dashboard-issued keys) — preserved so old keys keep working. New keys
-    // should request explicit scopes.
-    if (scopes.length === 0) return next();
     if (scopes.includes(scope)) return next();
     res.status(403).json({ error: `Missing required scope: ${scope}` });
   };

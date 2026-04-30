@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
+import { validatePaymentRedirect } from '@/lib/utils';
 import { Loader2, Lock, ExternalLink, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -72,7 +73,9 @@ function PayoutsPageInner() {
     setBusy(true);
     try {
       const res = await api.post('/creator/connect/onboarding-link');
-      if (res.data?.url) window.location.href = res.data.url;
+      const safe = validatePaymentRedirect(res.data?.url);
+      if (safe) window.location.href = safe;
+      else toast.error('Could not start onboarding');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to start onboarding');
     } finally {
@@ -84,7 +87,9 @@ function PayoutsPageInner() {
     setBusy(true);
     try {
       const res = await api.post('/creator/connect/dashboard-link');
-      if (res.data?.url) window.open(res.data.url, '_blank', 'noopener,noreferrer');
+      const safe = validatePaymentRedirect(res.data?.url);
+      if (safe) window.open(safe, '_blank', 'noopener,noreferrer');
+      else toast.error('Could not open dashboard');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to open Stripe dashboard');
     } finally {

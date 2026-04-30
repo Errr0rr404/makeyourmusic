@@ -16,8 +16,23 @@ import * as Linking from 'expo-linking';
 export const MAKEYOURMUSIC_SCHEME = 'makeyourmusic';
 export const MAKEYOURMUSIC_WEB_URL = 'https://makeyourmusic.ai';
 
+// Slugs are restricted to lowercase letters, digits, and hyphens. This is
+// what backend slugify() emits, so anything else in a deep-link path is
+// either malformed or hostile (path traversal, encoded escapes, etc.).
+const SLUG = /^[a-z0-9][a-z0-9-]{0,80}$/i;
+
+function safeSlugRoute(prefix: 'track' | 'agent' | 'genre' | 'playlist', path: string): string | null {
+  // path looks like e.g. `track/some-slug` or `track/some-slug/extra`.
+  const tail = path.slice(prefix.length + 1);
+  const slug = tail.split('/')[0];
+  if (!slug || !SLUG.test(slug)) return null;
+  return `/${prefix}/${slug}`;
+}
+
 /**
- * Parse an incoming URL into a route path for the app.
+ * Parse an incoming URL into a route path for the app. Only known prefixes
+ * are accepted; everything else returns null so the caller falls through to
+ * the home tab instead of navigating to an attacker-controlled string.
  */
 export function parseDeepLink(url: string): string | null {
   try {
@@ -26,10 +41,10 @@ export function parseDeepLink(url: string): string | null {
 
     if (!path) return null;
 
-    // Handle known routes
-    if (path.startsWith('track/')) return `/${path}`;
-    if (path.startsWith('agent/')) return `/${path}`;
-    if (path.startsWith('genre/')) return `/${path}`;
+    if (path.startsWith('track/')) return safeSlugRoute('track', path);
+    if (path.startsWith('agent/')) return safeSlugRoute('agent', path);
+    if (path.startsWith('genre/')) return safeSlugRoute('genre', path);
+    if (path.startsWith('playlist/')) return safeSlugRoute('playlist', path);
     if (path === 'login') return '/(auth)/login';
     if (path === 'register') return '/(auth)/register';
     if (path === 'library') return '/(tabs)/library';

@@ -156,14 +156,48 @@ export const listTracks = async (req: RequestWithUser, res: Response) => {
       : sort === 'liked' ? { likeCount: 'desc' }
       : { createdAt: 'desc' };
 
+    // Explicit select — list endpoints don't need `lyrics` (multi-KB Text),
+    // `aiPrompt` (up to 2KB), `featureVector` (Float[] used only by the
+    // recommender), or `takedownReason` (admin-only). Cutting these from
+    // the wire response shrinks payloads ~5–10x on big catalogs.
+    const trackListSelect = {
+      id: true,
+      title: true,
+      slug: true,
+      duration: true,
+      audioUrl: true,
+      coverArt: true,
+      status: true,
+      isPublic: true,
+      mood: true,
+      tags: true,
+      bpm: true,
+      key: true,
+      aiModel: true,
+      playCount: true,
+      likeCount: true,
+      shareCount: true,
+      trendingScore: true,
+      licenseable: true,
+      licensePriceCents: true,
+      licenseCurrency: true,
+      takedownStatus: true,
+      previewVideoUrl: true,
+      createdAt: true,
+      updatedAt: true,
+      agentId: true,
+      genreId: true,
+      albumId: true,
+      parentTrackId: true,
+      agent: { select: { id: true, name: true, slug: true, avatar: true } },
+      genre: true,
+      video: { select: { id: true } },
+    } as const;
+
     const [tracks, total] = await Promise.all([
       prisma.track.findMany({
         where,
-        include: {
-          agent: { select: { id: true, name: true, slug: true, avatar: true } },
-          genre: true,
-          video: { select: { id: true } },
-        },
+        select: trackListSelect,
         orderBy,
         skip: (page - 1) * limit,
         take: limit,
@@ -194,13 +228,45 @@ export const listMyTracks = async (req: RequestWithUser, res: Response) => {
     if (visibility === 'private') where.isPublic = false;
     if (visibility === 'public') where.isPublic = true;
 
+    // Owners see their own list — drop the same heavy fields as the public
+    // listing. Lyrics are loaded on the detail page when needed.
+    const myTrackSelect = {
+      id: true,
+      title: true,
+      slug: true,
+      duration: true,
+      audioUrl: true,
+      coverArt: true,
+      status: true,
+      isPublic: true,
+      mood: true,
+      tags: true,
+      bpm: true,
+      key: true,
+      aiModel: true,
+      playCount: true,
+      likeCount: true,
+      shareCount: true,
+      trendingScore: true,
+      licenseable: true,
+      licensePriceCents: true,
+      licenseCurrency: true,
+      takedownStatus: true,
+      previewVideoUrl: true,
+      createdAt: true,
+      updatedAt: true,
+      agentId: true,
+      genreId: true,
+      albumId: true,
+      parentTrackId: true,
+      agent: { select: { id: true, name: true, slug: true, avatar: true } },
+      genre: true,
+    } as const;
+
     const [tracks, total] = await Promise.all([
       prisma.track.findMany({
         where,
-        include: {
-          agent: { select: { id: true, name: true, slug: true, avatar: true } },
-          genre: true,
-        },
+        select: myTrackSelect,
         orderBy: { createdAt: 'desc' },
         skip: (page - 1) * limit,
         take: limit,

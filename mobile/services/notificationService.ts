@@ -24,7 +24,7 @@ Notifications.setNotificationHandler({
  */
 export async function registerForPushNotifications(): Promise<string | null> {
   if (!Device.isDevice) {
-    console.log('Push notifications require a physical device');
+    if (__DEV__) console.log('Push notifications require a physical device');
     return null;
   }
 
@@ -38,7 +38,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   if (finalStatus !== 'granted') {
-    console.log('Push notification permission not granted');
+    if (__DEV__) console.log('Push notification permission not granted');
     return null;
   }
 
@@ -67,7 +67,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
     (Constants as unknown as { easConfig?: { projectId?: string } }).easConfig?.projectId;
 
   if (!projectId) {
-    console.log('Push notifications skipped — no EAS projectId configured');
+    if (__DEV__) console.log('Push notifications skipped — no EAS projectId configured');
     return null;
   }
 
@@ -75,7 +75,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
   try {
     token = await Notifications.getExpoPushTokenAsync({ projectId });
   } catch (err) {
-    console.log('Failed to get Expo push token:', (err as Error).message);
+    if (__DEV__) console.log('Failed to get Expo push token:', (err as Error).message);
     return null;
   }
 

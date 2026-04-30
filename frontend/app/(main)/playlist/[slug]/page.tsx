@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import { validatePaymentRedirect } from '@/lib/utils';
 import { useAuthStore } from '@/lib/store/authStore';
 import { TrackRow } from '@/components/track/TrackRow';
 import { ListMusic, Globe, Lock, Play, Pencil, Trash2, Check, X, Loader2, AlertCircle, DollarSign } from 'lucide-react';
@@ -140,7 +141,9 @@ export default function PlaylistPage() {
     setSubscribing(true);
     try {
       const res = await api.post(`/creator/playlists/${playlist.id}/subscribe`);
-      if (res.data?.url) window.location.href = res.data.url;
+      const safe = validatePaymentRedirect(res.data?.url);
+      if (safe) window.location.href = safe;
+      else toast.error('Could not start checkout');
     } catch (err: any) {
       toast.error(err.response?.data?.error || 'Failed to subscribe');
     } finally {

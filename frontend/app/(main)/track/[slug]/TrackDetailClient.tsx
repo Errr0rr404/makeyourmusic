@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import api from '@/lib/api';
+import { validatePaymentRedirect } from '@/lib/utils';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio, Code, DollarSign, Film } from 'lucide-react';
@@ -234,7 +235,9 @@ export function TrackDetailClient({ slug }: { slug: string }) {
                       trackId: track.id,
                       kind: 'sync',
                     });
-                    if (data.checkoutUrl) window.location.href = data.checkoutUrl;
+                    const safe = validatePaymentRedirect(data.checkoutUrl);
+                    if (safe) window.location.href = safe;
+                    else toast.error('Could not start checkout');
                   } catch (err: any) {
                     toast.error(err?.response?.data?.error || 'Failed to start checkout');
                   }

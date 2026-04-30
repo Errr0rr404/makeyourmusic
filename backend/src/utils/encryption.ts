@@ -34,20 +34,25 @@ function getKey(hexKey: string): Buffer {
 /**
  * Encrypt sensitive user data
  * Uses AES-256-GCM encryption (industry standard)
+ *
+ * IV is 12 bytes (96 bits) per the AES-GCM spec — that's the size NIST
+ * recommends and that maximizes the safe encryption count under one key.
+ * Older ciphertext written with 16-byte IVs is still decryptable because
+ * decrypt() reads the IV from the encoded prefix, not from a fixed offset.
  */
 export function encrypt(text: string): string {
   if (!text) return text;
-  
+
   try {
     const key = getKey(ENCRYPTION_KEY || FALLBACK_KEY);
-    const iv = crypto.randomBytes(16);
+    const iv = crypto.randomBytes(12);
     const cipher = crypto.createCipheriv(ALGORITHM, key, iv);
-    
+
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
-    
+
     const authTag = cipher.getAuthTag();
-    
+
     // Combine IV, auth tag, and encrypted data
     return iv.toString('hex') + ':' + authTag.toString('hex') + ':' + encrypted;
   } catch (error) {

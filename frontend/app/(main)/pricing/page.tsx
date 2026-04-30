@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
+import { validatePaymentRedirect } from '@/lib/utils';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Check, Crown, Sparkles, Zap, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -99,8 +100,9 @@ export default function PricingPage() {
     setCheckingOut(tier);
     try {
       const res = await api.post('/subscription/checkout', { tier });
-      if (res.data?.url) {
-        window.location.href = res.data.url;
+      const safe = validatePaymentRedirect(res.data?.url);
+      if (safe) {
+        window.location.href = safe;
       } else {
         toast.error('Could not start checkout');
       }
