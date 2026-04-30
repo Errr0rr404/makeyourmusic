@@ -207,7 +207,7 @@ export function Sidebar() {
                 )}
               >
                 <span className="w-10 h-10 rounded-md flex items-center justify-center"
-                      style={{ background: 'linear-gradient(135deg, #d946ef 0%, #8b5cf6 100%)' }}>
+                      style={{ background: 'var(--aurora)' }}>
                   <Heart className="w-4 h-4 text-white" fill="currentColor" />
                 </span>
                 <span className="flex flex-col leading-tight min-w-0">

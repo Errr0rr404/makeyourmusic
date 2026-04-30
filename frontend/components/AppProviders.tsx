@@ -7,7 +7,7 @@ import '@/lib/api';
 
 import { useEffect } from 'react';
 import { Toaster as SonnerToaster } from 'sonner';
-import { ThemeProvider } from './ThemeProvider';
+import { ThemeProvider, type Skin, type Palette } from './ThemeProvider';
 import { ErrorBoundary } from './ErrorBoundary';
 import { ToastContainer } from './Toast';
 import { ConfirmProvider } from './ui/ConfirmDialog';
@@ -41,16 +41,26 @@ function AuthHydrator({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-export function AppProviders({ children }: { children: React.ReactNode }) {
+interface AppProvidersProps {
+  children: React.ReactNode;
+  initialSkin?: Skin;
+  initialPalette?: Palette;
+}
+
+export function AppProviders({ children, initialSkin, initialPalette }: AppProvidersProps) {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark" storageKey="makeyourmusic-theme">
+      <ThemeProvider
+        defaultSkin="modern"
+        defaultPalette="system"
+        initialSkin={initialSkin}
+        initialPalette={initialPalette}
+      >
         <AuthHydrator>
           <ConfirmProvider>
             {children}
             <ToastContainer />
             <SonnerToaster
-              theme="dark"
               position="top-right"
               toastOptions={{
                 style: { background: 'hsl(var(--card))', color: 'hsl(var(--foreground))', border: '1px solid hsl(var(--border))' },

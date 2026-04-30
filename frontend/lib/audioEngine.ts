@@ -27,6 +27,8 @@ class AudioEngine {
   private slots: { a?: SlotNodes; b?: SlotNodes } = {};
   private filterNodes: BiquadFilterNode[] = [];
   private masterGain: GainNode | null = null;
+  private analyser: AnalyserNode | null = null;
+  private analyserData: Uint8Array<ArrayBuffer> | null = null;
   private connected = false;
 
   /**
@@ -66,7 +68,13 @@ class AudioEngine {
     // Master gain (= user volume)
     this.masterGain = this.ctx.createGain();
 
-    // Wire EQ → masterGain → destination
+    // Analyser for VU meter / visualizers — taps the post-master signal.
+    this.analyser = this.ctx.createAnalyser();
+    this.analyser.fftSize = 1024;
+    this.analyser.smoothingTimeConstant = 0.6;
+    this.analyserData = new Uint8Array(new ArrayBuffer(this.analyser.fftSize));
+
+    // Wire EQ → masterGain → analyser → destination
     let head: AudioNode | null = null;
     let tail: AudioNode | null = null;
     for (const filter of this.filterNodes) {
@@ -74,7 +82,8 @@ class AudioEngine {
       else { tail!.connect(filter); tail = filter; }
     }
     if (tail) tail.connect(this.masterGain);
-    this.masterGain.connect(this.ctx.destination);
+    this.masterGain.connect(this.analyser);
+    this.analyser.connect(this.ctx.destination);
 
     // Build per-slot source + gain, both feeding into EQ head
     const buildSlot = (el: HTMLAudioElement, slot: SourceSlot): SlotNodes => {
@@ -147,6 +156,33 @@ class AudioEngine {
 
   getContext(): AudioContext | null { return this.ctx; }
 
+  /**
+   * Sample the analyser and return a normalized 0..1 RMS level. Returns 0
+   * when the engine isn't connected (cross-origin source or pre-init).
+   */
+  getLevel(): number {
+    if (!this.analyser || !this.analyserData) return 0;
+    this.analyser.getByteTimeDomainData(this.analyserData);
+    let sumSq = 0;
+    const data = this.analyserData;
+    for (let i = 0; i < data.length; i++) {
+      const sample = data[i] ?? 128;
+      const v = (sample - 128) / 128;
+      sumSq += v * v;
+    }
+    const rms = Math.sqrt(sumSq / data.length);
+    return Math.min(1, rms * 2.4);
+  }
+
+  /** Frequency-band sample (0..1) at the given bucket fraction (0..1). */
+  getFreqLevel(fraction: number): number {
+    if (!this.analyser) return 0;
+    const buf = new Uint8Array(new ArrayBuffer(this.analyser.frequencyBinCount));
+    this.analyser.getByteFrequencyData(buf);
+    const idx = Math.floor(fraction * buf.length);
+    return (buf[idx] ?? 0) / 255;
+  }
+
   private disconnectAll() {
     for (const slot of Object.values(this.slots)) {
       if (!slot) continue;
@@ -158,6 +194,9 @@ class AudioEngine {
     this.filterNodes = [];
     if (this.masterGain) { try { this.masterGain.disconnect(); } catch {} }
     this.masterGain = null;
+    if (this.analyser) { try { this.analyser.disconnect(); } catch {} }
+    this.analyser = null;
+    this.analyserData = null;
   }
 
   destroy() {

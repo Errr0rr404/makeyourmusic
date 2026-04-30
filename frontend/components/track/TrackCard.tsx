@@ -52,9 +52,9 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
         ) : (
           <div
             className="w-full h-full flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg, rgba(139,92,246,0.25), rgba(217,70,239,0.25))' }}
+            style={{ background: 'var(--aurora)', opacity: 0.6 }}
           >
-            <Music2 className="w-10 h-10 text-white/50" />
+            <Music2 className="w-10 h-10 text-white/70" />
           </div>
         )}
 
@@ -101,7 +101,7 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
 
       <h3
         className={`text-sm font-semibold truncate mb-1 transition-colors ${
-          isCurrentTrack ? 'text-[color:var(--brand)]' : 'text-white'
+          isCurrentTrack ? 'text-[color:var(--brand)]' : 'text-[color:var(--text)]'
         }`}
       >
         {track.title}

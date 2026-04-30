@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
-import { Inter } from 'next/font/google';
+import { cookies } from 'next/headers';
 import { AppProviders } from '@/components/AppProviders';
+import type { Skin, Palette } from '@/components/ThemeProvider';
 import './globals.css';
-
-const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL || 'https://makeyourmusic.ai'),
@@ -49,15 +48,37 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const store = await cookies();
+  const skinCookie = store.get('mym-skin')?.value;
+  const paletteCookie = store.get('mym-palette')?.value;
+  const skin: Skin = skinCookie === 'vintage' ? 'vintage' : 'modern';
+  const palette: Palette =
+    paletteCookie === 'dark' || paletteCookie === 'light' || paletteCookie === 'system'
+      ? paletteCookie
+      : 'system';
+
+  // Server-resolved palette class — `system` collapses on the client once it
+  // can read prefers-color-scheme. We default to `dark` for SSR to match the
+  // app's previous default and avoid a heavy FOUC.
+  const ssrPaletteClass = palette === 'light' ? 'light' : 'dark';
+  const skinClass = skin === 'vintage' ? 'skin-vintage' : 'skin-modern';
+
   return (
-    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
-      <body className={`${inter.className} antialiased`}>
-        <AppProviders>
+    <html
+      lang="en"
+      className={`${skinClass} ${ssrPaletteClass}`}
+      data-skin={skin}
+      data-palette={ssrPaletteClass}
+      suppressHydrationWarning
+      data-scroll-behavior="smooth"
+    >
+      <body className="antialiased">
+        <AppProviders initialSkin={skin} initialPalette={palette}>
           {children}
         </AppProviders>
       </body>

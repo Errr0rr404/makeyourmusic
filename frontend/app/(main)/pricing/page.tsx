@@ -6,6 +6,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Check, Crown, Sparkles, Zap, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { Cassette } from '@/components/vintage';
 
 type Tier = 'FREE' | 'CREATOR' | 'PREMIUM';
 
@@ -18,6 +19,9 @@ interface PlanCard {
   cta: string;
   highlight?: boolean;
   icon: React.ReactNode;
+  /** Vintage cassette grade — appears on the J-card stripe + label */
+  grade: 'ferric' | 'chrome' | 'metal';
+  position: string;
 }
 
 const PLANS: PlanCard[] = [
@@ -33,6 +37,8 @@ const PLANS: PlanCard[] = [
     ],
     cta: 'Current plan',
     icon: <Sparkles className="w-5 h-5" />,
+    grade: 'ferric',
+    position: 'Type I — NORMAL',
   },
   {
     tier: 'CREATOR',
@@ -49,6 +55,8 @@ const PLANS: PlanCard[] = [
     cta: 'Become a Creator',
     highlight: true,
     icon: <Zap className="w-5 h-5" />,
+    grade: 'chrome',
+    position: 'Type II — CrO₂',
   },
   {
     tier: 'PREMIUM',
@@ -62,6 +70,8 @@ const PLANS: PlanCard[] = [
     ],
     cta: 'Go Premium',
     icon: <Crown className="w-5 h-5" />,
+    grade: 'metal',
+    position: 'Type IV — METAL',
   },
 ];
 
@@ -104,10 +114,10 @@ export default function PricingPage() {
   return (
     <div className="animate-fade-in max-w-5xl mx-auto">
       <div className="text-center mb-10">
-        <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+        <h1 className="text-3xl md:text-4xl mym-section-title mb-3 inline-block">
           Pricing
         </h1>
-        <p className="text-[hsl(var(--muted-foreground))] max-w-2xl mx-auto">
+        <p className="text-[color:var(--text-mute)] max-w-2xl mx-auto">
           Generate more music — and start earning when fans love what you make.
         </p>
       </div>
@@ -121,8 +131,8 @@ export default function PricingPage() {
               key={plan.tier}
               className={`relative rounded-2xl p-5 sm:p-6 border transition-colors ${
                 plan.highlight
-                  ? 'bg-gradient-to-br from-purple-600/10 to-pink-600/10 border-purple-400/40'
-                  : 'bg-[hsl(var(--card))] border-white/5'
+                  ? 'bg-gradient-to-br from-purple-600/10 to-pink-600/10 border-purple-400/40 modern-only'
+                  : 'bg-[color:var(--card)] border-[color:var(--stroke)] modern-only'
               }`}
             >
               {plan.highlight && (
@@ -130,55 +140,160 @@ export default function PricingPage() {
                   Most Popular
                 </div>
               )}
-              <div className="flex items-center gap-2 mb-1 text-white">
-                {plan.icon}
-                <h3 className="text-lg font-semibold">{plan.name}</h3>
+              <PlanBody
+                plan={plan}
+                isCurrent={isCurrent}
+                isBusy={isBusy}
+                loading={loading}
+                onUpgrade={handleUpgrade}
+                modernCta={plan.highlight ? 'bg-white text-black hover:scale-[1.02]' : 'bg-[color:var(--secondary)] text-[color:var(--text)] hover:bg-[color:var(--bg-elev-3)]'}
+              />
+            </div>
+          );
+        })}
+
+        {/* Vintage variant — full cassette J-card */}
+        {PLANS.map((plan) => {
+          const isCurrent = plan.tier === currentTier;
+          const isBusy = checkingOut === plan.tier;
+          return (
+            <div
+              key={`vintage-${plan.tier}`}
+              className="vintage-only relative p-5 sm:p-6"
+              style={{
+                background: 'var(--bg-paper)',
+                color: 'var(--text)',
+                border: '1px solid var(--stroke-strong)',
+                borderRadius: 4,
+                boxShadow:
+                  plan.highlight
+                    ? '0 0 0 2px var(--brand), 0 6px 14px rgba(0, 0, 0, 0.30)'
+                    : '0 4px 10px rgba(0, 0, 0, 0.30)',
+              }}
+            >
+              {plan.highlight && (
+                <div
+                  className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1"
+                  style={{
+                    background: 'var(--brand)',
+                    color: '#fff',
+                    fontFamily: 'var(--font-display)',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.10em',
+                    fontSize: 11,
+                  }}
+                >
+                  Most Popular
+                </div>
+              )}
+
+              {/* Cassette illustration — top of card */}
+              <div className="flex justify-center mb-4 mt-2">
+                <Cassette
+                  width={220}
+                  grade={plan.grade}
+                  title={plan.name}
+                  artist={plan.position}
+                  side="A"
+                  spinning={false}
+                />
               </div>
-              <div className="text-3xl font-bold text-white mb-1">
-                {plan.price}
-                {plan.tier !== 'FREE' && plan.price !== 'Custom' && (
-                  <span className="text-sm font-normal text-[hsl(var(--muted-foreground))]"> /mo</span>
-                )}
-              </div>
-              <p className="text-sm text-[hsl(var(--muted-foreground))] mb-5">{plan.blurb}</p>
-              <ul className="space-y-2 mb-6 min-h-[160px]">
-                {plan.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-white/90">
-                    <Check className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
-                    <span>{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <button
-                onClick={() => handleUpgrade(plan.tier)}
-                disabled={loading || isCurrent || plan.tier === 'FREE' || isBusy}
-                className={`w-full py-2.5 rounded-full text-sm font-medium transition-all ${
-                  isCurrent
-                    ? 'bg-white/5 text-[hsl(var(--muted-foreground))] cursor-default'
-                    : plan.highlight
-                      ? 'bg-white text-black hover:scale-[1.02]'
-                      : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'
-                } disabled:opacity-50`}
-              >
-                {isBusy ? (
-                  <span className="inline-flex items-center gap-2 justify-center">
-                    <Loader2 className="w-4 h-4 animate-spin" /> Redirecting…
-                  </span>
-                ) : isCurrent ? (
-                  'Current plan'
-                ) : (
-                  plan.cta
-                )}
-              </button>
+
+              <PlanBody
+                plan={plan}
+                isCurrent={isCurrent}
+                isBusy={isBusy}
+                loading={loading}
+                onUpgrade={handleUpgrade}
+                vintage
+              />
             </div>
           );
         })}
       </div>
 
-      <p className="text-xs text-center text-[hsl(var(--muted-foreground))] mt-8">
-        Platform takes 15% on tips and channel subscriptions to cover Stripe fees & hosting.
+      <p className="text-xs text-center text-[color:var(--text-mute)] mt-8">
+        Platform takes 15% on tips and channel subscriptions to cover Stripe fees &amp; hosting.
         Payouts run on Stripe Express — your money lands in your bank.
       </p>
     </div>
+  );
+}
+
+function PlanBody({
+  plan,
+  isCurrent,
+  isBusy,
+  loading,
+  onUpgrade,
+  modernCta,
+  vintage,
+}: {
+  plan: PlanCard;
+  isCurrent: boolean;
+  isBusy: boolean;
+  loading: boolean;
+  onUpgrade: (tier: Tier) => void;
+  modernCta?: string;
+  vintage?: boolean;
+}) {
+  return (
+    <>
+      <div className="flex items-center gap-2 mb-1" style={{ color: 'var(--text)' }}>
+        {plan.icon}
+        <h3 className="text-lg font-semibold">{plan.name}</h3>
+        {vintage && (
+          <span
+            className="ml-auto px-1.5 py-0.5"
+            style={{
+              fontFamily: 'var(--font-label)',
+              fontSize: 11,
+              color: 'var(--text-mute)',
+              border: '1px solid var(--stroke-strong)',
+            }}
+          >
+            {plan.position}
+          </span>
+        )}
+      </div>
+      <div className="text-3xl font-bold mb-1" style={{ color: 'var(--text)' }}>
+        {plan.price}
+        {plan.tier !== 'FREE' && plan.price !== 'Custom' && (
+          <span className="text-sm font-normal text-[color:var(--text-mute)]"> /mo</span>
+        )}
+      </div>
+      <p className="text-sm text-[color:var(--text-mute)] mb-5">{plan.blurb}</p>
+      <ul className="space-y-2 mb-6 min-h-[160px]">
+        {plan.features.map((f) => (
+          <li key={f} className="flex items-start gap-2 text-sm" style={{ color: 'var(--text-soft)' }}>
+            <Check className="w-4 h-4 text-emerald-500 flex-shrink-0 mt-0.5" />
+            <span>{f}</span>
+          </li>
+        ))}
+      </ul>
+      <button
+        onClick={() => onUpgrade(plan.tier)}
+        disabled={loading || isCurrent || plan.tier === 'FREE' || isBusy}
+        className={
+          vintage
+            ? 'mym-cta w-full justify-center'
+            : `w-full py-2.5 rounded-full text-sm font-medium transition-all ${
+                isCurrent
+                  ? 'bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] cursor-default'
+                  : modernCta
+              } disabled:opacity-50`
+        }
+      >
+        {isBusy ? (
+          <span className="inline-flex items-center gap-2 justify-center">
+            <Loader2 className="w-4 h-4 animate-spin" /> Redirecting…
+          </span>
+        ) : isCurrent ? (
+          'Current plan'
+        ) : (
+          plan.cta
+        )}
+      </button>
+    </>
   );
 }

@@ -15,6 +15,7 @@ interface Stems {
   otherUrl?: string | null;
   forSaleCents?: number | null;
   errorMessage?: string | null;
+  paidAt?: string | null;
 }
 
 interface Props {
@@ -62,7 +63,9 @@ export function TrackStems({ trackId, isOwner }: Props) {
   }, [trackId]);
 
   useEffect(() => {
-    if (stems?.status === 'PROCESSING') {
+    // PENDING = paid, waiting for the webhook to start the Replicate job.
+    // PROCESSING = job in flight. Poll in both cases.
+    if (stems?.status === 'PENDING' || stems?.status === 'PROCESSING') {
       pollRef.current = window.setTimeout(load, 5000);
     }
     return () => {
@@ -77,14 +80,34 @@ export function TrackStems({ trackId, isOwner }: Props) {
     }
   }, [stems?.forSaleCents]);
 
-  const requestStems = async () => {
+  // First-time generation: pay the flat fee via Stripe Checkout. The webhook
+  // starts the Replicate job after payment lands; on return we'll see the row
+  // in PENDING/PROCESSING and the poll loop takes over.
+  const startCheckout = async () => {
+    setRequesting(true);
+    try {
+      const r = await api.post(`/licenses/tracks/${trackId}/stems/checkout`);
+      if (r.data.checkoutUrl) {
+        window.location.href = r.data.checkoutUrl;
+        return;
+      }
+      toast.error('Failed to start checkout');
+    } catch (err: any) {
+      toast.error(err?.response?.data?.error || 'Failed to start checkout');
+    } finally {
+      setRequesting(false);
+    }
+  };
+
+  // Retry path for a previously-paid generation that ended FAILED — no charge.
+  const retryStems = async () => {
     setRequesting(true);
     try {
       const r = await api.post(`/licenses/tracks/${trackId}/stems/request`);
       setStems(r.data.stems);
-      toast.success('Stem separation started');
+      toast.success('Stem separation restarted');
     } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to start stems');
+      toast.error(err?.response?.data?.error || 'Failed to retry');
     } finally {
       setRequesting(false);
     }
@@ -157,17 +180,25 @@ export function TrackStems({ trackId, isOwner }: Props) {
       {!stems && (
         <>
           <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">
-            Split this track into drums, bass, vocals, and other parts. Takes a few minutes.
+            Split this track into drums, bass, vocals, and other parts.
+            One-time fee of $2.99. Takes 1–3 minutes after payment.
           </p>
           <button
-            onClick={requestStems}
+            onClick={startCheckout}
             disabled={requesting}
             className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-[hsl(var(--accent))] hover:opacity-90 text-white text-sm font-semibold disabled:opacity-50 transition-opacity"
           >
             {requesting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-            Generate stems
+            Generate stems · $2.99
           </button>
         </>
+      )}
+
+      {stems?.status === 'PENDING' && (
+        <div className="flex items-center gap-3 text-sm text-purple-300">
+          <Loader2 className="w-4 h-4 animate-spin" />
+          <span>Confirming payment…</span>
+        </div>
       )}
 
       {stems?.status === 'PROCESSING' && (
@@ -184,12 +215,12 @@ export function TrackStems({ trackId, isOwner }: Props) {
             <span>{stems.errorMessage || 'Stem separation failed'}</span>
           </div>
           <button
-            onClick={requestStems}
+            onClick={stems.paidAt ? retryStems : startCheckout}
             disabled={requesting}
             className="inline-flex items-center gap-2 h-9 px-4 rounded-full border border-[hsl(var(--border))] text-sm font-medium text-white hover:bg-[hsl(var(--accent))]/20"
           >
             {requesting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-            Retry
+            {stems.paidAt ? 'Retry (no charge)' : 'Try again · $2.99'}
           </button>
         </div>
       )}

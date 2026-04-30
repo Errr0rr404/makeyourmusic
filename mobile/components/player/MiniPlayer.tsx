@@ -1,34 +1,62 @@
 import { View, Text, TouchableOpacity } from 'react-native';
 import { Image } from 'expo-image';
-import { Play, Pause, SkipForward } from 'lucide-react-native';
+import { Play, Pause, SkipForward, ListMusic } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { usePlayerStore } from '@makeyourmusic/shared';
+import { useTokens, useIsVintage } from '../../lib/theme';
+import { TapeProgress } from '../vintage/TapeProgress';
 
 export function MiniPlayer() {
   const router = useRouter();
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const { currentTrack, isPlaying, togglePlay, nextTrack, progress, duration } = usePlayerStore();
 
   if (!currentTrack) return null;
 
-  const progressPercent = duration > 0 ? (progress / duration) * 100 : 0;
+  const progressPercent = duration > 0 ? progress / duration : 0;
+
+  const containerStyle = {
+    position: 'absolute' as const,
+    bottom: 85,
+    left: 0,
+    right: 0,
+    backgroundColor: tokens.surface,
+    borderTopWidth: 1,
+    borderTopColor: tokens.border,
+  };
 
   return (
-    <View className="absolute bottom-[85px] left-0 right-0 bg-mym-surface border-t border-mym-border">
+    <View style={containerStyle}>
       {/* Progress bar */}
-      <View className="h-0.5 bg-mym-border">
-        <View
-          className="h-full bg-mym-accent"
-          style={{ width: `${progressPercent}%` }}
-        />
-      </View>
+      {isVintage ? (
+        <TapeProgress progress={progressPercent} height={3} />
+      ) : (
+        <View style={{ height: 2, backgroundColor: tokens.border }}>
+          <View
+            style={{ height: '100%', width: `${progressPercent * 100}%`, backgroundColor: tokens.accent }}
+          />
+        </View>
+      )}
 
       <TouchableOpacity
-        className="flex-row items-center px-4 py-2"
+        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 }}
         onPress={() => router.push('/player')}
         activeOpacity={0.8}
       >
-        {/* Cover art */}
-        <View className="w-11 h-11 rounded-lg overflow-hidden bg-mym-card mr-3">
+        {/* Cover art / cassette window */}
+        <View
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: isVintage ? 2 : 8,
+            overflow: 'hidden',
+            backgroundColor: isVintage ? '#0a0604' : tokens.card,
+            marginRight: 12,
+            borderWidth: isVintage ? 1 : 0,
+            borderColor: '#1a1009',
+          }}
+        >
           {currentTrack.coverArt ? (
             <Image
               source={{ uri: currentTrack.coverArt }}
@@ -38,46 +66,80 @@ export function MiniPlayer() {
               recyclingKey={currentTrack.id}
             />
           ) : (
-            <View className="flex-1 items-center justify-center bg-mym-card">
-              <Text className="text-lg">🎵</Text>
+            <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+              <ListMusic size={20} color={tokens.textMute} />
             </View>
           )}
         </View>
 
         {/* Track info */}
-        <View className="flex-1 mr-3">
-          <Text className="text-mym-text text-sm font-semibold" numberOfLines={1}>
+        <View style={{ flex: 1, marginRight: 12 }}>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: tokens.text,
+              fontSize: 14,
+              fontWeight: '600',
+              fontFamily: isVintage ? tokens.fontDisplay : undefined,
+              textTransform: isVintage ? 'uppercase' : undefined,
+              letterSpacing: isVintage ? 0.5 : undefined,
+            }}
+          >
             {currentTrack.title}
           </Text>
-          <Text className="text-mym-muted text-xs" numberOfLines={1}>
+          <Text
+            numberOfLines={1}
+            style={{
+              color: tokens.textMute,
+              fontSize: 12,
+              fontFamily: isVintage ? tokens.fontLabel : undefined,
+              marginTop: 2,
+            }}
+          >
             {currentTrack.agent.name}
           </Text>
         </View>
 
-        {/* Controls */}
+        {/* Play/pause */}
         <TouchableOpacity
           onPress={togglePlay}
-          className="p-2 mr-1"
           activeOpacity={0.6}
           accessibilityLabel={isPlaying ? 'Pause' : 'Play'}
           accessibilityRole="button"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={
+            isVintage
+              ? {
+                  width: 36,
+                  height: 36,
+                  borderRadius: 18,
+                  backgroundColor: tokens.brand,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginRight: 4,
+                  borderWidth: 1,
+                  borderColor: '#1a1009',
+                }
+              : { padding: 8, marginRight: 4 }
+          }
         >
           {isPlaying ? (
-            <Pause size={22} color="#fafafa" fill="#fafafa" />
+            <Pause size={isVintage ? 18 : 22} color={isVintage ? '#fff' : tokens.text} fill={isVintage ? '#fff' : tokens.text} />
           ) : (
-            <Play size={22} color="#fafafa" fill="#fafafa" />
+            <Play size={isVintage ? 18 : 22} color={isVintage ? '#fff' : tokens.text} fill={isVintage ? '#fff' : tokens.text} />
           )}
         </TouchableOpacity>
+
+        {/* Next */}
         <TouchableOpacity
           onPress={nextTrack}
-          className="p-2"
+          style={{ padding: 8 }}
           activeOpacity={0.6}
           accessibilityLabel="Next track"
           accessibilityRole="button"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <SkipForward size={20} color="#fafafa" />
+          <SkipForward size={20} color={tokens.text} />
         </TouchableOpacity>
       </TouchableOpacity>
     </View>

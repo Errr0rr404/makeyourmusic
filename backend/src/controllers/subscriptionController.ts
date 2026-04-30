@@ -20,6 +20,7 @@ import {
   handleSyncLicensePaymentFailed,
   handleSyncLicenseRefunded,
 } from './licenseWebhook';
+import { handleStemsGenerationCheckoutCompleted } from './stemsController';
 
 const stripe = () => getStripe();
 
@@ -203,6 +204,10 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
         }
         if (kind === 'sync_license' || kind === 'stem_purchase') {
           await handleSyncLicenseCheckoutCompleted(session);
+          break;
+        }
+        if (kind === 'stems_generation') {
+          await handleStemsGenerationCheckoutCompleted(session);
           break;
         }
         if (kind === 'platform_subscription') {

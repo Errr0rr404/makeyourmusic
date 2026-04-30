@@ -54,7 +54,7 @@ export function MobileNav() {
                 {isActive && (
                   <span
                     className="absolute -top-px left-1/2 -translate-x-1/2 w-8 h-[3px] rounded-full"
-                    style={{ background: isCreate ? 'var(--brand)' : 'white' }}
+                    style={{ background: isCreate ? 'var(--brand)' : 'var(--text)' }}
                   />
                 )}
                 <Icon className="w-5 h-5" strokeWidth={isActive ? 2.4 : 2} />

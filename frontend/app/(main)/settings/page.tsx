@@ -8,7 +8,7 @@ import api from '@/lib/api';
 import {
   Settings, Volume2, Sliders, LogOut, ChevronRight, Lock,
   AlertCircle, KeyRound, Trash2, Mail, Eye, EyeOff, Loader2, CheckCircle2,
-  Sun, Moon, Monitor, Sparkles,
+  Sun, Moon, Monitor, Sparkles, Disc3, Radio,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -20,7 +20,23 @@ export default function SettingsPage() {
   const confirm = useConfirm();
   const { user, isAuthenticated, logout } = useAuthStore();
   const { volume, setVolume, crossfade, setCrossfade, eqEnabled, toggleEQ, autoplay, toggleAutoplay } = usePlayerStore();
-  const { theme, setTheme } = useTheme();
+  const { skin, palette, setSkin, setPalette } = useTheme();
+  const [mechanicalSounds, setMechanicalSounds] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    setMechanicalSounds(localStorage.getItem('mym-mech-sounds') === '1');
+  }, []);
+
+  const toggleMechanicalSounds = () => {
+    const next = !mechanicalSounds;
+    setMechanicalSounds(next);
+    try {
+      localStorage.setItem('mym-mech-sounds', next ? '1' : '0');
+    } catch {
+      /* no-op */
+    }
+  };
 
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirm: '' });
@@ -262,31 +278,96 @@ export default function SettingsPage() {
       {/* Appearance */}
       <section className="mb-6">
         <h2 className="text-sm font-semibold uppercase text-[hsl(var(--muted-foreground))] mb-3 px-1">Appearance</h2>
-        <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] p-4">
-          <p className="text-sm text-white font-medium mb-3">Theme</p>
-          <div className="grid grid-cols-3 gap-2">
-            {([
-              { id: 'dark', label: 'Dark', icon: Moon },
-              { id: 'light', label: 'Light', icon: Sun },
-              { id: 'system', label: 'System', icon: Monitor },
-            ] as const).map((opt) => {
-              const Icon = opt.icon;
-              const active = theme === opt.id;
-              return (
-                <button
-                  key={opt.id}
-                  onClick={() => setTheme(opt.id)}
-                  className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-colors ${
-                    active
-                      ? 'bg-[hsl(var(--accent))]/10 border-[hsl(var(--accent))] text-[hsl(var(--accent))]'
-                      : 'bg-[hsl(var(--secondary))] border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-white'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span className="text-xs font-semibold">{opt.label}</span>
-                </button>
-              );
-            })}
+        <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] p-4 space-y-5">
+          {/* Style: Modern vs Vintage */}
+          <div>
+            <p className="text-sm text-[color:var(--text)] font-medium mb-1">Style</p>
+            <p className="text-xs text-[color:var(--text-mute)] mb-3">Modern is our signature electric look. Vintage is a tape-deck listening room.</p>
+            <div className="grid grid-cols-2 gap-2">
+              {([
+                { id: 'modern', label: 'Modern', desc: 'Electric · Studio', icon: Radio },
+                { id: 'vintage', label: 'Vintage', desc: 'Cassette · Hi-Fi', icon: Disc3 },
+              ] as const).map((opt) => {
+                const Icon = opt.icon;
+                const active = skin === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => setSkin(opt.id)}
+                    className={`flex items-center gap-3 p-3 rounded-lg border transition-colors text-left ${
+                      active
+                        ? 'bg-[hsl(var(--accent))]/10 border-[hsl(var(--accent))] text-[color:var(--text)]'
+                        : 'bg-[hsl(var(--secondary))] border-[hsl(var(--border))] text-[color:var(--text-mute)] hover:text-[color:var(--text)]'
+                    }`}
+                    aria-pressed={active}
+                  >
+                    <Icon className={`w-5 h-5 flex-shrink-0 ${active ? 'text-[hsl(var(--accent))]' : ''}`} />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold">{opt.label}</p>
+                      <p className="text-[11px] text-[color:var(--text-mute)]">{opt.desc}</p>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Mode: Light / Dark / System */}
+          <div>
+            <p className="text-sm text-[color:var(--text)] font-medium mb-1">Mode</p>
+            <p className="text-xs text-[color:var(--text-mute)] mb-3">Light follows daylight, dark for late-night listening.</p>
+            <div className="grid grid-cols-3 gap-2">
+              {([
+                { id: 'dark', label: 'Dark', icon: Moon },
+                { id: 'light', label: 'Light', icon: Sun },
+                { id: 'system', label: 'System', icon: Monitor },
+              ] as const).map((opt) => {
+                const Icon = opt.icon;
+                const active = palette === opt.id;
+                return (
+                  <button
+                    key={opt.id}
+                    onClick={() => setPalette(opt.id)}
+                    className={`flex flex-col items-center gap-1.5 p-3 rounded-lg border transition-colors ${
+                      active
+                        ? 'bg-[hsl(var(--accent))]/10 border-[hsl(var(--accent))] text-[hsl(var(--accent))]'
+                        : 'bg-[hsl(var(--secondary))] border-[hsl(var(--border))] text-[color:var(--text-mute)] hover:text-[color:var(--text)]'
+                    }`}
+                    aria-pressed={active}
+                  >
+                    <Icon className="w-4 h-4" />
+                    <span className="text-xs font-semibold">{opt.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Mechanical sounds — only meaningful for vintage but visible always */}
+          <div className="flex items-center justify-between pt-1 border-t border-[hsl(var(--border))] -mx-4 px-4 pt-4">
+            <div className="flex items-center gap-3">
+              <Sparkles className="w-5 h-5 text-[color:var(--text-mute)]" />
+              <div>
+                <p className="text-sm text-[color:var(--text)] font-medium">Mechanical sounds</p>
+                <p className="text-xs text-[color:var(--text-mute)]">
+                  {skin === 'vintage' ? 'Tactile clicks on transport buttons' : 'Vintage style only'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={toggleMechanicalSounds}
+              disabled={skin !== 'vintage'}
+              className={`w-11 h-6 rounded-full transition-colors relative ${
+                mechanicalSounds && skin === 'vintage'
+                  ? 'bg-[hsl(var(--accent))]'
+                  : 'bg-[hsl(var(--secondary))]'
+              } ${skin !== 'vintage' ? 'opacity-50 cursor-not-allowed' : ''}`}
+              role="switch"
+              aria-checked={mechanicalSounds}
+              aria-label="Toggle mechanical sounds"
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${mechanicalSounds && skin === 'vintage' ? 'translate-x-5' : ''}`} />
+            </button>
           </div>
         </div>
       </section>

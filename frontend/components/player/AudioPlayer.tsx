@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
-  Shuffle, Repeat, Repeat1, ListMusic, SlidersHorizontal, ListOrdered,
+  Shuffle, Repeat, Repeat1, ListMusic, SlidersHorizontal, ListOrdered, Square,
 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import api from '@/lib/api';
@@ -14,6 +14,7 @@ import { PlayerSettings } from './PlayerSettings';
 import { QueuePanel } from './QueuePanel';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
+import { useIsVintage, TransportButton, VUMeterStereo, Readout, TapeProgress, LedDot } from '@/components/vintage';
 
 function formatTime(seconds: number): string {
   if (!seconds || isNaN(seconds)) return '0:00';
@@ -80,6 +81,8 @@ export function AudioPlayer() {
   } = usePlayerStore();
 
   isPlayingRef.current = isPlaying;
+
+  const isVintage = useIsVintage();
 
   const getActiveEl = () => (activeSlotRef.current === 'a' ? audioARef.current : audioBRef.current);
   const getInactiveEl = () => (activeSlotRef.current === 'a' ? audioBRef.current : audioARef.current);
@@ -430,26 +433,55 @@ export function AudioPlayer() {
       </AnimatePresence>
       <KeyboardShortcutsDialog open={showShortcutsHelp} onClose={() => setShowShortcutsHelp(false)} />
 
-      <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[color:var(--bg-elev-1)] border-t border-[color:var(--stroke)] z-50 flex items-center gap-2 px-3 sm:gap-4 sm:px-4 md:px-6">
-        <audio
-          ref={audioARef}
-          crossOrigin="anonymous"
-          onTimeUpdate={() => { if (activeSlotRef.current === 'a') handleTimeUpdate(); }}
-          onLoadedMetadata={() => {
-            if (activeSlotRef.current === 'a' && audioARef.current) setDuration(audioARef.current.duration);
-          }}
-          onEnded={() => { if (activeSlotRef.current === 'a') handleEnded(); }}
-        />
-        <audio
-          ref={audioBRef}
-          crossOrigin="anonymous"
-          onTimeUpdate={() => { if (activeSlotRef.current === 'b') handleTimeUpdate(); }}
-          onLoadedMetadata={() => {
-            if (activeSlotRef.current === 'b' && audioBRef.current) setDuration(audioBRef.current.duration);
-          }}
-          onEnded={() => { if (activeSlotRef.current === 'b') handleEnded(); }}
-        />
+      {/* Hidden audio elements (shared between skins). */}
+      <audio
+        ref={audioARef}
+        crossOrigin="anonymous"
+        className="hidden"
+        onTimeUpdate={() => { if (activeSlotRef.current === 'a') handleTimeUpdate(); }}
+        onLoadedMetadata={() => {
+          if (activeSlotRef.current === 'a' && audioARef.current) setDuration(audioARef.current.duration);
+        }}
+        onEnded={() => { if (activeSlotRef.current === 'a') handleEnded(); }}
+      />
+      <audio
+        ref={audioBRef}
+        crossOrigin="anonymous"
+        className="hidden"
+        onTimeUpdate={() => { if (activeSlotRef.current === 'b') handleTimeUpdate(); }}
+        onLoadedMetadata={() => {
+          if (activeSlotRef.current === 'b' && audioBRef.current) setDuration(audioBRef.current.duration);
+        }}
+        onEnded={() => { if (activeSlotRef.current === 'b') handleEnded(); }}
+      />
 
+      {isVintage ? (
+        <VintageDeckChrome
+          currentTrack={currentTrack}
+          isPlaying={isPlaying}
+          progress={progress}
+          duration={duration}
+          progressPercent={progressPercent}
+          shuffle={shuffle}
+          repeat={repeat}
+          showQueue={showQueue}
+          showSettings={showSettings}
+          hasActiveSettings={hasActiveSettings}
+          playbackSpeed={playbackSpeed}
+          volume={volume}
+          queueLength={queue.length}
+          togglePlay={togglePlay}
+          prevTrack={prevTrack}
+          nextTrack={nextTrack}
+          toggleShuffle={toggleShuffle}
+          toggleRepeat={toggleRepeat}
+          toggleQueue={toggleQueue}
+          toggleSettings={toggleSettings}
+          setVolume={setVolume}
+          handleSeek={handleSeek}
+        />
+      ) : (
+      <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[color:var(--bg-elev-1)] border-t border-[color:var(--stroke)] z-50 flex items-center gap-2 px-3 sm:gap-4 sm:px-4 md:px-6">
         {/* Track Info */}
         <div className="flex flex-1 items-center gap-2 min-w-0 sm:w-[260px] sm:flex-none sm:gap-3">
           <div className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-md overflow-hidden bg-[color:var(--bg-elev-3)] flex-shrink-0 shadow-lg shadow-black/40">
@@ -627,6 +659,279 @@ export function AudioPlayer() {
           <SlidersHorizontal className="w-5 h-5" />
         </button>
       </div>
+      )}
     </>
+  );
+}
+
+/* ───────────────────────── VINTAGE DECK CHROME ─────────────────────────── */
+
+interface VintageDeckProps {
+  currentTrack: NonNullable<ReturnType<typeof usePlayerStore.getState>['currentTrack']>;
+  isPlaying: boolean;
+  progress: number;
+  duration: number;
+  progressPercent: number;
+  shuffle: boolean;
+  repeat: 'none' | 'all' | 'one';
+  showQueue: boolean;
+  showSettings: boolean;
+  hasActiveSettings: boolean;
+  playbackSpeed: number;
+  volume: number;
+  queueLength: number;
+  togglePlay: () => void;
+  prevTrack: () => void;
+  nextTrack: () => void;
+  toggleShuffle: () => void;
+  toggleRepeat: () => void;
+  toggleQueue: () => void;
+  toggleSettings: () => void;
+  setVolume: (v: number) => void;
+  handleSeek: (e: React.ChangeEvent<HTMLInputElement>) => void;
+}
+
+function VintageDeckChrome({
+  currentTrack,
+  isPlaying,
+  progress,
+  duration,
+  shuffle,
+  repeat,
+  showQueue,
+  showSettings,
+  hasActiveSettings,
+  playbackSpeed,
+  volume,
+  queueLength,
+  togglePlay,
+  prevTrack,
+  nextTrack,
+  toggleShuffle,
+  toggleRepeat,
+  toggleQueue,
+  toggleSettings,
+  setVolume,
+  handleSeek,
+}: VintageDeckProps) {
+  const remaining = Math.max(0, duration - progress);
+  const fmt = (s: number) => {
+    if (!s || isNaN(s)) return '0:00';
+    const m = Math.floor(s / 60);
+    const r = Math.floor(s % 60);
+    return `${m}:${r.toString().padStart(2, '0')}`;
+  };
+  const tapeProgress = duration > 0 ? progress / duration : 0;
+
+  return (
+    <div
+      className="fixed bottom-0 left-0 right-0 z-50"
+      style={{
+        height: 'var(--player-height)',
+        background:
+          'linear-gradient(180deg, #6b4423 0%, #3e2614 8%, #2b1d10 100%)',
+        borderTop: '2px solid #1a1009',
+        boxShadow: '0 -4px 14px rgba(0, 0, 0, 0.50)',
+      }}
+    >
+      {/* Brushed-metal faceplate */}
+      <div
+        className="absolute inset-x-2 top-1.5 bottom-1.5 flex items-center gap-3 px-3 sm:px-5"
+        style={{
+          background:
+            'linear-gradient(180deg, rgba(255,255,255,0.06) 0%, transparent 50%), repeating-linear-gradient(90deg, var(--metal) 0px, var(--metal) 1px, var(--metal-shadow) 1px, var(--metal-shadow) 2px)',
+          backgroundColor: 'var(--metal)',
+          border: '1px solid var(--metal-shadow)',
+          borderRadius: 4,
+          boxShadow:
+            'inset 0 1px 0 rgba(255, 255, 255, 0.20), inset 0 -1px 0 rgba(0, 0, 0, 0.45)',
+        }}
+      >
+        {/* Cassette window — cover art with subtle reels overlay */}
+        <Link
+          href={`/track/${currentTrack.slug}`}
+          className="relative w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 overflow-hidden"
+          style={{
+            background: '#0a0604',
+            border: '1px solid #1a1009',
+            borderRadius: 2,
+            boxShadow: 'inset 0 1px 3px rgba(0, 0, 0, 0.85)',
+          }}
+        >
+          {currentTrack.coverArt ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={currentTrack.coverArt} alt={currentTrack.title} className="w-full h-full object-cover" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-[var(--text-mute)]">
+              <ListMusic className="w-5 h-5" />
+            </div>
+          )}
+          {/* REC/PLAY indicator dot */}
+          <span className="absolute top-1 right-1 flex items-center gap-1">
+            <LedDot on={isPlaying} color="red" size={6} pulse={isPlaying} />
+          </span>
+        </Link>
+
+        {/* Track info + counter */}
+        <div className="hidden sm:flex flex-col min-w-0 w-[200px]">
+          <Link
+            href={`/track/${currentTrack.slug}`}
+            className="text-sm font-display uppercase tracking-wide truncate text-[var(--text)] hover:underline"
+          >
+            {currentTrack.title}
+          </Link>
+          {currentTrack.agent && (
+            <Link
+              href={`/agent/${currentTrack.agent.slug}`}
+              className="text-[11px] truncate hover:underline"
+              style={{ fontFamily: 'var(--font-label)', color: 'var(--text-mute)' }}
+            >
+              {currentTrack.agent.name}
+            </Link>
+          )}
+          <div className="mt-1 flex items-center gap-2">
+            <Readout size="sm" glow="red">{fmt(progress)}</Readout>
+            <span className="text-[10px] text-[var(--text-mute)] font-mono">−{fmt(remaining)}</span>
+          </div>
+        </div>
+
+        {/* Tape window with reels — flex grow */}
+        <div className="flex-1 min-w-0 max-w-[480px] mx-auto flex flex-col gap-1.5">
+          <div className="relative group">
+            <TapeProgress progress={tapeProgress} spinning={isPlaying} />
+            <input
+              type="range"
+              min={0}
+              max={duration || 0}
+              value={progress}
+              onChange={handleSeek}
+              aria-label="Seek"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            />
+          </div>
+          {/* Transport row */}
+          <div className="flex items-center justify-center gap-2">
+            <TransportButton
+              size="sm"
+              variant="metal"
+              onClick={toggleShuffle}
+              active={shuffle}
+              aria-label="Shuffle"
+              className="hidden sm:inline-flex"
+            >
+              <Shuffle className="w-3.5 h-3.5" />
+            </TransportButton>
+            <TransportButton size="sm" variant="metal" onClick={prevTrack} aria-label="Rewind">
+              <SkipBack className="w-4 h-4" fill="currentColor" />
+            </TransportButton>
+            <TransportButton
+              size="md"
+              variant="red"
+              onClick={togglePlay}
+              aria-label={isPlaying ? 'Stop' : 'Play'}
+            >
+              {isPlaying ? <Square className="w-4 h-4" fill="currentColor" /> : <Play className="w-4 h-4" fill="currentColor" />}
+            </TransportButton>
+            <TransportButton size="sm" variant="metal" onClick={nextTrack} aria-label="Fast forward">
+              <SkipForward className="w-4 h-4" fill="currentColor" />
+            </TransportButton>
+            <TransportButton
+              size="sm"
+              variant="metal"
+              onClick={toggleRepeat}
+              active={repeat !== 'none'}
+              aria-label="Repeat"
+              className="hidden sm:inline-flex"
+            >
+              {repeat === 'one' ? <Repeat1 className="w-3.5 h-3.5" /> : <Repeat className="w-3.5 h-3.5" />}
+            </TransportButton>
+          </div>
+        </div>
+
+        {/* Right-side controls: VU meter + queue + settings + volume */}
+        <div className="hidden md:flex items-center gap-3 flex-shrink-0">
+          <VUMeterStereo segments={10} thickness={3} />
+
+          <button
+            onClick={toggleQueue}
+            aria-label="Queue"
+            className="relative px-2 py-1.5"
+            style={{
+              fontFamily: 'var(--font-display)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontSize: 11,
+              color: showQueue ? 'var(--brand)' : 'var(--text-soft)',
+              background: showQueue
+                ? 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.25) 100%)'
+                : 'transparent',
+              borderRadius: 2,
+              boxShadow: showQueue ? 'inset 0 1px 3px rgba(0,0,0,0.55)' : 'none',
+            }}
+          >
+            <ListOrdered className="w-3.5 h-3.5 inline mr-1" />
+            CUE {queueLength > 1 && <span className="text-[var(--brand)]">{queueLength}</span>}
+          </button>
+
+          <button
+            onClick={toggleSettings}
+            aria-label="Audio settings"
+            className="relative px-2 py-1.5"
+            style={{
+              fontFamily: 'var(--font-display)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.08em',
+              fontSize: 11,
+              color: showSettings || hasActiveSettings ? 'var(--brand)' : 'var(--text-soft)',
+              background: showSettings
+                ? 'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0.25) 100%)'
+                : 'transparent',
+              borderRadius: 2,
+              boxShadow: showSettings ? 'inset 0 1px 3px rgba(0,0,0,0.55)' : 'none',
+            }}
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 inline mr-1" />
+            EQ
+            {playbackSpeed !== 1 && <span className="ml-1 text-[var(--brand)]">{playbackSpeed}×</span>}
+            {hasActiveSettings && !showSettings && <LedDot color="amber" size={5} className="absolute -top-0.5 -right-0.5" />}
+          </button>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setVolume(volume === 0 ? 0.8 : 0)}
+              aria-label={volume === 0 ? 'Unmute' : 'Mute'}
+              className="text-[var(--text-soft)] hover:text-[var(--text)]"
+            >
+              {volume === 0 ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+            </button>
+            <input
+              type="range"
+              min={0}
+              max={1}
+              step={0.01}
+              value={volume}
+              onChange={(e) => setVolume(parseFloat(e.target.value))}
+              aria-label="Volume"
+              className="w-20"
+            />
+          </div>
+        </div>
+
+        {/* Mobile right-side: just settings */}
+        <button
+          onClick={toggleSettings}
+          aria-label="Audio settings"
+          className="md:hidden flex-shrink-0 px-2 py-1.5"
+          style={{
+            fontFamily: 'var(--font-display)',
+            textTransform: 'uppercase',
+            fontSize: 11,
+            color: showSettings || hasActiveSettings ? 'var(--brand)' : 'var(--text-soft)',
+          }}
+        >
+          <SlidersHorizontal className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
   );
 }

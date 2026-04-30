@@ -26,9 +26,13 @@ import { hapticLight } from '../services/hapticService';
 import { createTrackShareLink } from '../lib/linking';
 import PlayerSettingsModal from '../components/player/PlayerSettings';
 import { Karaoke } from '../components/player/Karaoke';
+import { useTokens, useIsVintage } from '../lib/theme';
+import { Cassette, Readout, TransportButton } from '../components/vintage';
 
 export default function FullScreenPlayer() {
   const router = useRouter();
+  const tokens = useTokens();
+  const isVintage = useIsVintage();
   const [showSettings, setShowSettings] = useState(false);
   const [showKaraoke, setShowKaraoke] = useState(false);
   const [liked, setLiked] = useState(false);
@@ -167,193 +171,301 @@ export default function FullScreenPlayer() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const onAccent = tokens.accent;
+  const onMuted = tokens.textMute;
+  const onText = tokens.text;
+  const tapeProgress = duration > 0 ? progress / duration : 0;
+
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SwipeableDismiss onDismiss={() => router.back()}>
-      <SafeAreaView className="flex-1 bg-mym-bg">
-        <View className="flex-1 px-6">
+      <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
+        <View style={{ flex: 1, paddingHorizontal: 24 }}>
           {/* Header */}
-          <View className="flex-row items-center justify-between py-4">
-            <TouchableOpacity onPress={() => router.back()} className="p-2">
-              <ChevronDown size={28} color="#fafafa" />
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16 }}>
+            <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+              <ChevronDown size={28} color={onText} />
             </TouchableOpacity>
-            <View className="items-center">
-              <Text className="text-mym-muted text-sm font-medium">Now Playing</Text>
+            <View style={{ alignItems: 'center' }}>
+              <Text
+                style={{
+                  color: onMuted,
+                  fontSize: 14,
+                  fontWeight: '500',
+                  fontFamily: isVintage ? tokens.fontDisplay : undefined,
+                  textTransform: isVintage ? 'uppercase' : undefined,
+                  letterSpacing: isVintage ? 1.5 : undefined,
+                }}
+              >
+                Now Playing
+              </Text>
               {playbackSpeed !== 1 && (
-                <Text className="text-violet-400 text-[10px] font-semibold mt-0.5">
-                  {playbackSpeed}x speed
+                <Text style={{ color: onAccent, fontSize: 10, fontWeight: '600', marginTop: 2 }}>
+                  {playbackSpeed}× speed
                 </Text>
               )}
             </View>
-            <View className="flex-row items-center gap-1">
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <TouchableOpacity
-                className="p-2"
+                style={{ padding: 8 }}
                 accessibilityLabel="Audio settings"
                 onPress={() => {
                   setShowSettings(true);
                   hapticLight();
                 }}
               >
-                <SlidersHorizontal
-                  size={20}
-                  color={hasActiveSettings ? '#8b5cf6' : '#a1a1aa'}
-                />
+                <SlidersHorizontal size={20} color={hasActiveSettings ? onAccent : onMuted} />
                 {hasActiveSettings && (
                   <View
-                    className="absolute top-1 right-1 w-2 h-2 rounded-full bg-violet-500"
+                    style={{
+                      position: 'absolute',
+                      top: 4,
+                      right: 4,
+                      width: 8,
+                      height: 8,
+                      borderRadius: 4,
+                      backgroundColor: onAccent,
+                    }}
                   />
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                className="p-2"
+                style={{ padding: 8 }}
                 accessibilityLabel="Queue"
                 onPress={() => {
                   const queueNames = queue.map((t, i) => `${i + 1}. ${t.title}`).join('\n');
                   Alert.alert('Queue', queueNames || 'Queue is empty');
                 }}
               >
-                <ListMusic size={20} color="#a1a1aa" />
+                <ListMusic size={20} color={onMuted} />
               </TouchableOpacity>
             </View>
           </View>
 
-          {/* Cover Art */}
-          <View className="flex-1 items-center justify-center">
-            <View className="w-72 h-72 rounded-3xl overflow-hidden bg-mym-card shadow-2xl">
-              {currentTrack.coverArt ? (
-                <Image
-                  source={{ uri: currentTrack.coverArt }}
-                  style={{ width: 288, height: 288 }}
-                  contentFit="cover"
-                  transition={300}
-                  cachePolicy="memory-disk"
-                  recyclingKey={currentTrack.id}
-                />
-              ) : (
-                <View className="flex-1 items-center justify-center bg-mym-surface">
-                  <Text className="text-7xl">🎵</Text>
-                </View>
-              )}
-            </View>
+          {/* Cover / Cassette */}
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            {isVintage ? (
+              <Cassette
+                width={300}
+                title={currentTrack.title}
+                artist={currentTrack.agent.name}
+                coverArt={currentTrack.coverArt}
+                spinning={isPlaying}
+                progress={tapeProgress}
+                side="A"
+              />
+            ) : (
+              <View
+                style={{
+                  width: 288,
+                  height: 288,
+                  borderRadius: 24,
+                  overflow: 'hidden',
+                  backgroundColor: tokens.card,
+                  shadowColor: '#000',
+                  shadowOpacity: 0.4,
+                  shadowRadius: 20,
+                  elevation: 12,
+                }}
+              >
+                {currentTrack.coverArt ? (
+                  <Image
+                    source={{ uri: currentTrack.coverArt }}
+                    style={{ width: 288, height: 288 }}
+                    contentFit="cover"
+                    transition={300}
+                    cachePolicy="memory-disk"
+                    recyclingKey={currentTrack.id}
+                  />
+                ) : (
+                  <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.surface }}>
+                    <Text style={{ fontSize: 72 }}>🎵</Text>
+                  </View>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Track Info */}
-          <View className="mt-6">
-            <View className="flex-row items-center justify-between">
-              <View className="flex-1 mr-4">
-                <Text className="text-mym-text text-xl font-bold" numberOfLines={1}>
+          <View style={{ marginTop: 24 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <View style={{ flex: 1, marginRight: 16 }}>
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    color: onText,
+                    fontSize: 22,
+                    fontWeight: '700',
+                    fontFamily: isVintage ? tokens.fontDisplay : undefined,
+                    textTransform: isVintage ? 'uppercase' : undefined,
+                    letterSpacing: isVintage ? 1 : undefined,
+                  }}
+                >
                   {currentTrack.title}
                 </Text>
                 <TouchableOpacity onPress={() => {
                   router.dismiss();
                   router.push(`/agent/${currentTrack.agent.slug}`);
                 }}>
-                  <Text className="text-mym-accent text-base mt-1" numberOfLines={1}>
+                  <Text
+                    numberOfLines={1}
+                    style={{
+                      color: onAccent,
+                      fontSize: 16,
+                      marginTop: 4,
+                      fontFamily: isVintage ? tokens.fontLabel : undefined,
+                    }}
+                  >
                     {currentTrack.agent.name}
                   </Text>
                 </TouchableOpacity>
               </View>
               <TouchableOpacity
-                className="p-2"
+                style={{ padding: 8 }}
                 onPress={handleLike}
                 disabled={likeBusy}
                 accessibilityLabel={liked ? 'Unlike track' : 'Like track'}
               >
                 <Heart
                   size={22}
-                  color={liked ? '#ef4444' : '#a1a1aa'}
+                  color={liked ? '#ef4444' : onMuted}
                   fill={liked ? '#ef4444' : 'none'}
                 />
               </TouchableOpacity>
             </View>
 
-            {/* Sleep Timer Indicator */}
+            {/* Sleep Timer */}
             {sleepTimerEnd && (
-              <View className="flex-row items-center gap-1.5 mt-2 bg-violet-500/15 rounded-full self-start px-3 py-1">
-                <View className="w-1.5 h-1.5 rounded-full bg-violet-500" />
-                <Text className="text-violet-400 text-[11px] font-medium">
+              <View
+                style={{
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 6,
+                  marginTop: 8,
+                  backgroundColor: tokens.accentSoft,
+                  borderRadius: 999,
+                  alignSelf: 'flex-start',
+                  paddingHorizontal: 12,
+                  paddingVertical: 4,
+                }}
+              >
+                <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: onAccent }} />
+                <Text style={{ color: onAccent, fontSize: 11, fontWeight: '500' }}>
                   Sleep in {formatTimerRemaining()}
                 </Text>
               </View>
             )}
 
-            {/* Progress bar */}
-            <View className="mt-5">
-              <Slider
-                value={progress}
-                max={duration || 1}
-                onValueChange={setProgress}
-              />
-              <View className="flex-row justify-between mt-1">
-                <Text className="text-mym-muted text-xs">
-                  {formatDuration(Math.floor(progress))}
-                </Text>
-                <Text className="text-mym-muted text-xs">
-                  {formatDuration(Math.floor(duration))}
-                </Text>
+            {/* Progress + counter */}
+            <View style={{ marginTop: 20 }}>
+              <Slider value={progress} max={duration || 1} onValueChange={setProgress} />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 }}>
+                {isVintage ? (
+                  <>
+                    <Readout size="sm" value={formatDuration(Math.floor(progress))} />
+                    <Readout size="sm" value={`-${formatDuration(Math.max(0, Math.floor(duration - progress)))}`} glow="amber" />
+                  </>
+                ) : (
+                  <>
+                    <Text style={{ color: onMuted, fontSize: 12 }}>
+                      {formatDuration(Math.floor(progress))}
+                    </Text>
+                    <Text style={{ color: onMuted, fontSize: 12 }}>
+                      {formatDuration(Math.floor(duration))}
+                    </Text>
+                  </>
+                )}
               </View>
             </View>
 
             {/* Controls */}
-            <View className="flex-row items-center justify-between mt-6 px-4">
-              <TouchableOpacity onPress={toggleShuffle} className="p-3">
-                <Shuffle size={20} color={shuffle ? '#8b5cf6' : '#a1a1aa'} />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginTop: 24,
+                paddingHorizontal: 16,
+              }}
+            >
+              <TouchableOpacity onPress={toggleShuffle} style={{ padding: 12 }}>
+                <Shuffle size={20} color={shuffle ? onAccent : onMuted} />
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={handlePrev} className="p-3">
-                <SkipBack size={28} color="#fafafa" fill="#fafafa" />
-              </TouchableOpacity>
+              {isVintage ? (
+                <>
+                  <TransportButton size="sm" onPress={handlePrev} accessibilityLabel="Rewind">
+                    <SkipBack size={20} color={onText} fill={onText} />
+                  </TransportButton>
+                  <TransportButton size="lg" variant="red" onPress={handleTogglePlay} accessibilityLabel={isPlaying ? 'Pause' : 'Play'}>
+                    {isPlaying ? <Pause size={28} color="#fff" fill="#fff" /> : <Play size={28} color="#fff" fill="#fff" />}
+                  </TransportButton>
+                  <TransportButton size="sm" onPress={handleNext} accessibilityLabel="Fast forward">
+                    <SkipForward size={20} color={onText} fill={onText} />
+                  </TransportButton>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity onPress={handlePrev} style={{ padding: 12 }}>
+                    <SkipBack size={28} color={onText} fill={onText} />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    onPress={handleTogglePlay}
+                    style={{
+                      backgroundColor: tokens.accent,
+                      borderRadius: 32,
+                      width: 64,
+                      height: 64,
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    {isPlaying ? <Pause size={28} color="#fff" fill="#fff" /> : <Play size={28} color="#fff" fill="#fff" />}
+                  </TouchableOpacity>
+                  <TouchableOpacity onPress={handleNext} style={{ padding: 12 }}>
+                    <SkipForward size={28} color={onText} fill={onText} />
+                  </TouchableOpacity>
+                </>
+              )}
 
-              <TouchableOpacity
-                onPress={handleTogglePlay}
-                className="bg-mym-accent rounded-full w-16 h-16 items-center justify-center"
-              >
-                {isPlaying ? (
-                  <Pause size={28} color="#fff" fill="#fff" />
-                ) : (
-                  <Play size={28} color="#fff" fill="#fff" />
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={handleNext} className="p-3">
-                <SkipForward size={28} color="#fafafa" fill="#fafafa" />
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={toggleRepeat} className="p-3">
-                <RepeatIcon
-                  size={20}
-                  color={repeat !== 'none' ? '#8b5cf6' : '#a1a1aa'}
-                />
+              <TouchableOpacity onPress={toggleRepeat} style={{ padding: 12 }}>
+                <RepeatIcon size={20} color={repeat !== 'none' ? onAccent : onMuted} />
               </TouchableOpacity>
             </View>
 
             {/* Bottom actions */}
-            <View className="flex-row items-center justify-center mt-6 mb-4 gap-6">
-              <TouchableOpacity className="p-3" onPress={handleShare}>
-                <Share2 size={20} color="#a1a1aa" />
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginTop: 24,
+                marginBottom: 16,
+                gap: 24,
+              }}
+            >
+              <TouchableOpacity style={{ padding: 12 }} onPress={handleShare}>
+                <Share2 size={20} color={onMuted} />
               </TouchableOpacity>
               <TouchableOpacity
-                className="p-3"
+                style={{ padding: 12 }}
                 onPress={() => {
                   setShowKaraoke(true);
                   hapticLight();
                 }}
                 accessibilityLabel="Karaoke"
               >
-                <Mic2 size={20} color="#a1a1aa" />
+                <Mic2 size={20} color={onMuted} />
               </TouchableOpacity>
               <TouchableOpacity
-                className="p-3"
+                style={{ padding: 12 }}
                 onPress={() => {
                   setShowSettings(true);
                   hapticLight();
                 }}
               >
-                <SlidersHorizontal
-                  size={20}
-                  color={hasActiveSettings ? '#8b5cf6' : '#a1a1aa'}
-                />
+                <SlidersHorizontal size={20} color={hasActiveSettings ? onAccent : onMuted} />
               </TouchableOpacity>
             </View>
           </View>

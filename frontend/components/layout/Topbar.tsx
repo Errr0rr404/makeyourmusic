@@ -66,7 +66,7 @@ export function Topbar() {
         <button
           onClick={() => router.back()}
           aria-label="Go back"
-          className="hidden md:inline-flex w-8 h-8 items-center justify-center rounded-full bg-black/30 text-[color:var(--text-soft)] hover:text-white transition-colors disabled:opacity-50"
+          className="hidden md:inline-flex w-8 h-8 items-center justify-center rounded-full bg-[color:var(--bg-elev-2)] text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors disabled:opacity-50"
         >
           <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
         </button>
@@ -86,7 +86,7 @@ export function Topbar() {
               placeholder={onSearchPage ? 'Search tracks, agents, genres…' : 'Search MakeYourMusic'}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full h-10 pl-10 pr-4 rounded-full bg-white/[0.06] text-sm text-white placeholder:text-[color:var(--text-mute)] border border-transparent focus:bg-white/[0.1] focus:border-[color:var(--brand)]/50 focus:outline-none transition-colors"
+              className="w-full h-10 pl-10 pr-4 rounded-full bg-[color:var(--bg-elev-2)] text-sm text-[color:var(--text)] placeholder:text-[color:var(--text-mute)] border border-[color:var(--stroke)] focus:bg-[color:var(--bg-elev-3)] focus:border-[color:var(--brand)] focus:outline-none transition-colors"
             />
           </div>
         </form>
@@ -103,14 +103,14 @@ export function Topbar() {
             <div className="relative">
               <button
                 onClick={() => setShowUserMenu(!showUserMenu)}
-                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-black/30 hover:bg-white/[0.08] transition-colors"
+                className="flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-[color:var(--bg-elev-2)] hover:bg-[color:var(--bg-elev-3)] transition-colors"
                 aria-label="User menu"
               >
                 <span className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold"
                       style={{ background: 'var(--aurora)' }}>
                   {user?.displayName?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || 'U'}
                 </span>
-                <span className="hidden sm:inline text-xs font-semibold text-white max-w-[100px] truncate">
+                <span className="hidden sm:inline text-xs font-semibold text-[color:var(--text)] max-w-[100px] truncate">
                   {user?.displayName || user?.username}
                 </span>
               </button>

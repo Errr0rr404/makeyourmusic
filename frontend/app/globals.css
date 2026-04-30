@@ -1,12 +1,17 @@
-@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Anton&family=IBM+Plex+Sans:wght@400;500;600;700&family=Special+Elite&family=VT323&display=swap');
 @import "tailwindcss";
 
 /*  ──────────────────────────────────────────────────────────
     MYM DESIGN SYSTEM
-    Spotify-inspired layout, MakeYourMusic's own signature palette:
-      - Electric magenta as the brand action color
-      - Aurora gradient (violet → magenta) on hot surfaces
-      - Frosted-glass nav for an AI / studio feel
+    Two skins: `modern` (signature electric studio) and
+    `vintage` (cassette / hi-fi listening room).
+    Each skin × {dark, light} maps to a token bundle below.
+
+    Selectors:
+      :root                       → modern dark (default)
+      html.light                  → modern light
+      html.skin-vintage           → vintage night (default vintage)
+      html.skin-vintage.light     → vintage day
 
     NOTE: legacy components consume `hsl(var(--xxx))`, so the
     base tokens are kept as HSL triplets. New tokens use rgba/hex.
@@ -30,6 +35,7 @@
   --bg-elev-2:     #17171c;
   --bg-elev-3:     #1f1f25;
   --bg-canvas:     #0d0d11;
+  --bg-paper:      #17171c;
 
   --brand:         #d946ef;
   --brand-strong:  #c026d3;
@@ -37,6 +43,16 @@
   --brand-glow:    rgba(217, 70, 239, 0.45);
   --brand-2:       #8b5cf6;
   --aurora:        linear-gradient(135deg, #8b5cf6 0%, #d946ef 60%, #ec4899 100%);
+
+  /* Vintage-only physical-material tokens (modern skin gets neutral fallbacks) */
+  --metal:         #4a4a55;
+  --metal-shadow:  #2a2a35;
+  --wood:          #2b1d10;
+  --wood-light:    #3e2614;
+  --led-on:        #d946ef;
+  --led-amber:     #ffb347;
+  --paper-grain:   transparent;
+  --skeu-shadow:   transparent;
 
   --text:          #f5f5f7;
   --text-soft:     rgba(245, 245, 247, 0.72);
@@ -56,6 +72,12 @@
 
   --font-display: 'Manrope', system-ui, -apple-system, sans-serif;
   --font-body:    'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono:    ui-monospace, SFMono-Regular, 'JetBrains Mono', monospace;
+  --font-label:   'Inter', system-ui, sans-serif;
+
+  --transition-snap: 90ms cubic-bezier(0.2, 0.8, 0.2, 1);
+
+  color-scheme: dark;
 }
 
 html.light {
@@ -73,12 +95,120 @@ html.light {
   --bg-elev-2:     #ffffff;
   --bg-elev-3:     #f2f2f4;
   --bg-canvas:     #fafafb;
+  --bg-paper:      #ffffff;
   --text:          #0d0d11;
   --text-soft:     rgba(13, 13, 17, 0.74);
   --text-mute:     rgba(13, 13, 17, 0.55);
   --text-faint:    rgba(13, 13, 17, 0.38);
   --stroke:        rgba(13, 13, 17, 0.08);
   --stroke-strong: rgba(13, 13, 17, 0.14);
+
+  color-scheme: light;
+}
+
+/* ── VINTAGE NIGHT (default vintage palette) ───────────────── */
+html.skin-vintage {
+  /* Vintage gives the cassette deck more breathing room */
+  --player-height: 100px;
+  /* Legacy HSL tokens, retuned warm */
+  --background:        30 22% 7%;      /* #15110b deep walnut night */
+  --foreground:        37 60% 88%;     /* #f3e7c9 warm off-white */
+  --card:              30 24% 12%;     /* #231a10 */
+  --secondary:         30 24% 16%;     /* #2e2316 */
+  --muted:             37 60% 88%;
+  --muted-foreground:  35 30% 55%;     /* #a08763 */
+  --border:            37 60% 88%;     /* used with /n alpha */
+  --primary:           10 70% 56%;     /* #d8553e deck red, dim */
+  --accent:            32 100% 64%;    /* #ffb347 amber dial */
+
+  --bg:            #15110b;
+  --bg-elev-1:     #231a10;
+  --bg-elev-2:     #2e2316;
+  --bg-elev-3:     #3a2c19;
+  --bg-canvas:     #1a140d;
+  --bg-paper:      #3a2c19;
+
+  --brand:         #e85a3c;            /* deck red, used as "REC" / primary */
+  --brand-strong:  #c0392b;
+  --brand-soft:    rgba(232, 90, 60, 0.18);
+  --brand-glow:    rgba(255, 179, 71, 0.50);
+  --brand-2:       #ffb347;
+  --aurora:        linear-gradient(135deg, #ffb347 0%, #ff8c42 50%, #c0392b 100%);
+
+  --metal:         #5a564f;
+  --metal-shadow:  #2a2620;
+  --wood:          #3e2614;
+  --wood-light:    #6b4423;
+  --led-on:        #ff5a3c;
+  --led-amber:     #ffb347;
+  --led-green:     #5b8a3a;
+
+  --text:          #f3e7c9;
+  --text-soft:     rgba(243, 231, 201, 0.78);
+  --text-mute:     rgba(243, 231, 201, 0.55);
+  --text-faint:    rgba(243, 231, 201, 0.35);
+
+  --stroke:        rgba(243, 231, 201, 0.10);
+  --stroke-strong: rgba(243, 231, 201, 0.22);
+
+  --paper-grain:   url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 0.96  0 0 0 0 0.91  0 0 0 0 0.78  0 0 0 0.06 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  --skeu-shadow:   inset 0 1px 0 rgba(255, 235, 200, 0.06), inset 0 -1px 0 rgba(0, 0, 0, 0.45);
+
+  --radius-lg:     6px;
+  --radius-md:     4px;
+  --radius-sm:     2px;
+
+  --font-display: 'Anton', 'Helvetica Inserat', Impact, sans-serif;
+  --font-body:    'IBM Plex Sans', 'Inter', system-ui, sans-serif;
+  --font-mono:    'VT323', ui-monospace, SFMono-Regular, monospace;
+  --font-label:   'Special Elite', 'Courier New', ui-monospace, monospace;
+
+  color-scheme: dark;
+}
+
+/* ── VINTAGE DAY (vintage + light) ─────────────────────────── */
+html.skin-vintage.light {
+  --background:        38 50% 87%;     /* #f3e7c9 warm cream paper */
+  --foreground:        25 50% 12%;     /* #2b1d10 espresso */
+  --card:              38 50% 81%;     /* #ebdcb3 */
+  --secondary:         37 40% 73%;     /* #dcc999 */
+  --muted-foreground:  28 30% 32%;
+  --border:            25 50% 12%;
+
+  --bg:            #f3e7c9;
+  --bg-elev-1:     #ebdcb3;
+  --bg-elev-2:     #dcc999;
+  --bg-elev-3:     #c8b48a;
+  --bg-canvas:     #efe1bf;
+  --bg-paper:      #fbf3df;
+
+  --brand:         #c0392b;            /* lacquered deck red */
+  --brand-strong:  #9b2818;
+  --brand-soft:    rgba(192, 57, 43, 0.14);
+  --brand-glow:    rgba(217, 122, 42, 0.40);
+  --brand-2:       #d97a2a;
+  --aurora:        linear-gradient(135deg, #ffb347 0%, #d97a2a 50%, #c0392b 100%);
+
+  --metal:         #b9b3a8;
+  --metal-shadow:  #7a7468;
+  --wood:          #6b4423;
+  --wood-light:    #a37242;
+  --led-on:        #ff5a3c;
+  --led-amber:     #d97a2a;
+  --led-green:     #5b8a3a;
+
+  --text:          #2b1d10;
+  --text-soft:     rgba(43, 29, 16, 0.78);
+  --text-mute:     rgba(43, 29, 16, 0.55);
+  --text-faint:    rgba(43, 29, 16, 0.35);
+
+  --stroke:        rgba(43, 29, 16, 0.16);
+  --stroke-strong: rgba(43, 29, 16, 0.32);
+
+  --paper-grain:   url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' seed='5'/><feColorMatrix values='0 0 0 0 0.18  0 0 0 0 0.12  0 0 0 0 0.06  0 0 0 0.05 0'/></filter><rect width='100%25' height='100%25' filter='url(%23n)'/></svg>");
+  --skeu-shadow:   inset 0 1px 0 rgba(255, 255, 255, 0.45), inset 0 -1px 0 rgba(43, 29, 16, 0.10);
+
+  color-scheme: light;
 }
 
 /* ── Base ───────────────────────────────────────────────── */
@@ -97,11 +227,19 @@ body {
   line-height: 1.5;
 }
 
-@layer base {
-  body { font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1; }
+/* Vintage adds a subtle paper grain to the canvas */
+html.skin-vintage body {
+  background-color: hsl(var(--background));
+  background-image: var(--paper-grain);
+  background-attachment: fixed;
 }
 
-/* Aurora glow — subtle, AI-feeling backdrop */
+@layer base {
+  body { font-feature-settings: "rlig" 1, "calt" 1, "ss01" 1; }
+  html.skin-vintage body { font-feature-settings: "rlig" 1, "kern" 1; }
+}
+
+/* Aurora glow — subtle, AI-feeling backdrop (modern only) */
 .mym-aurora {
   position: fixed;
   inset: 0;
@@ -112,11 +250,28 @@ body {
     radial-gradient(45% 40% at 92% 6%, rgba(217, 70, 239, 0.14), transparent 60%),
     radial-gradient(40% 35% at 50% 100%, rgba(236, 72, 153, 0.10), transparent 60%);
 }
+html.skin-vintage .mym-aurora {
+  background:
+    radial-gradient(60% 50% at 12% 0%, rgba(255, 179, 71, 0.10), transparent 60%),
+    radial-gradient(45% 40% at 92% 6%, rgba(232, 90, 60, 0.08), transparent 60%),
+    radial-gradient(40% 35% at 50% 100%, rgba(217, 122, 42, 0.06), transparent 60%);
+}
 
 /* ── Typography ─────────────────────────────────────────── */
 h1, h2, h3, h4, .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
-.font-mono { font-family: ui-monospace, SFMono-Regular, monospace; }
+.font-mono { font-family: var(--font-mono); }
 .font-outfit { font-family: var(--font-display); }
+.font-label { font-family: var(--font-label); }
+
+/* Vintage: section headlines uppercase, tighter tracking */
+html.skin-vintage h1,
+html.skin-vintage h2,
+html.skin-vintage h3,
+html.skin-vintage .font-display {
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  font-weight: 400;            /* Anton is single-weight */
+}
 
 /* ── Scrollbars ─────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 10px; height: 10px; }
@@ -128,6 +283,9 @@ h1, h2, h3, h4, .font-display { font-family: var(--font-display); letter-spacing
   border-radius: 999px;
 }
 ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.16); background-clip: padding-box; }
+html.light ::-webkit-scrollbar-thumb { background: rgba(13, 13, 17, 0.18); }
+html.skin-vintage ::-webkit-scrollbar-thumb { background: rgba(243, 231, 201, 0.22); border-radius: 0; }
+html.skin-vintage.light ::-webkit-scrollbar-thumb { background: rgba(43, 29, 16, 0.30); }
 
 /* ── Range sliders (player) ─────────────────────────────── */
 input[type="range"] {
@@ -140,6 +298,9 @@ input[type="range"]::-webkit-slider-runnable-track {
   height: 4px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.16);
+}
+html.light input[type="range"]::-webkit-slider-runnable-track {
+  background: rgba(13, 13, 17, 0.16);
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
@@ -155,7 +316,23 @@ input[type="range"]::-webkit-slider-thumb {
 input[type="range"]:hover::-webkit-slider-thumb,
 input[type="range"]:focus::-webkit-slider-thumb {
   opacity: 1;
-  box-shadow: 0 0 0 6px rgba(217, 70, 239, 0.18);
+  box-shadow: 0 0 0 6px var(--brand-soft);
+}
+/* Vintage: slider thumb is a brushed-metal cap */
+html.skin-vintage input[type="range"]::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 0;
+  background: linear-gradient(to bottom, var(--metal-shadow), var(--bg-elev-2) 50%, var(--metal-shadow));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.45);
+}
+html.skin-vintage input[type="range"]::-webkit-slider-thumb {
+  width: 14px;
+  height: 18px;
+  border-radius: 2px;
+  background: linear-gradient(to bottom, #d8d3c6 0%, var(--metal) 50%, #6e6a62 100%);
+  margin-top: -6px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  opacity: 1;
 }
 
 /* ── Animations ─────────────────────────────────────────── */
@@ -193,21 +370,46 @@ input[type="range"]:focus::-webkit-slider-thumb {
 .eq-bar:nth-child(2) { animation-delay: 0.15s; }
 .eq-bar:nth-child(3) { animation-delay: 0.3s; }
 .eq-bar:nth-child(4) { animation-delay: 0.45s; }
+html.skin-vintage .eq-bar {
+  border-radius: 0;
+  background: var(--led-on);
+  box-shadow: 0 0 4px var(--led-on);
+}
 
 @keyframes mym-pulse-glow {
-  0%, 100% { box-shadow: 0 0 20px rgba(217, 70, 239, 0.25); }
-  50%      { box-shadow: 0 0 40px rgba(217, 70, 239, 0.55); }
+  0%, 100% { box-shadow: 0 0 20px var(--brand-glow); }
+  50%      { box-shadow: 0 0 40px var(--brand-glow); }
 }
 .animate-pulse-glow { animation: mym-pulse-glow 2.4s ease-in-out infinite; }
 
 @keyframes mym-spin-slow { to { transform: rotate(360deg); } }
 .animate-spin-slow { animation: mym-spin-slow 6s linear infinite; }
 
+/* Reel rotation — used by ReelSpinner / cassette progress */
+@keyframes mym-reel { to { transform: rotate(360deg); } }
+.animate-reel { animation: mym-reel 1.3s linear infinite; }
+.reel-paused { animation-play-state: paused; }
+
+/* Tape-counter LED scan */
+@keyframes mym-scan {
+  0%   { transform: translateX(-100%); opacity: 0; }
+  10%  { opacity: 0.4; }
+  100% { transform: translateX(100%); opacity: 0; }
+}
+
 /* ── Reusable surfaces ──────────────────────────────────── */
 .mym-panel {
   background: var(--bg-elev-1);
   border-radius: var(--radius-lg);
   border: 1px solid var(--stroke);
+}
+html.skin-vintage .mym-panel {
+  background:
+    var(--paper-grain),
+    var(--bg-elev-1);
+  background-blend-mode: multiply, normal;
+  border: 1px solid var(--stroke-strong);
+  box-shadow: var(--skeu-shadow);
 }
 
 .mym-card {
@@ -216,6 +418,15 @@ input[type="range"]:focus::-webkit-slider-thumb {
   transition: background 0.2s ease, transform 0.2s ease;
 }
 .mym-card:hover { background: var(--bg-elev-3); }
+html.skin-vintage .mym-card {
+  border: 1px solid var(--stroke);
+  box-shadow: var(--skeu-shadow);
+  transition: background var(--transition-snap), transform var(--transition-snap), box-shadow var(--transition-snap);
+}
+html.skin-vintage .mym-card:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--skeu-shadow), 0 2px 0 var(--metal-shadow);
+}
 
 .mym-pill {
   display: inline-flex;
@@ -234,6 +445,23 @@ input[type="range"]:focus::-webkit-slider-thumb {
   background: rgba(255, 255, 255, 0.1);
   color: var(--text);
   border-color: var(--stroke-strong);
+}
+html.light .mym-pill { background: rgba(13, 13, 17, 0.05); }
+html.light .mym-pill:hover { background: rgba(13, 13, 17, 0.10); }
+html.skin-vintage .mym-pill {
+  border-radius: 2px;
+  background: var(--brand-soft);
+  color: var(--brand);
+  border: 1px solid var(--brand);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 11px;
+  font-weight: 400;
+}
+html.skin-vintage .mym-pill:hover {
+  background: var(--brand);
+  color: var(--bg-elev-1);
 }
 
 .mym-cta {
@@ -265,6 +493,35 @@ input[type="range"]:focus::-webkit-slider-thumb {
   white-space: nowrap;
 }
 
+html.skin-vintage .mym-cta {
+  border-radius: 4px;
+  background: linear-gradient(180deg, #e85a3c 0%, #c0392b 100%);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 400;
+  font-size: 13px;
+  padding: 11px 22px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 200, 0.45),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    0 2px 0 rgba(0, 0, 0, 0.55),
+    0 4px 12px rgba(192, 57, 43, 0.45);
+  transition: transform var(--transition-snap), box-shadow var(--transition-snap);
+}
+html.skin-vintage .mym-cta:hover {
+  background: linear-gradient(180deg, #f06846 0%, #d8553e 100%);
+  transform: none;
+}
+html.skin-vintage .mym-cta:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 200, 0.20),
+    inset 0 1px 4px rgba(0, 0, 0, 0.40),
+    0 0 0 rgba(0, 0, 0, 0),
+    0 1px 4px rgba(192, 57, 43, 0.30);
+}
+
 .mym-ghost {
   display: inline-flex;
   align-items: center;
@@ -280,6 +537,26 @@ input[type="range"]:focus::-webkit-slider-thumb {
   transition: all 0.15s ease;
 }
 .mym-ghost:hover { background: rgba(255, 255, 255, 0.12); border-color: var(--stroke-strong); }
+html.light .mym-ghost { background: rgba(13, 13, 17, 0.04); }
+html.light .mym-ghost:hover { background: rgba(13, 13, 17, 0.10); }
+html.skin-vintage .mym-ghost {
+  border-radius: 4px;
+  background: linear-gradient(180deg, var(--metal) 0%, var(--metal-shadow) 100%);
+  border: 1px solid var(--metal-shadow);
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-weight: 400;
+  color: var(--text);
+  box-shadow: var(--skeu-shadow);
+}
+html.skin-vintage .mym-ghost:hover {
+  background: linear-gradient(180deg, #6c685e 0%, #3a3631 100%);
+}
+html.skin-vintage .mym-ghost:active {
+  transform: translateY(1px);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.50);
+}
 
 .mym-play-fab {
   width: 48px;
@@ -294,6 +571,23 @@ input[type="range"]:focus::-webkit-slider-thumb {
   transition: transform 0.18s ease, background 0.18s ease;
 }
 .mym-play-fab:hover { transform: scale(1.06); background: var(--brand-strong); }
+html.skin-vintage .mym-play-fab {
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ff7250 0%, #c0392b 70%, #8b1f12 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 220, 200, 0.55),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.55),
+    0 3px 0 rgba(0, 0, 0, 0.55),
+    0 6px 14px rgba(192, 57, 43, 0.55);
+}
+html.skin-vintage .mym-play-fab:hover { transform: none; }
+html.skin-vintage .mym-play-fab:active {
+  transform: translateY(2px);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.50),
+    0 1px 0 rgba(0, 0, 0, 0.40),
+    0 2px 6px rgba(192, 57, 43, 0.40);
+}
 
 .aurora-text {
   background: var(--aurora);
@@ -327,6 +621,22 @@ input[type="range"]:focus::-webkit-slider-thumb {
   color: var(--text);
 }
 @media (min-width: 768px) { .mym-section-title { font-size: 1.75rem; } }
+html.skin-vintage .mym-section-title {
+  font-weight: 400;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  position: relative;
+  padding-bottom: 0.35rem;
+}
+html.skin-vintage .mym-section-title::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 36px;
+  height: 2px;
+  background: var(--brand);
+}
 
 .mym-row-scroll {
   display: grid;
@@ -347,6 +657,23 @@ input[type="range"]:focus::-webkit-slider-thumb {
   -webkit-backdrop-filter: blur(20px);
           backdrop-filter: blur(20px);
   border-bottom: 1px solid var(--stroke);
+}
+/* Vintage topbar: brushed aluminum strip, no blur */
+html.skin-vintage .mym-topbar-frost {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 50%),
+    repeating-linear-gradient(
+      90deg,
+      var(--metal) 0px,
+      var(--metal) 1px,
+      var(--metal-shadow) 1px,
+      var(--metal-shadow) 2px
+    );
+  background-color: var(--metal);
+  -webkit-backdrop-filter: none;
+          backdrop-filter: none;
+  border-bottom: 1px solid var(--metal-shadow);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.10) inset, 0 -1px 0 rgba(0, 0, 0, 0.45) inset;
 }
 
 /* ── Compatibility shims for older button classes ──────── */
@@ -384,6 +711,94 @@ input[type="range"]:focus::-webkit-slider-thumb {
 .glass-card:hover { background: var(--bg-elev-3); }
 .holographic { position: relative; overflow: hidden; }
 
+/* ── Vintage utility classes ──────────────────────────── */
+/* Brushed-metal panel face */
+.vintage-metal {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05) 0%, transparent 40%),
+    repeating-linear-gradient(
+      90deg,
+      var(--metal) 0px,
+      var(--metal) 1px,
+      var(--metal-shadow) 1px,
+      var(--metal-shadow) 2px
+    );
+  background-color: var(--metal);
+  border: 1px solid var(--metal-shadow);
+  box-shadow: var(--skeu-shadow);
+}
+
+/* Walnut-rim wrapper */
+.vintage-wood {
+  background:
+    linear-gradient(180deg, var(--wood-light) 0%, var(--wood) 30%, var(--wood) 70%, #1f1208 100%);
+  border: 1px solid #1f1208;
+}
+
+/* Paper card — used for legal liner notes, J-card labels, dialog content */
+.vintage-paper {
+  background:
+    var(--paper-grain),
+    var(--bg-paper);
+  background-blend-mode: multiply, normal;
+  color: var(--text);
+  border: 1px solid var(--stroke-strong);
+}
+
+/* Recessed slot — input and progress backings */
+.vintage-recess {
+  background: linear-gradient(to bottom, var(--bg-elev-3) 0%, var(--bg-elev-2) 100%);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55), inset 0 -1px 0 rgba(255, 255, 255, 0.04);
+  border-radius: 2px;
+}
+
+/* LED dot — small status indicator */
+.vintage-led {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--led-on);
+  box-shadow: 0 0 6px var(--led-on), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+.vintage-led-amber { background: var(--led-amber); box-shadow: 0 0 6px var(--led-amber), inset 0 1px 0 rgba(255, 255, 255, 0.55); }
+.vintage-led-green { background: var(--led-green); box-shadow: 0 0 6px var(--led-green), inset 0 1px 0 rgba(255, 255, 255, 0.55); }
+.vintage-led-off   { background: rgba(0, 0, 0, 0.5); box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.55); }
+
+/* LED-style digital readout */
+.vintage-readout {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  letter-spacing: 0.08em;
+  color: var(--led-on);
+  text-shadow: 0 0 6px var(--led-on);
+  background: #0a0805;
+  padding: 4px 10px;
+  border-radius: 2px;
+  box-shadow: inset 0 1px 4px rgba(0, 0, 0, 0.85);
+  display: inline-block;
+}
+
+/* Label-maker tape (for tooltips, small badges, vintage tags) */
+.vintage-label {
+  background: #1a1611;
+  color: #f3e7c9;
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 11px;
+  padding: 3px 10px;
+  display: inline-block;
+}
+html.skin-vintage.light .vintage-label {
+  background: #2b1d10;
+  color: #f3e7c9;
+}
+
+/* Skin-conditional visibility — render both variants, CSS hides the wrong one.
+   Avoids forcing components to 'use client' just to branch on skin. */
+html.skin-modern .vintage-only { display: none !important; }
+html.skin-vintage .modern-only { display: none !important; }
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -407,4 +822,26 @@ input[type="range"]:focus::-webkit-slider-thumb {
 .legal-content a:hover { color: var(--text); }
 .legal-content strong { color: var(--text); font-weight: 600; }
 .legal-content hr { border: none; border-top: 1px solid var(--stroke); margin: 2rem 0; }
-.legal-content code { background: rgba(255,255,255,0.06); color: var(--text); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875em; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+.legal-content code { background: rgba(255,255,255,0.06); color: var(--text); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875em; font-family: var(--font-mono); }
+
+/* Vintage legal pages: liner-notes booklet feel */
+html.skin-vintage .legal-content h1 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+  border-bottom: 2px solid var(--brand);
+  padding-bottom: 0.5rem;
+}
+html.skin-vintage .legal-content h2 {
+  font-family: var(--font-display);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-weight: 400;
+  color: var(--brand);
+}
+html.skin-vintage .legal-content code {
+  font-family: var(--font-mono);
+  background: var(--bg-elev-2);
+  border-radius: 0;
+}

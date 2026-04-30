@@ -16,6 +16,7 @@ import { hydrateDownloadCache } from '../services/downloadService';
 import { parseDeepLink } from '../lib/linking';
 import { consumePendingShare } from '../services/sharePayloadService';
 import { ONBOARDING_KEY } from './onboarding';
+import { ThemeProvider, useTokens } from '../lib/theme';
 
 // Initialize shared services before anything else
 bootstrap();
@@ -24,6 +25,14 @@ bootstrap();
 TrackPlayer.registerPlaybackService(() => require('../services/trackPlayerService').PlaybackService);
 
 export default function RootLayout() {
+  return (
+    <ThemeProvider>
+      <RootLayoutInner />
+    </ThemeProvider>
+  );
+}
+
+function RootLayoutInner() {
   const router = useRouter();
   const { isLoading, hydrate, fetchUser, isAuthenticated } = useAuthStore();
   const hydratePlayerPrefs = usePlayerStore((s) => s.hydratePrefs);
@@ -145,21 +154,23 @@ export default function RootLayout() {
     }
   }, [repeat]);
 
+  const tokens = useTokens();
+
   if (isLoading || !booted) {
     return (
-      <View className="flex-1 bg-mym-bg items-center justify-center">
-        <ActivityIndicator size="large" color="#8b5cf6" />
+      <View style={{ flex: 1, backgroundColor: tokens.bg, alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator size="large" color={tokens.brand} />
       </View>
     );
   }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <View className="flex-1 bg-mym-bg">
+      <View style={{ flex: 1, backgroundColor: tokens.bg }}>
         <Stack
           screenOptions={{
             headerShown: false,
-            contentStyle: { backgroundColor: '#0a0a0a' },
+            contentStyle: { backgroundColor: tokens.bg },
             animation: 'slide_from_right',
           }}
         >
@@ -183,7 +194,7 @@ export default function RootLayout() {
           />
         </Stack>
         <MiniPlayer />
-        <StatusBar style="light" />
+        <StatusBar style={tokens.isDark ? 'light' : 'dark'} />
       </View>
     </GestureHandlerRootView>
   );
