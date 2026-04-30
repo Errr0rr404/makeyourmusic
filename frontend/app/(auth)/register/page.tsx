@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Eye, EyeOff } from 'lucide-react';
 import { BrandLogo } from '@/components/brand/BrandLogo';
+import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -66,13 +67,24 @@ export default function RegisterPage() {
           <p className="text-[color:var(--text-mute)] mt-1.5 text-sm">Start discovering AI-generated music.</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4 mym-panel p-6">
+        <div className="mym-panel p-6 space-y-5">
           {error && (
             <div className="p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-sm">
               {error}
             </div>
           )}
 
+          <SocialAuthButtons onError={setError} />
+
+          <div className="flex items-center gap-3">
+            <div className="h-px flex-1 bg-[color:var(--stroke)]" />
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[color:var(--text-mute)]">
+              or with email
+            </span>
+            <div className="h-px flex-1 bg-[color:var(--stroke)]" />
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
           <div>
             <label className={labelCls}>Email</label>
             <input type="email" value={form.email} onChange={(e) => updateForm('email', e.target.value)} required
@@ -126,7 +138,8 @@ export default function RegisterPage() {
           <button type="submit" disabled={isLoading || !acceptTerms} className="mym-cta w-full justify-center disabled:opacity-50 disabled:cursor-not-allowed">
             {isLoading ? 'Creating account…' : 'Sign up'}
           </button>
-        </form>
+          </form>
+        </div>
 
         <p className="text-center mt-6 text-sm text-[color:var(--text-mute)]">
           Already have an account?{' '}
