@@ -126,6 +126,18 @@ export function Sidebar() {
               Generate video
             </Link>
             <Link
+              href="/create/clip"
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-colors',
+                pathname === '/create/clip'
+                  ? 'bg-white/[0.08] text-white'
+                  : 'text-[color:var(--text-mute)] hover:text-white hover:bg-white/[0.04]'
+              )}
+            >
+              <Film className="w-[18px] h-[18px]" strokeWidth={2.2} />
+              Make a clip
+            </Link>
+            <Link
               href="/studio/generations"
               className={cn(
                 'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-colors',

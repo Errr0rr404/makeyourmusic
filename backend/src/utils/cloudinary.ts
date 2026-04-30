@@ -173,4 +173,156 @@ export const deleteResource = async (publicId: string, resourceType: string = 'i
   }
 };
 
+/**
+ * Extract a Cloudinary public_id from one of its delivery URLs.
+ *
+ * Cloudinary URL shape:
+ *   https://res.cloudinary.com/<cloud>/<resource>/upload/[<transforms>/][v<version>/]<public_id>.<ext>
+ *
+ * Transform segments contain `_` or `,`; version segments match `v\d+`. We
+ * strip both before reading the trailing public_id (which itself can contain
+ * slashes — folders are part of the id).
+ */
+export function publicIdFromCloudinaryUrl(url: string): string {
+  if (typeof url !== 'string') return '';
+  const idx = url.indexOf('/upload/');
+  if (idx < 0) return '';
+  const rest = url.slice(idx + '/upload/'.length).split('?')[0] ?? '';
+  const segments = rest.split('/');
+  let i = 0;
+  while (i < segments.length) {
+    const seg = segments[i];
+    if (!seg) { i++; continue; }
+    if (/^v\d+$/.test(seg)) { i++; break; }
+    // transform segment heuristic: contains `,` or has a 2-letter prefix + underscore
+    if (i < segments.length - 1 && (/[,]/.test(seg) || /^[a-z]{1,3}_/i.test(seg))) {
+      i++;
+      continue;
+    }
+    break;
+  }
+  const idWithExt = segments.slice(i).join('/');
+  return idWithExt.replace(/\.[a-z0-9]+$/i, '');
+}
+
+export interface ClipMuxOptions {
+  /** Public id of the user's raw video upload (resource_type=video). */
+  rawVideoPublicId: string;
+  /** Public id of the Track audio (uploaded as resource_type=video in this codebase). */
+  audioPublicId: string;
+  /** Slice of the source video to keep, in milliseconds. */
+  trimStartMs: number;
+  trimEndMs: number;
+  /** Offset into the Track audio at which the overlay should begin, in ms. */
+  audioStartMs: number;
+  /** When true, burn a small "music4ai" watermark in the corner. */
+  watermark?: boolean;
+}
+
+/**
+ * Build a Cloudinary delivery URL that:
+ *   1. Trims the user's video to [trimStartMs..trimEndMs] and mutes its audio.
+ *   2. Overlays the chosen Track's audio, starting `audioStartMs` into that
+ *      track and lasting exactly the trimmed length.
+ *   3. Caps width at 1080 and applies auto-quality / mp4 delivery.
+ *
+ * The URL is lazy — Cloudinary materializes the derived asset on first hit
+ * and CDN-caches it after that. No worker, no temp disk.
+ */
+export function buildClipUrl(opts: ClipMuxOptions): string {
+  checkCredentials();
+
+  const { rawVideoPublicId, audioPublicId, trimStartMs, trimEndMs, audioStartMs, watermark } = opts;
+
+  if (trimEndMs <= trimStartMs) {
+    throw new Error('trimEndMs must be greater than trimStartMs');
+  }
+  const clipDurationMs = trimEndMs - trimStartMs;
+
+  // Cloudinary takes seconds for offsets/durations; allow 3 decimals.
+  const fmt = (ms: number) => (ms / 1000).toFixed(3).replace(/\.?0+$/, '');
+
+  const transformation: Record<string, unknown>[] = [
+    // 1) Trim the source video and drop its original audio. We mute by
+    //    setting audio_codec=none rather than relying on the overlay to
+    //    "replace" — Cloudinary still passes through original audio with
+    //    overlays unless this is set.
+    {
+      start_offset: fmt(trimStartMs),
+      end_offset: fmt(trimEndMs),
+      audio_codec: 'none',
+    },
+    // 2) Overlay the Track audio, sliced to the same window. Audio uploaded
+    //    via this codebase lives in resource_type=video, so the overlay
+    //    spec uses `video:` prefix (Cloudinary will use the audio stream).
+    //    The nested transformation slices the audio source itself — without
+    //    it, only the layer placement (start_offset on the layer) shifts in
+    //    the timeline, not which part of the audio plays.
+    {
+      overlay: {
+        resource_type: 'video',
+        public_id: audioPublicId,
+        transformation: [
+          {
+            start_offset: fmt(audioStartMs),
+            end_offset: fmt(audioStartMs + clipDurationMs),
+          },
+        ],
+      },
+    },
+    { flags: 'layer_apply' },
+  ];
+
+  // 3) Optional watermark — a small text burn-in for free-tier downloads.
+  if (watermark) {
+    transformation.push({
+      overlay: {
+        font_family: 'Arial',
+        font_size: 28,
+        font_weight: 'bold',
+        text: 'music4ai',
+      },
+      color: '#FFFFFF',
+      opacity: 70,
+      gravity: 'south_east',
+      x: 24,
+      y: 24,
+    });
+    transformation.push({ flags: 'layer_apply' });
+  }
+
+  // 4) Sizing + delivery
+  transformation.push({ width: 1080, crop: 'limit' });
+  transformation.push({ quality: 'auto', fetch_format: 'mp4' });
+
+  return cloudinary.url(rawVideoPublicId, {
+    resource_type: 'video',
+    transformation,
+    secure: true,
+    sign_url: false,
+  });
+}
+
+/**
+ * Build a thumbnail URL for a clip — single frame from the trimmed window,
+ * centered horizontally, JPEG.
+ */
+export function buildClipThumbnailUrl(
+  rawVideoPublicId: string,
+  trimStartMs: number
+): string {
+  checkCredentials();
+  const fmt = (ms: number) => (ms / 1000).toFixed(3).replace(/\.?0+$/, '');
+  return cloudinary.url(rawVideoPublicId, {
+    resource_type: 'video',
+    format: 'jpg',
+    transformation: [
+      { start_offset: fmt(trimStartMs) },
+      { width: 720, crop: 'limit' },
+      { quality: 'auto' },
+    ],
+    secure: true,
+  });
+}
+
 export default cloudinary;

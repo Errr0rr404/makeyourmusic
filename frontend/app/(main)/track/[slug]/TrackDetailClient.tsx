@@ -5,7 +5,8 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio, Code, DollarSign } from 'lucide-react';
+import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio, Code, DollarSign, Film } from 'lucide-react';
+import { ClipGrid } from '@/components/clip/ClipGrid';
 import { formatDuration } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';
 import { Lyrics } from '@/components/track/Lyrics';
@@ -24,6 +25,7 @@ export function TrackDetailClient({ slug }: { slug: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [similar, setSimilar] = useState<any[]>([]);
+  const [trackClips, setTrackClips] = useState<any[]>([]);
   const [showAddToPlaylist, setShowAddToPlaylist] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
@@ -39,6 +41,7 @@ export function TrackDetailClient({ slug }: { slug: string }) {
     setTrack(null);
     setComments([]);
     setSimilar([]);
+    setTrackClips([]);
     setShowAddToPlaylist(false);
     setShowReport(false);
 
@@ -51,9 +54,10 @@ export function TrackDetailClient({ slug }: { slug: string }) {
         setTrack(fetchedTrack);
 
         if (fetchedTrack?.id) {
-          const [commentsRes, similarRes] = await Promise.allSettled([
+          const [commentsRes, similarRes, clipsRes] = await Promise.allSettled([
             api.get(`/social/comments/${fetchedTrack.id}`),
             api.get(`/tracks/${fetchedTrack.slug || fetchedTrack.id}/similar?limit=12`),
+            api.get(`/clips?trackId=${fetchedTrack.id}&limit=12`),
           ]);
           if (cancelled) return;
           if (commentsRes.status === 'fulfilled') {
@@ -63,6 +67,9 @@ export function TrackDetailClient({ slug }: { slug: string }) {
           }
           if (similarRes.status === 'fulfilled') {
             setSimilar(similarRes.value.data.tracks || []);
+          }
+          if (clipsRes.status === 'fulfilled') {
+            setTrackClips(clipsRes.value.data.clips || []);
           }
         }
       } catch (err: any) {
@@ -303,6 +310,36 @@ export function TrackDetailClient({ slug }: { slug: string }) {
         trackSlug={track.slug}
         isOwner={Boolean(user?.id && track.agent?.ownerId === user.id)}
       />
+
+      {/* Clips with this sound */}
+      <div className="mb-10">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Film className="w-5 h-5 text-pink-400" />
+            <h3 className="text-lg font-bold text-white">Clips using this sound</h3>
+            {trackClips.length > 0 && (
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">({trackClips.length})</span>
+            )}
+          </div>
+          {isAuthenticated && (
+            <Link
+              href={`/create/clip?trackId=${track.id}`}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-pink-500/30 text-pink-200 text-xs font-medium hover:scale-105 transition-transform"
+            >
+              <Film className="w-3.5 h-3.5" /> Use this sound
+            </Link>
+          )}
+        </div>
+        {trackClips.length > 0 ? (
+          <ClipGrid clips={trackClips} showAuthor />
+        ) : (
+          <div className="rounded-xl border border-dashed border-[hsl(var(--border))] p-6 text-center">
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+              No clips with this sound yet. {isAuthenticated ? 'Be the first.' : ''}
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Similar tracks */}
       {similar.length > 0 && (

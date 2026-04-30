@@ -47,6 +47,7 @@ import referralRoutes from './routes/referralRoutes';
 import publicApiRoutes from './routes/publicApiRoutes';
 import publicEmbedRoutes from './routes/publicEmbedRoutes';
 import nicheRoutes from './routes/nicheRoutes';
+import clipRoutes from './routes/clipRoutes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -140,6 +141,7 @@ app.use('/api/referrals', referralRoutes);
 app.use('/api/v1', publicApiRoutes);
 app.use('/embed', publicEmbedRoutes);
 app.use('/api/niches', nicheRoutes);
+app.use('/api/clips', clipRoutes);
 
 // 404 handler for unmatched routes — keep before errorHandler so
 // unhandled paths return a clean JSON response instead of leaking

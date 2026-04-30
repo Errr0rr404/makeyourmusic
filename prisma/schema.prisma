@@ -141,6 +141,19 @@ enum PayoutStatus {
   SKIPPED
 }
 
+enum ClipVisibility {
+  PRIVATE
+  PUBLIC
+  UNLISTED
+}
+
+enum ClipStatus {
+  PROCESSING
+  READY
+  REMOVED
+  FLAGGED
+}
+
 // ─── Core Models ─────────────────────────────────────────
 
 model User {
@@ -212,6 +225,10 @@ model User {
   apiKeys                    ApiKey[]
   referralEarningsAsReferrer ReferralEarning[]     @relation("ReferralEarningReferrer")
   referralEarningsAsSource   ReferralEarning[]     @relation("ReferralEarningSource")
+  clips                      Clip[]
+  clipLikes                  ClipLike[]
+  clipComments               ClipComment[]
+  clipShares                 ClipShare[]
 
   @@index([role])
   @@index([createdAt(sort: Desc)])
@@ -383,6 +400,7 @@ model Track {
   takedowns      Takedown[]
   syncLicenses   SyncLicense[]
   distributions  TrackDistribution[]
+  clips          Clip[]
 
   @@index([agentId])
   @@index([genreId])
@@ -415,6 +433,118 @@ model Video {
   track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
 
   @@map("videos")
+}
+
+// ─── Clips ───────────────────────────────────────────────
+//
+// User-uploaded short video paired with a Track. The same Track can power
+// many Clips (TikTok-style "this sound has 1.2k clips"). Distinct from the
+// Video model above which is a 1:1 AI-generated music video bound to a
+// Track.
+model Clip {
+  id     String     @id @default(cuid())
+  status ClipStatus @default(PROCESSING)
+
+  // Source upload + processed output. rawVideoUrl/rawPublicId are the
+  // user's original Cloudinary upload; videoUrl is the eager-transformed
+  // URL with the Track audio overlaid + trimmed to ≤60s.
+  rawVideoUrl  String  @map("raw_video_url")
+  rawPublicId  String  @map("raw_public_id")
+  videoUrl     String  @map("video_url")
+  thumbnail    String?
+
+  // All durations in milliseconds. Server-enforced: trimEndMs - trimStartMs ≤ 60000.
+  durationMs   Int @map("duration_ms")
+  trimStartMs  Int @default(0) @map("trim_start_ms")
+  trimEndMs    Int @map("trim_end_ms")
+  audioStartMs Int @default(0) @map("audio_start_ms")
+
+  // Visibility + presentation
+  visibility ClipVisibility @default(PRIVATE)
+  caption    String?
+  hashtags   String[]       @default([])
+
+  // Moderation
+  takedownStatus   TakedownStatus? @map("takedown_status")
+  moderationLabels Json?           @map("moderation_labels")
+
+  // Counters (denormalized like Track)
+  viewCount     Int   @default(0) @map("view_count")
+  likeCount     Int   @default(0) @map("like_count")
+  commentCount  Int   @default(0) @map("comment_count")
+  shareCount    Int   @default(0) @map("share_count")
+  trendingScore Float @default(0) @map("trending_score")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Ownership + sound
+  userId  String @map("user_id")
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId String @map("track_id")
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  // Social
+  likes    ClipLike[]
+  comments ClipComment[]
+  shares   ClipShare[]
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([trackId, createdAt(sort: Desc)])
+  @@index([visibility, status, trendingScore(sort: Desc)])
+  @@index([visibility, status, createdAt(sort: Desc)])
+  @@map("clips")
+}
+
+model ClipLike {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clipId String @map("clip_id")
+  clip   Clip   @relation(fields: [clipId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, clipId])
+  @@index([clipId])
+  @@map("clip_likes")
+}
+
+model ClipComment {
+  id      String @id @default(cuid())
+  content String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clipId String @map("clip_id")
+  clip   Clip   @relation(fields: [clipId], references: [id], onDelete: Cascade)
+
+  parentId String?       @map("parent_id")
+  parent   ClipComment?  @relation("ClipCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  ClipComment[] @relation("ClipCommentReplies")
+
+  @@index([clipId])
+  @@index([userId])
+  @@index([parentId])
+  @@map("clip_comments")
+}
+
+model ClipShare {
+  id        String   @id @default(cuid())
+  platform  String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId String? @map("user_id")
+  user   User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  clipId String  @map("clip_id")
+  clip   Clip    @relation(fields: [clipId], references: [id], onDelete: Cascade)
+
+  @@index([clipId])
+  @@index([userId])
+  @@map("clip_shares")
 }
 
 model Album {

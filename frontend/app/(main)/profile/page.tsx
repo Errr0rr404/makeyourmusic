@@ -4,12 +4,13 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
-import { User, Music, Heart, Clock, Calendar, Shield, Crown, Pencil, Save, X, Loader2, AlertCircle, Globe, LockKeyhole, Wand2, Sparkles, Trash2 } from 'lucide-react';
+import { User, Music, Heart, Clock, Calendar, Shield, Crown, Pencil, Save, X, Loader2, AlertCircle, Globe, LockKeyhole, Wand2, Sparkles, Trash2, Film } from 'lucide-react';
 import { toast } from 'sonner';
 import { ImageUpload } from '@/components/upload/ImageUpload';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import Link from 'next/link';
 import { usePlayerStore } from '@/lib/store/playerStore';
+import { ClipGrid, type ClipGridItem } from '@/components/clip/ClipGrid';
 
 export default function ProfilePage() {
   const router = useRouter();
@@ -24,6 +25,8 @@ export default function ProfilePage() {
   const [myTracks, setMyTracks] = useState<any[]>([]);
   const [tracksTab, setTracksTab] = useState<'all' | 'public' | 'private'>('all');
   const [tracksLoading, setTracksLoading] = useState(false);
+  const [myClips, setMyClips] = useState<ClipGridItem[]>([]);
+  const [clipsLoading, setClipsLoading] = useState(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -34,6 +37,7 @@ export default function ProfilePage() {
     });
     loadStats();
     loadMyTracks();
+    loadMyClips();
   }, [isAuthenticated, user]);
 
   const loadStats = async () => {
@@ -60,6 +64,19 @@ export default function ProfilePage() {
       setMyTracks([]);
     } finally {
       setTracksLoading(false);
+    }
+  };
+
+  const loadMyClips = async () => {
+    if (!user?.id) return;
+    setClipsLoading(true);
+    try {
+      const res = await api.get(`/clips?userId=${user.id}&limit=24`);
+      setMyClips(res.data.clips || []);
+    } catch {
+      setMyClips([]);
+    } finally {
+      setClipsLoading(false);
     }
   };
 
@@ -389,6 +406,46 @@ export default function ProfilePage() {
               </li>
             ))}
           </ul>
+        )}
+      </div>
+
+      {/* Your clips */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-3 px-1">
+          <div className="flex items-center gap-2">
+            <Film className="w-5 h-5 text-pink-400" />
+            <h2 className="text-lg font-bold text-white">Your clips</h2>
+            <span className="text-xs text-[hsl(var(--muted-foreground))]">({myClips.length})</span>
+          </div>
+          <Link
+            href="/create/clip"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-pink-500/30 text-pink-200 text-xs font-medium hover:scale-105 transition-transform"
+          >
+            <Film className="w-3.5 h-3.5" /> Make a clip
+          </Link>
+        </div>
+        {clipsLoading ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className="aspect-[9/16] rounded-xl bg-[hsl(var(--card))] animate-pulse" />
+            ))}
+          </div>
+        ) : (
+          <ClipGrid
+            clips={myClips}
+            emptyState={
+              <>
+                <Film className="w-10 h-10 text-[hsl(var(--muted-foreground))] mx-auto mb-3 opacity-50" />
+                <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">No clips yet</p>
+                <Link
+                  href="/create/clip"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white text-sm font-medium"
+                >
+                  <Film className="w-4 h-4" /> Make your first clip
+                </Link>
+              </>
+            }
+          />
         )}
       </div>
 

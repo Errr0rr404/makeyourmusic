@@ -95,3 +95,14 @@ export const aiGenerationLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: userOrIpKey,
 });
+
+// Per-user limit on Clip creation. Each create kicks off a Cloudinary
+// transform + downstream moderation, so we cap at 10/hour.
+export const clipCreateLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: isDevelopment ? 100 : 10,
+  message: 'You are creating clips too quickly. Please wait before posting another.',
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: userOrIpKey,
+});

@@ -24,6 +24,45 @@ export const upload = multer({
   },
 });
 
+// Video uploads — Clips and any future user-uploaded video flow. 200MB
+// covers ~60s mobile recordings even at high bitrate.
+export const videoUpload = multer({
+  storage,
+  limits: { fileSize: 200 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error(`Unsupported file type: ${file.mimetype}`));
+    }
+  },
+});
+
+export const handleVideoUpload = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
+    const file = req.file;
+    if (!file) { res.status(400).json({ error: 'No file provided' }); return; }
+    if (!file.mimetype.startsWith('video/')) {
+      res.status(400).json({ error: 'File must be a video' });
+      return;
+    }
+    const result = await uploadBuffer(file.buffer, 'clips/raw', 'video');
+    res.json({
+      url: result.secure_url,
+      publicId: result.public_id,
+      duration: result.duration,
+      width: result.width,
+      height: result.height,
+      format: result.format,
+    });
+  } catch (error) {
+    logger.error('Video upload error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Upload failed' });
+  }
+};
+
 export const handleUpload = async (req: RequestWithUser, res: Response) => {
   try {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
