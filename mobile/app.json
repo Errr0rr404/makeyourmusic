@@ -19,16 +19,24 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.worldofz.makeyourmusic",
+      "usesAppleSignIn": true,
       "infoPlist": {
-        "UIBackgroundModes": ["audio"],
+        "UIBackgroundModes": [
+          "audio"
+        ],
         "ITSAppUsesNonExemptEncryption": false,
         "CFBundleURLTypes": [
           {
-            "CFBundleURLSchemes": ["makeyourmusic"]
+            "CFBundleURLSchemes": [
+              "makeyourmusic",
+              "com.googleusercontent.apps.709709352560-d0j1r8144tp9b3861619sm3q0knd892i"
+            ]
           }
         ]
       },
-      "associatedDomains": ["applinks:makeyourmusic.ai"],
+      "associatedDomains": [
+        "applinks:makeyourmusic.ai"
+      ],
       "config": {
         "usesNonExemptEncryption": false
       }
@@ -66,7 +74,10 @@
               "pathPrefix": "/playlist"
             }
           ],
-          "category": ["BROWSABLE", "DEFAULT"]
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
         }
       ],
       "permissions": [
@@ -81,6 +92,8 @@
       "expo-router",
       "expo-secure-store",
       "expo-font",
+      "expo-apple-authentication",
+      "expo-web-browser",
       [
         "expo-notifications",
         {
