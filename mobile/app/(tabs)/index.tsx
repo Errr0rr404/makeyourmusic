@@ -8,6 +8,7 @@ import { SectionHeader } from '../../components/ui/SectionHeader';
 import { TrackCard } from '../../components/track/TrackCard';
 import { TrackRow } from '../../components/track/TrackRow';
 import { AgentCard } from '../../components/agent/AgentCard';
+import { Logo } from '../../components/ui/Logo';
 import { TouchableOpacity } from 'react-native';
 import { Bell, Play, Sparkles, Wand2 } from 'lucide-react-native';
 import { useTokens, useIsVintage } from '../../lib/theme';
@@ -86,7 +87,12 @@ export default function HomeScreen() {
   return (
     <ScreenContainer refreshing={refreshing} onRefresh={onRefresh}>
       {/* Header */}
-      <View className="flex-row items-start justify-between px-4 pt-2 pb-2">
+      <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
+        {!isAuthenticated && (
+          <View style={{ marginRight: 12 }}>
+            <Logo size={40} />
+          </View>
+        )}
         <View className="flex-1 pr-3">
           <Text
             style={{
