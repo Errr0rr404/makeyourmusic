@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Eye, EyeOff } from 'lucide-react';
 import { BrandLogo } from '@/components/brand/BrandLogo';
@@ -10,14 +10,18 @@ import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
 
 export default function RegisterPage() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { register, isLoading } = useAuthStore();
   const [form, setForm] = useState({ email: '', username: '', displayName: '', password: '', confirmPassword: '' });
-  // Captured from ?ref=… on first render. Persisted in sessionStorage so it
-  // survives the OAuth bounce-out / back-in path used by social login.
+  // Captured from ?ref=… on first render. Read from window.location to avoid
+  // the useSearchParams() Suspense-boundary requirement at static-export
+  // time. Persisted in sessionStorage so it survives the OAuth bounce-out /
+  // back-in path used by social login.
   const [referralCode, setReferralCode] = useState<string>('');
   useEffect(() => {
-    const fromUrl = searchParams?.get('ref') || '';
+    let fromUrl = '';
+    try {
+      fromUrl = new URLSearchParams(window.location.search).get('ref') || '';
+    } catch {}
     if (fromUrl) {
       try { sessionStorage.setItem('mym_ref', fromUrl); } catch {}
       setReferralCode(fromUrl);
@@ -27,7 +31,7 @@ export default function RegisterPage() {
       const stored = sessionStorage.getItem('mym_ref');
       if (stored) setReferralCode(stored);
     } catch {}
-  }, [searchParams]);
+  }, []);
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState('');
