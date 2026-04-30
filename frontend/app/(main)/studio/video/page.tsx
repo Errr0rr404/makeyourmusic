@@ -153,7 +153,7 @@ export default function VideoStudioPage() {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
               <label className="block text-sm font-medium text-white mb-2">Resolution</label>
               <div className="flex gap-2">
@@ -251,7 +251,8 @@ export default function VideoStudioPage() {
               <video
                 src={gen.videoUrl}
                 controls
-                className="w-full rounded-lg bg-black"
+                playsInline
+                className="w-full aspect-video rounded-lg bg-black"
               />
               <a
                 href={gen.videoUrl}

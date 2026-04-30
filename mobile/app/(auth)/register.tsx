@@ -116,12 +116,15 @@ export default function RegisterScreen() {
 
           <TouchableOpacity
             onPress={() => setAcceptTerms(!acceptTerms)}
-            className="flex-row items-start gap-2 mb-4"
+            className="flex-row items-start gap-3 mb-4 py-2"
+            accessibilityRole="checkbox"
+            accessibilityState={{ checked: acceptTerms }}
+            accessibilityLabel="Accept terms of service and privacy policy"
           >
-            <View className={`w-5 h-5 rounded border items-center justify-center mt-0.5 ${acceptTerms ? 'bg-mym-accent border-mym-accent' : 'border-mym-border bg-mym-card'}`}>
-              {acceptTerms && <Text className="text-white text-xs font-bold">✓</Text>}
+            <View className={`w-6 h-6 rounded border-2 items-center justify-center mt-0.5 ${acceptTerms ? 'bg-mym-accent border-mym-accent' : 'border-mym-border bg-mym-card'}`}>
+              {acceptTerms && <Text className="text-white text-sm font-bold">✓</Text>}
             </View>
-            <Text className="text-mym-muted text-sm flex-1">
+            <Text className="text-mym-muted text-sm flex-1 leading-5">
               I agree to the <Text className="text-mym-accent font-semibold">Terms of Service</Text> and <Text className="text-mym-accent font-semibold">Privacy Policy</Text>
             </Text>
           </TouchableOpacity>

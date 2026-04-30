@@ -250,7 +250,7 @@ export default function GenerationsPage() {
                   </div>
 
                   {gen.status === 'COMPLETED' && gen.audioUrl && (
-                    <audio controls src={gen.audioUrl} className="w-full mt-3" />
+                    <audio controls src={gen.audioUrl} className="w-full max-w-full mt-3" />
                   )}
 
                   {gen.status === 'FAILED' && (

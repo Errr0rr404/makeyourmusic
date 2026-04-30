@@ -57,9 +57,14 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-mym-bg">
-      <View className="flex-row justify-end px-6 pt-4">
-        <TouchableOpacity onPress={handleComplete}>
-          <Text className="text-mym-muted text-sm">Skip</Text>
+      <View className="flex-row justify-end px-4 pt-2">
+        <TouchableOpacity
+          onPress={handleComplete}
+          className="px-4 py-3"
+          accessibilityRole="button"
+          accessibilityLabel="Skip onboarding"
+        >
+          <Text className="text-mym-muted text-sm font-semibold">Skip</Text>
         </TouchableOpacity>
       </View>
 

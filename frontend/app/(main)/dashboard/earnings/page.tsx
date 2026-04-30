@@ -144,20 +144,20 @@ export default function EarningsPage() {
                 <button
                   key={a.id}
                   onClick={() => setSelectedAgentId(a.id)}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  className={`flex items-center gap-2 max-w-full px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                     selectedAgentId === a.id
                       ? 'bg-[hsl(var(--accent))] text-white'
                       : 'bg-[hsl(var(--card))] text-[hsl(var(--muted-foreground))] hover:text-white border border-[hsl(var(--border))]'
                   }`}
                 >
-                  <Bot className="w-3.5 h-3.5" />
-                  {a.name}
+                  <Bot className="w-3.5 h-3.5 flex-shrink-0" />
+                  <span className="truncate">{a.name}</span>
                 </button>
               ))}
             </div>
 
             {/* Stats cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 mb-6">
               <StatCard
                 icon={<DollarSign className="w-5 h-5 text-green-400" />}
                 label="Total earnings"

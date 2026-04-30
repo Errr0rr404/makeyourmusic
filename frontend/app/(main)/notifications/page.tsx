@@ -215,11 +215,12 @@ export default function NotificationsPage() {
                 <p className="text-sm text-white leading-snug">{n.message}</p>
                 <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{timeAgo(n.createdAt)}</p>
               </button>
-              <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="flex items-center gap-1 md:opacity-60 md:group-hover:opacity-100 md:transition-opacity">
                 {!n.read && (
                   <button
                     onClick={() => markAsRead(n.id)}
-                    className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5"
+                    className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5"
+                    aria-label="Mark as read"
                     title="Mark as read"
                   >
                     <Check className="w-4 h-4" />
@@ -227,7 +228,8 @@ export default function NotificationsPage() {
                 )}
                 <button
                   onClick={() => deleteOne(n.id)}
-                  className="p-1.5 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-red-400 hover:bg-red-500/10"
+                  className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-red-400 hover:bg-red-500/10"
+                  aria-label="Delete notification"
                   title="Delete"
                 >
                   <Trash2 className="w-4 h-4" />

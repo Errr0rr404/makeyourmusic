@@ -43,9 +43,11 @@ function SectionHeader({ title, subtitle, href, icon }: SectionHeaderProps) {
       {href && (
         <Link
           href={href}
-          className="hidden sm:inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[color:var(--text-mute)] hover:text-white transition-colors"
+          aria-label={`See all ${title}`}
+          className="inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wider text-[color:var(--text-mute)] hover:text-white transition-colors whitespace-nowrap"
         >
-          See all <ChevronRight className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline">See all</span>
+          <ChevronRight className="w-3.5 h-3.5" />
         </Link>
       )}
     </div>
@@ -166,7 +168,7 @@ export default function HomePage() {
             maskImage: 'linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%)',
           }}
         />
-        <div className="relative grid gap-8 p-6 md:p-10 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-center lg:p-12">
+        <div className="relative grid gap-6 p-5 sm:gap-8 sm:p-6 md:p-10 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-center lg:p-12">
           {isAuthenticated ? (
             <motion.div
               initial={{ opacity: 0, y: 8 }}

@@ -208,7 +208,7 @@ export default function ProfilePage() {
             </div>
             <div>
               <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-2">Avatar</label>
-              <div className="flex items-start gap-4">
+              <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:gap-4">
                 <div className="w-24 flex-shrink-0">
                   <ImageUpload
                     value={form.avatar}
@@ -222,7 +222,7 @@ export default function ProfilePage() {
                   value={form.avatar}
                   onChange={(e) => setForm((p) => ({ ...p, avatar: e.target.value }))}
                   placeholder="Or paste a URL"
-                  className="flex-1 h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
+                  className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none sm:flex-1"
                 />
               </div>
             </div>

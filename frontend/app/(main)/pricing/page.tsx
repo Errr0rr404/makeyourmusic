@@ -119,7 +119,7 @@ export default function PricingPage() {
           return (
             <div
               key={plan.tier}
-              className={`relative rounded-2xl p-6 border transition-colors ${
+              className={`relative rounded-2xl p-5 sm:p-6 border transition-colors ${
                 plan.highlight
                   ? 'bg-gradient-to-br from-purple-600/10 to-pink-600/10 border-purple-400/40'
                   : 'bg-[hsl(var(--card))] border-white/5'

@@ -52,6 +52,7 @@ export default function GenerationsPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const params = useMemo(() => {
     const p = new URLSearchParams({ kind, page: String(page), limit: '25' });
@@ -78,7 +79,7 @@ export default function GenerationsPage() {
       }
     })();
     return () => { cancelled = true; };
-  }, [params]);
+  }, [params, refreshKey]);
 
   const totalCost = items.reduce((acc, i) => acc + (i.estCostUsd || 0), 0);
 
@@ -114,10 +115,12 @@ export default function GenerationsPage() {
             <option value="FAILED">Failed</option>
           </select>
           <button
-            onClick={() => setPage((p) => p)}
-            className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[hsl(var(--card))] border border-white/10 hover:bg-white/5"
+            onClick={() => setRefreshKey((k) => k + 1)}
+            disabled={loading}
+            className="text-xs flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[hsl(var(--card))] border border-white/10 hover:bg-white/5 disabled:opacity-50"
+            aria-label="Refresh generations"
           >
-            <RefreshCw className="w-3 h-3" />
+            <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </button>
         </div>

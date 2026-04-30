@@ -115,7 +115,7 @@ function SearchContent() {
       {/* Sort & Genre Filter (for tracks) */}
       {tab === 'tracks' && (
         <div className="space-y-3 mb-6">
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {[['newest', 'Newest'], ['popular', 'Most Played'], ['liked', 'Most Liked']].map(([val, label]) => {
               const params = new URLSearchParams();
               if (q) params.set('q', q);

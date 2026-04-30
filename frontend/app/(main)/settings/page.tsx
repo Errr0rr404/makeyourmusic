@@ -194,7 +194,7 @@ export default function SettingsPage() {
               type="range" min={0} max={1} step={0.01}
               value={volume}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-32 accent-[hsl(var(--accent))]"
+              className="w-24 sm:w-32 accent-[hsl(var(--accent))]"
               aria-label="Volume"
             />
           </div>
@@ -211,7 +211,7 @@ export default function SettingsPage() {
               type="range" min={0} max={12} step={1}
               value={crossfade}
               onChange={(e) => setCrossfade(parseInt(e.target.value))}
-              className="w-32 accent-[hsl(var(--accent))]"
+              className="w-24 sm:w-32 accent-[hsl(var(--accent))]"
               aria-label="Crossfade duration"
             />
           </div>

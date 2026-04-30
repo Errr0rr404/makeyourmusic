@@ -124,9 +124,6 @@ export function Sidebar() {
             >
               <Film className="w-[18px] h-[18px]" strokeWidth={2.2} />
               Generate video
-              <span className="ml-auto text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/30">
-                Soon
-              </span>
             </Link>
             <Link
               href="/studio/generations"
