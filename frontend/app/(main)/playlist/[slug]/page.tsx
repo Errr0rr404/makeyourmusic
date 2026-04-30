@@ -118,10 +118,10 @@ export default function PlaylistPage() {
   if (error) {
     return (
       <div className="text-center py-20 animate-fade-in">
-        <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Error</h2>
-        <p className="text-[hsl(var(--muted-foreground))] mb-4">{error}</p>
-        <button onClick={() => router.push('/library')} className="text-[hsl(var(--accent))] hover:underline">
+        <AlertCircle className="w-12 h-12 text-rose-400 mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-[color:var(--text)] mb-2">Error</h2>
+        <p className="text-[color:var(--text-mute)] mb-4">{error}</p>
+        <button onClick={() => router.push('/library')} className="text-[color:var(--brand)] hover:underline">
           Back to Library
         </button>
       </div>
@@ -150,32 +150,30 @@ export default function PlaylistPage() {
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start gap-5 mb-8">
-        <div className="w-40 h-40 rounded-xl bg-gradient-to-br from-purple-600/30 to-pink-600/30 flex items-center justify-center flex-shrink-0">
-          <ListMusic className="w-16 h-16 text-[hsl(var(--muted-foreground))]" />
-        </div>
+      {/* Header — uses track covers as a mosaic when no dedicated cover exists */}
+      <div className="flex items-start gap-5 mb-8 flex-col sm:flex-row">
+        <PlaylistCover playlist={playlist} tracks={tracks} />
         <div className="flex-1 min-w-0 pt-2">
-          <p className="text-xs font-medium uppercase text-[hsl(var(--muted-foreground))] mb-1">Playlist</p>
+          <p className="text-xs font-bold uppercase tracking-wider text-[color:var(--text-mute)] mb-1">Playlist</p>
           {editing ? (
             <div className="flex items-center gap-2 mb-2">
               <input
                 value={editTitle}
                 onChange={(e) => setEditTitle(e.target.value)}
-                className="text-2xl font-bold bg-transparent text-white border-b border-[hsl(var(--accent))] focus:outline-none flex-1"
+                className="text-2xl font-bold bg-transparent text-[color:var(--text)] border-b border-[color:var(--brand)] focus:outline-none flex-1"
                 autoFocus
               />
-              <button onClick={handleSaveTitle} disabled={saving} className="p-1.5 text-green-400 hover:bg-green-500/10 rounded">
+              <button onClick={handleSaveTitle} disabled={saving} className="p-1.5 text-emerald-400 hover:bg-emerald-500/10 rounded">
                 {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Check className="w-5 h-5" />}
               </button>
-              <button onClick={() => { setEditing(false); setEditTitle(playlist.title); }} className="p-1.5 text-[hsl(var(--muted-foreground))] hover:bg-white/5 rounded">
+              <button onClick={() => { setEditing(false); setEditTitle(playlist.title); }} className="p-1.5 text-[color:var(--text-mute)] hover:bg-[color:var(--bg-elev-2)] rounded">
                 <X className="w-5 h-5" />
               </button>
             </div>
           ) : (
-            <h1 className="text-3xl font-bold text-white mb-2">{playlist.title}</h1>
+            <h1 className="text-3xl font-bold text-[color:var(--text)] mb-2">{playlist.title}</h1>
           )}
-          <div className="flex items-center gap-3 text-sm text-[hsl(var(--muted-foreground))]">
+          <div className="flex items-center gap-3 text-sm text-[color:var(--text-mute)] flex-wrap">
             {isPaid ? (
               <span className="flex items-center gap-1 text-emerald-300"><DollarSign className="w-3.5 h-3.5" /> Paid · ${(playlist.monthlyPriceCents / 100).toFixed(2)}/mo</span>
             ) : playlist.accessTier === 'PRIVATE' || playlist.isPublic === false ? (
@@ -187,26 +185,23 @@ export default function PlaylistPage() {
           </div>
 
           {/* Actions */}
-          <div className="flex items-center gap-3 mt-4">
+          <div className="flex items-center gap-3 mt-4 flex-wrap">
             {tracks.length > 0 && (
-              <button
-                onClick={handlePlayAll}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-[hsl(var(--accent))] text-white text-sm font-medium hover:scale-105 transition-transform"
-              >
-                <Play className="w-4 h-4" /> Play All
+              <button onClick={handlePlayAll} className="mym-cta mym-cta-sm">
+                <Play className="w-4 h-4" fill="currentColor" /> Play All
               </button>
             )}
             {isOwner && (
               <>
                 {!editing && (
-                  <button onClick={() => setEditing(true)} className="p-2 rounded-full hover:bg-white/5 text-[hsl(var(--muted-foreground))]" aria-label="Edit playlist">
+                  <button onClick={() => setEditing(true)} className="p-2 rounded-full hover:bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] hover:text-[color:var(--text)] transition-colors" aria-label="Edit playlist">
                     <Pencil className="w-4 h-4" />
                   </button>
                 )}
                 <button
                   onClick={handleDelete}
                   disabled={deleting}
-                  className="p-2 rounded-full hover:bg-red-500/10 text-red-400 disabled:opacity-50"
+                  className="p-2 rounded-full hover:bg-rose-500/10 text-rose-400 disabled:opacity-50 transition-colors"
                   aria-label="Delete playlist"
                 >
                   {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
@@ -221,15 +216,15 @@ export default function PlaylistPage() {
       {isLocked ? (
         <div className="rounded-2xl p-8 bg-gradient-to-br from-emerald-600/10 to-teal-600/10 border border-emerald-400/30 text-center">
           <Lock className="w-10 h-10 text-emerald-300 mx-auto mb-4" />
-          <h3 className="text-xl font-semibold text-white mb-2">Subscribe to unlock</h3>
-          <p className="text-sm text-[hsl(var(--muted-foreground))] mb-1">
+          <h3 className="text-xl font-semibold text-[color:var(--text)] mb-2">Subscribe to unlock</h3>
+          <p className="text-sm text-[color:var(--text-mute)] mb-1">
             {playlist.user?.displayName || playlist.user?.username} charges
           </p>
-          <p className="text-3xl font-bold text-white mb-1">
+          <p className="text-3xl font-bold text-[color:var(--text)] mb-1">
             ${(playlist.monthlyPriceCents / 100).toFixed(2)}
-            <span className="text-base font-normal text-[hsl(var(--muted-foreground))]">/month</span>
+            <span className="text-base font-normal text-[color:var(--text-mute)]">/month</span>
           </p>
-          <p className="text-xs text-[hsl(var(--muted-foreground))] mb-6">Cancel anytime.</p>
+          <p className="text-xs text-[color:var(--text-mute)] mb-6">Cancel anytime.</p>
           <div className="flex items-center justify-center gap-2">
             <button
               onClick={handleSubscribe}
@@ -257,12 +252,54 @@ export default function PlaylistPage() {
           ))}
         </div>
       ) : (
-        <div className="text-center py-16">
-          <ListMusic className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
-          <p className="text-[hsl(var(--muted-foreground))]">This playlist is empty</p>
-          <button onClick={() => router.push('/search')} className="text-[hsl(var(--accent))] hover:underline text-sm mt-2">
-            Discover tracks to add
+        <div className="text-center py-16 rounded-2xl bg-[color:var(--bg-elev-1)] border border-[color:var(--stroke)]">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+               style={{ background: 'var(--aurora)', opacity: 0.18 }}>
+            <ListMusic className="w-6 h-6 text-[color:var(--brand)]" />
+          </div>
+          <p className="text-[color:var(--text-mute)] mb-3">This playlist is empty</p>
+          <button onClick={() => router.push('/search')} className="text-[color:var(--brand)] hover:underline text-sm">
+            Discover tracks to add →
           </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlaylistCover({
+  playlist,
+  tracks,
+}: {
+  playlist: { coverArt?: string | null; title: string };
+  tracks: { coverArt?: string | null }[];
+}) {
+  const previewCovers: string[] = [];
+  for (const t of tracks) {
+    if (t?.coverArt && !previewCovers.includes(t.coverArt)) previewCovers.push(t.coverArt);
+    if (previewCovers.length >= 4) break;
+  }
+
+  return (
+    <div className="w-40 h-40 rounded-xl overflow-hidden flex-shrink-0 shadow-2xl shadow-black/40">
+      {playlist.coverArt ? (
+        <img src={playlist.coverArt} alt={playlist.title} className="w-full h-full object-cover" />
+      ) : previewCovers.length >= 2 ? (
+        <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+          {[0, 1, 2, 3].map((i) => {
+            const url = previewCovers[i] ?? previewCovers[i % previewCovers.length];
+            return url ? (
+              <img key={i} src={url} alt="" className="w-full h-full object-cover" />
+            ) : (
+              <div key={i} style={{ background: 'var(--aurora)', opacity: 0.4 }} />
+            );
+          })}
+        </div>
+      ) : previewCovers[0] ? (
+        <img src={previewCovers[0]} alt="" className="w-full h-full object-cover" />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--aurora)', opacity: 0.6 }}>
+          <ListMusic className="w-16 h-16 text-white/80" />
         </div>
       )}
     </div>

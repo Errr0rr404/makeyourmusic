@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Search, User, LogOut, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
@@ -11,10 +11,22 @@ import { cn } from '@/lib/utils';
 export function Topbar() {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, isAuthenticated, fetchUser, logout } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+
+  // When the user lands on /search?q=foo, surface the query in the input so they
+  // can edit it instead of typing from scratch. We also clear the input when
+  // they navigate away from /search so the placeholder reads correctly again.
+  useEffect(() => {
+    if (pathname === '/search') {
+      setSearchQuery(searchParams.get('q') ?? '');
+    } else {
+      setSearchQuery('');
+    }
+  }, [pathname, searchParams]);
 
   // AppProviders already runs the initial `fetchUser` on mount, so this
   // effect would otherwise duplicate the request — and if the auth store
@@ -48,10 +60,17 @@ export function Topbar() {
 
   const handleSearch = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery.trim())}`);
+    const trimmed = searchQuery.trim();
+    if (!trimmed) return;
+    // Preserve any existing filters (sort, genre) when refining the query.
+    if (pathname === '/search') {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('q', trimmed);
+      router.push(`/search?${params.toString()}`);
+    } else {
+      router.push(`/search?q=${encodeURIComponent(trimmed)}`);
     }
-  }, [router, searchQuery]);
+  }, [pathname, router, searchParams, searchQuery]);
 
   const onSearchPage = pathname === '/search';
 
@@ -66,14 +85,14 @@ export function Topbar() {
         <button
           onClick={() => router.back()}
           aria-label="Go back"
-          className="hidden md:inline-flex w-8 h-8 items-center justify-center rounded-full bg-[color:var(--bg-elev-2)] text-[color:var(--text-soft)] hover:text-[color:var(--text)] transition-colors disabled:opacity-50"
+          className="hidden md:inline-flex w-8 h-8 items-center justify-center rounded-full bg-[color:var(--bg-elev-2)] text-[color:var(--text-soft)] hover:text-[color:var(--text)] hover:bg-[color:var(--bg-elev-3)] transition-colors disabled:opacity-50"
         >
           <ChevronLeft className="w-4 h-4" strokeWidth={2.4} />
         </button>
         <button
           onClick={() => router.forward()}
           aria-label="Go forward"
-          className="hidden md:inline-flex w-8 h-8 items-center justify-center rounded-full bg-black/30 text-[color:var(--text-soft)] hover:text-white transition-colors"
+          className="hidden md:inline-flex w-8 h-8 items-center justify-center rounded-full bg-[color:var(--bg-elev-2)] text-[color:var(--text-soft)] hover:text-[color:var(--text)] hover:bg-[color:var(--bg-elev-3)] transition-colors"
         >
           <ChevronRight className="w-4 h-4" strokeWidth={2.4} />
         </button>
@@ -120,12 +139,12 @@ export function Topbar() {
                   <div className="fixed inset-0 z-40" onClick={() => setShowUserMenu(false)} />
                   <div className="absolute right-0 top-12 w-60 bg-[color:var(--bg-elev-1)] border border-[color:var(--stroke)] rounded-xl shadow-2xl shadow-black/40 z-50 py-2 animate-fade-in">
                     <div className="px-4 py-2 border-b border-[color:var(--stroke)]">
-                      <p className="text-sm font-semibold text-white truncate">{user?.displayName || user?.username}</p>
+                      <p className="text-sm font-semibold text-[color:var(--text)] truncate">{user?.displayName || user?.username}</p>
                       <p className="text-xs text-[color:var(--text-mute)] truncate">{user?.email}</p>
                     </div>
                     <Link
                       href="/profile"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[color:var(--text-soft)] hover:text-white hover:bg-white/[0.06] transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[color:var(--text-soft)] hover:text-[color:var(--text)] hover:bg-[color:var(--bg-elev-2)] transition-colors"
                       onClick={() => setShowUserMenu(false)}
                     >
                       <User className="w-4 h-4" />
@@ -133,7 +152,7 @@ export function Topbar() {
                     </Link>
                     <Link
                       href="/settings"
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[color:var(--text-soft)] hover:text-white hover:bg-white/[0.06] transition-colors"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-[color:var(--text-soft)] hover:text-[color:var(--text)] hover:bg-[color:var(--bg-elev-2)] transition-colors"
                       onClick={() => setShowUserMenu(false)}
                     >
                       <Settings className="w-4 h-4" />
@@ -141,7 +160,7 @@ export function Topbar() {
                     </Link>
                     <button
                       onClick={() => { setShowUserMenu(false); logout(); }}
-                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-rose-400 hover:text-rose-300 hover:bg-white/[0.06] transition-colors w-full"
+                      className="flex items-center gap-3 px-4 py-2.5 text-sm text-rose-400 hover:text-rose-300 hover:bg-[color:var(--bg-elev-2)] transition-colors w-full"
                     >
                       <LogOut className="w-4 h-4" />
                       Log out

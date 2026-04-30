@@ -120,10 +120,10 @@ export default function NotificationsPage() {
   if (!isAuthenticated) {
     return (
       <div className="text-center py-20 animate-fade-in">
-        <Lock className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Notifications</h2>
-        <p className="text-[hsl(var(--muted-foreground))] mb-4">Log in to see your notifications</p>
-        <Link href="/login" className="px-6 py-2.5 rounded-full bg-[hsl(var(--primary))] text-white font-medium">
+        <Lock className="w-12 h-12 text-[color:var(--text-mute)] mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-[color:var(--text)] mb-2">Notifications</h2>
+        <p className="text-[color:var(--text-mute)] mb-4">Log in to see your notifications</p>
+        <Link href="/login" className="mym-cta">
           Log In
         </Link>
       </div>
@@ -134,10 +134,10 @@ export default function NotificationsPage() {
     <div className="max-w-2xl mx-auto animate-fade-in">
       <div className="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex min-w-0 flex-wrap items-center gap-3">
-          <Bell className="w-6 h-6 text-[hsl(var(--accent))]" />
-          <h1 className="text-2xl font-bold text-white leading-tight">Notifications</h1>
+          <Bell className="w-6 h-6 text-[color:var(--brand)]" />
+          <h1 className="text-2xl font-bold text-[color:var(--text)] leading-tight">Notifications</h1>
           {unreadCount > 0 && (
-            <span className="px-2 py-0.5 rounded-full bg-[hsl(var(--accent))]/10 text-[hsl(var(--accent))] text-xs font-medium">
+            <span className="px-2 py-0.5 rounded-full bg-[color:var(--brand-soft)] text-[color:var(--brand)] text-xs font-semibold">
               {unreadCount} unread
             </span>
           )}
@@ -145,22 +145,22 @@ export default function NotificationsPage() {
         {unreadCount > 0 && (
           <button
             onClick={markAllAsRead}
-            className="flex w-full items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5 transition-colors sm:w-auto sm:py-1.5"
+            className="flex w-full items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-sm text-[color:var(--text-mute)] hover:text-[color:var(--text)] hover:bg-[color:var(--bg-elev-2)] transition-colors sm:w-auto sm:py-1.5"
           >
             <Check className="w-4 h-4" /> Mark all read
           </button>
         )}
       </div>
 
-      <div className="flex gap-2 mb-4 border-b border-[hsl(var(--border))]">
+      <div className="flex gap-2 mb-4 border-b border-[color:var(--stroke)]">
         {(['all', 'unread'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px ${
+            className={`px-4 py-2 text-sm font-semibold transition-colors border-b-2 -mb-px ${
               filter === f
-                ? 'text-white border-[hsl(var(--accent))]'
-                : 'text-[hsl(var(--muted-foreground))] border-transparent hover:text-white'
+                ? 'text-[color:var(--text)] border-[color:var(--brand)]'
+                : 'text-[color:var(--text-mute)] border-transparent hover:text-[color:var(--text)]'
             }`}
           >
             {f === 'all' ? 'All' : `Unread (${unreadCount})`}
@@ -169,12 +169,12 @@ export default function NotificationsPage() {
       </div>
 
       {error && (
-        <div className="flex flex-col gap-3 p-4 mb-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 p-4 mb-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
-          <button onClick={load} className="underline hover:text-red-300">
+          <button onClick={load} className="underline hover:text-rose-300">
             Retry
           </button>
         </div>
@@ -182,18 +182,21 @@ export default function NotificationsPage() {
 
       {loading ? (
         <div className="py-20 flex items-center justify-center">
-          <Loader2 className="w-6 h-6 text-[hsl(var(--muted-foreground))] animate-spin" />
+          <Loader2 className="w-6 h-6 text-[color:var(--text-mute)] animate-spin" />
         </div>
       ) : notifications.length === 0 ? (
-        <div className="text-center py-20 bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))]">
-          <Bell className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-3 opacity-50" />
-          <h2 className="text-lg font-bold text-white mb-1">
+        <div className="text-center py-16 rounded-2xl bg-[color:var(--bg-elev-1)] border border-[color:var(--stroke)]">
+          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+               style={{ background: 'var(--aurora)', opacity: 0.18 }}>
+            <Bell className="w-6 h-6 text-[color:var(--brand)]" />
+          </div>
+          <h2 className="text-lg font-bold text-[color:var(--text)] mb-1">
             {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
           </h2>
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">
+          <p className="text-sm text-[color:var(--text-mute)] max-w-sm mx-auto">
             {filter === 'unread'
-              ? 'You&apos;re all caught up.'
-              : 'When you get followers, likes, or comments, they&apos;ll show up here.'}
+              ? "You're all caught up."
+              : "When you get followers, likes, or comments, they'll show up here."}
           </p>
         </div>
       ) : (
@@ -203,8 +206,8 @@ export default function NotificationsPage() {
               key={n.id}
               className={`group flex items-start gap-3 p-4 rounded-xl border transition-colors ${
                 n.read
-                  ? 'bg-[hsl(var(--card))] border-[hsl(var(--border))]'
-                  : 'bg-[hsl(var(--accent))]/5 border-[hsl(var(--accent))]/20'
+                  ? 'bg-[color:var(--bg-elev-1)] border-[color:var(--stroke)]'
+                  : 'bg-[color:var(--brand-soft)] border-[color:var(--brand)]/20'
               }`}
             >
               <div className="flex-shrink-0 mt-0.5">{iconFor(n.type)}</div>
@@ -212,14 +215,14 @@ export default function NotificationsPage() {
                 onClick={() => handleClick(n)}
                 className="flex-1 min-w-0 text-left"
               >
-                <p className="text-sm text-white leading-snug">{n.message}</p>
-                <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">{timeAgo(n.createdAt)}</p>
+                <p className="text-sm text-[color:var(--text)] leading-snug">{n.message}</p>
+                <p className="text-xs text-[color:var(--text-mute)] mt-1">{timeAgo(n.createdAt)}</p>
               </button>
               <div className="flex items-center gap-1 md:opacity-60 md:group-hover:opacity-100 md:transition-opacity">
                 {!n.read && (
                   <button
                     onClick={() => markAsRead(n.id)}
-                    className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5"
+                    className="p-2 rounded-lg text-[color:var(--text-mute)] hover:text-[color:var(--text)] hover:bg-[color:var(--bg-elev-2)]"
                     aria-label="Mark as read"
                     title="Mark as read"
                   >
@@ -228,7 +231,7 @@ export default function NotificationsPage() {
                 )}
                 <button
                   onClick={() => deleteOne(n.id)}
-                  className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-red-400 hover:bg-red-500/10"
+                  className="p-2 rounded-lg text-[color:var(--text-mute)] hover:text-rose-400 hover:bg-rose-500/10"
                   aria-label="Delete notification"
                   title="Delete"
                 >

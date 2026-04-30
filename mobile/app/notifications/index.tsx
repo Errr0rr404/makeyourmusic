@@ -11,6 +11,7 @@ import {
 } from 'lucide-react-native';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Button } from '../../components/ui/Button';
+import { useTokens } from '../../lib/theme';
 
 type NotifType = 'NEW_TRACK' | 'NEW_FOLLOWER' | 'TRACK_LIKED' | 'COMMENT' | 'SYSTEM';
 
@@ -39,6 +40,7 @@ function iconFor(type: NotifType) {
   }
 }
 
+
 function timeAgo(iso: string): string {
   const s = Math.floor((Date.now() - new Date(iso).getTime()) / 1000);
   if (s < 60) return 'just now';
@@ -50,6 +52,7 @@ function timeAgo(iso: string): string {
 
 export default function NotificationsScreen() {
   const router = useRouter();
+  const tokens = useTokens();
   const { isAuthenticated } = useAuthStore();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -118,10 +121,14 @@ export default function NotificationsScreen() {
   if (!isAuthenticated) {
     return (
       <ScreenContainer scrollable={false}>
-        <View className="flex-1 items-center justify-center px-6">
-          <Lock size={48} color="#71717a" />
-          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Notifications</Text>
-          <Text className="text-mym-muted text-sm mb-6">Log in to see notifications</Text>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+          <Lock size={48} color={tokens.textMute} />
+          <Text style={{ color: tokens.text, fontSize: 20, fontWeight: '700', marginTop: 16, marginBottom: 8 }}>
+            Notifications
+          </Text>
+          <Text style={{ color: tokens.textMute, fontSize: 14, marginBottom: 24 }}>
+            Log in to see notifications
+          </Text>
           <Button title="Sign in" onPress={() => router.push('/(auth)/login')} size="lg" />
         </View>
       </ScreenContainer>
@@ -133,33 +140,54 @@ export default function NotificationsScreen() {
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 py-3">
         <View className="flex-row items-center gap-3">
-          <TouchableOpacity onPress={() => router.back()}>
-            <ArrowLeft size={20} color="#a1a1aa" />
+          <TouchableOpacity onPress={() => router.back()} accessibilityLabel="Back">
+            <ArrowLeft size={20} color={tokens.textMute} />
           </TouchableOpacity>
-          <Text className="text-mym-text text-lg font-bold">Notifications</Text>
+          <Text style={{ color: tokens.text, fontSize: 18, fontWeight: '700' }}>Notifications</Text>
           {unreadCount > 0 && (
-            <View className="bg-mym-accent/20 px-2 py-0.5 rounded-full">
-              <Text className="text-mym-accent text-xs font-semibold">{unreadCount} unread</Text>
+            <View
+              style={{
+                backgroundColor: tokens.accentSoft,
+                paddingHorizontal: 8,
+                paddingVertical: 2,
+                borderRadius: 999,
+              }}
+            >
+              <Text style={{ color: tokens.brand, fontSize: 11, fontWeight: '700' }}>
+                {unreadCount} unread
+              </Text>
             </View>
           )}
         </View>
         {unreadCount > 0 && (
           <TouchableOpacity onPress={markAllRead} className="flex-row items-center gap-1">
-            <Check size={14} color="#8b5cf6" />
-            <Text className="text-mym-accent text-xs font-semibold">Mark all read</Text>
+            <Check size={14} color={tokens.brand} />
+            <Text style={{ color: tokens.brand, fontSize: 12, fontWeight: '700' }}>Mark all read</Text>
           </TouchableOpacity>
         )}
       </View>
 
       {/* Tabs */}
-      <View className="flex-row gap-1 mx-4 mb-2 border-b border-mym-border">
+      <View style={{ flexDirection: 'row', gap: 4, marginHorizontal: 16, marginBottom: 8, borderBottomWidth: 1, borderBottomColor: tokens.border }}>
         {(['all', 'unread'] as const).map((f) => (
           <TouchableOpacity
             key={f}
             onPress={() => setFilter(f)}
-            className={`px-3 py-2 border-b-2 -mb-px ${filter === f ? 'border-mym-accent' : 'border-transparent'}`}
+            style={{
+              paddingHorizontal: 12,
+              paddingVertical: 10,
+              borderBottomWidth: 2,
+              marginBottom: -1,
+              borderBottomColor: filter === f ? tokens.brand : 'transparent',
+            }}
           >
-            <Text className={`text-sm capitalize ${filter === f ? 'text-mym-text font-semibold' : 'text-mym-muted'}`}>
+            <Text
+              style={{
+                fontSize: 14,
+                fontWeight: filter === f ? '700' : '500',
+                color: filter === f ? tokens.text : tokens.textMute,
+              }}
+            >
               {f === 'all' ? 'All' : `Unread (${unreadCount})`}
             </Text>
           </TouchableOpacity>
@@ -167,26 +195,48 @@ export default function NotificationsScreen() {
       </View>
 
       {error && (
-        <View className="mx-4 mb-3 bg-red-900/20 border border-red-500/30 rounded-lg px-3 py-2 flex-row items-center gap-2">
+        <View
+          style={{
+            marginHorizontal: 16,
+            marginBottom: 12,
+            backgroundColor: 'rgba(244, 63, 94, 0.12)',
+            borderColor: 'rgba(244, 63, 94, 0.3)',
+            borderWidth: 1,
+            borderRadius: tokens.radiusMd,
+            paddingHorizontal: 12,
+            paddingVertical: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 8,
+          }}
+        >
           <AlertCircle size={14} color="#f87171" />
-          <Text className="text-red-400 text-sm flex-1">{error}</Text>
+          <Text style={{ color: '#f87171', fontSize: 13, flex: 1 }}>{error}</Text>
           <TouchableOpacity onPress={load}>
-            <Text className="text-red-300 text-xs underline">Retry</Text>
+            <Text style={{ color: '#fda4af', fontSize: 12, textDecorationLine: 'underline' }}>Retry</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {loading ? (
         <View className="flex-1 items-center justify-center">
-          <ActivityIndicator color="#8b5cf6" size="large" />
+          <ActivityIndicator color={tokens.brand} size="large" />
         </View>
       ) : notifications.length === 0 ? (
-        <View className="flex-1 items-center justify-center px-6">
-          <Bell size={42} color="#71717a" />
-          <Text className="text-mym-text text-lg font-bold mt-3">
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+          <View
+            style={{
+              width: 56, height: 56, borderRadius: 28,
+              backgroundColor: tokens.accentSoft,
+              alignItems: 'center', justifyContent: 'center', marginBottom: 16,
+            }}
+          >
+            <Bell size={24} color={tokens.brand} />
+          </View>
+          <Text style={{ color: tokens.text, fontSize: 16, fontWeight: '700', marginBottom: 4, textAlign: 'center' }}>
             {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
           </Text>
-          <Text className="text-mym-muted text-sm mt-1 text-center">
+          <Text style={{ color: tokens.textMute, fontSize: 13, marginTop: 4, textAlign: 'center', maxWidth: 280 }}>
             {filter === 'unread'
               ? "You're all caught up."
               : "When you get followers, likes, or comments, they'll show up here."}
@@ -204,29 +254,41 @@ export default function NotificationsScreen() {
                 setRefreshing(true);
                 load();
               }}
-              tintColor="#8b5cf6"
+              tintColor={tokens.brand}
             />
           }
           renderItem={({ item }) => (
             <TouchableOpacity
               onPress={() => handleOpen(item)}
               onLongPress={() => deleteNotif(item)}
-              className={`flex-row items-start gap-3 px-4 py-3 border-b border-mym-border/60 ${!item.read ? 'bg-mym-accent/5' : ''}`}
+              style={{
+                flexDirection: 'row',
+                alignItems: 'flex-start',
+                gap: 12,
+                paddingHorizontal: 16,
+                paddingVertical: 12,
+                borderBottomWidth: 1,
+                borderBottomColor: tokens.border,
+                backgroundColor: !item.read ? tokens.accentSoft : 'transparent',
+              }}
             >
-              <View className="mt-1">{iconFor(item.type)}</View>
-              <View className="flex-1 min-w-0">
-                <Text className="text-mym-text text-sm" numberOfLines={2}>
+              <View style={{ marginTop: 4 }}>{iconFor(item.type)}</View>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={{ color: tokens.text, fontSize: 14 }} numberOfLines={2}>
                   {item.message}
                 </Text>
-                <Text className="text-mym-muted text-xs mt-0.5">{timeAgo(item.createdAt)}</Text>
+                <Text style={{ color: tokens.textMute, fontSize: 12, marginTop: 2 }}>{timeAgo(item.createdAt)}</Text>
               </View>
-              {!item.read && <View className="w-2 h-2 rounded-full bg-mym-accent mt-2" />}
+              {!item.read && (
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: tokens.brand, marginTop: 8 }} />
+              )}
               <TouchableOpacity
                 onPress={() => deleteNotif(item)}
-                className="p-1 ml-1"
+                style={{ padding: 4, marginLeft: 4 }}
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                accessibilityLabel="Delete notification"
               >
-                <Trash2 size={14} color="#71717a" />
+                <Trash2 size={14} color={tokens.textMute} />
               </TouchableOpacity>
             </TouchableOpacity>
           )}

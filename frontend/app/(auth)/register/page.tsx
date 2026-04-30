@@ -79,7 +79,7 @@ export default function RegisterPage() {
   const updateForm = (field: string, value: string) => setForm(prev => ({ ...prev, [field]: value }));
 
   const inputCls =
-    'w-full h-11 px-4 rounded-lg bg-white/[0.04] text-white border border-[color:var(--stroke)] focus:border-[color:var(--brand)] focus:outline-none transition-colors';
+    'w-full h-11 px-4 rounded-lg bg-[color:var(--bg-elev-2)] text-[color:var(--text)] border border-[color:var(--stroke)] focus:border-[color:var(--brand)] focus:outline-none transition-colors';
   const labelCls = 'block text-xs font-bold uppercase tracking-wider text-[color:var(--text-mute)] mb-1.5';
 
   return (
@@ -90,7 +90,7 @@ export default function RegisterPage() {
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
             <BrandLogo markClassName="h-10 w-10" textClassName="text-2xl" />
           </Link>
-          <h1 className="font-display font-extrabold text-3xl text-white tracking-tight">Create your account</h1>
+          <h1 className="font-display font-extrabold text-3xl text-[color:var(--text)] tracking-tight">Create your account</h1>
           <p className="text-[color:var(--text-mute)] mt-1.5 text-sm">Start discovering AI-generated music.</p>
         </div>
 
@@ -135,7 +135,7 @@ export default function RegisterPage() {
             <div className="relative">
               <input type={showPassword ? 'text' : 'password'} value={form.password} onChange={(e) => updateForm('password', e.target.value)} required
                 className={`${inputCls} pr-11`} placeholder="Min 8 chars · upper, lower, number" />
-              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-mute)] hover:text-white">
+              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-mute)] hover:text-[color:var(--text)] transition-colors">
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>

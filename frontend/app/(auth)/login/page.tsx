@@ -47,7 +47,7 @@ function LoginForm() {
           <Link href="/" className="inline-flex items-center gap-2.5 mb-6">
             <BrandLogo markClassName="h-10 w-10" textClassName="text-2xl" />
           </Link>
-          <h1 className="font-display font-extrabold text-3xl text-white tracking-tight">Welcome back</h1>
+          <h1 className="font-display font-extrabold text-3xl text-[color:var(--text)] tracking-tight">Welcome back</h1>
           <p className="text-[color:var(--text-mute)] mt-1.5 text-sm">Log in to continue listening.</p>
         </div>
 
@@ -76,7 +76,7 @@ function LoginForm() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full h-11 px-4 rounded-lg bg-white/[0.04] text-white border border-[color:var(--stroke)] focus:border-[color:var(--brand)] focus:outline-none transition-colors"
+              className="w-full h-11 px-4 rounded-lg bg-[color:var(--bg-elev-2)] text-[color:var(--text)] border border-[color:var(--stroke)] focus:border-[color:var(--brand)] focus:outline-none transition-colors"
               placeholder="you@example.com"
             />
           </div>
@@ -101,7 +101,7 @@ function LoginForm() {
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
                 aria-label={showPassword ? 'Hide password' : 'Show password'}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-mute)] hover:text-white"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[color:var(--text-mute)] hover:text-[color:var(--text)] transition-colors"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>

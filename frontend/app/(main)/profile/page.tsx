@@ -137,10 +137,10 @@ export default function ProfilePage() {
   if (!isAuthenticated) {
     return (
       <div className="text-center py-20 animate-fade-in">
-        <User className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Your Profile</h2>
-        <p className="text-[hsl(var(--muted-foreground))] mb-4">Log in to view your profile</p>
-        <button onClick={() => router.push('/login')} className="px-6 py-2.5 rounded-full bg-[hsl(var(--primary))] text-white font-medium">
+        <User className="w-12 h-12 text-[color:var(--text-mute)] mx-auto mb-4" />
+        <h2 className="text-xl font-bold text-[color:var(--text)] mb-2">Your Profile</h2>
+        <p className="text-[color:var(--text-mute)] mb-4">Log in to view your profile</p>
+        <button onClick={() => router.push('/login')} className="mym-cta">
           Log In
         </button>
       </div>
@@ -149,15 +149,15 @@ export default function ProfilePage() {
 
   const roleBadge = (role: string) => {
     const map: Record<string, { label: string; color: string; icon: any }> = {
-      ADMIN: { label: 'Admin', color: 'text-red-400 bg-red-500/10', icon: Shield },
-      AGENT_OWNER: { label: 'Creator', color: 'text-purple-400 bg-purple-500/10', icon: Crown },
-      LISTENER: { label: 'Listener', color: 'text-blue-400 bg-blue-500/10', icon: Music },
+      ADMIN: { label: 'Admin', color: 'text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20', icon: Shield },
+      AGENT_OWNER: { label: 'Creator', color: 'text-[color:var(--brand)] bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand)]/30', icon: Crown },
+      LISTENER: { label: 'Listener', color: 'text-[color:var(--text-soft)] bg-[color:var(--bg-elev-2)] ring-1 ring-[color:var(--stroke)]', icon: Music },
     };
     const r = map[role] || map.LISTENER!;
     if (!r) return null;
     const Icon = r.icon;
     return (
-      <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium ${r.color}`}>
+      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${r.color}`}>
         <Icon className="w-3 h-3" /> {r.label}
       </span>
     );
@@ -165,36 +165,39 @@ export default function ProfilePage() {
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">
-      <h1 className="text-2xl font-bold text-white mb-6">Profile</h1>
+      <h1 className="text-2xl font-bold text-[color:var(--text)] mb-6">Profile</h1>
 
       {error && (
-        <div className="flex items-center gap-2 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm mb-4">
+        <div className="flex items-center gap-2 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm mb-4">
           <AlertCircle className="w-4 h-4 flex-shrink-0" /> {error}
         </div>
       )}
 
       {/* Profile Card */}
-      <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] p-6 mb-6">
+      <div className="bg-[color:var(--bg-elev-1)] rounded-xl border border-[color:var(--stroke)] p-6 mb-6">
         <div className="flex items-start gap-5">
-          <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
+          <div
+            className="w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold flex-shrink-0 shadow-lg shadow-[color:var(--brand-glow)]"
+            style={{ background: user?.avatar ? undefined : 'var(--aurora)' }}
+          >
             {user?.avatar ? (
               <img src={user.avatar} alt="" className="w-full h-full rounded-full object-cover" />
             ) : (
-              user?.displayName?.[0] || user?.username?.[0] || 'U'
+              user?.displayName?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || 'U'
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-3 mb-1">
-              <h2 className="text-xl font-bold text-white">{user?.displayName || user?.username}</h2>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <h2 className="text-xl font-bold text-[color:var(--text)]">{user?.displayName || user?.username}</h2>
               {user?.role && roleBadge(user.role)}
             </div>
-            <p className="text-sm text-[hsl(var(--muted-foreground))]">{user?.email}</p>
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1">@{user?.username}</p>
+            <p className="text-sm text-[color:var(--text-mute)]">{user?.email}</p>
+            <p className="text-sm text-[color:var(--text-mute)] mt-1">@{user?.username}</p>
           </div>
           {!editing && (
             <button
               onClick={() => setEditing(true)}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[hsl(var(--secondary))] text-sm text-white hover:bg-white/10 transition-colors"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[color:var(--bg-elev-2)] text-sm text-[color:var(--text)] hover:bg-[color:var(--bg-elev-3)] transition-colors"
             >
               <Pencil className="w-3.5 h-3.5" /> Edit
             </button>
@@ -203,28 +206,28 @@ export default function ProfilePage() {
 
         {/* Edit Form */}
         {editing && (
-          <div className="mt-6 pt-6 border-t border-[hsl(var(--border))] space-y-4">
+          <div className="mt-6 pt-6 border-t border-[color:var(--stroke)] space-y-4">
             <div>
-              <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Display Name</label>
+              <label className="block text-sm text-[color:var(--text-mute)] mb-1">Display Name</label>
               <input
                 value={form.displayName}
                 onChange={(e) => setForm((p) => ({ ...p, displayName: e.target.value }))}
-                className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none"
+                className="w-full h-10 px-3 rounded-lg bg-[color:var(--bg-elev-2)] text-[color:var(--text)] text-sm border border-[color:var(--stroke)] focus:border-[color:var(--brand)] focus:outline-none"
                 maxLength={100}
               />
             </div>
             <div>
-              <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-1">Bio</label>
+              <label className="block text-sm text-[color:var(--text-mute)] mb-1">Bio</label>
               <textarea
                 value={form.bio}
                 onChange={(e) => setForm((p) => ({ ...p, bio: e.target.value }))}
                 rows={3}
-                className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none resize-none"
+                className="w-full px-3 py-2 rounded-lg bg-[color:var(--bg-elev-2)] text-[color:var(--text)] text-sm border border-[color:var(--stroke)] focus:border-[color:var(--brand)] focus:outline-none resize-none"
                 maxLength={500}
               />
             </div>
             <div>
-              <label className="block text-sm text-[hsl(var(--muted-foreground))] mb-2">Avatar</label>
+              <label className="block text-sm text-[color:var(--text-mute)] mb-2">Avatar</label>
               <div className="flex flex-col items-stretch gap-3 sm:flex-row sm:items-start sm:gap-4">
                 <div className="w-24 flex-shrink-0">
                   <ImageUpload
@@ -239,21 +242,21 @@ export default function ProfilePage() {
                   value={form.avatar}
                   onChange={(e) => setForm((p) => ({ ...p, avatar: e.target.value }))}
                   placeholder="Or paste a URL"
-                  className="w-full h-10 px-3 rounded-lg bg-[hsl(var(--secondary))] text-white text-sm border border-[hsl(var(--border))] focus:border-[hsl(var(--accent))] focus:outline-none sm:flex-1"
+                  className="w-full h-10 px-3 rounded-lg bg-[color:var(--bg-elev-2)] text-[color:var(--text)] text-sm border border-[color:var(--stroke)] focus:border-[color:var(--brand)] focus:outline-none sm:flex-1"
                 />
               </div>
             </div>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={() => { setEditing(false); setError(null); }}
-                className="flex items-center gap-2 px-4 py-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-white transition-colors"
+                className="flex items-center gap-2 px-4 py-2 text-sm text-[color:var(--text-mute)] hover:text-[color:var(--text)] transition-colors"
               >
                 <X className="w-4 h-4" /> Cancel
               </button>
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium disabled:opacity-50"
+                className="mym-cta mym-cta-sm disabled:opacity-50"
               >
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                 Save Changes
@@ -266,15 +269,15 @@ export default function ProfilePage() {
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
         {[
-          { label: 'Liked Songs', value: stats?.likedTracks ?? '—', icon: Heart, color: 'text-pink-400' },
-          { label: 'Playlists', value: stats?.playlists ?? '—', icon: Music, color: 'text-purple-400' },
-          { label: 'Member Since', value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—', icon: Calendar, color: 'text-blue-400' },
-          { label: 'Subscription', value: (user as any)?.subscription?.tier || 'Free', icon: Crown, color: 'text-yellow-400' },
+          { label: 'Liked Songs', value: stats?.likedTracks ?? '—', icon: Heart, color: 'text-rose-400' },
+          { label: 'Playlists', value: stats?.playlists ?? '—', icon: Music, color: 'text-[color:var(--brand)]' },
+          { label: 'Member Since', value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—', icon: Calendar, color: 'text-sky-400' },
+          { label: 'Subscription', value: (user as any)?.subscription?.tier || 'Free', icon: Crown, color: 'text-amber-400' },
         ].map((stat) => (
-          <div key={stat.label} className="bg-[hsl(var(--card))] rounded-xl p-4 border border-[hsl(var(--border))]">
+          <div key={stat.label} className="bg-[color:var(--bg-elev-1)] rounded-xl p-4 border border-[color:var(--stroke)]">
             <stat.icon className={`w-5 h-5 ${stat.color} mb-2`} />
-            <p className="text-lg font-bold text-white">{stat.value}</p>
-            <p className="text-xs text-[hsl(var(--muted-foreground))]">{stat.label}</p>
+            <p className="text-lg font-bold text-[color:var(--text)]">{stat.value}</p>
+            <p className="text-xs text-[color:var(--text-mute)]">{stat.label}</p>
           </div>
         ))}
       </div>
@@ -283,19 +286,19 @@ export default function ProfilePage() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3 px-1">
           <div className="flex items-center gap-2">
-            <Music className="w-5 h-5 text-[hsl(var(--accent))]" />
-            <h2 className="text-lg font-bold text-white">Your tracks</h2>
-            <span className="text-xs text-[hsl(var(--muted-foreground))]">({myTracks.length})</span>
+            <Music className="w-5 h-5 text-[color:var(--brand)]" />
+            <h2 className="text-lg font-bold text-[color:var(--text)]">Your tracks</h2>
+            <span className="text-xs text-[color:var(--text-mute)]">({myTracks.length})</span>
           </div>
           <Link
             href="/create"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-purple-500/20 to-pink-500/20 border border-purple-500/30 text-purple-200 text-xs font-medium hover:scale-105 transition-transform"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[color:var(--brand-soft)] border border-[color:var(--brand)]/30 text-[color:var(--brand)] text-xs font-semibold hover:bg-[color:var(--brand-soft)] hover:border-[color:var(--brand)]/50 transition-colors"
           >
             <Wand2 className="w-3.5 h-3.5" /> Create with AI
           </Link>
         </div>
 
-        <div className="flex gap-1 mb-3 border-b border-[hsl(var(--border))]">
+        <div className="flex gap-1 mb-3 border-b border-[color:var(--stroke)]">
           {(['all', 'public', 'private'] as const).map((t) => {
             const count =
               t === 'all'
@@ -307,13 +310,13 @@ export default function ProfilePage() {
               <button
                 key={t}
                 onClick={() => setTracksTab(t)}
-                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 -mb-px capitalize ${
+                className={`px-4 py-2 text-sm font-semibold transition-colors border-b-2 -mb-px capitalize ${
                   tracksTab === t
-                    ? 'text-white border-[hsl(var(--accent))]'
-                    : 'text-[hsl(var(--muted-foreground))] border-transparent hover:text-white'
+                    ? 'text-[color:var(--text)] border-[color:var(--brand)]'
+                    : 'text-[color:var(--text-mute)] border-transparent hover:text-[color:var(--text)]'
                 }`}
               >
-                {t} <span className="text-xs text-[hsl(var(--muted-foreground))]">({count})</span>
+                {t} <span className="text-xs text-[color:var(--text-mute)]">({count})</span>
               </button>
             );
           })}
@@ -322,23 +325,23 @@ export default function ProfilePage() {
         {tracksLoading ? (
           <div className="space-y-2">
             {[...Array(3)].map((_, i) => (
-              <div key={i} className="h-16 rounded-lg bg-[hsl(var(--card))] animate-pulse" />
+              <div key={i} className="h-16 rounded-lg bg-[color:var(--bg-elev-2)] shimmer" />
             ))}
           </div>
         ) : filteredTracks.length === 0 ? (
-          <div className="text-center py-12 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
-            <Sparkles className="w-10 h-10 text-[hsl(var(--muted-foreground))] mx-auto mb-3 opacity-50" />
-            <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">
+          <div className="text-center py-12 rounded-xl bg-[color:var(--bg-elev-1)] border border-[color:var(--stroke)]">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4"
+                 style={{ background: 'var(--aurora)', opacity: 0.18 }}>
+              <Sparkles className="w-6 h-6 text-[color:var(--brand)]" />
+            </div>
+            <p className="text-sm text-[color:var(--text-mute)] mb-4">
               {tracksTab === 'private'
                 ? 'No private tracks yet'
                 : tracksTab === 'public'
                   ? 'No public tracks yet'
                   : "You haven't created any tracks yet"}
             </p>
-            <Link
-              href="/create"
-              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-medium"
-            >
+            <Link href="/create" className="mym-cta mym-cta-sm">
               <Wand2 className="w-4 h-4" /> Create your first track
             </Link>
           </div>
@@ -347,57 +350,53 @@ export default function ProfilePage() {
             {filteredTracks.map((track) => (
               <li
                 key={track.id}
-                className="group flex items-center gap-3 p-3 rounded-lg bg-[hsl(var(--card))] border border-[hsl(var(--border))] hover:border-white/20 transition-colors"
+                className="group flex items-center gap-3 p-3 rounded-lg bg-[color:var(--bg-elev-1)] border border-[color:var(--stroke)] hover:border-[color:var(--stroke-strong)] transition-colors"
               >
                 <button
                   onClick={() => playTrack(track, filteredTracks)}
-                  className="w-12 h-12 rounded-lg overflow-hidden bg-[hsl(var(--secondary))] flex-shrink-0 flex items-center justify-center group/play"
+                  className="w-12 h-12 rounded-lg overflow-hidden bg-[color:var(--bg-elev-2)] flex-shrink-0 flex items-center justify-center group/play"
                   aria-label={`Play ${track.title}`}
                 >
                   {track.coverArt ? (
                     <img src={track.coverArt} alt="" className="w-full h-full object-cover" />
                   ) : (
-                    <Music className="w-5 h-5 text-[hsl(var(--muted-foreground))]" />
+                    <Music className="w-5 h-5 text-[color:var(--text-mute)]" />
                   )}
                 </button>
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <Link
                       href={`/track/${track.slug}`}
-                      className="text-sm font-semibold text-white hover:underline truncate"
+                      className="text-sm font-semibold text-[color:var(--text)] hover:underline truncate"
                     >
                       {track.title}
                     </Link>
                     <span
-                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold ${
                         track.isPublic
-                          ? 'bg-green-500/10 text-green-300'
-                          : 'bg-amber-500/10 text-amber-300'
+                          ? 'bg-emerald-500/10 text-emerald-300 ring-1 ring-emerald-500/20'
+                          : 'bg-amber-500/10 text-amber-300 ring-1 ring-amber-500/20'
                       }`}
                     >
                       {track.isPublic ? <Globe className="w-2.5 h-2.5" /> : <LockKeyhole className="w-2.5 h-2.5" />}
                       {track.isPublic ? 'Public' : 'Private'}
                     </span>
                   </div>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))] truncate">
+                  <p className="text-xs text-[color:var(--text-mute)] truncate">
                     {track.agent?.name} · {track.playCount || 0} plays · {track.likeCount || 0} likes
                   </p>
                 </div>
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                   <button
                     onClick={() => handleToggleVisibility(track.id, !track.isPublic)}
-                    className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-white hover:bg-white/5"
+                    className="p-2 rounded-lg text-[color:var(--text-mute)] hover:text-[color:var(--text)] hover:bg-[color:var(--bg-elev-2)]"
                     title={track.isPublic ? 'Make private' : 'Make public'}
                   >
-                    {track.isPublic ? (
-                      <LockKeyhole className="w-4 h-4" />
-                    ) : (
-                      <Globe className="w-4 h-4" />
-                    )}
+                    {track.isPublic ? <LockKeyhole className="w-4 h-4" /> : <Globe className="w-4 h-4" />}
                   </button>
                   <button
                     onClick={() => handleDeleteTrack(track.id, track.title)}
-                    className="p-2 rounded-lg text-[hsl(var(--muted-foreground))] hover:text-red-400 hover:bg-red-500/10"
+                    className="p-2 rounded-lg text-[color:var(--text-mute)] hover:text-rose-400 hover:bg-rose-500/10"
                     title="Delete track"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -413,13 +412,13 @@ export default function ProfilePage() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-3 px-1">
           <div className="flex items-center gap-2">
-            <Film className="w-5 h-5 text-pink-400" />
-            <h2 className="text-lg font-bold text-white">Your clips</h2>
-            <span className="text-xs text-[hsl(var(--muted-foreground))]">({myClips.length})</span>
+            <Film className="w-5 h-5 text-rose-400" />
+            <h2 className="text-lg font-bold text-[color:var(--text)]">Your clips</h2>
+            <span className="text-xs text-[color:var(--text-mute)]">({myClips.length})</span>
           </div>
           <Link
             href="/create/clip"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gradient-to-r from-pink-500/20 to-purple-500/20 border border-pink-500/30 text-pink-200 text-xs font-medium hover:scale-105 transition-transform"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[color:var(--brand-soft)] border border-[color:var(--brand)]/30 text-[color:var(--brand)] text-xs font-semibold hover:border-[color:var(--brand)]/50 transition-colors"
           >
             <Film className="w-3.5 h-3.5" /> Make a clip
           </Link>
@@ -427,7 +426,7 @@ export default function ProfilePage() {
         {clipsLoading ? (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
             {[...Array(4)].map((_, i) => (
-              <div key={i} className="aspect-[9/16] rounded-xl bg-[hsl(var(--card))] animate-pulse" />
+              <div key={i} className="aspect-[9/16] rounded-xl bg-[color:var(--bg-elev-2)] shimmer" />
             ))}
           </div>
         ) : (
@@ -435,12 +434,12 @@ export default function ProfilePage() {
             clips={myClips}
             emptyState={
               <>
-                <Film className="w-10 h-10 text-[hsl(var(--muted-foreground))] mx-auto mb-3 opacity-50" />
-                <p className="text-sm text-[hsl(var(--muted-foreground))] mb-3">No clips yet</p>
-                <Link
-                  href="/create/clip"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-pink-500 to-purple-500 text-white text-sm font-medium"
-                >
+                <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mx-auto mb-4"
+                     style={{ background: 'var(--aurora)', opacity: 0.18 }}>
+                  <Film className="w-6 h-6 text-[color:var(--brand)]" />
+                </div>
+                <p className="text-sm text-[color:var(--text-mute)] mb-4">No clips yet</p>
+                <Link href="/create/clip" className="mym-cta mym-cta-sm">
                   <Film className="w-4 h-4" /> Make your first clip
                 </Link>
               </>
@@ -450,18 +449,18 @@ export default function ProfilePage() {
       </div>
 
       {/* Quick Links */}
-      <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] divide-y divide-[hsl(var(--border))]">
-        <button onClick={() => router.push('/library')} className="flex items-center gap-3 px-5 py-4 text-left w-full hover:bg-white/5 transition-colors">
-          <Heart className="w-5 h-5 text-pink-400" />
-          <span className="text-sm text-white">Liked Songs</span>
+      <div className="bg-[color:var(--bg-elev-1)] rounded-xl border border-[color:var(--stroke)] divide-y divide-[color:var(--stroke)]">
+        <button onClick={() => router.push('/library')} className="flex items-center gap-3 px-5 py-4 text-left w-full hover:bg-[color:var(--bg-elev-2)] transition-colors">
+          <Heart className="w-5 h-5 text-rose-400" />
+          <span className="text-sm text-[color:var(--text)]">Liked Songs</span>
         </button>
-        <button onClick={() => router.push('/studio/generations')} className="flex items-center gap-3 px-5 py-4 text-left w-full hover:bg-white/5 transition-colors">
-          <Sparkles className="w-5 h-5 text-purple-400" />
-          <span className="text-sm text-white">My AI Generations</span>
+        <button onClick={() => router.push('/studio/generations')} className="flex items-center gap-3 px-5 py-4 text-left w-full hover:bg-[color:var(--bg-elev-2)] transition-colors">
+          <Sparkles className="w-5 h-5 text-[color:var(--brand)]" />
+          <span className="text-sm text-[color:var(--text)]">My AI Generations</span>
         </button>
-        <button onClick={() => router.push('/settings')} className="flex items-center gap-3 px-5 py-4 text-left w-full hover:bg-white/5 transition-colors">
-          <Clock className="w-5 h-5 text-blue-400" />
-          <span className="text-sm text-white">Account Settings</span>
+        <button onClick={() => router.push('/settings')} className="flex items-center gap-3 px-5 py-4 text-left w-full hover:bg-[color:var(--bg-elev-2)] transition-colors">
+          <Clock className="w-5 h-5 text-sky-400" />
+          <span className="text-sm text-[color:var(--text)]">Account Settings</span>
         </button>
       </div>
     </div>

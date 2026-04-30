@@ -1,18 +1,48 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { TrackRow } from '@/components/track/TrackRow';
-import { Heart, ListMusic, Lock, AlertCircle, Clock, Sparkles } from 'lucide-react';
+import { Heart, ListMusic, Lock, AlertCircle, Clock, Sparkles, Music } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from '@/lib/store/toastStore';
 
 type Tab = 'liked' | 'playlists' | 'history' | 'foryou';
 
-export default function LibraryPage() {
+// Sidebar uses `?tab=likes` and the home page uses `?tab=foryou`/`?tab=history`.
+// Map each accepted alias to a canonical Tab so external links resolve to the
+// right pane regardless of how they spell it.
+const TAB_ALIAS: Record<string, Tab> = {
+  likes: 'liked',
+  liked: 'liked',
+  playlists: 'playlists',
+  history: 'history',
+  foryou: 'foryou',
+  'for-you': 'foryou',
+};
+
+function LibraryContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialTab = TAB_ALIAS[searchParams.get('tab') ?? ''] ?? 'liked';
   const { isAuthenticated } = useAuthStore();
-  const [tab, setTab] = useState<Tab>('liked');
+  const [tab, setTab] = useState<Tab>(initialTab);
+
+  // Keep the active tab in sync if the URL changes (back/forward, sidebar click).
+  useEffect(() => {
+    const next = TAB_ALIAS[searchParams.get('tab') ?? ''];
+    if (next && next !== tab) setTab(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  const switchTab = (next: Tab) => {
+    setTab(next);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('tab', next);
+    router.replace(`/library?${params.toString()}`, { scroll: false });
+  };
   const [likedTracks, setLikedTracks] = useState<any[]>([]);
   const [playlists, setPlaylists] = useState<any[]>([]);
   const [historyTracks, setHistoryTracks] = useState<any[]>([]);
@@ -54,16 +84,13 @@ export default function LibraryPage() {
 
   if (!isAuthenticated) {
     return (
-      <div className="text-center py-20 animate-fade-in">
-        <Lock className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-[color:var(--text)] mb-2">Your Library</h2>
-        <p className="text-[color:var(--text-mute)] mb-4">Log in to see your liked songs and playlists</p>
-        <Link
-          href="/login"
-          className="inline-flex items-center justify-center px-6 py-2.5 rounded-full bg-[hsl(var(--primary))] text-white font-medium hover:opacity-90 transition-opacity focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))]"
-        >
-          Log In
-        </Link>
+      <div className="animate-fade-in">
+        <EmptyState
+          icon={<Lock className="w-10 h-10" />}
+          title="Your Library is private"
+          body="Log in to see your liked songs, playlists, and listening history."
+          cta={{ href: '/login', label: 'Log in' }}
+        />
       </div>
     );
   }
@@ -87,6 +114,13 @@ export default function LibraryPage() {
     { id: 'playlists', label: 'Playlists', icon: <ListMusic className="w-4 h-4" /> },
   ];
 
+  const counts: Record<Tab, number> = {
+    liked: likedTracks.length,
+    history: historyTracks.length,
+    foryou: forYouTracks.length,
+    playlists: playlists.length,
+  };
+
   return (
     <div className="animate-fade-in">
       <h1 className="text-2xl font-bold text-[color:var(--text)] mb-6">Your Library</h1>
@@ -96,34 +130,37 @@ export default function LibraryPage() {
         {tabs.map((t) => (
           <button
             key={t.id}
-            onClick={() => setTab(t.id)}
+            onClick={() => switchTab(t.id)}
             role="tab"
             aria-selected={tab === t.id}
-            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(var(--accent))] focus-visible:ring-offset-2 focus-visible:ring-offset-[hsl(var(--background))] ${
+            className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors whitespace-nowrap focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--bg)] ${
               tab === t.id
-                ? 'bg-[hsl(var(--primary))] text-white'
-                : 'bg-[hsl(var(--secondary))] text-[color:var(--text-mute)] hover:text-[color:var(--text)]'
+                ? 'bg-[color:var(--brand)] text-white shadow-lg shadow-[color:var(--brand-glow)]'
+                : 'bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] hover:text-[color:var(--text)] hover:bg-[color:var(--bg-elev-3)]'
             }`}
           >
             {t.icon} {t.label}
+            {!loading && counts[t.id] > 0 && (
+              <span className={`ml-1 text-[10px] tabular-nums opacity-70`}>{counts[t.id]}</span>
+            )}
           </button>
         ))}
       </div>
 
       {error && (
-        <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-sm mb-4">
+        <div className="flex items-center justify-between gap-3 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm mb-4">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{error}</span>
           </div>
-          <button onClick={load} className="underline hover:text-red-300">Retry</button>
+          <button onClick={load} className="underline hover:text-rose-300">Retry</button>
         </div>
       )}
 
       {loading ? (
         <div className="space-y-3">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-14 bg-[hsl(var(--secondary))] rounded-lg animate-pulse" />
+            <div key={i} className="h-14 bg-[color:var(--bg-elev-2)] rounded-lg shimmer" />
           ))}
         </div>
       ) : tab === 'liked' ? (
@@ -134,7 +171,12 @@ export default function LibraryPage() {
             ))}
           </div>
         ) : (
-          <p className="text-center py-12 text-[hsl(var(--muted-foreground))]">No liked songs yet. Start exploring!</p>
+          <EmptyState
+            icon={<Heart className="w-10 h-10" />}
+            title="No liked songs yet"
+            body="Tap the heart on any track to save it here."
+            cta={{ href: '/search', label: 'Browse music' }}
+          />
         )
       ) : tab === 'history' ? (
         historyTracks.length > 0 ? (
@@ -144,7 +186,12 @@ export default function LibraryPage() {
             ))}
           </div>
         ) : (
-          <p className="text-center py-12 text-[hsl(var(--muted-foreground))]">No listening history yet. Play some tracks!</p>
+          <EmptyState
+            icon={<Clock className="w-10 h-10" />}
+            title="No listening history yet"
+            body="Play a few tracks and they'll show up here."
+            cta={{ href: '/', label: 'Discover tracks' }}
+          />
         )
       ) : tab === 'foryou' ? (
         forYouTracks.length > 0 ? (
@@ -154,27 +201,137 @@ export default function LibraryPage() {
             ))}
           </div>
         ) : (
-          <p className="text-center py-12 text-[hsl(var(--muted-foreground))]">Like some tracks to get personalized recommendations!</p>
+          <EmptyState
+            icon={<Sparkles className="w-10 h-10" />}
+            title="We're still learning your taste"
+            body="Like a few tracks and we'll start tailoring recommendations."
+            cta={{ href: '/search', label: 'Browse music' }}
+          />
         )
       ) : (
         <div>
           {playlists.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {playlists.map((pl) => (
-                <Link key={pl.id} href={`/playlist/${pl.slug}`} className="bg-[hsl(var(--card))] rounded-xl p-4 hover:bg-[hsl(var(--secondary))] transition-colors">
-                  <div className="aspect-square rounded-lg bg-gradient-to-br from-purple-600/20 to-pink-600/20 flex items-center justify-center mb-3">
-                    <ListMusic className="w-10 h-10 text-[hsl(var(--muted-foreground))]" />
-                  </div>
-                  <h3 className="text-sm font-semibold text-[color:var(--text)] truncate">{pl.title}</h3>
-                  <p className="text-xs text-[hsl(var(--muted-foreground))]">{pl._count?.tracks || 0} tracks</p>
-                </Link>
+                <PlaylistTile key={pl.id} playlist={pl} />
               ))}
             </div>
           ) : (
-            <p className="text-center py-12 text-[hsl(var(--muted-foreground))]">No playlists yet</p>
+            <EmptyState
+              icon={<ListMusic className="w-10 h-10" />}
+              title="No playlists yet"
+              body="Tap the + in the sidebar to create your first playlist."
+            />
           )}
         </div>
       )}
     </div>
+  );
+}
+
+// ─── Helpers ─────────────────────────────────────────────
+
+interface PlaylistRecord {
+  id: string;
+  slug: string;
+  title: string;
+  coverArt?: string | null;
+  // Some endpoints return a tracks preview; we use it for stacked covers.
+  tracks?: { track?: { coverArt?: string | null } }[];
+  _count?: { tracks: number };
+}
+
+function PlaylistTile({ playlist }: { playlist: PlaylistRecord }) {
+  // Build up to four cover thumbnails from the playlist's items so the tile
+  // looks like a small mosaic when there's no dedicated cover. Falls back to
+  // the brand aurora gradient + icon when the playlist is empty.
+  const previewCovers: string[] = [];
+  if (playlist.tracks?.length) {
+    for (const item of playlist.tracks) {
+      const cover = item?.track?.coverArt;
+      if (cover && !previewCovers.includes(cover)) previewCovers.push(cover);
+      if (previewCovers.length >= 4) break;
+    }
+  }
+  const trackCount = playlist._count?.tracks ?? 0;
+
+  return (
+    <Link
+      href={`/playlist/${playlist.slug}`}
+      className="group block p-3 rounded-xl bg-[color:var(--bg-elev-2)] hover:bg-[color:var(--bg-elev-3)] transition-colors"
+    >
+      <div className="aspect-square rounded-lg mb-3 overflow-hidden relative bg-[color:var(--bg-elev-3)]">
+        {playlist.coverArt ? (
+          <img src={playlist.coverArt} alt="" className="w-full h-full object-cover" loading="lazy" />
+        ) : previewCovers.length >= 2 ? (
+          <div className="grid grid-cols-2 grid-rows-2 w-full h-full">
+            {[0, 1, 2, 3].map((i) => {
+              const url = previewCovers[i] ?? previewCovers[i % previewCovers.length];
+              return url ? (
+                <img key={i} src={url} alt="" className="w-full h-full object-cover" loading="lazy" />
+              ) : (
+                <div key={i} className="w-full h-full" style={{ background: 'var(--aurora)', opacity: 0.5 }} />
+              );
+            })}
+          </div>
+        ) : previewCovers[0] ? (
+          <img src={previewCovers[0]} alt="" className="w-full h-full object-cover" loading="lazy" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center" style={{ background: 'var(--aurora)', opacity: 0.55 }}>
+            <ListMusic className="w-10 h-10 text-white/80" />
+          </div>
+        )}
+      </div>
+      <h3 className="text-sm font-semibold text-[color:var(--text)] truncate">{playlist.title}</h3>
+      <p className="text-xs text-[color:var(--text-mute)]">
+        {trackCount} {trackCount === 1 ? 'track' : 'tracks'}
+      </p>
+    </Link>
+  );
+}
+
+function EmptyState({
+  icon,
+  title,
+  body,
+  cta,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  cta?: { href: string; label: string };
+}) {
+  return (
+    <div className="text-center py-16 rounded-2xl bg-[color:var(--bg-elev-1)] border border-[color:var(--stroke)]">
+      <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl mb-4"
+           style={{ background: 'var(--aurora)', opacity: 0.2 }}>
+        <span className="text-[color:var(--brand)]">{icon}</span>
+      </div>
+      <h2 className="text-lg font-bold text-[color:var(--text)] mb-1">{title}</h2>
+      <p className="text-sm text-[color:var(--text-mute)] max-w-sm mx-auto mb-5">{body}</p>
+      {cta && (
+        <Link href={cta.href} className="mym-cta mym-cta-sm">
+          <Music className="w-4 h-4" /> {cta.label}
+        </Link>
+      )}
+    </div>
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <Suspense fallback={
+      <div className="animate-pulse">
+        <div className="h-8 w-48 bg-[color:var(--bg-elev-2)] rounded mb-6" />
+        <div className="h-10 w-64 bg-[color:var(--bg-elev-2)] rounded-full mb-6" />
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="h-14 bg-[color:var(--bg-elev-2)] rounded-lg shimmer" />
+          ))}
+        </div>
+      </div>
+    }>
+      <LibraryContent />
+    </Suspense>
   );
 }

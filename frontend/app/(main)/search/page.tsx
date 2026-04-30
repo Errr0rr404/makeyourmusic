@@ -86,29 +86,34 @@ function SearchContent() {
 
   return (
     <div className="animate-fade-in">
-      {/* Filters */}
-      <div className="flex items-center gap-4 mb-6">
-        {q && (
-          <h1 className="text-xl font-bold text-white">
-            Results for &ldquo;{q}&rdquo;
-          </h1>
+      <div className="flex items-baseline gap-3 mb-6">
+        <h1 className="text-2xl font-bold text-[color:var(--text)]">
+          {q ? <>Results for <span className="text-[color:var(--brand)]">&ldquo;{q}&rdquo;</span></> : 'Browse'}
+        </h1>
+        {q && !loading && (
+          <span className="text-sm text-[color:var(--text-mute)]">
+            {tracks.length + agents.length} match{tracks.length + agents.length === 1 ? '' : 'es'}
+          </span>
         )}
-        {!q && <h1 className="text-xl font-bold text-white">Browse</h1>}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6">
+      <div className="flex gap-2 mb-6" role="tablist">
         <button onClick={() => setTab('tracks')}
           role="tab"
           aria-selected={tab === 'tracks'}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === 'tracks' ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
-          Tracks{!loading ? ` (${tracks.length})` : ''}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${tab === 'tracks'
+            ? 'bg-[color:var(--brand)] text-white shadow-lg shadow-[color:var(--brand-glow)]'
+            : 'bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] hover:text-[color:var(--text)] hover:bg-[color:var(--bg-elev-3)]'}`}>
+          Tracks{!loading && tracks.length > 0 ? ` · ${tracks.length}` : ''}
         </button>
         <button onClick={() => setTab('agents')}
           role="tab"
           aria-selected={tab === 'agents'}
-          className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${tab === 'agents' ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-white hover:bg-white/10'}`}>
-          Agents{!loading ? ` (${agents.length})` : ''}
+          className={`px-4 py-2 rounded-full text-sm font-semibold transition-colors ${tab === 'agents'
+            ? 'bg-[color:var(--brand)] text-white shadow-lg shadow-[color:var(--brand-glow)]'
+            : 'bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] hover:text-[color:var(--text)] hover:bg-[color:var(--bg-elev-3)]'}`}>
+          Agents{!loading && agents.length > 0 ? ` · ${agents.length}` : ''}
         </button>
       </div>
 
@@ -116,14 +121,21 @@ function SearchContent() {
       {tab === 'tracks' && (
         <div className="space-y-3 mb-6">
           <div className="flex flex-wrap gap-2">
-            {[['newest', 'Newest'], ['popular', 'Most Played'], ['liked', 'Most Liked']].map(([val, label]) => {
+            {([
+              ['newest', 'Newest'],
+              ['popular', 'Most played'],
+              ['liked', 'Most liked'],
+            ] as const).map(([val, label]) => {
               const params = new URLSearchParams();
               if (q) params.set('q', q);
-              if (val) params.set('sort', val);
+              params.set('sort', val);
               if (genre) params.set('genre', genre);
+              const isActive = sort === val;
               return (
                 <a key={val} href={`/search?${params.toString()}`}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${sort === val ? 'bg-[hsl(var(--accent))] text-white' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'}`}>
+                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${isActive
+                    ? 'bg-[color:var(--text)] text-[color:var(--bg)]'
+                    : 'bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] hover:text-[color:var(--text)]'}`}>
                   {label}
                 </a>
               );
@@ -132,17 +144,22 @@ function SearchContent() {
           {genres.length > 0 && (
             <div className="flex flex-wrap gap-2">
               <a href={`/search?${new URLSearchParams({ ...(q ? { q } : {}), sort }).toString()}`}
-                className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${!genre ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'}`}>
-                All Genres
+                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${!genre
+                  ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)] border border-[color:var(--brand)]/40'
+                  : 'bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] hover:text-[color:var(--text)] border border-transparent'}`}>
+                All genres
               </a>
               {genres.map((g) => {
                 const params = new URLSearchParams();
                 if (q) params.set('q', q);
                 params.set('sort', sort);
                 params.set('genre', g.slug);
+                const isActive = genre === g.slug;
                 return (
                   <a key={g.id} href={`/search?${params.toString()}`}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${genre === g.slug ? 'bg-white text-black' : 'bg-[hsl(var(--secondary))] text-[hsl(var(--muted-foreground))] hover:text-white'}`}>
+                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${isActive
+                      ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)] border border-[color:var(--brand)]/40'
+                      : 'bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] hover:text-[color:var(--text)] border border-transparent'}`}>
                     {g.name}
                   </a>
                 );
@@ -154,9 +171,9 @@ function SearchContent() {
 
       {error ? (
         <div className="text-center py-20">
-          <AlertCircle className="w-12 h-12 text-red-400 mx-auto mb-4" />
-          <p className="text-red-400 mb-4">{error}</p>
-          <button onClick={() => setRetryNonce((n) => n + 1)} className="text-[hsl(var(--accent))] hover:underline">
+          <AlertCircle className="w-12 h-12 text-rose-400 mx-auto mb-4" />
+          <p className="text-rose-400 mb-4">{error}</p>
+          <button onClick={() => setRetryNonce((n) => n + 1)} className="text-[color:var(--brand)] hover:underline">
             Retry
           </button>
         </div>
@@ -164,8 +181,8 @@ function SearchContent() {
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
           {Array.from({ length: 12 }).map((_, i) => (
             <div key={i} className="space-y-3">
-              <div className="aspect-square rounded-lg bg-[hsl(var(--secondary))] animate-pulse" />
-              <div className="h-4 w-3/4 bg-[hsl(var(--secondary))] rounded animate-pulse" />
+              <div className="aspect-square rounded-lg bg-[color:var(--bg-elev-2)] shimmer" />
+              <div className="h-4 w-3/4 bg-[color:var(--bg-elev-2)] rounded shimmer" />
             </div>
           ))}
         </div>
@@ -177,10 +194,7 @@ function SearchContent() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20">
-            <Search className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
-            <p className="text-[hsl(var(--muted-foreground))]">No tracks found</p>
-          </div>
+          <SearchEmpty query={q} kind="tracks" />
         )
       ) : (
         agents.length > 0 ? (
@@ -190,12 +204,27 @@ function SearchContent() {
             ))}
           </div>
         ) : (
-          <div className="text-center py-20">
-            <Search className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
-            <p className="text-[hsl(var(--muted-foreground))]">No agents found</p>
-          </div>
+          <SearchEmpty query={q} kind="agents" />
         )
       )}
+    </div>
+  );
+}
+
+function SearchEmpty({ query, kind }: { query: string; kind: 'tracks' | 'agents' }) {
+  return (
+    <div className="text-center py-16 rounded-2xl bg-[color:var(--bg-elev-1)] border border-[color:var(--stroke)]">
+      <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 bg-[color:var(--bg-elev-2)]">
+        <Search className="w-6 h-6 text-[color:var(--text-mute)]" />
+      </div>
+      <h2 className="text-lg font-bold text-[color:var(--text)] mb-1">
+        {query ? `No ${kind} match "${query}"` : `Search for ${kind}`}
+      </h2>
+      <p className="text-sm text-[color:var(--text-mute)] max-w-sm mx-auto">
+        {query
+          ? 'Try a different keyword or remove a filter.'
+          : `Type something into the search bar above to discover ${kind} on MakeYourMusic.`}
+      </p>
     </div>
   );
 }
