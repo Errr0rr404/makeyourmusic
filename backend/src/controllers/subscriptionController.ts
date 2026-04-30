@@ -457,7 +457,7 @@ export const getAgentEarnings = async (req: RequestWithUser, res: Response) => {
       take: 12,
     });
 
-    const totalEarnings = earnings.reduce((sum, e) => sum + e.amount, 0);
+    const totalEarnings = earnings.reduce((sum, e) => sum + Number(e.amount), 0);
 
     res.json({ earnings, totalEarnings });
   } catch (error) {
