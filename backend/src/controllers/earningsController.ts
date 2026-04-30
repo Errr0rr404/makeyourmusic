@@ -75,3 +75,127 @@ export const getCreatorEarningsSummary = async (req: RequestWithUser, res: Respo
     res.status(500).json({ error: 'Failed to get earnings summary' });
   }
 };
+
+// ─── Public ledger ─────────────────────────────────────────
+//
+// Aspirational signal for new creators: every agent profile shows lifetime
+// earnings + last-30-days. We sum tips, channel subs, and sync licenses on
+// the agent owner. Returns zeroes (not 404) when an agent has no earnings.
+
+export const publicAgentEarnings = async (req: RequestWithUser, res: Response) => {
+  try {
+    const slug = req.params.slug as string;
+    const agent = await prisma.aiAgent.findUnique({
+      where: { slug },
+      include: { tracks: { select: { id: true } } },
+    });
+    if (!agent) {
+      res.status(404).json({ error: 'Agent not found' });
+      return;
+    }
+    const ownerId = agent.ownerId;
+    const trackIds = agent.tracks.map((t) => t.id);
+    const since30d = new Date(Date.now() - 30 * 24 * 3_600_000);
+
+    const [tipsLifetime, tips30d, subsAll, subs30d, syncLifetime, sync30d] = await Promise.all([
+      prisma.tip.aggregate({
+        where: { toUserId: ownerId, status: 'SUCCEEDED' },
+        _sum: { netCents: true },
+      }),
+      prisma.tip.aggregate({
+        where: { toUserId: ownerId, status: 'SUCCEEDED', createdAt: { gte: since30d } },
+        _sum: { netCents: true },
+      }),
+      prisma.channelSubscription.findMany({
+        where: { creatorUserId: ownerId },
+        select: { amountCents: true, platformFeeBps: true, createdAt: true, status: true },
+      }),
+      prisma.channelSubscription.findMany({
+        where: { creatorUserId: ownerId, currentPeriodStart: { gte: since30d } },
+        select: { amountCents: true, platformFeeBps: true },
+      }),
+      trackIds.length
+        ? prisma.syncLicense.aggregate({
+            where: { trackId: { in: trackIds }, status: 'PAID' },
+            _sum: { netCents: true },
+          })
+        : Promise.resolve({ _sum: { netCents: 0 } }),
+      trackIds.length
+        ? prisma.syncLicense.aggregate({
+            where: { trackId: { in: trackIds }, status: 'PAID', createdAt: { gte: since30d } },
+            _sum: { netCents: true },
+          })
+        : Promise.resolve({ _sum: { netCents: 0 } }),
+    ]);
+
+    const monthsBetween = (start: Date | null) => {
+      if (!start) return 1;
+      return Math.max(1, Math.ceil((Date.now() - start.getTime()) / (30 * 24 * 3_600_000)));
+    };
+    const subsTotalCents = subsAll.reduce(
+      (acc, s) =>
+        acc + Math.floor((s.amountCents * (10000 - s.platformFeeBps)) / 10000) * monthsBetween(s.createdAt),
+      0
+    );
+    const subs30Cents = subs30d.reduce(
+      (acc, s) => acc + Math.floor((s.amountCents * (10000 - s.platformFeeBps)) / 10000),
+      0
+    );
+
+    const lifetimeCents =
+      (tipsLifetime._sum.netCents ?? 0) + subsTotalCents + (syncLifetime._sum.netCents ?? 0);
+    const last30Cents =
+      (tips30d._sum.netCents ?? 0) + subs30Cents + (sync30d._sum.netCents ?? 0);
+
+    res.json({
+      agentSlug: slug,
+      lifetimeCents,
+      last30Cents,
+      breakdown: {
+        tipsCents: tipsLifetime._sum.netCents ?? 0,
+        channelSubsCents: subsTotalCents,
+        syncLicensesCents: syncLifetime._sum.netCents ?? 0,
+      },
+    });
+  } catch (error) {
+    logger.error('publicAgentEarnings error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to load earnings' });
+  }
+};
+
+// Top earners — leaderboard for landing/discovery pages. Sums tips and
+// sync-license net per owner; channel-sub MRR is intentionally left out
+// here (it muddies the comparison and we display it in the agent ledger).
+export const topEarners = async (req: RequestWithUser, res: Response) => {
+  try {
+    const limit = Math.min(parseInt(String(req.query.limit ?? '20'), 10) || 20, 100);
+    const rows = await prisma.$queryRawUnsafe<Array<{
+      agent_id: string;
+      agent_slug: string;
+      agent_name: string;
+      avatar: string | null;
+      lifetime_cents: number;
+    }>>(`
+      SELECT a.id AS agent_id, a.slug AS agent_slug, a.name AS agent_name, a.avatar,
+             COALESCE(t.cents, 0) + COALESCE(sl.cents, 0) AS lifetime_cents
+      FROM ai_agents a
+      LEFT JOIN LATERAL (
+        SELECT SUM(net_cents)::int AS cents FROM tips
+        WHERE to_user_id = a.owner_id AND status = 'SUCCEEDED'
+      ) t ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT SUM(sync_licenses.net_cents)::int AS cents
+        FROM sync_licenses
+        JOIN tracks ON tracks.id = sync_licenses.track_id
+        WHERE tracks.agent_id = a.id AND sync_licenses.status = 'PAID'
+      ) sl ON TRUE
+      WHERE COALESCE(t.cents, 0) + COALESCE(sl.cents, 0) > 0
+      ORDER BY lifetime_cents DESC, a.follower_count DESC
+      LIMIT ${limit}
+    `);
+    res.json({ topEarners: rows });
+  } catch (error) {
+    logger.error('topEarners error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to load top earners' });
+  }
+};

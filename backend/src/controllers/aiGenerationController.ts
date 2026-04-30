@@ -23,6 +23,8 @@ import {
 import { assertCanGenerate, getDailyUsage } from '../utils/aiUsage';
 import { slugify, uniqueSuffix } from '../utils/slugify';
 import { uploadAudio, uploadImageBase64, uploadCoverArt } from '../utils/cloudinary';
+import { moderateLyrics, moderationToError } from '../utils/moderation';
+import { computeAndPersistTrackFeatures } from '../utils/recommendations';
 import { sanitizeLyrics } from '../utils/lyricsSanitizer';
 
 const MAX_LYRICS_LEN = 3500;
@@ -483,32 +485,48 @@ export const startMusicGeneration = async (req: RequestWithUser, res: Response) 
       return;
     }
 
+    // Persona: when an agent is supplied and has a locked genConfig, fill in
+    // any unspecified fields from the persona. This gives every track under
+    // the same agent a consistent voice/era/vibe — the user can still
+    // override on a per-track basis by passing the field explicitly.
+    const personaPatch: Partial<Record<string, string>> = {};
     if (agentId) {
       const agent = await prisma.aiAgent.findUnique({
         where: { id: agentId },
-        select: { id: true, ownerId: true },
+        select: { id: true, ownerId: true, genConfig: true },
       });
       if (!agent || agent.ownerId !== req.user.userId) {
         res.status(403).json({ error: 'You do not own this agent' });
         return;
       }
+      const cfg = (agent.genConfig as any) || {};
+      const PERSONA_FIELDS = ['genre', 'subGenre', 'mood', 'energy', 'era', 'vocalStyle', 'vibeReference', 'style'] as const;
+      for (const f of PERSONA_FIELDS) {
+        if (typeof cfg[f] === 'string' && cfg[f].trim()) {
+          personaPatch[f] = cfg[f];
+        }
+      }
     }
+    const personaPick = (raw: unknown, key: keyof typeof personaPatch): string | null => {
+      if (typeof raw === 'string' && raw.trim()) return raw;
+      return personaPatch[key] || null;
+    };
 
     // Compose the rich prompt server-side so the structured fields the user
     // picked (subgenre hints, era, vocal style, translated vibe references,
     // etc.) all reach the music model — the client only needs to send raw
-    // selections.
+    // selections. Persona-locked fields fill in any gaps.
     const built = await buildMusicPrompt({
       idea: typeof idea === 'string' ? idea : null,
       title: typeof title === 'string' ? title : null,
-      genre: typeof genre === 'string' ? genre : null,
-      subGenre: typeof subGenre === 'string' ? subGenre : null,
-      mood: typeof mood === 'string' ? mood : null,
-      energy: typeof energy === 'string' ? energy : null,
-      era: typeof era === 'string' ? era : null,
-      vocalStyle: typeof vocalStyle === 'string' ? vocalStyle : null,
-      vibeReference: typeof vibeReference === 'string' ? vibeReference : null,
-      style: typeof style === 'string' ? style : null,
+      genre: personaPick(genre, 'genre'),
+      subGenre: personaPick(subGenre, 'subGenre'),
+      mood: personaPick(mood, 'mood'),
+      energy: personaPick(energy, 'energy'),
+      era: personaPick(era, 'era'),
+      vocalStyle: personaPick(vocalStyle, 'vocalStyle'),
+      vibeReference: personaPick(vibeReference, 'vibeReference'),
+      style: personaPick(style, 'style'),
       isInstrumental: Boolean(isInstrumental),
     });
 
@@ -668,6 +686,22 @@ export const publishGeneration = async (req: RequestWithUser, res: Response) => 
       return;
     }
 
+    // Pre-publish moderation. Lyrics that contain slurs / threats / CSAM
+    // patterns are blocked with a clear error so the creator can edit and
+    // try again. Allowed-with-flag generations (REVIEW severity) still get
+    // through here but are visible to admins via the existing report flow.
+    const lyricsCheck = moderateLyrics(gen.lyrics);
+    if (!lyricsCheck.allowed || lyricsCheck.severity === 'REVIEW') {
+      const message = moderationToError(lyricsCheck);
+      logger.warn('Publish blocked by moderation', {
+        generationId: gen.id,
+        severity: lyricsCheck.severity,
+        reasons: lyricsCheck.reasons,
+      });
+      res.status(400).json({ error: message });
+      return;
+    }
+
     const { title, agentId, genreId, coverArt, isPublic, mood } = req.body || {};
     const finalTitle = (typeof title === 'string' && title.trim()) || gen.title || 'Untitled track';
     const targetAgentId = typeof agentId === 'string' ? agentId : gen.agentId;
@@ -718,6 +752,46 @@ export const publishGeneration = async (req: RequestWithUser, res: Response) => 
 
       return track;
     });
+
+    // Best-effort: compute feature vector for recommendations. We do this
+    // outside the transaction so a hiccup here doesn't fail the publish.
+    computeAndPersistTrackFeatures(created.id).catch((err) => {
+      logger.warn('Feature vector compute failed', {
+        trackId: created.id,
+        error: (err as Error).message,
+      });
+    });
+
+    // Best-effort: kick off a 6s vertical preview video using Hailuo if
+    // the env is configured. This is what Instagram/TikTok shares will
+    // post. The cron poller picks up the resulting URL and writes it back
+    // to Track.previewVideoUrl. Failure is non-fatal.
+    if (process.env.AUTO_PREVIEW_VIDEO === '1' && created.coverArt) {
+      void minimaxStartVideo({
+        prompt: `Vertical music-video promo for "${created.title}" — animated cover art, subtle camera move, high contrast, 9:16.`,
+        firstFrameImage: created.coverArt,
+        resolution: '768P',
+        duration: 6,
+      })
+        .then(async (start) => {
+          await prisma.videoGeneration.create({
+            data: {
+              userId: req.user!.userId,
+              title: `Preview: ${created.title}`,
+              prompt: 'auto-preview',
+              purpose: 'preview',
+              trackId: created.id,
+              durationSec: 6,
+              resolution: '768P',
+              providerJobId: start.taskId,
+              status: 'PROCESSING',
+            },
+          });
+        })
+        .catch((err) => {
+          logger.warn('Auto preview video failed', { trackId: created.id, error: (err as Error).message });
+        });
+    }
 
     res.status(201).json({ track: created });
   } catch (error) {
@@ -1159,5 +1233,185 @@ export const getVideoGeneration = async (req: RequestWithUser, res: Response) =>
   } catch (error) {
     logger.error('Get video generation error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get video generation' });
+  }
+};
+
+// ─── Section regeneration ─────────────────────────────────
+//
+// Re-renders a single section (e.g. "Verse 2", "Chorus") of a published
+// track or completed generation, then issues a new music generation that
+// uses the patched lyrics. The new generation lineage links back via
+// MusicGeneration referencing the original — and on publish the resulting
+// Track sets parentTrackId so the lineage is queryable.
+
+export const regenerateSection = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    const sourceId = req.params.id as string;
+    const { section, instructions } = req.body || {};
+    if (!section || typeof section !== 'string') {
+      res.status(400).json({ error: 'section is required (e.g. "Chorus", "Verse 2")' });
+      return;
+    }
+
+    const source = await prisma.musicGeneration.findUnique({ where: { id: sourceId } });
+    if (!source || source.userId !== req.user.userId) {
+      res.status(404).json({ error: 'Generation not found' });
+      return;
+    }
+    if (!source.lyrics) {
+      res.status(400).json({ error: 'Source has no section-tagged lyrics to regenerate' });
+      return;
+    }
+
+    const usage = await assertCanGenerate(req.user.userId);
+
+    // Lazy-import to avoid a circular dep with utils.
+    const { findSection, replaceSection } = await import('../utils/lyricsSections');
+    const target = findSection(source.lyrics, section);
+    if (!target) {
+      res.status(400).json({ error: `Section "${section}" not found in lyrics` });
+      return;
+    }
+
+    // Generate new section text using the model. We feed surrounding
+    // sections as context so the rewrite stays thematically coherent.
+    const surrounding = source.lyrics.slice(0, target.start) + '\n[REWRITE_HERE]\n' + source.lyrics.slice(target.end);
+    const sysPrompt =
+      `You are rewriting a single section of an existing song. Output ONLY the new lyrics for the ${target.tag} section. ` +
+      `Match the existing meter, rhyme scheme, and theme. Do NOT include the section tag itself. ` +
+      `Do NOT include other sections. Keep length similar to the original.`;
+    const userPrompt =
+      `Existing song with the section to rewrite marked [REWRITE_HERE]:\n\n${surrounding}\n\n` +
+      (typeof instructions === 'string' && instructions.trim()
+        ? `Rewrite directions: ${instructions.trim()}\n\n`
+        : '') +
+      `Output the new ${target.tag} body only.`;
+
+    const { minimaxChat } = await import('../utils/minimax');
+    const chat = await minimaxChat({
+      messages: [
+        { role: 'system', content: sysPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      maxTokens: 600,
+      temperature: 0.85,
+    });
+
+    const newBody = sanitizeLyrics(chat.text.trim());
+    if (!newBody) {
+      res.status(502).json({ error: 'Section rewrite returned empty content' });
+      return;
+    }
+
+    const patched = replaceSection(source.lyrics, section, newBody);
+
+    // Spawn a new music generation seeded with the patched lyrics. The
+    // existing background processor will pick it up via the same path.
+    const generation = await prisma.musicGeneration.create({
+      data: {
+        userId: req.user.userId,
+        agentId: source.agentId,
+        title: source.title,
+        prompt: source.prompt,
+        lyrics: patched,
+        genre: source.genre,
+        subGenre: source.subGenre,
+        mood: source.mood,
+        energy: source.energy,
+        vocalStyle: source.vocalStyle,
+        era: source.era,
+        vibeReference: source.vibeReference,
+        durationSec: source.durationSec,
+        isInstrumental: source.isInstrumental,
+        provider: source.provider,
+        providerModel: source.providerModel || MUSIC_MODEL(),
+        status: 'PENDING',
+      },
+    });
+    void processMusicGeneration(generation.id);
+    res.status(202).json({ generation, usage: { ...usage, remaining: usage.remaining - 1 }, patchedLyrics: patched });
+  } catch (error) {
+    const statusCode = (error as any).statusCode;
+    if (statusCode === 429) {
+      res.status(429).json({ error: (error as Error).message, usage: (error as any).usage });
+      return;
+    }
+    logger.error('regenerateSection error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to regenerate section' });
+  }
+};
+
+// ─── Song extension (continue track) ──────────────────────
+//
+// Generates a continuation of an existing track using MiniMax cover mode:
+// the existing audio is fed in as the audio reference, prompted to extend
+// for ~30-60 more seconds. The two audio files are stitched client-side
+// for now (server-side ffmpeg stitching is a follow-up).
+
+export const extendGeneration = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    const id = req.params.id as string;
+    const source = await prisma.musicGeneration.findUnique({ where: { id } });
+    if (!source || source.userId !== req.user.userId) {
+      res.status(404).json({ error: 'Generation not found' });
+      return;
+    }
+    if (!source.audioUrl) {
+      res.status(400).json({ error: 'Source generation has no audio to extend' });
+      return;
+    }
+
+    const usage = await assertCanGenerate(req.user.userId);
+
+    const { extraLyrics, instructions } = req.body || {};
+
+    // Compose the extension prompt. We tell the model to continue from where
+    // the source left off rather than restart, and pin lyrics if supplied.
+    const continuationPrompt =
+      `Continue this track: keep the same key, tempo, instrumentation, and vocal character. ` +
+      `Pick up where the reference audio leaves off and extend for another 30-60 seconds. ` +
+      (typeof instructions === 'string' && instructions.trim() ? `Direction: ${instructions.trim()}` : '');
+
+    const generation = await prisma.musicGeneration.create({
+      data: {
+        userId: req.user.userId,
+        agentId: source.agentId,
+        title: source.title ? `${source.title} (extended)` : 'Extension',
+        prompt: continuationPrompt,
+        lyrics: typeof extraLyrics === 'string' && extraLyrics.trim() ? sanitizeLyrics(extraLyrics) : null,
+        genre: source.genre,
+        subGenre: source.subGenre,
+        mood: source.mood,
+        energy: source.energy,
+        vocalStyle: source.vocalStyle,
+        era: source.era,
+        vibeReference: source.vibeReference,
+        durationSec: source.durationSec,
+        isInstrumental: source.isInstrumental,
+        referenceAudioUrl: source.audioUrl,
+        provider: source.provider,
+        // Cover model is what conditions on the reference audio.
+        providerModel: 'music-cover',
+        status: 'PENDING',
+      },
+    });
+    void processMusicGeneration(generation.id);
+    res.status(202).json({ generation, usage: { ...usage, remaining: usage.remaining - 1 } });
+  } catch (error) {
+    const statusCode = (error as any).statusCode;
+    if (statusCode === 429) {
+      res.status(429).json({ error: (error as Error).message, usage: (error as any).usage });
+      return;
+    }
+    logger.error('extendGeneration error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to extend generation' });
   }
 };

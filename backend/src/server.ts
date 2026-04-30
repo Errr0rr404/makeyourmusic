@@ -40,6 +40,13 @@ import uploadRoutes from './routes/uploadRoutes';
 import notificationRoutes from './routes/notificationRoutes';
 import aiRoutes from './routes/aiRoutes';
 import creatorRoutes from './routes/creatorRoutes';
+import takedownRoutes from './routes/takedownRoutes';
+import recommendationsRoutes from './routes/recommendationsRoutes';
+import licenseRoutes from './routes/licenseRoutes';
+import referralRoutes from './routes/referralRoutes';
+import publicApiRoutes from './routes/publicApiRoutes';
+import publicEmbedRoutes from './routes/publicEmbedRoutes';
+import nicheRoutes from './routes/nicheRoutes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -78,7 +85,7 @@ app.use(
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'x-admin-token'],
     exposedHeaders: ['Content-Type', 'Authorization'],
     maxAge: 86400,
   })
@@ -116,6 +123,13 @@ app.use('/api/upload', uploadRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/ai', aiRoutes);
 app.use('/api/creator', creatorRoutes);
+app.use('/api/takedowns', takedownRoutes);
+app.use('/api/recommendations', recommendationsRoutes);
+app.use('/api/licenses', licenseRoutes);
+app.use('/api/referrals', referralRoutes);
+app.use('/api/v1', publicApiRoutes);
+app.use('/embed', publicEmbedRoutes);
+app.use('/api/niches', nicheRoutes);
 
 // Error handling
 app.use(errorHandler);
@@ -136,6 +150,10 @@ if (process.env.NODE_ENV !== 'test') {
       port: PORT,
       environment: process.env.NODE_ENV || 'development',
       cors: allowedOrigins,
+    });
+    // Lazy-import to avoid loading cron utilities in unit tests.
+    void import('./utils/cronTick').then(({ startCron }) => startCron()).catch((err) => {
+      logger.warn('Failed to start cron', { error: (err as Error).message });
     });
   });
 

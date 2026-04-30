@@ -13,6 +13,9 @@ import {
   getSimilarTracks,
   reportTrack,
 } from '../controllers/trackController';
+import { setCollaborators, getCollaborators } from '../controllers/collabController';
+import { requestDistribution, getDistribution } from '../controllers/distributionController';
+import { karaokeLyrics } from '../controllers/karaokeController';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { createTrackRules, paginationRules, validateRequest } from '../middleware/validation';
 
@@ -30,5 +33,16 @@ router.post('/:trackId/play', optionalAuth as any, recordPlay as any);
 router.patch('/:id/visibility', authenticate as any, updateTrackVisibility as any);
 router.post('/:id/report', authenticate as any, reportTrack as any);
 router.delete('/:id', authenticate as any, deleteTrack as any);
+
+// Collaboration
+router.put('/:trackId/collaborators', authenticate as any, setCollaborators as any);
+router.get('/:trackId/collaborators', getCollaborators as any);
+
+// Distribution to Spotify/Apple via partner
+router.post('/:trackId/distribution', authenticate as any, requestDistribution as any);
+router.get('/:trackId/distribution', authenticate as any, getDistribution as any);
+
+// Karaoke synced lyrics
+router.get('/:trackId/karaoke', karaokeLyrics as any);
 
 export default router;

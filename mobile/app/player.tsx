@@ -135,9 +135,14 @@ export default function FullScreenPlayer() {
   const handleShare = async () => {
     if (!currentTrack) return;
     try {
+      const url = createTrackShareLink(currentTrack.slug);
+      // Prefer the vertical preview video when available — Instagram/TikTok
+      // pull it as a rich preview, which converts dramatically better than
+      // a plain audio link. Fall back to the canonical track URL.
+      const shareUrl = currentTrack.previewVideoUrl || url;
       await Share.share({
-        message: `Listen to "${currentTrack.title}" by ${currentTrack.agent.name} on MakeYourMusic`,
-        url: createTrackShareLink(currentTrack.slug),
+        message: `Listen to "${currentTrack.title}" by ${currentTrack.agent.name} on MakeYourMusic — ${url}`,
+        url: shareUrl,
       });
     } catch {
       // user cancelled

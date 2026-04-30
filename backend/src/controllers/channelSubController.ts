@@ -326,6 +326,27 @@ export async function handleChannelSubCheckoutCompleted(session: any) {
     },
   });
 
+  // Queue referral earning if the creator was referred. Channel subs pay
+  // the creator monthly; we record one cut per renewal — but the initial
+  // signup also lands here (Stripe fires checkout.session.completed for
+  // subscription kickoff). Best-effort; non-fatal on failure.
+  try {
+    const { recordReferralEarning } = await import('./referralController');
+    const fee = platformFeeBps();
+    const netCents = Math.floor((amountCents * (10000 - fee)) / 10000);
+    await recordReferralEarning({
+      refereeId: creatorUserId,
+      amountCents: netCents,
+      source: 'channel_sub',
+      sourceId: typeof session.subscription === 'string' ? session.subscription : session.id,
+    });
+  } catch (err) {
+    logger.warn('Channel-sub referral earning failed', {
+      sessionId: session.id,
+      error: (err as Error).message,
+    });
+  }
+
   // Notify creator.
   const fan = await prisma.user.findUnique({
     where: { id: subscriberUserId },

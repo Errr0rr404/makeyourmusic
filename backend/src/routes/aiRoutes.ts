@@ -13,8 +13,12 @@ import {
   getUsage,
   startVideoGeneration,
   getVideoGeneration,
+  regenerateSection,
+  extendGeneration,
 } from '../controllers/aiGenerationController';
 import { playlistFromPrompt } from '../controllers/aiPlaylistController';
+import { transcribeAudio } from '../controllers/transcribeController';
+import { upload } from '../controllers/uploadController';
 import { authenticate } from '../middleware/auth';
 
 const router = Router();
@@ -47,6 +51,8 @@ router.get('/generations/:id', getGeneration as any);
 router.delete('/generations/:id', deleteGeneration as any);
 router.post('/generations/:id/publish', publishGeneration as any);
 router.post('/generations/:id/variation', createVariation as any);
+router.post('/generations/:id/regenerate-section', regenerateSection as any);
+router.post('/generations/:id/extend', extendGeneration as any);
 
 // Cover art (image-01)
 router.post('/cover-art', generateCoverArt as any);
@@ -57,5 +63,8 @@ router.get('/video/:id', getVideoGeneration as any);
 
 // Vibe → Playlist
 router.post('/playlist/from-prompt', playlistFromPrompt as any);
+
+// Voice → text (mobile "hold to speak a song idea" entrypoint)
+router.post('/transcribe', upload.single('audio'), transcribeAudio as any);
 
 export default router;

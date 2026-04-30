@@ -14,6 +14,7 @@ import { setupPlayer, setupNativePlayerListeners, useSyncPlayerToNative } from '
 import { registerForPushNotifications, setupNotificationListeners } from '../services/notificationService';
 import { hydrateDownloadCache } from '../services/downloadService';
 import { parseDeepLink } from '../lib/linking';
+import { consumePendingShare } from '../services/sharePayloadService';
 import { ONBOARDING_KEY } from './onboarding';
 
 // Initialize shared services before anything else
@@ -85,6 +86,35 @@ export default function RootLayout() {
       const t = setTimeout(() => router.replace('/onboarding'), 0);
       return () => clearTimeout(t);
     }
+  }, [booted, needsOnboarding, router]);
+
+  // Pick up payloads dropped by the iOS Share Extension. Runs once after
+  // boot. The native module returns null until the share-extension config
+  // plugin is enabled and the app is rebuilt with EAS — so this is a no-op
+  // on Android and on builds that haven't been prebuilt with the plugin.
+  useEffect(() => {
+    if (!booted || needsOnboarding) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const payload = await consumePendingShare();
+        if (cancelled || !payload) return;
+        // Navigate to the create page and pass the share text as the prompt
+        // seed. URLs and image paths are also forwarded — the create page
+        // can decide how to surface them (e.g. show a thumbnail preview).
+        const params = new URLSearchParams();
+        if (payload.text) params.set('prompt', payload.text);
+        if (payload.urls.length) params.set('urls', payload.urls.join(','));
+        if (payload.imagePaths.length) params.set('images', payload.imagePaths.join(','));
+        const qs = params.toString();
+        router.push(`/create${qs ? `?${qs}` : ''}` as any);
+      } catch {
+        // best-effort
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [booted, needsOnboarding, router]);
 
   // Sync Zustand -> native player

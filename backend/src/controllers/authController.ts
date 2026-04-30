@@ -62,7 +62,7 @@ async function dispatchPasswordResetEmail(email: string, rawToken: string): Prom
 
 export const register = async (req: RequestWithUser, res: Response) => {
   try {
-    const { email, password, username, displayName } = req.body;
+    const { email, password, username, displayName, referralCode } = req.body;
 
     if (!email || !password || !username) {
       res.status(400).json({ error: 'Email, password, and username are required' });
@@ -106,6 +106,19 @@ export const register = async (req: RequestWithUser, res: Response) => {
     const hashedVerificationToken = hashToken(rawVerificationToken);
     const verificationExpires = new Date(Date.now() + VERIFICATION_TOKEN_TTL_MS);
 
+    // Capture optional referral. We resolve the referrer by code BEFORE the
+    // create so a typo'd code doesn't block signup — invalid codes are
+    // silently ignored. Self-referrals are forbidden by the unique check on
+    // email/username above (the referrer can't have the same email).
+    let referredById: string | null = null;
+    if (typeof referralCode === 'string' && referralCode.trim()) {
+      const referrer = await prisma.user.findUnique({
+        where: { referralCode: referralCode.trim().toLowerCase() },
+        select: { id: true },
+      });
+      if (referrer) referredById = referrer.id;
+    }
+
     const user = await prisma.user.create({
       data: {
         email,
@@ -115,6 +128,7 @@ export const register = async (req: RequestWithUser, res: Response) => {
         role: 'LISTENER',
         emailVerificationToken: hashedVerificationToken,
         emailVerificationExpires: verificationExpires,
+        referredById,
         subscription: { create: { tier: 'FREE', status: 'ACTIVE' } },
       },
       select: {

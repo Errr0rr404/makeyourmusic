@@ -23,16 +23,25 @@ function formatTime(seconds: number): string {
 }
 
 /**
- * Same-origin URLs (and the CORS-enabled ones our app sets crossOrigin on)
- * can flow through Web Audio API. Cross-origin without CORS headers cannot,
- * so the engine is bypassed and we control volume/crossfade on the elements.
+ * Whether an audio URL can flow through Web Audio API (and therefore EQ).
+ *
+ * Same-origin URLs always work. Cross-origin URLs work when the host returns
+ * CORS-permissive headers and we set crossOrigin="anonymous" on the element.
+ * Cloudinary's `res.cloudinary.com` delivery returns `access-control-allow-origin: *`
+ * for video/raw/audio assets, so it qualifies. Extend CORS_HOSTS as new
+ * trusted hosts are added (e.g. R2, S3 with CORS configured).
  */
+const CORS_HOSTS = new Set<string>([
+  'res.cloudinary.com',
+]);
+
 function isSameOrigin(url: string): boolean {
   if (!url) return false;
   if (url.startsWith('/')) return true;
   try {
     const parsed = new URL(url);
-    return parsed.origin === window.location.origin;
+    if (parsed.origin === window.location.origin) return true;
+    return CORS_HOSTS.has(parsed.hostname);
   } catch {
     return true;
   }
@@ -419,6 +428,7 @@ export function AudioPlayer() {
       <div className="fixed bottom-0 left-0 right-0 h-[var(--player-height)] bg-[color:var(--bg-elev-1)] border-t border-[color:var(--stroke)] z-50 flex items-center gap-2 px-3 sm:gap-4 sm:px-4 md:px-6">
         <audio
           ref={audioARef}
+          crossOrigin="anonymous"
           onTimeUpdate={() => { if (activeSlotRef.current === 'a') handleTimeUpdate(); }}
           onLoadedMetadata={() => {
             if (activeSlotRef.current === 'a' && audioARef.current) setDuration(audioARef.current.duration);
@@ -427,6 +437,7 @@ export function AudioPlayer() {
         />
         <audio
           ref={audioBRef}
+          crossOrigin="anonymous"
           onTimeUpdate={() => { if (activeSlotRef.current === 'b') handleTimeUpdate(); }}
           onLoadedMetadata={() => {
             if (activeSlotRef.current === 'b' && audioBRef.current) setDuration(audioBRef.current.duration);

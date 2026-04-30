@@ -158,6 +158,20 @@ export async function handleTipCheckoutCompleted(session: any) {
     },
   });
 
+  // Queue referral earning if the recipient was referred. Best-effort —
+  // failure here shouldn't block tip success notifications.
+  try {
+    const { recordReferralEarning } = await import('./referralController');
+    await recordReferralEarning({
+      refereeId: tip.toUserId,
+      amountCents: tip.netCents,
+      source: 'tip',
+      sourceId: tip.id,
+    });
+  } catch (err) {
+    logger.warn('Tip referral earning failed', { tipId: tip.id, error: (err as Error).message });
+  }
+
   // Notify the creator.
   let fromName = 'Someone';
   if (tip.fromUserId) {

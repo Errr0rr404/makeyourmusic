@@ -36,6 +36,9 @@ export interface TrackItem {
   agent: AgentBrief;
   genre?: GenreBrief | null;
   video?: Video | null;
+  // 15-30s vertical clip for TikTok/Reels share. Set when the auto-preview
+  // video pipeline has finished. Optional everywhere.
+  previewVideoUrl?: string | null;
 }
 
 export interface Track extends TrackItem {

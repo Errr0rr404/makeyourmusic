@@ -14,6 +14,7 @@ import {
   handleChannelSubDeleted,
 } from './channelSubController';
 import { syncConnectAccount } from './connectController';
+import { handleSyncLicenseCheckoutCompleted } from './licenseWebhook';
 
 const stripe = () => getStripe();
 
@@ -168,6 +169,10 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
         }
         if (kind === 'channel_subscription') {
           await handleChannelSubCheckoutCompleted(session);
+          break;
+        }
+        if (kind === 'sync_license' || kind === 'stem_purchase') {
+          await handleSyncLicenseCheckoutCompleted(session);
           break;
         }
         // Default: platform subscription (legacy sessions also land here).

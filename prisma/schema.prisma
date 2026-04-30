@@ -105,99 +105,143 @@ enum GenerationKind {
   VIDEO
 }
 
+enum TakedownStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  WITHDRAWN
+}
+
+enum SyncLicenseStatus {
+  PENDING
+  PAID
+  REFUNDED
+  REVOKED
+}
+
+enum DistributionStatus {
+  PENDING
+  SUBMITTED
+  LIVE
+  REJECTED
+  TAKEDOWN
+}
+
+enum StemStatus {
+  PENDING
+  PROCESSING
+  READY
+  FAILED
+}
+
 // ─── Core Models ─────────────────────────────────────────
 
 model User {
-  id           String           @id @default(cuid())
-  email        String           @unique
-  passwordHash String?          @map("password_hash")
-  username     String           @unique
-  displayName  String?          @map("display_name")
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  username     String   @unique
+  displayName  String?  @map("display_name")
   avatar       String?
   bio          String?
-  role         UserRole         @default(LISTENER)
+  role         UserRole @default(LISTENER)
 
   // OAuth / Firebase Auth (null for email/password users)
-  firebaseUid  String?          @unique @map("firebase_uid")
-  authProvider String?          @map("auth_provider")
+  firebaseUid  String? @unique @map("firebase_uid")
+  authProvider String? @map("auth_provider")
 
   // Email verification
-  emailVerified              Boolean   @default(false) @map("email_verified")
-  emailVerifiedAt            DateTime? @map("email_verified_at")
-  emailVerificationToken     String?   @unique @map("email_verification_token")
-  emailVerificationExpires   DateTime? @map("email_verification_expires")
+  emailVerified            Boolean   @default(false) @map("email_verified")
+  emailVerifiedAt          DateTime? @map("email_verified_at")
+  emailVerificationToken   String?   @unique @map("email_verification_token")
+  emailVerificationExpires DateTime? @map("email_verification_expires")
 
   // Password reset
-  passwordResetToken    String?   @unique @map("password_reset_token")
-  passwordResetExpires  DateTime? @map("password_reset_expires")
+  passwordResetToken   String?   @unique @map("password_reset_token")
+  passwordResetExpires DateTime? @map("password_reset_expires")
 
   // Email notification preferences
-  emailFollowerAlert  Boolean @default(true)  @map("email_follower_alert")
-  emailLikeAlert      Boolean @default(false) @map("email_like_alert")
-  emailCommentAlert   Boolean @default(true)  @map("email_comment_alert")
-  emailDigestWeekly   Boolean @default(true)  @map("email_digest_weekly")
-  emailMarketing      Boolean @default(false) @map("email_marketing")
+  emailFollowerAlert Boolean @default(true) @map("email_follower_alert")
+  emailLikeAlert     Boolean @default(false) @map("email_like_alert")
+  emailCommentAlert  Boolean @default(true) @map("email_comment_alert")
+  emailDigestWeekly  Boolean @default(true) @map("email_digest_weekly")
+  emailMarketing     Boolean @default(false) @map("email_marketing")
 
   // Bumped on logout / password change to invalidate all outstanding refresh tokens
-  tokenVersion  Int @default(0) @map("token_version")
+  tokenVersion Int @default(0) @map("token_version")
 
-  createdAt    DateTime         @default(now()) @map("created_at")
-  updatedAt    DateTime         @updatedAt @map("updated_at")
+  // Referral program — each user gets a unique short code; signup with ?ref=
+  // captures referredById. Referrer earns 10% of referee creator earnings for
+  // 12 months from signup (window enforced in code).
+  referralCode String? @unique @map("referral_code")
+  referredById String? @map("referred_by_id")
+  referredBy   User?   @relation("UserReferrals", fields: [referredById], references: [id], onDelete: SetNull)
+  referrals    User[]  @relation("UserReferrals")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  agents            AiAgent[]
-  playlists         Playlist[]
-  likes             Like[]
-  comments          Comment[]
-  follows           Follow[]
-  plays             Play[]
-  shares            Share[]
-  subscription      Subscription?
-  notifications     Notification[]
-  reports           Report[]
-  musicGenerations  MusicGeneration[]
-  videoGenerations  VideoGeneration[]
-  pushTokens        PushToken[]
-  connectAccount        ConnectAccount?
-  tipsSent              Tip[]                  @relation("TipsSent")
-  tipsReceived          Tip[]                  @relation("TipsReceived")
-  channelSubsAsFan      ChannelSubscription[]  @relation("ChannelSubsAsFan")
-  channelSubsAsCreator  ChannelSubscription[]  @relation("ChannelSubsAsCreator")
+  agents                     AiAgent[]
+  playlists                  Playlist[]
+  likes                      Like[]
+  comments                   Comment[]
+  follows                    Follow[]
+  plays                      Play[]
+  shares                     Share[]
+  subscription               Subscription?
+  notifications              Notification[]
+  reports                    Report[]
+  musicGenerations           MusicGeneration[]
+  videoGenerations           VideoGeneration[]
+  pushTokens                 PushToken[]
+  connectAccount             ConnectAccount?
+  tipsSent                   Tip[]                 @relation("TipsSent")
+  tipsReceived               Tip[]                 @relation("TipsReceived")
+  channelSubsAsFan           ChannelSubscription[] @relation("ChannelSubsAsFan")
+  channelSubsAsCreator       ChannelSubscription[] @relation("ChannelSubsAsCreator")
+  syncLicensesPurchased      SyncLicense[]         @relation("SyncLicensePurchaser")
+  takedownsFiled             Takedown[]
+  apiKeys                    ApiKey[]
+  referralEarningsAsReferrer ReferralEarning[]     @relation("ReferralEarningReferrer")
+  referralEarningsAsSource   ReferralEarning[]     @relation("ReferralEarningSource")
 
   @@index([role])
   @@index([createdAt(sort: Desc)])
   @@index([emailVerificationToken])
   @@index([passwordResetToken])
+  @@index([referralCode])
+  @@index([referredById])
   @@map("users")
 }
 
 model PushToken {
-  id          String   @id @default(cuid())
-  token       String   @unique
-  platform    String   // "ios" | "android" | "web"
-  lastUsedAt  DateTime @default(now()) @map("last_used_at")
-  createdAt   DateTime @default(now()) @map("created_at")
+  id         String   @id @default(cuid())
+  token      String   @unique
+  platform   String // "ios" | "android" | "web"
+  lastUsedAt DateTime @default(now()) @map("last_used_at")
+  createdAt  DateTime @default(now()) @map("created_at")
 
-  userId      String   @map("user_id")
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("push_tokens")
 }
 
 model AiAgent {
-  id          String      @id @default(cuid())
-  name        String
-  slug        String      @unique
-  avatar      String?
-  coverImage  String?     @map("cover_image")
-  bio         String?
-  status      AgentStatus @default(ACTIVE)
-  
+  id         String      @id @default(cuid())
+  name       String
+  slug       String      @unique
+  avatar     String?
+  coverImage String?     @map("cover_image")
+  bio        String?
+  status     AgentStatus @default(ACTIVE)
+
   // AI Generation config
-  aiModel     String?     @map("ai_model")
-  apiKeyEnc   String?     @map("api_key_enc") // encrypted API key for external services
-  genConfig   Json?       @map("gen_config")   // JSON config for generation params
+  aiModel   String? @map("ai_model")
+  apiKeyEnc String? @map("api_key_enc") // encrypted API key for external services
+  genConfig Json?   @map("gen_config") // JSON config for generation params
 
   // Stats (denormalized for performance)
   totalPlays    Int @default(0) @map("total_plays")
@@ -208,14 +252,15 @@ model AiAgent {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  ownerId  String  @map("owner_id")
-  owner    User    @relation(fields: [ownerId], references: [id], onDelete: Cascade)
-  tracks   Track[]
-  albums   Album[]
-  genres   AiAgentGenre[]
-  followers Follow[]
-  earnings  AgentEarning[]
+  ownerId          String              @map("owner_id")
+  owner            User                @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  tracks           Track[]
+  albums           Album[]
+  genres           AiAgentGenre[]
+  followers        Follow[]
+  earnings         AgentEarning[]
   musicGenerations MusicGeneration[]
+  collaborations   TrackCollaborator[]
 
   @@index([ownerId])
   @@index([status])
@@ -226,9 +271,9 @@ model AiAgent {
 }
 
 model Genre {
-  id    String @id @default(cuid())
-  name  String @unique
-  slug  String @unique
+  id    String  @id @default(cuid())
+  name  String  @unique
+  slug  String  @unique
   color String? // hex color for UI
 
   tracks Track[]
@@ -238,8 +283,8 @@ model Genre {
 }
 
 model AiAgentGenre {
-  agentId String @map("agent_id")
-  genreId String @map("genre_id")
+  agentId String  @map("agent_id")
+  genreId String  @map("genre_id")
   agent   AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
   genre   Genre   @relation(fields: [genreId], references: [id], onDelete: Cascade)
 
@@ -248,43 +293,75 @@ model AiAgentGenre {
 }
 
 model Track {
-  id          String      @id @default(cuid())
-  title       String
-  slug        String      @unique
-  duration    Int         // duration in seconds
-  audioUrl    String      @map("audio_url")
-  coverArt    String?     @map("cover_art")
-  status      TrackStatus @default(PROCESSING)
+  id       String      @id @default(cuid())
+  title    String
+  slug     String      @unique
+  duration Int // duration in seconds
+  audioUrl String      @map("audio_url")
+  coverArt String?     @map("cover_art")
+  status   TrackStatus @default(PROCESSING)
 
   // Visibility
-  isPublic    Boolean     @default(true) @map("is_public")
+  isPublic Boolean @default(true) @map("is_public")
 
   // Metadata
-  mood        String?
-  tags        String[]    @default([])
-  bpm         Int?
-  key         String?     // musical key (e.g. "C minor")
-  lyrics      String?     @db.Text
+  mood   String?
+  tags   String[] @default([])
+  bpm    Int?
+  key    String? // musical key (e.g. "C minor")
+  lyrics String?  @db.Text
 
   // AI Attribution
-  aiModel     String?     @map("ai_model")   // which AI model generated it
-  aiPrompt    String?     @map("ai_prompt")  // the prompt used
+  aiModel  String? @map("ai_model") // which AI model generated it
+  aiPrompt String? @map("ai_prompt") // the prompt used
 
   // Stats (denormalized)
-  playCount   Int @default(0) @map("play_count")
-  likeCount   Int @default(0) @map("like_count")
-  shareCount  Int @default(0) @map("share_count")
+  playCount  Int @default(0) @map("play_count")
+  likeCount  Int @default(0) @map("like_count")
+  shareCount Int @default(0) @map("share_count")
+
+  // Trending score — recomputed periodically by a cron job using a
+  // Hacker-News-style decay so freshness is rewarded. Indexed for ORDER BY.
+  trendingScore     Float    @default(0) @map("trending_score")
+  trendingUpdatedAt DateTime @default(now()) @map("trending_updated_at")
+
+  // Recommendation features. featureVector is a fixed-length numeric
+  // representation derived from genre/mood/energy/era/bpm/tags; cosine
+  // similarity over this powers "similar tracks", radio, and recommendations.
+  // featureVersion lets us re-embed only stale rows after vector schema changes.
+  featureVector  Float[] @default([]) @map("feature_vector")
+  featureVersion Int     @default(0) @map("feature_version")
+
+  // Sync licensing — when licenseable=true, listeners can buy a one-time
+  // commercial-use license. Stored as an integer cents price; the actual
+  // Stripe Price is created lazily on first checkout.
+  licenseable       Boolean @default(false)
+  licensePriceCents Int?    @map("license_price_cents")
+  licenseCurrency   String? @default("usd") @map("license_currency")
+
+  // DMCA takedown state. PENDING/ACCEPTED hides the track from listings.
+  takedownStatus TakedownStatus? @map("takedown_status")
+  takedownReason String?         @map("takedown_reason") @db.Text
+
+  // Parent track — set when this track was created via section regeneration
+  // or song extension from another track. Provides a lineage for analytics.
+  parentTrackId String? @map("parent_track_id")
+  parentTrack   Track?  @relation("TrackLineage", fields: [parentTrackId], references: [id], onDelete: SetNull)
+  derivedTracks Track[] @relation("TrackLineage")
+
+  // 15s vertical preview video used for TikTok/Reels share + embed previews.
+  previewVideoUrl String? @map("preview_video_url")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  agentId  String   @map("agent_id")
-  agent    AiAgent  @relation(fields: [agentId], references: [id], onDelete: Cascade)
-  genreId  String?  @map("genre_id")
-  genre    Genre?   @relation(fields: [genreId], references: [id], onDelete: SetNull)
-  albumId  String?  @map("album_id")
-  album    Album?   @relation(fields: [albumId], references: [id], onDelete: SetNull)
+  agentId String  @map("agent_id")
+  agent   AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+  genreId String? @map("genre_id")
+  genre   Genre?  @relation(fields: [genreId], references: [id], onDelete: SetNull)
+  albumId String? @map("album_id")
+  album   Album?  @relation(fields: [albumId], references: [id], onDelete: SetNull)
 
   video          Video?
   likes          Like[]
@@ -294,6 +371,11 @@ model Track {
   playlistTracks PlaylistTrack[]
   reports        Report[]
   generations    MusicGeneration[]
+  collaborators  TrackCollaborator[]
+  stems          TrackStems?
+  takedowns      Takedown[]
+  syncLicenses   SyncLicense[]
+  distributions  TrackDistribution[]
 
   @@index([agentId])
   @@index([genreId])
@@ -307,14 +389,18 @@ model Track {
   @@index([agentId, isPublic])
   @@index([genreId, status])
   @@index([isPublic, status])
+  @@index([trendingScore(sort: Desc)])
+  @@index([takedownStatus])
+  @@index([licenseable])
+  @@index([parentTrackId])
   @@map("tracks")
 }
 
 model Video {
-  id          String @id @default(cuid())
-  videoUrl    String @map("video_url")
-  thumbnail   String?
-  duration    Int?   // video duration in seconds
+  id        String  @id @default(cuid())
+  videoUrl  String  @map("video_url")
+  thumbnail String?
+  duration  Int? // video duration in seconds
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -325,12 +411,12 @@ model Video {
 }
 
 model Album {
-  id       String  @id @default(cuid())
-  title    String
-  slug     String  @unique
-  coverArt String? @map("cover_art")
+  id          String  @id @default(cuid())
+  title       String
+  slug        String  @unique
+  coverArt    String? @map("cover_art")
   description String?
-  
+
   releaseDate DateTime? @map("release_date")
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
@@ -364,8 +450,8 @@ model Playlist {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  userId String @map("user_id")
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String          @map("user_id")
+  user   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
   tracks PlaylistTrack[]
 
   channelSubscriptions ChannelSubscription[]
@@ -377,7 +463,7 @@ model Playlist {
 
 model PlaylistTrack {
   id       String @id @default(cuid())
-  position Int    // ordering within playlist
+  position Int // ordering within playlist
 
   addedAt DateTime @default(now()) @map("added_at")
 
@@ -446,7 +532,7 @@ model Follow {
 
 model Share {
   id        String   @id @default(cuid())
-  platform  String?  // 'copy', 'twitter', 'facebook', etc.
+  platform  String? // 'copy', 'twitter', 'facebook', etc.
   createdAt DateTime @default(now()) @map("created_at")
 
   userId  String? @map("user_id")
@@ -486,7 +572,7 @@ model Subscription {
   status           SubscriptionStatus @default(ACTIVE)
   stripeCustomerId String?            @unique @map("stripe_customer_id")
   stripeSubId      String?            @unique @map("stripe_sub_id")
-  
+
   currentPeriodStart DateTime? @map("current_period_start")
   currentPeriodEnd   DateTime? @map("current_period_end")
 
@@ -500,14 +586,14 @@ model Subscription {
 }
 
 model ConnectAccount {
-  id               String                @id @default(cuid())
-  stripeAccountId  String                @unique @map("stripe_account_id")
-  status           ConnectAccountStatus  @default(PENDING)
-  payoutsEnabled   Boolean               @default(false) @map("payouts_enabled")
-  chargesEnabled   Boolean               @default(false) @map("charges_enabled")
-  detailsSubmitted Boolean               @default(false) @map("details_submitted")
+  id               String               @id @default(cuid())
+  stripeAccountId  String               @unique @map("stripe_account_id")
+  status           ConnectAccountStatus @default(PENDING)
+  payoutsEnabled   Boolean              @default(false) @map("payouts_enabled")
+  chargesEnabled   Boolean              @default(false) @map("charges_enabled")
+  detailsSubmitted Boolean              @default(false) @map("details_submitted")
   country          String?
-  defaultCurrency  String?               @default("usd") @map("default_currency")
+  defaultCurrency  String?              @default("usd") @map("default_currency")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -533,11 +619,11 @@ model Tip {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  fromUserId String?  @map("from_user_id")
-  fromUser   User?    @relation("TipsSent", fields: [fromUserId], references: [id], onDelete: SetNull)
-  toUserId   String   @map("to_user_id")
-  toUser     User     @relation("TipsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
-  trackId    String?  @map("track_id")
+  fromUserId String? @map("from_user_id")
+  fromUser   User?   @relation("TipsSent", fields: [fromUserId], references: [id], onDelete: SetNull)
+  toUserId   String  @map("to_user_id")
+  toUser     User    @relation("TipsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  trackId    String? @map("track_id")
 
   @@index([toUserId, createdAt(sort: Desc)])
   @@index([fromUserId])
@@ -546,16 +632,16 @@ model Tip {
 }
 
 model ChannelSubscription {
-  id                    String                    @id @default(cuid())
-  amountCents           Int                       @map("amount_cents")
-  platformFeeBps        Int                       @map("platform_fee_bps")
-  currency              String                    @default("usd")
-  status                ChannelSubscriptionStatus @default(ACTIVE)
-  stripeSubscriptionId  String                    @unique @map("stripe_subscription_id")
-  stripeCustomerId      String                    @map("stripe_customer_id")
-  currentPeriodStart    DateTime?                 @map("current_period_start")
-  currentPeriodEnd      DateTime?                 @map("current_period_end")
-  cancelAtPeriodEnd     Boolean                   @default(false) @map("cancel_at_period_end")
+  id                   String                    @id @default(cuid())
+  amountCents          Int                       @map("amount_cents")
+  platformFeeBps       Int                       @map("platform_fee_bps")
+  currency             String                    @default("usd")
+  status               ChannelSubscriptionStatus @default(ACTIVE)
+  stripeSubscriptionId String                    @unique @map("stripe_subscription_id")
+  stripeCustomerId     String                    @map("stripe_customer_id")
+  currentPeriodStart   DateTime?                 @map("current_period_start")
+  currentPeriodEnd     DateTime?                 @map("current_period_end")
+  cancelAtPeriodEnd    Boolean                   @default(false) @map("cancel_at_period_end")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -574,10 +660,10 @@ model ChannelSubscription {
 }
 
 model AgentEarning {
-  id       String @id @default(cuid())
-  amount   Float  @default(0) // earnings in USD
-  plays    Int    @default(0) // plays in this period
-  period   String // e.g. "2026-02"
+  id     String @id @default(cuid())
+  amount Float  @default(0) // earnings in USD
+  plays  Int    @default(0) // plays in this period
+  period String // e.g. "2026-02"
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -596,7 +682,7 @@ model Notification {
   title   String
   message String
   read    Boolean          @default(false)
-  data    Json?            // additional data (trackId, agentId, etc.)
+  data    Json? // additional data (trackId, agentId, etc.)
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -631,51 +717,51 @@ model Report {
 // ─── AI Generation Models ───────────────────────────────
 
 model MusicGeneration {
-  id              String           @id @default(cuid())
-  kind            GenerationKind   @default(MUSIC)
-  status          GenerationStatus @default(PENDING)
+  id     String           @id @default(cuid())
+  kind   GenerationKind   @default(MUSIC)
+  status GenerationStatus @default(PENDING)
 
   // Input
-  title           String?
-  prompt          String?          @db.Text
-  lyrics          String?          @db.Text
-  genre           String?
-  subGenre        String?          @map("sub_genre")
-  mood            String?
-  energy          String?
-  vocalStyle      String?          @map("vocal_style")
-  era             String?
-  vibeReference   String?          @map("vibe_reference")
-  durationSec     Int?             @map("duration_sec")
-  isInstrumental  Boolean          @default(false) @map("is_instrumental")
-  referenceAudioUrl String?        @map("reference_audio_url")
+  title             String?
+  prompt            String? @db.Text
+  lyrics            String? @db.Text
+  genre             String?
+  subGenre          String? @map("sub_genre")
+  mood              String?
+  energy            String?
+  vocalStyle        String? @map("vocal_style")
+  era               String?
+  vibeReference     String? @map("vibe_reference")
+  durationSec       Int?    @map("duration_sec")
+  isInstrumental    Boolean @default(false) @map("is_instrumental")
+  referenceAudioUrl String? @map("reference_audio_url")
 
   // Provider
-  provider        String           @default("minimax")
-  providerModel   String?          @map("provider_model")
-  providerJobId   String?          @map("provider_job_id")
-  providerTraceId String?          @map("provider_trace_id")
+  provider        String  @default("minimax")
+  providerModel   String? @map("provider_model")
+  providerJobId   String? @map("provider_job_id")
+  providerTraceId String? @map("provider_trace_id")
 
   // Output
-  audioUrl        String?          @map("audio_url")
-  coverArt        String?          @map("cover_art")
-  errorMessage    String?          @db.Text @map("error_message")
+  audioUrl     String? @map("audio_url")
+  coverArt     String? @map("cover_art")
+  errorMessage String? @map("error_message") @db.Text
 
   // Book-keeping
-  creditsUsed     Int?             @map("credits_used")
+  creditsUsed Int? @map("credits_used")
 
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Ownership
-  userId          String           @map("user_id")
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
-  agentId         String?          @map("agent_id")
-  agent           AiAgent?         @relation(fields: [agentId], references: [id], onDelete: SetNull)
+  userId  String   @map("user_id")
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  agentId String?  @map("agent_id")
+  agent   AiAgent? @relation(fields: [agentId], references: [id], onDelete: SetNull)
 
   // Optional: linked track if published
-  trackId         String?          @unique @map("track_id")
-  track           Track?           @relation(fields: [trackId], references: [id], onDelete: SetNull)
+  trackId String? @unique @map("track_id")
+  track   Track?  @relation(fields: [trackId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, status])
@@ -685,38 +771,266 @@ model MusicGeneration {
 }
 
 model VideoGeneration {
-  id              String           @id @default(cuid())
-  status          GenerationStatus @default(PENDING)
+  id     String           @id @default(cuid())
+  status GenerationStatus @default(PENDING)
+  // "preview" = auto-generated TikTok/Reels clip on publish; the cron
+  // poller writes the result URL back to Track.previewVideoUrl. "user"
+  // = regular user-initiated video.
+  purpose String @default("user")
 
   // Input
-  title           String?
-  prompt          String?          @db.Text
-  imageRefUrl     String?          @map("image_ref_url") // for image-to-video
-  durationSec     Int?             @map("duration_sec")
-  resolution      String?          // e.g. "720p", "1080p"
+  title       String?
+  prompt      String? @db.Text
+  imageRefUrl String? @map("image_ref_url") // for image-to-video
+  durationSec Int?    @map("duration_sec")
+  resolution  String? // e.g. "720p", "1080p"
 
   // Provider
-  provider        String           @default("minimax")
-  providerModel   String?          @map("provider_model")
-  providerJobId   String?          @map("provider_job_id")
-  providerFileId  String?          @map("provider_file_id")
+  provider       String  @default("minimax")
+  providerModel  String? @map("provider_model")
+  providerJobId  String? @map("provider_job_id")
+  providerFileId String? @map("provider_file_id")
 
   // Output
-  videoUrl        String?          @map("video_url")
-  thumbnail       String?
-  errorMessage    String?          @db.Text @map("error_message")
+  videoUrl     String? @map("video_url")
+  thumbnail    String?
+  errorMessage String? @map("error_message") @db.Text
 
-  creditsUsed     Int?             @map("credits_used")
+  creditsUsed Int? @map("credits_used")
 
-  createdAt       DateTime         @default(now()) @map("created_at")
-  updatedAt       DateTime         @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   // Ownership
-  userId          String           @map("user_id")
-  user            User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  // Optional link back to the track this video was generated FOR (used by
+  // the auto-preview flow). Distinct from the Video model which is the
+  // canonical "music video for this track" relation.
+  trackId String? @map("track_id")
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([status])
   @@index([providerJobId])
+  @@index([trackId])
+  @@index([status, purpose])
   @@map("video_generations")
+}
+
+// ─── Collaboration ──────────────────────────────────────
+
+// Multi-agent tracks. Each collaborator has a basis-points share of earnings
+// (sum across collaborators must total 10000 = 100%). Stripe transfers split
+// tip / sub / sync earnings proportionally on payout.
+model TrackCollaborator {
+  id        String   @id @default(cuid())
+  shareBps  Int      @map("share_bps")
+  role      String? // optional label e.g. "feature", "producer"
+  createdAt DateTime @default(now()) @map("created_at")
+
+  trackId String  @map("track_id")
+  track   Track   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  agentId String  @map("agent_id")
+  agent   AiAgent @relation(fields: [agentId], references: [id], onDelete: Cascade)
+
+  @@unique([trackId, agentId])
+  @@index([agentId])
+  @@map("track_collaborators")
+}
+
+// ─── Stems ──────────────────────────────────────────────
+
+// One row per track holding the URLs of the four classic Demucs/Spleeter
+// stems. Generated asynchronously after the track is published. Sold as a
+// paid bundle if `forSaleCents` is non-null.
+model TrackStems {
+  id            String     @id @default(cuid())
+  status        StemStatus @default(PENDING)
+  drumsUrl      String?    @map("drums_url")
+  bassUrl       String?    @map("bass_url")
+  vocalsUrl     String?    @map("vocals_url")
+  otherUrl      String?    @map("other_url")
+  provider      String? // e.g. "replicate-demucs"
+  providerJobId String?    @map("provider_job_id")
+  errorMessage  String?    @map("error_message") @db.Text
+
+  forSaleCents Int?    @map("for_sale_cents")
+  currency     String? @default("usd")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  trackId String @unique @map("track_id")
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@map("track_stems")
+}
+
+// ─── DMCA / Takedowns ───────────────────────────────────
+
+// User-submitted DMCA / copyright complaint. The track is hidden the moment
+// the takedown is filed (status=PENDING) and only fully removed if accepted
+// by an admin. Withdrawn or rejected takedowns restore visibility.
+model Takedown {
+  id            String         @id @default(cuid())
+  status        TakedownStatus @default(PENDING)
+  reason        String         @db.Text
+  claimantName  String         @map("claimant_name")
+  claimantEmail String         @map("claimant_email")
+  evidenceUrl   String?        @map("evidence_url")
+  adminNotes    String?        @map("admin_notes") @db.Text
+
+  createdAt  DateTime  @default(now()) @map("created_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  resolvedAt DateTime? @map("resolved_at")
+
+  trackId String @map("track_id")
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  // Submitter is optional — DMCA forms accept anonymous-ish claims by email.
+  submitterId String? @map("submitter_id")
+  submitter   User?   @relation(fields: [submitterId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([trackId])
+  @@index([createdAt(sort: Desc)])
+  @@map("takedowns")
+}
+
+// ─── Sync Licensing ─────────────────────────────────────
+
+// One row per purchased commercial-use license. Buyer downloads a clean WAV
+// and a license PDF. Platform takes a fixed bps cut, the rest is transferred
+// to the agent owner via Stripe Connect.
+model SyncLicense {
+  id                      String            @id @default(cuid())
+  status                  SyncLicenseStatus @default(PENDING)
+  amountCents             Int               @map("amount_cents")
+  platformFeeCents        Int               @map("platform_fee_cents")
+  netCents                Int               @map("net_cents")
+  currency                String            @default("usd")
+  licenseTier             String            @default("standard") @map("license_tier")
+  buyerEmail              String?           @map("buyer_email")
+  buyerName               String?           @map("buyer_name")
+  intendedUse             String?           @map("intended_use")
+  stripeCheckoutSessionId String?           @unique @map("stripe_checkout_session_id")
+  stripePaymentIntentId   String?           @unique @map("stripe_payment_intent_id")
+  stripeTransferId        String?           @map("stripe_transfer_id")
+  licensePdfUrl           String?           @map("license_pdf_url")
+  downloadToken           String?           @unique @map("download_token")
+  downloadExpiresAt       DateTime?         @map("download_expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  trackId String  @map("track_id")
+  track   Track   @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  buyerId String? @map("buyer_id")
+  buyer   User?   @relation("SyncLicensePurchaser", fields: [buyerId], references: [id], onDelete: SetNull)
+
+  @@index([trackId])
+  @@index([buyerId])
+  @@index([status])
+  @@map("sync_licenses")
+}
+
+// ─── Distribution (Spotify/Apple via DistroKid/TuneCore) ─
+
+// Tracks the state of an external distribution job. Concrete API integration
+// is gated on a partnership; this model lets us collect demand, queue
+// requests, and surface status to creators.
+model TrackDistribution {
+  id           String             @id @default(cuid())
+  status       DistributionStatus @default(PENDING)
+  partner      String // "distrokid" | "tunecore" | "manual"
+  partnerJobId String?            @map("partner_job_id")
+  upc          String? // Universal Product Code if assigned
+  isrc         String? // International Standard Recording Code
+  releaseDate  DateTime?          @map("release_date")
+  takedownAt   DateTime?          @map("takedown_at")
+  errorMessage String?            @map("error_message") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  trackId String @map("track_id")
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([status])
+  @@index([trackId])
+  @@map("track_distributions")
+}
+
+// ─── Referrals ──────────────────────────────────────────
+
+// Recorded each time a referee earns money (tip received, channel-sub charge,
+// sync license sold). The referrer's cut is queued for payout via Stripe
+// Connect by a separate cron job.
+model ReferralEarning {
+  id               String  @id @default(cuid())
+  amountCents      Int     @map("amount_cents")
+  currency         String  @default("usd")
+  source           String // "tip" | "channel_sub" | "sync_license"
+  sourceId         String  @map("source_id") // id of the originating row
+  paidOut          Boolean @default(false) @map("paid_out")
+  stripeTransferId String? @map("stripe_transfer_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  referrerId String @map("referrer_id")
+  referrer   User   @relation("ReferralEarningReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  // The referee who actually generated the earning. Tracked separately so we
+  // can query "how much have I earned from each referral".
+  refereeId  String @map("referee_id")
+  referee    User   @relation("ReferralEarningSource", fields: [refereeId], references: [id], onDelete: Cascade)
+
+  @@index([referrerId, paidOut])
+  @@index([refereeId])
+  @@index([createdAt(sort: Desc)])
+  @@map("referral_earnings")
+}
+
+// ─── Public API ─────────────────────────────────────────
+
+// API key for the public developer API. Hashed at rest (sha-256 of the raw
+// key); the raw key is shown to the user once at creation and never stored.
+model ApiKey {
+  id              String    @id @default(cuid())
+  name            String
+  prefix          String // first 8 chars of the raw key for UI display
+  keyHash         String    @unique @map("key_hash")
+  scopes          String[]  @default([])
+  lastUsedAt      DateTime? @map("last_used_at")
+  revokedAt       DateTime? @map("revoked_at")
+  rateLimitPerMin Int       @default(60) @map("rate_limit_per_min")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("api_keys")
+}
+
+// ─── Mixtapes ───────────────────────────────────────────
+
+// Generated weekly per active user. Stores the source playlist id + an
+// idempotency key (period) so we never generate twice for the same week.
+model UserMixtape {
+  id         String    @id @default(cuid())
+  period     String // ISO week, e.g. "2026-W18"
+  playlistId String    @map("playlist_id")
+  emailedAt  DateTime? @map("emailed_at")
+  pushedAt   DateTime? @map("pushed_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  userId String @map("user_id")
+
+  @@unique([userId, period])
+  @@index([playlistId])
+  @@map("user_mixtapes")
 }

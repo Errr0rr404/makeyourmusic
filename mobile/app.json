@@ -108,7 +108,10 @@
           "cameraPermission": false,
           "microphonePermission": false
         }
-      ]
+      ],
+      "./plugins/withCarPlay",
+      "./plugins/withAndroidAuto",
+      "./plugins/withShareExtension"
     ],
     "experiments": {
       "typedRoutes": true
