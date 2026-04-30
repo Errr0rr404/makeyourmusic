@@ -9,6 +9,7 @@ import { TrackRow } from '@/components/track/TrackRow';
 import { Bot, Users, Play, Music, AlertCircle, Radio } from 'lucide-react';
 import { formatCount } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';
+import { TipButton } from '@/components/creator/TipButton';
 
 export function AgentDetailClient({ slug }: { slug: string }) {
   const [agent, setAgent] = useState<any>(null);
@@ -111,14 +112,19 @@ export function AgentDetailClient({ slug }: { slug: string }) {
               <span className="flex items-center gap-1"><Play className="w-4 h-4" /> {formatCount(agent.totalPlays)} plays</span>
             </div>
           </div>
-          {isAuthenticated && (
-            <button onClick={handleFollow}
-              className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors flex-shrink-0 ${agent.isFollowing
-                ? 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
-                : 'bg-[hsl(var(--primary))] text-white hover:bg-[hsl(var(--primary))]/90'}`}>
-              {agent.isFollowing ? 'Following' : 'Follow'}
-            </button>
-          )}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {agent.ownerId && (
+              <TipButton creatorUserId={agent.ownerId} creatorName={agent.name} />
+            )}
+            {isAuthenticated && (
+              <button onClick={handleFollow}
+                className={`px-6 py-2 rounded-full text-sm font-semibold transition-colors ${agent.isFollowing
+                  ? 'bg-white/10 text-white border border-white/20 hover:bg-white/20'
+                  : 'bg-[hsl(var(--primary))] text-white hover:bg-[hsl(var(--primary))]/90'}`}>
+                {agent.isFollowing ? 'Following' : 'Follow'}
+              </button>
+            )}
+          </div>
         </div>
       </div>
 

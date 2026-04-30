@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import {
   Home, Search, Library, Radio, Plus, LayoutDashboard,
-  Sparkles, Wand2, Film, Heart, ListMusic,
+  Sparkles, Wand2, Film, Heart, ListMusic, Wallet,
 } from 'lucide-react';
 import { useAuthStore } from '@/lib/store/authStore';
 import api from '@/lib/api';
@@ -150,6 +150,18 @@ export function Sidebar() {
                 Dashboard
               </Link>
             )}
+            <Link
+              href="/creator"
+              className={cn(
+                'flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-semibold transition-colors',
+                pathname?.startsWith('/creator')
+                  ? 'bg-white/[0.08] text-white'
+                  : 'text-[color:var(--text-mute)] hover:text-white hover:bg-white/[0.04]'
+              )}
+            >
+              <Wallet className="w-[18px] h-[18px]" strokeWidth={2.2} />
+              Earn
+            </Link>
           </>
         )}
       </div>

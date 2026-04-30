@@ -5,10 +5,11 @@ import { useParams, useRouter } from 'next/navigation';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { TrackRow } from '@/components/track/TrackRow';
-import { ListMusic, Globe, Lock, Play, Pencil, Trash2, Check, X, Loader2, AlertCircle } from 'lucide-react';
+import { ListMusic, Globe, Lock, Play, Pencil, Trash2, Check, X, Loader2, AlertCircle, DollarSign } from 'lucide-react';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+import { TipButton } from '@/components/creator/TipButton';
 
 export default function PlaylistPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -23,6 +24,7 @@ export default function PlaylistPage() {
   const [editTitle, setEditTitle] = useState('');
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [subscribing, setSubscribing] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -129,6 +131,22 @@ export default function PlaylistPage() {
   if (!playlist) return null;
 
   const tracks = playlist.tracks?.map((pt: any) => pt.track || pt) || [];
+  const isPaid = playlist.accessTier === 'PAID';
+  const isOwner = user?.id === playlist.userId;
+  const isLocked = Boolean(playlist.locked) && !isOwner;
+
+  const handleSubscribe = async () => {
+    if (!isAuthenticated) { router.push(`/login?next=/playlist/${playlist.slug}`); return; }
+    setSubscribing(true);
+    try {
+      const res = await api.post(`/creator/playlists/${playlist.id}/subscribe`);
+      if (res.data?.url) window.location.href = res.data.url;
+    } catch (err: any) {
+      toast.error(err.response?.data?.error || 'Failed to subscribe');
+    } finally {
+      setSubscribing(false);
+    }
+  };
 
   return (
     <div className="animate-fade-in">
@@ -158,12 +176,14 @@ export default function PlaylistPage() {
             <h1 className="text-3xl font-bold text-white mb-2">{playlist.title}</h1>
           )}
           <div className="flex items-center gap-3 text-sm text-[hsl(var(--muted-foreground))]">
-            {playlist.isPublic ? (
-              <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5" /> Public</span>
-            ) : (
+            {isPaid ? (
+              <span className="flex items-center gap-1 text-emerald-300"><DollarSign className="w-3.5 h-3.5" /> Paid · ${(playlist.monthlyPriceCents / 100).toFixed(2)}/mo</span>
+            ) : playlist.accessTier === 'PRIVATE' || playlist.isPublic === false ? (
               <span className="flex items-center gap-1"><Lock className="w-3.5 h-3.5" /> Private</span>
+            ) : (
+              <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5" /> Public</span>
             )}
-            <span>{tracks.length} track{tracks.length !== 1 ? 's' : ''}</span>
+            {!isLocked && <span>{tracks.length} track{tracks.length !== 1 ? 's' : ''}</span>}
           </div>
 
           {/* Actions */}
@@ -197,8 +217,34 @@ export default function PlaylistPage() {
         </div>
       </div>
 
-      {/* Tracks */}
-      {tracks.length > 0 ? (
+      {/* Paid playlist paywall */}
+      {isLocked ? (
+        <div className="rounded-2xl p-8 bg-gradient-to-br from-emerald-600/10 to-teal-600/10 border border-emerald-400/30 text-center">
+          <Lock className="w-10 h-10 text-emerald-300 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-white mb-2">Subscribe to unlock</h3>
+          <p className="text-sm text-[hsl(var(--muted-foreground))] mb-1">
+            {playlist.user?.displayName || playlist.user?.username} charges
+          </p>
+          <p className="text-3xl font-bold text-white mb-1">
+            ${(playlist.monthlyPriceCents / 100).toFixed(2)}
+            <span className="text-base font-normal text-[hsl(var(--muted-foreground))]">/month</span>
+          </p>
+          <p className="text-xs text-[hsl(var(--muted-foreground))] mb-6">Cancel anytime.</p>
+          <div className="flex items-center justify-center gap-2">
+            <button
+              onClick={handleSubscribe}
+              disabled={subscribing}
+              className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-black font-semibold hover:scale-[1.02] disabled:opacity-60 transition-transform"
+            >
+              {subscribing ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+              Subscribe
+            </button>
+            {playlist.user?.id && (
+              <TipButton creatorUserId={playlist.user.id} creatorName={playlist.user.displayName || playlist.user.username} />
+            )}
+          </div>
+        </div>
+      ) : tracks.length > 0 ? (
         <div className="space-y-1">
           {tracks.map((track: any, i: number) => (
             <TrackRow
@@ -206,7 +252,7 @@ export default function PlaylistPage() {
               track={track}
               index={i}
               tracks={tracks}
-              onRemove={playlist.userId === user?.id ? handleRemoveTrack : undefined}
+              onRemove={isOwner ? handleRemoveTrack : undefined}
             />
           ))}
         </div>

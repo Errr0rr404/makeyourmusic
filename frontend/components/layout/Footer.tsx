@@ -24,6 +24,8 @@ export function Footer() {
             <ul className="space-y-2">
               <li><Link href="/search" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Explore</Link></li>
               <li><Link href="/library" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Library</Link></li>
+              <li><Link href="/pricing" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Pricing</Link></li>
+              <li><Link href="/creator" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Earn</Link></li>
               <li><Link href="/dashboard" className="text-[color:var(--text-soft)] hover:text-white transition-colors">Creator Studio</Link></li>
             </ul>
           </div>
