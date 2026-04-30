@@ -377,8 +377,17 @@ async function main() {
   let ok = 0, skipped = 0, failed = 0;
   const failures = [];
 
-  for (let i = 0; i < SONGS.length; i++) {
-    const song = SONGS[i];
+  const limit = process.env.SEED_LIMIT ? parseInt(process.env.SEED_LIMIT, 10) : SONGS.length;
+  const startAt = process.env.SEED_START ? parseInt(process.env.SEED_START, 10) : 0;
+  const filter = process.env.SEED_AGENT || null;
+  const list = SONGS
+    .slice(startAt)
+    .filter((s) => !filter || s.agentKey === filter)
+    .slice(0, limit);
+  console.log(`Will process ${list.length}/${SONGS.length} songs (start=${startAt}, limit=${limit}, agent=${filter || 'all'})`);
+
+  for (let i = 0; i < list.length; i++) {
+    const song = list[i];
     const a = agents[song.agentKey];
     if (!a) {
       console.error(`! no agent for key ${song.agentKey}, skipping ${song.title}`);
@@ -399,7 +408,7 @@ async function main() {
       failures.push({ title: song.title, error: String(err.message).slice(0, 200) });
       console.error(`  ✗ ${song.title} — ${err.message}`);
     }
-    console.log(`  [${i + 1}/${SONGS.length}] ok=${ok} skipped=${skipped} failed=${failed}`);
+    console.log(`  [${i + 1}/${list.length}] ok=${ok} skipped=${skipped} failed=${failed}`);
   }
 
   console.log(`\n═════════════════════════════════════`);
