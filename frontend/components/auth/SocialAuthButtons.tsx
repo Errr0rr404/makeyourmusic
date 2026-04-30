@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { signInWithGoogle, signInWithApple } from '@/lib/firebase/social';
 
@@ -15,7 +15,6 @@ export function SocialAuthButtons({
   onPending?: (pending: boolean) => void;
 }) {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const { firebaseSignIn } = useAuthStore();
   const [busy, setBusy] = useState<Provider | null>(null);
 
@@ -26,7 +25,13 @@ export function SocialAuthButtons({
     try {
       const idToken = provider === 'google' ? await signInWithGoogle() : await signInWithApple();
       await firebaseSignIn(idToken);
-      const next = searchParams.get('next');
+      // Read ?next= from window.location to avoid useSearchParams() —
+      // calling it here forces the entire auth route to bail out of static
+      // generation, which has been failing the production build.
+      let next: string | null = null;
+      try {
+        next = new URLSearchParams(window.location.search).get('next');
+      } catch {}
       const dest = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
       router.push(dest);
     } catch (err: any) {
