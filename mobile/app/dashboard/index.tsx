@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getApi, useAuthStore, formatCount } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Button } from '../../components/ui/Button';
@@ -24,6 +25,7 @@ export default function DashboardScreen() {
   const tokens = useTokens();
   const isVintage = useIsVintage();
   const { isAuthenticated } = useAuthStore();
+  const insets = useSafeAreaInsets();
   const [agents, setAgents] = useState<AgentSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -85,7 +87,7 @@ export default function DashboardScreen() {
       <>
         <Stack.Screen options={headerOptions} />
         <ScreenContainer>
-          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: 96 }}>
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: insets.top + 48 }}>
             <Bot size={48} color={tokens.borderStrong} />
             <Text style={{ color: tokens.text, fontSize: 20, fontWeight: '700', marginTop: 16, marginBottom: 8 }}>
               Creator Studio

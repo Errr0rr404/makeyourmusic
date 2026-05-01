@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { View, Text, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getApi, useAuthStore } from '@makeyourmusic/shared';
 import type { TrackItem } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
@@ -14,6 +15,7 @@ export default function FeedScreen() {
   const { isAuthenticated } = useAuthStore();
   const tokens = useTokens();
   const isVintage = useIsVintage();
+  const insets = useSafeAreaInsets();
   const [tracks, setTracks] = useState<TrackItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -40,7 +42,7 @@ export default function FeedScreen() {
   if (!isAuthenticated) {
     return (
       <ScreenContainer>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: 96 }}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32, paddingTop: insets.top + 48 }}>
           <Rss size={48} color={tokens.borderStrong} />
           <Text style={{ color: tokens.text, fontSize: 20, fontWeight: '700', marginTop: 16, marginBottom: 8 }}>
             Your Feed
@@ -105,7 +107,7 @@ export default function FeedScreen() {
             )}
           </View>
         }
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 140 + insets.bottom }}
       />
     </ScreenContainer>
   );

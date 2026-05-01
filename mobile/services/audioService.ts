@@ -147,10 +147,9 @@ export function useSyncPlayerToNative() {
 
     syncPlayState: async () => {
       if (!isInitialized) return;
-      // Defer to syncQueue while it's loading the queue — calling play()
-      // here on an empty queue is what caused the double-tap bug.
       if (isSyncingQueue) return;
       try {
+        const { isPlaying } = usePlayerStore.getState();
         if (isPlaying) {
           await TrackPlayer.play();
         } else {
@@ -164,6 +163,7 @@ export function useSyncPlayerToNative() {
     syncRepeatMode: async () => {
       if (!isInitialized) return;
       try {
+        const { repeat } = usePlayerStore.getState();
         if (repeat === 'one') {
           await TrackPlayer.setRepeatMode(RepeatMode.Track);
         } else if (repeat === 'all') {
@@ -179,6 +179,7 @@ export function useSyncPlayerToNative() {
     syncPlaybackSpeed: async () => {
       if (!isInitialized) return;
       try {
+        const { playbackSpeed } = usePlayerStore.getState();
         await TrackPlayer.setRate(playbackSpeed);
       } catch (err) {
         console.error('syncPlaybackSpeed error:', err);

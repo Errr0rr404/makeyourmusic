@@ -1,14 +1,13 @@
 import { useRef, useState } from 'react';
 import {
-  View, Text, Dimensions, FlatList, TouchableOpacity, ViewToken, StyleSheet,
+  View, Text, FlatList, TouchableOpacity, ViewToken, StyleSheet,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Sparkles, Headphones, Wand2, ArrowRight } from 'lucide-react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useWindowDimensions } from 'react-native';
 import { useTokens, useIsVintage } from '../lib/theme';
-
-const { width } = Dimensions.get('window');
 export const ONBOARDING_KEY = 'makeyourmusic-onboarded-v1';
 
 const slides = [
@@ -36,6 +35,8 @@ export default function OnboardingScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const isVintage = useIsVintage();
+  const { width } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList>(null);
 

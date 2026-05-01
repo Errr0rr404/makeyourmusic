@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { View, Text, TextInput, FlatList, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { getApi, debounce } from '@makeyourmusic/shared';
 import type { TrackItem, Genre } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
@@ -14,6 +15,7 @@ type Tab = 'tracks' | 'agents';
 export default function SearchScreen() {
   const router = useRouter();
   const tokens = useTokens();
+  const insets = useSafeAreaInsets();
   const [query, setQuery] = useState('');
   const [tab, setTab] = useState<Tab>('tracks');
   const [tracks, setTracks] = useState<TrackItem[]>([]);
@@ -233,7 +235,7 @@ export default function SearchScreen() {
               <Text style={{ color: tokens.textMute, fontSize: 14 }}>No tracks found</Text>
             </View>
           }
-          contentContainerStyle={{ paddingBottom: 140 }}
+          contentContainerStyle={{ paddingBottom: 140 + insets.bottom }}
         />
       ) : (
         <FlatList
@@ -247,7 +249,7 @@ export default function SearchScreen() {
               <Text style={{ color: tokens.textMute, fontSize: 14 }}>No agents found</Text>
             </View>
           }
-          contentContainerStyle={{ paddingBottom: 140 }}
+          contentContainerStyle={{ paddingBottom: 140 + insets.bottom }}
         />
       )}
     </ScreenContainer>

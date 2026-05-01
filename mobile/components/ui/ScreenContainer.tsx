@@ -1,5 +1,5 @@
 import { View, ScrollView, RefreshControl } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ReactNode } from 'react';
 import { useTokens } from '../../lib/theme';
 
@@ -19,13 +19,14 @@ export function ScreenContainer({
   padBottom = true,
 }: ScreenContainerProps) {
   const tokens = useTokens();
+  const insets = useSafeAreaInsets();
 
   if (scrollable) {
     return (
-      <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={['top']}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={['top', 'bottom']}>
         <ScrollView
           style={{ flex: 1 }}
-          contentContainerStyle={{ paddingBottom: padBottom ? 140 : 20 }}
+          contentContainerStyle={{ paddingBottom: padBottom ? 140 + insets.bottom : 20 + insets.bottom }}
           showsVerticalScrollIndicator={false}
           refreshControl={
             onRefresh ? (
@@ -45,7 +46,7 @@ export function ScreenContainer({
   }
 
   return (
-    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={['top']}>
+    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={['top', 'bottom']}>
       <View style={{ flex: 1 }}>{children}</View>
     </SafeAreaView>
   );

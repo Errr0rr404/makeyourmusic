@@ -519,6 +519,7 @@ export default function FullScreenPlayer() {
         presentationStyle="pageSheet"
         onRequestClose={() => setShowQueue(false)}
       >
+        <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={['top', 'bottom']}>
         <View style={{ flex: 1, backgroundColor: tokens.bg }}>
           <View
             style={{
@@ -654,6 +655,7 @@ export default function FullScreenPlayer() {
             />
           )}
         </View>
+        </SafeAreaView>
       </Modal>
 
       {/* Settings Modal */}

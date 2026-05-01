@@ -6,6 +6,7 @@ import {
   ScrollView,
   Modal,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   X,
   SlidersHorizontal,
@@ -164,7 +165,7 @@ export default function PlayerSettingsModal({
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={['top', 'bottom']}>
         {/* Header */}
         <View
           style={{
@@ -624,7 +625,7 @@ export default function PlayerSettingsModal({
           {/* Bottom spacer */}
           <View className="h-8" />
         </ScrollView>
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }

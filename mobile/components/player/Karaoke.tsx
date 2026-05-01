@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Modal, View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { X } from 'lucide-react-native';
 import { getApi } from '@makeyourmusic/shared';
 import { useTokens, useIsVintage } from '../../lib/theme';
@@ -63,7 +64,7 @@ export function Karaoke({ visible, onClose, trackId, trackTitle, positionSec }: 
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: tokens.bg }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={['top', 'bottom']}>
         <View
           style={{
             flexDirection: 'row',
@@ -176,7 +177,7 @@ export function Karaoke({ visible, onClose, trackId, trackTitle, positionSec }: 
             <View style={{ height: 200 }} />
           </ScrollView>
         )}
-      </View>
+      </SafeAreaView>
     </Modal>
   );
 }

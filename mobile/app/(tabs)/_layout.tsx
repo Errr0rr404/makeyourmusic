@@ -80,7 +80,8 @@ export default function TabLayout() {
                   backgroundColor: tokens.brand,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  marginTop: -20,
+                  position: 'absolute',
+                  top: -20,
                   shadowColor: tokens.brand,
                   shadowOpacity: 0.5,
                   shadowRadius: 10,
@@ -96,7 +97,7 @@ export default function TabLayout() {
                 style={{
                   fontSize: 10,
                   fontWeight: '600',
-                  marginTop: 4,
+                  marginTop: 32,
                   color: tokens.brand,
                   fontFamily: isVintage ? tokens.fontDisplay : undefined,
                   textTransform: isVintage ? 'uppercase' : undefined,

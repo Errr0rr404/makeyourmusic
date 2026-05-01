@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { Dimensions } from 'react-native';
+import { useWindowDimensions } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
   useSharedValue,
@@ -8,24 +8,18 @@ import Animated, {
   runOnJS,
 } from 'react-native-reanimated';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-const DISMISS_THRESHOLD = SCREEN_HEIGHT * 0.25;
-
 interface SwipeableDismissProps {
   children: ReactNode;
   onDismiss: () => void;
 }
 
-/**
- * Wraps content in a gesture handler that allows swiping down to dismiss.
- * Used for the full-screen player modal.
- */
 export function SwipeableDismiss({ children, onDismiss }: SwipeableDismissProps) {
+  const { height: SCREEN_HEIGHT } = useWindowDimensions();
+  const DISMISS_THRESHOLD = SCREEN_HEIGHT * 0.25;
   const translateY = useSharedValue(0);
 
   const gesture = Gesture.Pan()
     .onUpdate((event) => {
-      // Only allow downward swipe
       if (event.translationY > 0) {
         translateY.value = event.translationY;
       }

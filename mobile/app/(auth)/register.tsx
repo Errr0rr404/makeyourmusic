@@ -56,7 +56,7 @@ export default function RegisterScreen() {
   return (
     <ScreenContainer scrollable={false}>
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
         <ScrollView
