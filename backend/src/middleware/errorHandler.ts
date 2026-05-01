@@ -61,6 +61,9 @@ const getErrorCode = (statusCode: number, category: ErrorCategory): string => {
   return codeMap[statusCode]?.[category] || `ERROR_${statusCode}`;
 };
 
+// Express recognizes error handlers via 4-arg arity (function.length === 4).
+// _next is LOAD-BEARING — removing it silently disables error handling for
+// the entire app. Don't drive-by edit it.
 export const errorHandler = (
   err: Error | AppError,
   req: Request,
@@ -146,6 +149,27 @@ export const errorHandler = (
       ? errorMessage
       : 'Internal server error';
 
+  // Whitelist client-displayable metadata keys — `metadata` is a free-form
+  // bag used for telemetry, but if a developer ever passes API credentials
+  // or DB constraint details through it, the dev response branch would echo
+  // them back to the client. Allow only known-safe keys.
+  const SAFE_METADATA_KEYS = new Set([
+    'field',
+    'fields',
+    'reason',
+    'limit',
+    'remaining',
+    'retryAfter',
+    'allowed',
+    'expectedType',
+    'received',
+    'min',
+    'max',
+  ]);
+  const safeMetadata = metadata
+    ? Object.fromEntries(Object.entries(metadata).filter(([k]) => SAFE_METADATA_KEYS.has(k)))
+    : undefined;
+
   const response: ErrorResponse = {
     error: clientMessage,
     errorCode,
@@ -156,7 +180,7 @@ export const errorHandler = (
       correlationId,
       message: errorMessage,
       stack: err.stack,
-      metadata,
+      metadata: safeMetadata,
     }),
   };
 

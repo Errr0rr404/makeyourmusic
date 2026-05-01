@@ -583,9 +583,11 @@ async function orchestrateAndPrepareLyrics(gen: {
   const nextPrompt = mergePlanIntoPrompt(gen.prompt, plan);
 
   // Persist the refined prompt + auto-generated lyrics so the generation row
-  // reflects what was actually sent to the music model.
+  // reflects what was actually sent to the music model. Use updateMany
+  // (best-effort) — gen is a stale snapshot, so a row deleted between read
+  // and write should not throw P2025.
   if (nextPrompt !== gen.prompt || nextLyrics !== gen.lyrics) {
-    await prisma.musicGeneration.update({
+    await prisma.musicGeneration.updateMany({
       where: { id: gen.id },
       data: {
         prompt: nextPrompt,
@@ -1900,13 +1902,21 @@ export const extendGeneration = async (req: RequestWithUser, res: Response) => {
         return;
       }
     }
+    // Concatenate original lyrics with the user's extension so the model
+    // keeps melodic / lyrical continuity. Previously only the user's extra
+    // lines were sent, which caused the cover model to drift away from the
+    // source song's narrative.
+    const combinedLyrics =
+      source.lyrics && sanitizedExtraLyrics
+        ? `${source.lyrics.trim()}\n\n${sanitizedExtraLyrics.trim()}`
+        : sanitizedExtraLyrics || source.lyrics;
     const generation = await prisma.musicGeneration.create({
       data: {
         userId: req.user.userId,
         agentId: source.agentId,
         title: source.title ? `${source.title} (extended)` : 'Extension',
         prompt: continuationPrompt,
-        lyrics: sanitizedExtraLyrics,
+        lyrics: combinedLyrics,
         genre: source.genre,
         subGenre: source.subGenre,
         mood: source.mood,

@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { prisma } from '../utils/db';
 import { hashApiKey } from '../utils/apiKey';
+import logger from '../utils/logger';
 
 // Public-API authentication. Looks up an Authorization: Bearer <raw_key>
 // header, hashes it, and matches against ApiKey.keyHash. Sets
@@ -11,6 +12,7 @@ import { hashApiKey } from '../utils/apiKey';
 // a torrent of requests would write to the same row on every call.
 const lastUsedTouchedAt = new Map<string, number>();
 const TOUCH_INTERVAL_MS = 60_000;
+const TOUCH_MAP_MAX = 10_000;
 
 export const requireApiKey = async (req: any, res: Response, next: NextFunction) => {
   const auth = req.headers.authorization || '';
@@ -30,12 +32,20 @@ export const requireApiKey = async (req: any, res: Response, next: NextFunction)
     return;
   }
   // Throttled lastUsedAt update — failure here shouldn't break the request.
+  // Bound the map so a long-running process doesn't accumulate one entry per
+  // unique key id ever seen; drop the oldest insertion when over budget.
   const last = lastUsedTouchedAt.get(key.id) || 0;
   if (Date.now() - last > TOUCH_INTERVAL_MS) {
+    if (lastUsedTouchedAt.size >= TOUCH_MAP_MAX) {
+      const firstKey = lastUsedTouchedAt.keys().next().value;
+      if (firstKey) lastUsedTouchedAt.delete(firstKey);
+    }
     lastUsedTouchedAt.set(key.id, Date.now());
     prisma.apiKey
       .update({ where: { id: key.id }, data: { lastUsedAt: new Date() } })
-      .catch(() => {});
+      .catch((err) => {
+        logger.warn('apiKey lastUsedAt update failed', { keyId: key.id, error: (err as Error).message });
+      });
   }
 
   req.apiKey = key;

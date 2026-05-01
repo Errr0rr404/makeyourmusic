@@ -1189,12 +1189,9 @@ function CTABand({ tracks }: { tracks: TrackItem[] }) {
 // ────────────────────────────────────────────────────────────────────
 // Top-level landing page
 // ────────────────────────────────────────────────────────────────────
-type HeroVariant = 'spectrum' | 'deck';
-
 export function LandingPage() {
   const [tracks, setTracks] = useState<TrackItem[]>([]);
   const [genres, setGenres] = useState<Array<{ name: string; count: string; hue: number; slug: string }>>(FALLBACK_GENRES);
-  const [heroVariant, setHeroVariant] = useState<HeroVariant>('spectrum');
 
   useEffect(() => {
     let cancelled = false;
@@ -1235,31 +1232,7 @@ export function LandingPage() {
 
   return (
     <div className="mym-landing-root">
-      {/* Variant toggle (small, top-right of hero — like the design's tweaks panel hint) */}
-      <div className="absolute right-4 top-20 z-30 hidden md:flex items-center gap-1 p-1 rounded-full border bg-black/40 backdrop-blur"
-           style={{ borderColor: 'var(--stroke)' }}
-      >
-        {(['spectrum', 'deck'] as HeroVariant[]).map((v) => (
-          <button
-            key={v}
-            onClick={() => setHeroVariant(v)}
-            className="text-[11px] font-semibold uppercase px-3 py-1 rounded-full transition-colors"
-            style={{
-              letterSpacing: '0.08em',
-              color: heroVariant === v ? '#fff' : 'var(--text-mute)',
-              background: heroVariant === v ? 'var(--brand)' : 'transparent',
-            }}
-          >
-            {v}
-          </button>
-        ))}
-      </div>
-
-      {heroVariant === 'spectrum' ? (
-        <HeroSpectrum tracks={tracks} />
-      ) : (
-        <HeroDeckLayout tracks={tracks} />
-      )}
+      <HeroDeckLayout tracks={tracks} />
 
       <MarqueeStrip />
       <DiscoverGrid tracks={tracks} />

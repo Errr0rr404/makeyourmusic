@@ -102,12 +102,20 @@ export const getDashboard = async (_req: RequestWithUser, res: Response) => {
     ]);
 
     // Subscription summary: count active by tier and compute MRR.
-    const tierCounts: Record<string, number> = { FREE: 0, CREATOR: 0, PREMIUM: 0 };
-    const tierActiveCounts: Record<string, number> = { FREE: 0, CREATOR: 0, PREMIUM: 0 };
+    // Seed the maps from SUB_PRICE_USD so newly-introduced tiers don't
+    // silently disappear from dashboards.
+    const tierCounts: Record<string, number> = Object.fromEntries(
+      Object.keys(SUB_PRICE_USD).map((t) => [t, 0]),
+    );
+    const tierActiveCounts: Record<string, number> = Object.fromEntries(
+      Object.keys(SUB_PRICE_USD).map((t) => [t, 0]),
+    );
     let mrrUsd = 0;
     for (const row of subsByTier) {
-      tierCounts[row.tier] = (tierCounts[row.tier] || 0) + row._count._all;
+      // Only count ACTIVE rows in tierCounts — including CANCELLED/EXPIRED
+      // mixed CHURNED users in with paying ones in the headline figure.
       if (row.status === 'ACTIVE') {
+        tierCounts[row.tier] = (tierCounts[row.tier] || 0) + row._count._all;
         tierActiveCounts[row.tier] = (tierActiveCounts[row.tier] || 0) + row._count._all;
         mrrUsd += (SUB_PRICE_USD[row.tier] || 0) * row._count._all;
       }
@@ -120,11 +128,18 @@ export const getDashboard = async (_req: RequestWithUser, res: Response) => {
     // Even failures cost the upstream call.
     const musicSpend = (completedMusic + failedMusic) * COSTS.perMusic();
 
-    // We don't groupBy video status here; estimate from total minus pending.
-    const videoCompleted = await prisma.videoGeneration.count({
+    // Group video spend by duration so the estimate isn't a blind 50/50
+    // average — short clips (6s) and long clips (10s) have different costs.
+    const videoByDuration = await prisma.videoGeneration.groupBy({
+      by: ['durationSec'],
       where: { status: { in: ['COMPLETED', 'FAILED'] } },
+      _count: { _all: true },
     });
-    const videoSpend = videoCompleted * ((COSTS.perVideo6s() + COSTS.perVideo10s()) / 2);
+    let videoSpend = 0;
+    for (const row of videoByDuration) {
+      const cost = row.durationSec === 10 ? COSTS.perVideo10s() : COSTS.perVideo6s();
+      videoSpend += row._count._all * cost;
+    }
 
     const totalSpendUsd = musicSpend + videoSpend;
 

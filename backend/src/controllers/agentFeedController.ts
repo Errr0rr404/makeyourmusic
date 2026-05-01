@@ -21,8 +21,11 @@ function escapeXml(s: string): string {
 export const agentFeed = async (req: RequestWithUser, res: Response) => {
   try {
     const slug = req.params.slug as string;
-    const agent = await prisma.aiAgent.findUnique({
-      where: { slug },
+    // Use findFirst with status filter so suspended/pending agents short-
+    // circuit BEFORE we load 50 tracks — saves a query in the suspended-agent
+    // path.
+    const agent = await prisma.aiAgent.findFirst({
+      where: { slug, status: 'ACTIVE' },
       include: {
         tracks: {
           where: {
@@ -45,7 +48,7 @@ export const agentFeed = async (req: RequestWithUser, res: Response) => {
         },
       },
     });
-    if (!agent || agent.status !== 'ACTIVE') {
+    if (!agent) {
       // Suspended / pending-approval agents are not exposed via the public
       // RSS surface — they should be invisible until reinstated.
       res.status(404).type('text/plain').send('Agent not found');

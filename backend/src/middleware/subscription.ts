@@ -1,6 +1,7 @@
 import { Response, NextFunction } from 'express';
 import { RequestWithUser } from '../types';
 import { prisma } from '../utils/db';
+import logger from '../utils/logger';
 
 export const requirePremium = async (req: RequestWithUser, res: Response, next: NextFunction) => {
   try {
@@ -35,16 +36,17 @@ export const requirePremium = async (req: RequestWithUser, res: Response, next: 
     }
 
     next();
-  } catch {
+  } catch (err) {
+    logger.error('requirePremium check failed', { error: (err as Error).message });
     res.status(500).json({ error: 'Failed to verify subscription' });
   }
 };
 
 // Strict PREMIUM-only check for tier-specific features (above CREATOR).
 export const requirePremiumOnly = async (
-  req: import('express').Request & { user?: { userId: string; role: string } },
-  res: import('express').Response,
-  next: import('express').NextFunction
+  req: RequestWithUser,
+  res: Response,
+  next: NextFunction,
 ) => {
   try {
     if (!req.user) {
@@ -61,7 +63,8 @@ export const requirePremiumOnly = async (
       return;
     }
     next();
-  } catch {
+  } catch (err) {
+    logger.error('requirePremiumOnly check failed', { error: (err as Error).message });
     res.status(500).json({ error: 'Failed to verify subscription' });
   }
 };

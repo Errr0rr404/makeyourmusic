@@ -25,13 +25,26 @@ export const cacheMiddleware = (ttl: number = DEFAULT_TTL) => {
       return next();
     }
 
-    // Don't cache authenticated requests (may have user-specific data)
-    if (req.headers.authorization) {
+    // Refuse to cache any authenticated request — any user-specific surface.
+    // The previous code only checked Authorization, which missed x-api-key,
+    // admin tokens, and any req.user populated by an upstream middleware.
+    if (
+      req.headers.authorization ||
+      req.headers['x-api-key'] ||
+      req.headers['x-admin-token'] ||
+      (req as any).user ||
+      (req as any).apiKey
+    ) {
       return next();
     }
 
-    // Generate cache key from URL and query params
-    const cacheKey = `${req.method}:${req.originalUrl}`;
+    // Generate cache key from URL, varied by Accept-Encoding / Accept-Language
+    // so a French/Spanish/gzip variant doesn't get served from a US/identity
+    // bucket.
+    const accept = req.headers['accept'] || '';
+    const encoding = req.headers['accept-encoding'] || '';
+    const language = req.headers['accept-language'] || '';
+    const cacheKey = `${req.method}:${req.originalUrl}|a=${accept}|e=${encoding}|l=${language}`;
     const cached = cache.get(cacheKey);
 
     // Check if cached entry exists and is still valid
@@ -44,24 +57,24 @@ export const cacheMiddleware = (ttl: number = DEFAULT_TTL) => {
     // Store original json method
     const originalJson = res.json.bind(res);
 
-    // Override res.json to cache the response
+    // Override res.json to cache the response and emit X-Cache: MISS only
+    // when we actually caused (or considered caching) a successful response.
+    // Previously every res.json — including 4xx/5xx — got X-Cache: MISS, which
+    // made the header useless for telemetry.
     res.json = function (body: any) {
-      // Cache successful responses (status 200-299)
-      if (res.statusCode >= 200 && res.statusCode < 300) {
+      const isSuccessful = res.statusCode >= 200 && res.statusCode < 300;
+      if (isSuccessful) {
         cache.set(cacheKey, {
           data: body,
           timestamp: Date.now(),
           expiresAt: Date.now() + ttl,
         });
-
-        // Clean up old cache entries periodically
         if (cache.size > 1000) {
           cleanupCache();
         }
+        res.setHeader('X-Cache', 'MISS');
+        res.setHeader('Cache-Control', `private, max-age=${Math.floor(ttl / 1000)}`);
       }
-
-      res.setHeader('X-Cache', 'MISS');
-      res.setHeader('Cache-Control', `private, max-age=${Math.floor(ttl / 1000)}`);
       return originalJson(body);
     };
 
