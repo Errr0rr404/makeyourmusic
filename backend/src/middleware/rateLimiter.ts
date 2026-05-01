@@ -1,17 +1,38 @@
 import rateLimit from 'express-rate-limit';
 import type { Request } from 'express';
 import type { RequestWithUser } from '../types';
+import logger from '../utils/logger';
 
 // More lenient rate limits in development
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
+// All limiters use the default in-memory MemoryStore. With multiple replicas
+// (Railway autoscale, blue/green) every replica has its own counter, so the
+// effective per-attacker limit is N× the configured value. If REDIS_URL is
+// set in production, switch to rate-limit-redis with `new RedisStore({...})`
+// to get a shared bucket. Until then, log a loud warning at boot.
+if (!isDevelopment && !process.env.REDIS_URL) {
+  logger.warn(
+    'rateLimiter: running without REDIS_URL — rate limits are per-replica, not global. ' +
+      'Brute-force protection on /auth/login and AI cost limits are diluted by replica count.',
+  );
+}
+
 // When the request is authenticated, key by userId so a single account can't
 // hop IPs to bypass limits — and so users behind shared NATs aren't lumped
-// together. Falls back to IP for anonymous traffic.
+// together. Falls back to IP for anonymous traffic. In production, refuse to
+// fall back to a literal "anonymous" bucket — that would lump every
+// proxy-misconfigured request into a single shared limiter.
 const userOrIpKey = (req: Request): string => {
   const userId = (req as RequestWithUser).user?.userId;
   if (userId) return `u:${userId}`;
-  return req.ip ?? 'anonymous';
+  if (req.ip) return req.ip;
+  if (!isDevelopment) {
+    logger.warn('rateLimiter: missing req.ip; check trust proxy configuration', {
+      path: req.path,
+    });
+  }
+  return 'anonymous';
 };
 
 // Login-only limiter — `skipSuccessfulRequests` is safe here because

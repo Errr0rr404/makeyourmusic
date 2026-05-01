@@ -49,6 +49,11 @@ export const useAuthStore = create<AuthStore>((set) => ({
 
   setAccessToken: (token: string) => {
     set({ accessToken: token });
+    // Persist so a subsequent hydrate() reads the new token. The api refresh
+    // interceptor also writes to storage, but direct callers (e.g. mobile
+    // sign-in flows) used to forget — making this idempotent here is safer
+    // than relying on every caller to remember.
+    void getStorage().setItem(TOKEN_KEY, token);
   },
 
   setAuth: async (data) => {
@@ -68,7 +73,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({ user, accessToken, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ isLoading: false });
-      throw new Error(error.response?.data?.error || 'Login failed');
+      throw new Error(error?.response?.data?.error || error?.message || 'Login failed');
     }
   },
 

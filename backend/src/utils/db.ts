@@ -22,22 +22,13 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// Normalize DATABASE_URL — silence deprecation warnings for SSL mode aliases.
-// We DO NOT add an sslmode if one isn't present: managed providers (e.g.
-// Railway's private postgres at *.railway.internal) negotiate SSL through
-// other means and adding verify-full breaks the connection.
+// Pass DATABASE_URL through unchanged. Earlier versions rewrote sslmode=prefer
+// (and other aliases) to verify-full, but managed-DB providers (Railway's
+// internal postgres especially) lack a publicly-trusted CA — verify-full
+// hard-breaks those connections. Operators who want strict TLS verification
+// should set sslmode explicitly in DATABASE_URL.
 function normalizeDatabaseUrl(url: string): string {
-  if (!url) return url;
-
-  let normalizedUrl = url;
-  const deprecatedModes = ['prefer', 'verify-ca'];
-  for (const mode of deprecatedModes) {
-    const regex = new RegExp(`([?&])sslmode=${mode}(&|$)`, 'gi');
-    if (regex.test(normalizedUrl)) {
-      normalizedUrl = normalizedUrl.replace(regex, `$1sslmode=verify-full$2`);
-    }
-  }
-  return normalizedUrl;
+  return url;
 }
 
 // Validate DATABASE_URL before creating PrismaClient

@@ -1,6 +1,24 @@
 import logger from './logger';
 
 const DEFAULT_BASE = 'https://api.minimax.io/v1';
+const DEFAULT_TIMEOUT_MS = 120_000;
+
+// Wrap fetch with a default abort timeout. Without this, a stuck MiniMax
+// endpoint hangs the worker until the OS-level TCP timeout (60s+ to 30min),
+// which back-pressures every Express handler that hits this util.
+function minimaxFetch(url: string, init: RequestInit & { timeoutMs?: number } = {}): Promise<Response> {
+  const { timeoutMs, ...rest } = init;
+  return fetch(url, {
+    ...rest,
+    signal: rest.signal ?? AbortSignal.timeout(timeoutMs ?? DEFAULT_TIMEOUT_MS),
+  });
+}
+
+// Strip Bearer tokens from any provider-echoed body before logging — defends
+// against a future MiniMax response that mirrors back the Authorization header.
+function safeBody(text: string): string {
+  return text.replace(/Bearer\s+[A-Za-z0-9._\-]+/gi, 'Bearer [REDACTED]').slice(0, 500);
+}
 
 function getApiKey(): string {
   const key = process.env.MINIMAX_API_KEY;
@@ -76,7 +94,7 @@ export async function minimaxChat(params: {
     temperature: params.temperature ?? 0.9,
     stream: false,
   };
-  const res = await fetch(url, {
+  const res = await minimaxFetch(url, {
     method: 'POST',
     headers: buildHeaders(),
     body: JSON.stringify(body),
@@ -84,7 +102,7 @@ export async function minimaxChat(params: {
 
   if (!res.ok) {
     const errText = await res.text();
-    logger.error('MiniMax chat failed', { status: res.status, body: errText.slice(0, 500) });
+    logger.error('MiniMax chat failed', { status: res.status, body: safeBody(errText) });
     throw new Error(`MiniMax chat failed (${res.status})`);
   }
 
@@ -111,9 +129,10 @@ export async function minimaxChat(params: {
 // MiniMax baseResp.status_code values that indicate transient quota / rate-limit
 // problems where retrying with a fallback model is reasonable.
 // Source: MiniMax common error codes (1002 rate limit, 1039 token-rate limit,
-// 1042 daily-quota / model-quota exhausted, 2013 invalid model — used as last
-// signal that a model id has been disabled on the account).
-export const MINIMAX_RATE_LIMIT_CODES = new Set([1002, 1039, 1042, 2013]);
+// 1042 daily-quota / model-quota exhausted). 2013 (invalid model) was previously
+// included but is a permanent condition — retrying with the same id loops
+// forever, and a fallback chain has its own out-of-band fallback logic.
+export const MINIMAX_RATE_LIMIT_CODES = new Set([1002, 1039, 1042]);
 
 export class MinimaxRateLimitError extends Error {
   code: number;
@@ -176,7 +195,7 @@ export async function minimaxGenerateMusic(
   if (params.audioUrl) body.audio_url = params.audioUrl;
   if (params.audioBase64) body.audio_base64 = params.audioBase64;
 
-  const res = await fetch(url, {
+  const res = await minimaxFetch(url, {
     method: 'POST',
     headers: buildHeaders(),
     body: JSON.stringify(body),
@@ -187,7 +206,7 @@ export async function minimaxGenerateMusic(
     logger.error('MiniMax music generation HTTP error', {
       status: res.status,
       model,
-      body: errText.slice(0, 500),
+      body: safeBody(errText),
     });
     if (res.status === 429) {
       throw new MinimaxRateLimitError(429, `MiniMax music generation rate-limited (${res.status})`);
@@ -268,7 +287,7 @@ export async function minimaxStartVideo(params: VideoStartParams): Promise<Video
   if (params.firstFrameImage) body.first_frame_image = params.firstFrameImage;
   if (params.subjectReference) body.subject_reference = params.subjectReference;
 
-  const res = await fetch(url, {
+  const res = await minimaxFetch(url, {
     method: 'POST',
     headers: buildHeaders(),
     body: JSON.stringify(body),
@@ -278,7 +297,7 @@ export async function minimaxStartVideo(params: VideoStartParams): Promise<Video
     const errText = await res.text();
     logger.error('MiniMax video start HTTP error', {
       status: res.status,
-      body: errText.slice(0, 500),
+      body: safeBody(errText),
     });
     throw new Error(`MiniMax video start failed (${res.status})`);
   }
@@ -307,7 +326,7 @@ export interface VideoStatusResult {
 
 export async function minimaxQueryVideo(taskId: string): Promise<VideoStatusResult> {
   const url = buildUrl('/query/video_generation', { task_id: taskId });
-  const res = await fetch(url, {
+  const res = await minimaxFetch(url, {
     method: 'GET',
     headers: buildHeaders(),
   });
@@ -316,7 +335,7 @@ export async function minimaxQueryVideo(taskId: string): Promise<VideoStatusResu
     const errText = await res.text();
     logger.error('MiniMax video query HTTP error', {
       status: res.status,
-      body: errText.slice(0, 500),
+      body: safeBody(errText),
     });
     throw new Error(`MiniMax video query failed (${res.status})`);
   }
@@ -337,12 +356,12 @@ export async function minimaxQueryVideo(taskId: string): Promise<VideoStatusResu
 
 export async function minimaxRetrieveFile(fileId: string): Promise<{ downloadUrl: string }> {
   const url = buildUrl('/files/retrieve', { file_id: fileId });
-  const res = await fetch(url, { method: 'GET', headers: buildHeaders() });
+  const res = await minimaxFetch(url, { method: 'GET', headers: buildHeaders() });
   if (!res.ok) {
     const errText = await res.text();
     logger.error('MiniMax file retrieve HTTP error', {
       status: res.status,
-      body: errText.slice(0, 500),
+      body: safeBody(errText),
     });
     throw new Error(`MiniMax file retrieve failed (${res.status})`);
   }
@@ -390,6 +409,12 @@ export interface LyricsParams {
   conventionVoice?: string;
   conventionStructure?: string;
   conventionLengthHint?: string;
+  /**
+   * Per-genre craft paragraph from the catalog. Describes WHAT good looks like
+   * for this genre's audience (literary depth vs. flow vs. hook-craft, etc.).
+   * Resolved by `lookupQualityTierGuidance(convention.quality)` in the caller.
+   */
+  conventionQualityGuidance?: string;
 }
 
 export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
@@ -417,6 +442,7 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
     conventionVoice,
     conventionStructure,
     conventionLengthHint,
+    conventionQualityGuidance,
   } = params;
   const constraints: string[] = [];
   const genreLine = [genre, subGenre].filter(Boolean).join(' / ');
@@ -436,40 +462,54 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
   if (musicalKey) constraints.push(`Key: ${musicalKey}`);
 
   // Genre-specific lyric conventions, when supplied by the controller from the
-  // catalog. These give the model concrete rhyme/voice/structure/length cues
-  // instead of the generic "match the genre" instruction.
+  // catalog. These give the model concrete rhyme/voice/structure/density cues
+  // instead of the generic "match the genre" instruction. Note: density, not
+  // word count — we deliberately do NOT push the model toward a target length.
   const conventionLines: string[] = [];
   if (conventionRhyme) conventionLines.push(`- Rhyme + meter: ${conventionRhyme}`);
   if (conventionVoice) conventionLines.push(`- Voice + imagery: ${conventionVoice}`);
   if (conventionStructure) conventionLines.push(`- Structure to follow: ${conventionStructure}`);
-  if (conventionLengthHint) conventionLines.push(`- Target length: ${conventionLengthHint}`);
+  if (conventionLengthHint) conventionLines.push(`- Density guidance: ${conventionLengthHint}`);
   const conventionBlock = conventionLines.length
-    ? `\nGENRE LYRIC CONVENTIONS (follow closely):\n${conventionLines.join('\n')}\n`
+    ? `\nGENRE CONVENTIONS (use as guidance, not as a quota):\n${conventionLines.join('\n')}\n`
     : '';
 
-  const lengthGuidance = conventionLengthHint
-    ? `Use the genre-specific target length above`
-    : `Keep total length between 200 and 600 words (vocal genres) or 120-280 words (dance/electronic)`;
+  // Per-genre quality bar. Resolved by the caller from
+  // lookupQualityTierGuidance(convention.quality). When absent we fall back to
+  // a generic "literary" paragraph so the bar never collapses to nothing.
+  const qualityBlock = conventionQualityGuidance
+    ? `\nQUALITY BAR FOR THIS GENRE:\n${conventionQualityGuidance}\n`
+    : '';
 
   // The MiniMax music model sings whatever is in the `lyrics` field — including
   // parenthetical stage directions and tags like [Guitar Solo]. The system
   // prompt has to forbid those explicitly; downstream code also runs a
   // sanitizer pass as a defense in depth.
+  //
+  // Structure: lead with CRAFT (every line earns its place, length follows
+  // substance) → genre-specific QUALITY BAR → conventions → formatting. We
+  // intentionally do not give a target word count: padding to hit a length is
+  // the most common cause of weak lyrics. Better a tight 12 lines that land
+  // than a wandering 40.
   const system =
-    `You are a professional songwriter writing original SUNG lyrics in ${language}. ` +
-    `Your lyrics must be evocative, emotionally resonant, and feel native to the named genre — not a generic pop substitute. ` +
-    `${lengthGuidance}. Avoid copyrighted lyrics. Avoid worn cliches like "neon lights / chasing dreams / heart of gold / tear-stained / fire in my veins" unless they are specifically requested. Use concrete, specific imagery instead of generic abstractions. ` +
-    `\n\nCRAFT GUIDELINES: ` +
-    `\n• The chorus must be repeatable verbatim — it is the song's hook and should appear identically each time it returns (Final Chorus may add one extra line or "(yeah)" ad-libs but stays recognizably the same). ` +
-    `\n• Match line lengths and stress patterns to the genre's typical vocal cadence (short punchy lines for trap/punk; longer narrative lines for folk/country; flowing melodic lines for R&B). ` +
-    `\n• Maintain a consistent narrator and tense throughout unless an intentional shift is part of the arc. ` +
-    `\n• Make the final chorus or outro pay off the song's emotional arc — don't just repeat verse 1. ` +
-    `\n\nFORMATTING RULES (these are HARD constraints — the lyrics are fed directly into a music model that will SING anything you write): ` +
-    `\n1. Use ONLY these section tags on their own lines: [Intro], [Verse 1], [Verse 2], [Verse 3], [Pre-Chorus], [Chorus], [Post-Chorus], [Hook], [Refrain], [Bridge], [Final Chorus], [Outro]. ` +
-    `\n2. NEVER write [Guitar Solo], [Instrumental], [Breakdown], [Drum Fill], or any other instrumental-section tag — instrumental sections are decided by the producer, not by you. ` +
-    `\n3. NEVER write parenthetical stage directions or production cues like "(Hammond swell, hi-hat pulse, eighth-note bass)", "(Tape hiss, finger-picked guitar)", "(808 hit, strings enter)". The model would sing those words. ` +
-    `\n4. Parentheses are allowed ONLY for short vocal ad-libs that are meant to be sung, e.g. "(woah)", "(yeah)", "(oh-oh-oh)". Never list instruments, drums, effects, or production techniques inside parentheses. ` +
-    `\n5. Output ONLY the lyrics — no commentary, no explanations, no production notes before or after. Every non-tag line must be singable text.`;
+    `You are a professional songwriter writing original SUNG lyrics in ${language}. Your job is to write lyrics that EARN their place in the song — every line must carry meaning, image, or emotional weight. Padding to fill bars or hit a length is forbidden: if the idea is fully expressed in 8 lines, write 8; if it needs 24, write 24. Length follows substance, not the other way around.` +
+    `\n\nCORE CRAFT PRINCIPLES (apply to every line):` +
+    `\n• Every line must do at least one of: (1) advance the emotional arc, (2) deliver a concrete image, (3) reveal character, situation, or stakes, (4) land a memorable hook, (5) provide a deliberate breath/refrain. Lines that do none of these are filler — cut them, do not pad.` +
+    `\n• Specific beats vague. "The kitchen light at 2am" beats "we were up so late". Use concrete sensory detail (sight, sound, body, place, object, weather, dialogue). Avoid generic abstractions ("dreams", "soul", "heart", "fire", "light", "shine", "forever") unless they are anchored to something specific.` +
+    `\n• Maintain a consistent narrator, tense, and emotional logic unless an intentional shift is part of the arc. Verse 2 must NOT just restate Verse 1 in new words — it should advance the story or deepen the feeling.` +
+    `\n• The chorus must be repeatable verbatim — it IS the song's hook and should appear identically each time it returns (Final Chorus may add one extra line or "(yeah)" ad-libs but stays recognizably the same).` +
+    `\n• The final chorus or outro must pay off the emotional arc — do not simply reprise Verse 1's sentiment unchanged.` +
+    `\n• AVOID worn clichés (neon lights, chasing dreams, heart of gold, tear-stained, fire in my veins, light up the sky, stars align, unbreak my heart, wings to fly, on cloud nine) unless explicitly requested. They signal generic AI output and an audience that knows the genre will dismiss the song instantly.` +
+    `\n• Rhyme is for service, not for show: never sacrifice meaning to land a rhyme. A near-rhyme that is true beats a perfect rhyme that is hollow.` +
+    `\n• Match line lengths to the genre's natural vocal cadence, but let the meaning of the line determine its length — never artificially shorten or stretch a line to hit a meter target. There is no cap on words per line.` +
+    qualityBlock +
+    `\nLENGTH POLICY: Whatever the idea needs. The genre conventions describe typical density; treat them as guidance, not as a quota. Better a tight, meaningful 12 lines than a wandering 40. If you cannot write something true and specific for the next line, end the section instead of padding.` +
+    `\n\nFORMATTING (these are HARD constraints — the lyrics are fed directly into a music model that will SING anything you write):` +
+    `\n1. Use ONLY these section tags on their own lines: [Intro], [Verse 1], [Verse 2], [Verse 3], [Pre-Chorus], [Chorus], [Post-Chorus], [Hook], [Refrain], [Bridge], [Final Chorus], [Outro].` +
+    `\n2. NEVER write [Guitar Solo], [Instrumental], [Breakdown], [Drum Fill], or any other instrumental-section tag — instrumental sections are decided by the producer, not by you.` +
+    `\n3. NEVER write parenthetical stage directions or production cues like "(Hammond swell, hi-hat pulse)", "(Tape hiss, finger-picked guitar)", "(808 hit, strings enter)". The model would sing those words.` +
+    `\n4. Parentheses are allowed ONLY for short vocal ad-libs that are meant to be sung: "(woah)", "(yeah)", "(oh-oh-oh)". Never list instruments, drums, effects, or production techniques inside parentheses.` +
+    `\n5. Avoid copyrighted lyrics. Output ONLY the lyrics — no commentary, no explanations, no production notes before or after. Every non-tag line must be singable text.`;
 
   const briefBlock = lyricsBrief?.trim()
     ? `Direction from the orchestration planner (theme, voice, imagery, hooks):\n${lyricsBrief.trim()}\n`
@@ -488,7 +528,7 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
     (hookBlock ? `\n${hookBlock}` : '') +
     (conventionBlock ? `${conventionBlock}` : '') +
     (constraints.length > 0 ? `\n${constraints.join('\n')}\n` : '') +
-    `\nReturn only lyrics with section tags on their own lines. Remember: NO parenthetical stage directions, NO instrument cues, NO [Guitar Solo]-style tags. The chorus must be identical (or near-identical) each time it appears.`;
+    `\nReturn only lyrics with section tags on their own lines. Every line must earn its place — never pad to hit a length. The chorus must be identical (or near-identical) each time it appears. NO parenthetical stage directions, NO instrument cues, NO [Guitar Solo]-style tags.`;
 
   const result = await minimaxChat({
     messages: [
@@ -661,8 +701,8 @@ export async function minimaxOrchestrate(
     `\n(3) Pick a coherent BPM, key, and time signature that fit the genre/mood. Respect user-pinned tempo/key when supplied. Use the GENRE PRIORS table below as your default — only deviate when the user concept clearly justifies it. ` +
     `\n(4) The structure must match the named genre's conventions: hook-driven Verse-PreChorus-Chorus for pop/rock/R&B, 16-bar Verse + 8-bar Hook for hip-hop, Build-Drop for dance/electronic, strophic Verse-Refrain for folk/singer-songwriter, AABA for classic jazz, through-composed build-and-release for cinematic. Do not impose pop-form on genres that don't use it. ` +
     `\n(5) "musicPrompt" is fed verbatim to a music-generation model. Write it as a dense, comma-separated production brief covering genre, BPM, key, instrumentation, vocal direction, energy arc, and era. Do NOT include lyrics, section headings, or stage directions in musicPrompt. Lead with the most genre-defining instruments. ` +
-    `\n(6) "lyricsBrief" is a paragraph for a lyric writer. Describe the emotional arc, narrative perspective (1st/2nd/3rd person, present/past tense), 3-5 concrete imagery seeds, hook/refrain motif, and how the production style affects lyric rhythm (short rap bars, long folk lines, sparse dance hooks, etc.). Do NOT write the actual lyrics. ${isInstrumental ? 'For instrumental tracks, set lyricsBrief to an empty string.' : ''} ` +
-    `\n(7) "hookLine" is a short draft of the chorus / refrain hook line — under 10 words, memorable, sing-able. ${isInstrumental ? 'Set to null for instrumental tracks.' : 'Required for vocal tracks.'} ` +
+    `\n(6) "lyricsBrief" is a craft brief for the lyric writer. It must articulate WHY this song matters to write — the central emotional turn or insight, not just a topic label. Include: the central concrete image or scene that anchors the song (a place, a moment, a body in a specific situation — never an abstraction); narrative perspective (1st/2nd/3rd person, present/past tense); the emotional arc from start to end (how the speaker shifts); 2-3 specific sensory or scenic seeds (objects, places, body language, weather, dialogue — not abstractions like "love" or "freedom"); the hook/refrain motif; and how the production density should shape lyric cadence. The brief must be specific enough that two writers given the same brief would produce recognizably the same song. Avoid generic prompts like "a song about love and loss" — push for the specific angle. Do NOT write the actual lyrics. ${isInstrumental ? 'For instrumental tracks, set lyricsBrief to an empty string.' : ''} ` +
+    `\n(7) "hookLine" is a short draft of the chorus / refrain hook line — under 10 words, memorable, sing-able. It must land an image, feeling, or stance, not just restate the topic. Bad: "We are forever in the light." Good: "I left the porch light on for you." ${isInstrumental ? 'Set to null for instrumental tracks.' : 'Required for vocal tracks.'} ` +
     `\n(8) "instrumentation" is a list of short instrument/sound descriptors (e.g. "fingerpicked acoustic", "warm Rhodes", "brushed snare"). Choose count from the genre's range in the priors table — typically 5-8 for pop/rock/R&B, 2-5 for folk/lo-fi, 8-14 for cinematic/orchestral, 2-4 for ambient. ` +
     `\n(9) "structure" is an array of section names matching the genre. Allowed canonical names: "Intro", "Verse", "Verse 2", "Pre-Chorus", "Chorus", "Post-Chorus", "Hook", "Refrain", "Bridge", "Final Chorus", "Drop", "Build", "Breakdown", "Outro", "Vamp", "Head", "Solo Section". Do NOT use "Guitar Solo" / "Instrumental" — instrumental moments are conveyed through "Solo Section" or "Breakdown" labels. ` +
     `\n(10) "arrangementArc" is one short sentence describing the energy/density progression (e.g. "sparse intro → builds at chorus → stripped bridge → fullest final chorus"). ` +
@@ -797,7 +837,7 @@ export async function minimaxGenerateImage(
   if (params.promptOptimizer != null) body.prompt_optimizer = params.promptOptimizer;
   if (params.subjectReference?.length) body.subject_reference = params.subjectReference;
 
-  const res = await fetch(url, {
+  const res = await minimaxFetch(url, {
     method: 'POST',
     headers: buildHeaders(),
     body: JSON.stringify(body),
@@ -808,7 +848,7 @@ export async function minimaxGenerateImage(
     logger.error('MiniMax image generation HTTP error', {
       status: res.status,
       model,
-      body: errText.slice(0, 500),
+      body: safeBody(errText),
     });
     if (res.status === 429) {
       throw new MinimaxRateLimitError(429, `MiniMax image generation rate-limited (${res.status})`);

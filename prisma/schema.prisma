@@ -231,6 +231,8 @@ model User {
   clipComments               ClipComment[]
   clipShares                 ClipShare[]
   mixtapes                   UserMixtape[]
+  collabPayoutsFrom          CollabPayout[]        @relation("CollabPayoutsFrom")
+  collabPayoutsTo            CollabPayout[]        @relation("CollabPayoutsTo")
 
   @@index([role])
   @@index([createdAt(sort: Desc)])
@@ -391,21 +393,24 @@ model Track {
   albumId String? @map("album_id")
   album   Album?  @relation(fields: [albumId], references: [id], onDelete: SetNull)
 
-  video          Video?
-  likes          Like[]
-  comments       Comment[]
-  plays          Play[]
-  shares         Share[]
-  downloads      Download[]
-  playlistTracks PlaylistTrack[]
-  reports        Report[]
-  generations    MusicGeneration[]
-  collaborators  TrackCollaborator[]
-  stems          TrackStems?
-  takedowns      Takedown[]
-  syncLicenses   SyncLicense[]
-  distributions  TrackDistribution[]
-  clips          Clip[]
+  video             Video?
+  likes             Like[]
+  comments          Comment[]
+  plays             Play[]
+  shares            Share[]
+  downloads         Download[]
+  playlistTracks    PlaylistTrack[]
+  reports           Report[]
+  generations       MusicGeneration[]
+  collaborators     TrackCollaborator[]
+  stems             TrackStems?
+  takedowns         Takedown[]
+  syncLicenses      SyncLicense[]
+  distributions     TrackDistribution[]
+  clips             Clip[]
+  tips              Tip[]
+  videoGenerations  VideoGeneration[]   @relation("TrackVideoGenerations")
+  collabPayouts     CollabPayout[]
 
   @@index([agentId])
   @@index([genreId])
@@ -800,11 +805,11 @@ model Tip {
   platformFeeCents        Int       @map("platform_fee_cents")
   netCents                Int       @map("net_cents")
   currency                String    @default("usd")
-  message                 String?
+  message                 String?   @db.VarChar(500)
   status                  TipStatus @default(PENDING)
   stripeCheckoutSessionId String?   @unique @map("stripe_checkout_session_id")
   stripePaymentIntentId   String?   @unique @map("stripe_payment_intent_id")
-  stripeTransferId        String?   @map("stripe_transfer_id")
+  stripeTransferId        String?   @unique @map("stripe_transfer_id")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -812,14 +817,14 @@ model Tip {
   fromUserId String? @map("from_user_id")
   fromUser   User?   @relation("TipsSent", fields: [fromUserId], references: [id], onDelete: SetNull)
   toUserId   String  @map("to_user_id")
-  toUser     User    @relation("TipsReceived", fields: [toUserId], references: [id], onDelete: Cascade)
+  toUser     User    @relation("TipsReceived", fields: [toUserId], references: [id], onDelete: Restrict)
   trackId    String? @map("track_id")
+  track      Track?  @relation(fields: [trackId], references: [id], onDelete: SetNull)
 
   @@index([toUserId, createdAt(sort: Desc)])
   @@index([fromUserId])
   @@index([status])
   @@index([trackId])
-  @@index([stripeTransferId])
   @@map("tips")
 }
 
@@ -841,7 +846,7 @@ model ChannelSubscription {
   subscriberUserId String   @map("subscriber_user_id")
   subscriber       User     @relation("ChannelSubsAsFan", fields: [subscriberUserId], references: [id], onDelete: Cascade)
   creatorUserId    String   @map("creator_user_id")
-  creator          User     @relation("ChannelSubsAsCreator", fields: [creatorUserId], references: [id], onDelete: Cascade)
+  creator          User     @relation("ChannelSubsAsCreator", fields: [creatorUserId], references: [id], onDelete: Restrict)
   playlistId       String   @map("playlist_id")
   playlist         Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
 
@@ -854,7 +859,7 @@ model ChannelSubscription {
 
 model AgentEarning {
   id     String @id @default(cuid())
-  amount Decimal @default(0) @db.Decimal(12, 2) // earnings in USD
+  amount Decimal @default(0) @db.Decimal(12, 2) // earnings in USD (TODO: migrate to Int cents to standardize across money tables)
   plays  Int    @default(0) // plays in this period
   period String // e.g. "2026-02"
 
@@ -937,7 +942,7 @@ model MusicGeneration {
   // Provider
   provider        String  @default("minimax")
   providerModel   String? @map("provider_model")
-  providerJobId   String? @map("provider_job_id")
+  providerJobId   String? @unique @map("provider_job_id")
   providerTraceId String? @map("provider_trace_id")
 
   // Output
@@ -1006,6 +1011,7 @@ model VideoGeneration {
   // the auto-preview flow). Distinct from the Video model which is the
   // canonical "music video for this track" relation.
   trackId String? @map("track_id")
+  track   Track?  @relation("TrackVideoGenerations", fields: [trackId], references: [id], onDelete: SetNull)
 
   @@index([userId, createdAt(sort: Desc)])
   @@index([status])
@@ -1121,7 +1127,7 @@ model SyncLicense {
   intendedUse             String?           @map("intended_use")
   stripeCheckoutSessionId String?           @unique @map("stripe_checkout_session_id")
   stripePaymentIntentId   String?           @unique @map("stripe_payment_intent_id")
-  stripeTransferId        String?           @map("stripe_transfer_id")
+  stripeTransferId        String?           @unique @map("stripe_transfer_id")
   licensePdfUrl           String?           @map("license_pdf_url")
   downloadToken           String?           @unique @map("download_token")
   downloadExpiresAt       DateTime?         @map("download_expires_at")
@@ -1151,8 +1157,8 @@ model TrackDistribution {
   status       DistributionStatus @default(PENDING)
   partner      String // "distrokid" | "tunecore" | "manual"
   partnerJobId String?            @map("partner_job_id")
-  upc          String? // Universal Product Code if assigned
-  isrc         String? // International Standard Recording Code
+  upc          String? @unique // Universal Product Code if assigned
+  isrc         String? @unique // International Standard Recording Code
   releaseDate  DateTime?          @map("release_date")
   takedownAt   DateTime?          @map("takedown_at")
   errorMessage String?            @map("error_message") @db.Text
@@ -1216,13 +1222,16 @@ model CollabPayout {
   source           String // "tip" | "sync_license"
   sourceId         String       @map("source_id")
   trackId          String       @map("track_id")
+  track            Track        @relation(fields: [trackId], references: [id], onDelete: Restrict)
   fromUserId       String       @map("from_user_id") // primary owner whose account funds the transfer
+  fromUser         User         @relation("CollabPayoutsFrom", fields: [fromUserId], references: [id], onDelete: Restrict)
   toUserId         String       @map("to_user_id") // collaborator owner receiving the transfer
+  toUser           User         @relation("CollabPayoutsTo", fields: [toUserId], references: [id], onDelete: Restrict)
   shareBps         Int          @map("share_bps")
   amountCents      Int          @map("amount_cents")
   currency         String       @default("usd")
   status           PayoutStatus @default(PENDING)
-  stripeTransferId String?      @map("stripe_transfer_id")
+  stripeTransferId String?      @unique @map("stripe_transfer_id")
   errorMessage     String?      @map("error_message")
   attempts         Int          @default(0)
 
@@ -1234,6 +1243,7 @@ model CollabPayout {
   @@index([status, createdAt])
   @@index([fromUserId])
   @@index([toUserId])
+  @@index([trackId])
   @@map("collab_payouts")
 }
 

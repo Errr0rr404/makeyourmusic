@@ -167,7 +167,12 @@ export async function processPendingCollabPayouts(
         },
         // Issue ON BEHALF OF the primary's connected account — funds come
         // from their balance, where the original destination charge landed.
-        { stripeAccount: primaryAcct }
+        // idempotencyKey is the row id so a webhook replay or in-line + cron
+        // double-invocation cannot issue the same payout twice.
+        {
+          stripeAccount: primaryAcct,
+          idempotencyKey: `collab_payout:${row.id}`,
+        }
       );
       transferId = transfer.id;
     } catch (err) {

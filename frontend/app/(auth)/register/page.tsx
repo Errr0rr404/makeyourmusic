@@ -70,7 +70,21 @@ export default function RegisterPage() {
         referralCode || undefined,
       );
       try { sessionStorage.removeItem('mym_ref'); } catch {}
-      router.push('/verify-email');
+      // Forward `?next=` so verify-email can route the user back where
+      // they started (e.g. /create with a half-finished draft).
+      let next: string | null = null;
+      try {
+        next = new URLSearchParams(window.location.search).get('next');
+      } catch {}
+      const safeNext =
+        next &&
+        next.startsWith('/') &&
+        !next.startsWith('//') &&
+        !next.startsWith('/\\') &&
+        !/^\/[^/]*:/.test(next)
+          ? next
+          : '';
+      router.push(safeNext ? `/verify-email?next=${encodeURIComponent(safeNext)}` : '/verify-email');
     } catch (err) {
       setError((err as Error).message);
     }

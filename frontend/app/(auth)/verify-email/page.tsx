@@ -12,6 +12,18 @@ function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const token = searchParams.get('token') || '';
+  // `?next=` lets a sign-up flow that originated from somewhere specific
+  // (e.g. the /create auth wall) bring the user back there once they hit
+  // "Continue" or "Skip for now". Falls back to home for the plain path.
+  const nextParam = searchParams.get('next') || '';
+  const safeNext =
+    nextParam &&
+    nextParam.startsWith('/') &&
+    !nextParam.startsWith('//') &&
+    !nextParam.startsWith('/\\') &&
+    !/^\/[^/]*:/.test(nextParam)
+      ? nextParam
+      : '/';
   const { user, fetchUser } = useAuthStore();
 
   const [status, setStatus] = useState<'loading' | 'success' | 'error' | 'pending'>(
@@ -81,10 +93,10 @@ function VerifyEmailContent() {
               </div>
             </div>
             <button
-              onClick={() => router.push('/')}
+              onClick={() => router.push(safeNext)}
               className="w-full h-11 rounded-full bg-[hsl(var(--primary))] text-white font-semibold hover:bg-[hsl(var(--primary))]/90 transition-colors"
             >
-              Continue to MakeYourMusic
+              {safeNext === '/' ? 'Continue to MakeYourMusic' : 'Continue'}
             </button>
           </div>
         )}
@@ -139,10 +151,12 @@ function VerifyEmailContent() {
             />
             <div className="text-center">
               <Link
-                href="/"
+                href={safeNext}
                 className="text-sm text-[hsl(var(--muted-foreground))] hover:text-white transition-colors"
               >
-                Skip for now and explore MakeYourMusic →
+                {safeNext === '/'
+                  ? 'Skip for now and explore MakeYourMusic →'
+                  : 'Skip for now and continue →'}
               </Link>
             </div>
           </div>

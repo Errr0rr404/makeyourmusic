@@ -66,20 +66,26 @@ export function encrypt(text: string): string {
  * Decrypt sensitive user data
  */
 export function decrypt(encryptedText: string): string {
-  if (!encryptedText || !encryptedText.includes(':')) return encryptedText;
-  
+  if (!encryptedText) return encryptedText;
+
+  // Fail closed — input that doesn't match the IV:authTag:ciphertext shape is
+  // not a valid encrypted payload. Silently echoing it back to callers would
+  // leak whatever non-encrypted value happened to be stored (a clear sign of a
+  // bug or a downgrade attack); callers must handle the throw.
+  const parts = encryptedText.split(':');
+  if (parts.length !== 3) {
+    throw new Error('Failed to decrypt data: malformed ciphertext');
+  }
+
   try {
-    const parts = encryptedText.split(':');
-    if (parts.length !== 3) return encryptedText; // Not encrypted
-    
     const key = getKey(ENCRYPTION_KEY || FALLBACK_KEY);
     const iv = Buffer.from(parts[0]!, 'hex');
     const authTag = Buffer.from(parts[1]!, 'hex');
     const encrypted = parts[2]!;
-    
+
     const decipher = crypto.createDecipheriv(ALGORITHM, key, iv);
     decipher.setAuthTag(authTag);
-    
+
     let decrypted = decipher.update(encrypted, 'hex', 'utf8');
     decrypted += decipher.final('utf8');
 
@@ -87,18 +93,32 @@ export function decrypt(encryptedText: string): string {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     logger.error('Decryption error', { error: errorMessage });
-    // Fail closed — returning the original ciphertext as if it were plaintext
-    // would silently leak ciphertext into provider calls (Stripe acct ids,
-    // refresh tokens, agent API keys). Callers must handle the throw.
     throw new Error('Failed to decrypt data');
   }
 }
 
 /**
  * Hash sensitive data for search purposes (one-way hash)
- * Used for searching encrypted emails while maintaining privacy
+ * Used for searching encrypted emails while maintaining privacy.
+ * Uses HMAC-SHA-256 keyed by EMAIL_SEARCH_PEPPER so a DB leak doesn't enable
+ * targeted enumeration via rainbow tables.
  */
+const SEARCH_PEPPER =
+  process.env.EMAIL_SEARCH_PEPPER ||
+  process.env.ENCRYPTION_KEY ||
+  'dev-search-pepper-not-for-prod';
+if (
+  !process.env.EMAIL_SEARCH_PEPPER &&
+  !process.env.ENCRYPTION_KEY &&
+  process.env.NODE_ENV === 'production'
+) {
+  throw new Error('EMAIL_SEARCH_PEPPER (or ENCRYPTION_KEY) is required in production');
+}
+
 export function hashForSearch(text: string): string {
   if (!text) return text;
-  return crypto.createHash('sha256').update(text.toLowerCase().trim()).digest('hex');
+  return crypto
+    .createHmac('sha256', SEARCH_PEPPER)
+    .update(text.toLowerCase().trim())
+    .digest('hex');
 }

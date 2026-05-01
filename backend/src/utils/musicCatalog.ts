@@ -258,6 +258,20 @@ const MOOD_HINTS: Record<string, string> = {
 // Per-genre lyric conventions: rhyme scheme, line length, vocabulary register,
 // total length target, structure conventions. The lyric system prompt picks the
 // matching block by genre; subgenre overrides primary genre.
+
+// Quality tier sets the bar the lyric is held to. The tier maps to a paragraph
+// of guidance injected into the lyric system prompt — what "good" looks like
+// for this genre's audience. Rock / metal / indie / folk / jazz / conscious
+// hip-hop fans read lyrics; pop fans want a hook; trap fans want flow; dance
+// fans want a chant. The bar is shaped to match.
+export type LyricQualityTier =
+  | 'literary'      // audience reads lyrics — every line must earn its place
+  | 'narrative'     // story-driven, concrete specifics, plain-spoken
+  | 'hook-craft'    // the chorus IS the song; verses serve the hook
+  | 'flow'          // cadence + rhyme density carry it; substance still required
+  | 'minimal'       // sparse repeated phrases as melodic motifs
+  | 'cinematic';    // vocal as instrument, vowel-driven, invocational
+
 export interface LyricConvention {
   /** Short comma-separated rhyme/meter cues (e.g. "AABB couplets, 8-syllable lines"). */
   rhyme: string;
@@ -265,8 +279,10 @@ export interface LyricConvention {
   voice: string;
   /** Genre-typical structure (mirror what the music will support). */
   structure: string;
-  /** Target total length range for the song body. */
+  /** Density guidance — describes how packed each section should feel, not a word quota. */
   lengthHint: string;
+  /** Quality bar for this genre's audience. Drives the craft paragraph in the lyric prompt. */
+  quality: LyricQualityTier;
 }
 
 const SUBGENRE_LYRIC_HINTS: Record<string, LyricConvention> = {
@@ -275,208 +291,241 @@ const SUBGENRE_LYRIC_HINTS: Record<string, LyricConvention> = {
     rhyme: 'multi-syllable internal rhymes, AAAA bars, triplet flow accents',
     voice: 'first-person swagger, modern slang, brand/lifestyle imagery, present tense',
     structure: 'Intro → 16-bar Verse → Hook → 16-bar Verse → Hook → Bridge → Hook',
-    lengthHint: '350-600 words',
+    lengthHint: 'two 16-bar verses with hook returns; bars are short and breath-paced — let flow drive density',
+    quality: 'flow',
   },
   'Boom Bap': {
     rhyme: 'dense end-rhymes with internal multis, 4-bar punchlines',
     voice: 'first-person storyteller, street-poetic vocabulary, vivid concrete imagery',
     structure: 'Intro → 16-bar Verse → 8-bar Hook → 16-bar Verse → 8-bar Hook → Verse → Hook',
-    lengthHint: '400-700 words',
+    lengthHint: 'three full verses with dense rhyme — this is a bar-quotable subgenre, every bar should land an image, threat, or wordplay',
+    quality: 'literary',
   },
   'Drill': {
     rhyme: 'aggressive end-rhymes, sliding cadence on the last word, repeated tag refrains',
     voice: 'first-person hard-edged, blunt declarative imagery, present-tense menace',
     structure: 'Tag → 16-bar Verse → Hook → 16-bar Verse → Hook',
-    lengthHint: '300-500 words',
+    lengthHint: 'two tight 16-bar verses; menace and concrete street detail over decoration',
+    quality: 'flow',
   },
   'Conscious': {
     rhyme: 'literary multi-syllable rhymes, layered metaphors, complex word-flips',
     voice: 'first-person reflective, social/political imagery, allegory and metaphor',
     structure: 'Intro → Verse → Hook → Verse → Hook → Bridge → Verse → Hook',
-    lengthHint: '450-800 words',
+    lengthHint: 'long-form, three or four verses — listeners come for the argument and the imagery, give them weight',
+    quality: 'literary',
   },
   'Cloud Rap': {
     rhyme: 'loose half-rhymes, repeated words for hypnotic effect, melodic phrasing',
     voice: 'first-person dreamy, abstract imagery, present-tense languid',
     structure: 'Intro → Verse → Hook → Verse → Hook → Outro',
-    lengthHint: '250-450 words',
+    lengthHint: 'sparse, atmospheric — repeated phrases as motifs, fewer but stranger images',
+    quality: 'flow',
   },
   'Lo-Fi Hip Hop': {
     rhyme: 'soft end-rhymes, conversational phrasing, repeated mantra hooks',
     voice: 'first-person introspective, study/late-night imagery, calm present tense',
     structure: 'Verse → Hook → Verse → Hook (often instrumental-heavy with sparse vocals)',
-    lengthHint: '200-400 words',
+    lengthHint: 'sparse — vocals come and go; one strong scenic detail per verse beats a packed bar',
+    quality: 'narrative',
   },
   // R&B
   'Neo-Soul': {
     rhyme: 'flowing end-rhymes with vocal runs, conversational meter',
     voice: 'first-person sensual, organic body imagery, expressive vulnerability',
     structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
-    lengthHint: '280-500 words',
+    lengthHint: 'full song body — verses and bridge carry weight; vulnerability is specific, not generic',
+    quality: 'literary',
   },
   'Alternative R&B': {
     rhyme: 'sparse rhyme, melodic repetition over rhyme density, atmospheric phrasing',
     voice: 'first-person introspective, modern romantic ambiguity, dreamlike imagery',
     structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Outro',
-    lengthHint: '250-450 words',
+    lengthHint: 'atmospheric — fewer lines that linger over many that wander',
+    quality: 'literary',
   },
   // Pop
   'Synth-Pop': {
     rhyme: 'simple AABB or ABAB end-rhymes, hook-forward chorus',
     voice: 'first or second person, bright modern imagery, repeated chant-able chorus',
     structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
-    lengthHint: '250-400 words',
+    lengthHint: 'standard pop body — most of the writing budget belongs to the chorus hook',
+    quality: 'hook-craft',
   },
   'Dance Pop': {
     rhyme: 'simple ABAB rhymes, chant-along chorus with title-as-hook',
     voice: 'first or second person, body/club imagery, present-tense urgency',
     structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Drop/Final Chorus',
-    lengthHint: '230-380 words',
+    lengthHint: 'tight verses, anthemic chorus repeated verbatim — the chorus IS the song',
+    quality: 'hook-craft',
   },
   'K-Pop': {
     rhyme: 'mixed-language ABAB rhymes, chant hook, repeated catchphrase ad-libs',
     voice: 'group POV, aspirational imagery, dynamic shifts in tone across sections',
     structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge (rap or dance break) → Final Chorus',
-    lengthHint: '280-450 words',
+    lengthHint: 'multi-section showcase — each section has a distinct energy, hook is highly repeated',
+    quality: 'hook-craft',
   },
   'Hyperpop': {
     rhyme: 'rapid-fire end-rhymes, repeated short phrases, chant-style hook',
     voice: 'first-person hyper-emotional, internet/digital imagery, exaggerated affect',
     structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus (often sub-2 min)',
-    lengthHint: '180-320 words',
+    lengthHint: 'short, sub-2-min energy — every line is hooky, no breathing room',
+    quality: 'hook-craft',
   },
   'Bedroom Pop': {
     rhyme: 'soft slant-rhymes, conversational meter, quiet hook',
     voice: 'first-person intimate, diary-room imagery, vulnerable present tense',
     structure: 'Verse → Chorus → Verse → Chorus → Bridge → Outro',
-    lengthHint: '220-400 words',
+    lengthHint: 'intimate diary length — concrete domestic detail beats poetic abstraction',
+    quality: 'literary',
   },
   // Rock
   'Indie Rock': {
     rhyme: 'loose ABAB, conversational meter, hook line in chorus',
     voice: 'first-person observational, slice-of-life imagery, ironic distance',
     structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
-    lengthHint: '250-450 words',
+    lengthHint: 'verses carry observation and image — this audience reads lyrics, do not phone the verses in',
+    quality: 'literary',
   },
   'Punk Rock': {
     rhyme: 'simple AABB, short blunt lines, shouted chorus',
     voice: 'first-person defiant, anti-establishment imagery, present-tense confrontation',
     structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Chorus (often <2:30)',
-    lengthHint: '150-280 words',
+    lengthHint: 'short, fast, declarative — every line is a fist, no decorative imagery, no padding',
+    quality: 'narrative',
   },
   'Alternative': {
     rhyme: 'AABA or ABCB, dynamic chorus contrast, vivid imagery',
     voice: 'first-person introspective with anthemic chorus turn, layered emotion',
     structure: 'Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
-    lengthHint: '280-480 words',
+    lengthHint: 'verses build emotional weight; chorus is anthemic — substance in BOTH halves',
+    quality: 'literary',
   },
   'Metalcore': {
     rhyme: 'screamed verses with sung chorus contrast, anthemic AABB chorus',
     voice: 'first-person catharsis, anguished imagery, declarative chorus statement',
     structure: 'Intro → Verse (scream) → Pre-Chorus → Chorus (sung) → Verse (scream) → Chorus → Breakdown → Bridge → Final Chorus',
-    lengthHint: '250-450 words',
+    lengthHint: 'verses are catharsis, chorus is the resolution statement — both demand intent',
+    quality: 'literary',
   },
   // Folk
   'Indie Folk': {
     rhyme: 'AABB or ABAB, narrative imagery, refrain instead of pop chorus',
     voice: 'first-person reflective, nature/place imagery, past-tense storytelling',
     structure: 'Verse → Refrain → Verse → Refrain → Bridge → Refrain (often strophic)',
-    lengthHint: '300-550 words',
+    lengthHint: 'long-form storytelling — multiple verses advancing a story, refrain is the emotional anchor',
+    quality: 'literary',
   },
   'Singer-Songwriter': {
     rhyme: 'AABB or ABAB, conversational meter, narrative arc',
     voice: 'first-person confessional, autobiographical imagery, vulnerable specificity',
     structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
-    lengthHint: '300-550 words',
+    lengthHint: 'long verses, full narrative arc — this audience pays attention to every line',
+    quality: 'literary',
   },
   'Americana': {
     rhyme: 'AABB end-rhymes, narrative ballad meter, regional vocabulary',
     voice: 'first-person plain-spoken, working-class imagery, place names and concrete details',
     structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
-    lengthHint: '300-550 words',
+    lengthHint: 'long-form ballad — name the place, the truck, the diner, the river; specifics are the whole craft',
+    quality: 'narrative',
   },
   'Bluegrass': {
     rhyme: 'AABB tight end-rhymes, fast-meter narrative',
     voice: 'first-person folk-tale storyteller, rural imagery, past-tense narrative',
     structure: 'Verse → Chorus → Verse → Chorus → Instrumental break → Verse → Chorus',
-    lengthHint: '250-450 words',
+    lengthHint: 'fast narrative — story moves quickly, every verse advances the tale',
+    quality: 'narrative',
   },
   // Country
   'Outlaw Country': {
     rhyme: 'AABB couplets, shuffle meter, twangy turn-of-phrase',
     voice: 'first-person rebel, working-class imagery, hard-living specificity',
     structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
-    lengthHint: '280-500 words',
+    lengthHint: 'narrative-rich verses — concrete hard-living detail, not generic rebellion',
+    quality: 'narrative',
   },
   'Country Pop': {
     rhyme: 'AABB simple rhymes, hook-forward chorus, country twang vocabulary',
     voice: 'first-person heartfelt, small-town/rural imagery, big chorus payoff',
     structure: 'Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
-    lengthHint: '280-450 words',
+    lengthHint: 'pop body with country imagery — chorus is the payoff, verses set up specifics that lead there',
+    quality: 'hook-craft',
   },
   // Electronic
   'House': {
     rhyme: 'minimal lyric content, repeated short phrases, chant-style hook',
     voice: 'second-person dance-floor invitation, sensory body imagery',
     structure: 'Intro → Verse → Build → Drop/Hook → Breakdown → Build → Drop/Hook → Outro',
-    lengthHint: '120-280 words (dance music is hook-heavy with sparse verse content)',
+    lengthHint: 'sparse — a four-line refrain on loop is enough; pick words that ride the groove',
+    quality: 'minimal',
   },
   'Future Bass': {
     rhyme: 'simple ABAB, chopped vocal phrases, repeated chant pre-drop',
     voice: 'first-person uplifting, big-feeling imagery, festival-anthem direct address',
     structure: 'Intro → Verse → Pre-Drop → Drop/Hook → Verse → Pre-Drop → Drop/Hook → Outro',
-    lengthHint: '150-300 words',
+    lengthHint: 'short verse, repeating drop hook — chant-able phrases that survive a chopped vocal edit',
+    quality: 'minimal',
   },
   'Trance': {
     rhyme: 'sparse repeated phrases, chant-style hook',
     voice: 'second-person ecstatic, transcendent imagery, present-tense surrender',
     structure: 'Intro → Verse → Pre-Drop/Build → Drop → Breakdown → Build → Drop → Outro',
-    lengthHint: '120-250 words',
+    lengthHint: 'minimal lyric — a single repeated invocation often carries the whole vocal',
+    quality: 'minimal',
   },
   // Soul / Funk / Reggae
   'Gospel': {
     rhyme: 'AABB or ABAB, refrain-heavy, call-and-response',
     voice: 'first-person or congregational, spiritual/uplifting imagery, declarative testimony',
     structure: 'Verse → Chorus/Refrain → Verse → Chorus → Bridge → Final Chorus (often with vamp)',
-    lengthHint: '250-500 words',
+    lengthHint: 'testimony-length — verses build the witness, refrain is the communal answer',
+    quality: 'narrative',
   },
   'Motown': {
     rhyme: 'AABB simple rhymes, snappy hook, call-and-response with backing vocals',
     voice: 'first-person heartfelt, romantic imagery, classic mid-century vocabulary',
     structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
-    lengthHint: '230-400 words',
+    lengthHint: 'tight pop body — the hook lands fast and stays',
+    quality: 'hook-craft',
   },
   'Roots Reggae': {
     rhyme: 'simple AABB, conscious refrain, repeated mantra hook',
     voice: 'first-person spiritual/political, communal imagery, repeated declarative refrain',
     structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Chorus',
-    lengthHint: '250-450 words',
+    lengthHint: 'verses make the case, refrain is the communal answer — meaning over decoration',
+    quality: 'narrative',
   },
   'Reggaeton': {
     rhyme: 'Spanish AABB or ABAB, hook-forward chorus, ad-libs woven through',
     voice: 'first-person sensual or party, club imagery, direct address',
     structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
-    lengthHint: '230-420 words',
+    lengthHint: 'club-pop body — chorus and ad-libs do the heavy lifting',
+    quality: 'hook-craft',
   },
   // World
   'Bossa Nova': {
     rhyme: 'subtle slant rhymes, soft conversational meter',
     voice: 'first-person quiet romantic, warm tropical imagery, breathy intimacy',
     structure: 'Verse → Chorus → Verse → Chorus → Instrumental → Final Chorus',
-    lengthHint: '200-400 words',
+    lengthHint: 'short, breathy — quiet specificity, no shouting; a quiet song earned in a few perfect lines',
+    quality: 'literary',
   },
   'Afrobeats': {
     rhyme: 'mixed-language ABAB rhymes, repeated catch-phrase hook, ad-libs',
     voice: 'first-person celebratory, body/dance imagery, communal direct address',
     structure: 'Intro → Verse → Hook → Verse → Hook → Bridge → Hook',
-    lengthHint: '250-450 words',
+    lengthHint: 'hook-led with ad-libs woven through — chorus is repeated and chant-able',
+    quality: 'hook-craft',
   },
   // Cinematic — usually instrumental, but if vocal:
   'Choral': {
     rhyme: 'simple AABB or sacred-text style, repeated invocational refrain',
     voice: 'collective POV, sacred or epic imagery, vowel-driven phrasing for choir',
     structure: 'Verse → Refrain → Verse → Refrain → Final Refrain (or through-composed)',
-    lengthHint: '180-380 words',
+    lengthHint: 'invocational — vowel-rich, sacred or epic phrasing; few words, all weight',
+    quality: 'cinematic',
   },
 };
 
@@ -485,97 +534,113 @@ const PRIMARY_GENRE_LYRIC_HINTS: Record<string, LyricConvention> = {
     rhyme: 'simple AABB or ABAB end-rhymes, chant-able chorus repeated verbatim',
     voice: 'first or second person, hook-driven, modern relatable imagery',
     structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
-    lengthHint: '250-400 words',
+    lengthHint: 'standard pop body — most of the writing budget belongs to the chorus hook',
+    quality: 'hook-craft',
   },
   'Hip Hop': {
     rhyme: 'multi-syllable internal rhymes, dense end-rhymes, 16-bar verses',
     voice: 'first-person, vivid concrete imagery, present-tense delivery',
     structure: 'Intro → 16-bar Verse → 8-bar Hook → 16-bar Verse → 8-bar Hook → Bridge → Hook',
-    lengthHint: '350-650 words',
+    lengthHint: 'two or three 16-bar verses with hook returns; bars carry the weight',
+    quality: 'flow',
   },
   'Rock': {
     rhyme: 'AABB or ABAB, anthemic chorus, vivid hook line',
     voice: 'first-person emotive, declarative imagery, dynamic vocal delivery',
     structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
-    lengthHint: '280-450 words',
+    lengthHint: 'verses carry observation and emotion; chorus is anthemic — both halves demand intent',
+    quality: 'literary',
   },
   'R&B': {
     rhyme: 'flowing end-rhymes with melodic runs, conversational meter',
     voice: 'first-person, romantic/sensual imagery, vulnerable expressive delivery',
     structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
-    lengthHint: '280-500 words',
+    lengthHint: 'full song body — verses and bridge carry weight; vulnerability is specific, not generic',
+    quality: 'literary',
   },
   'Electronic': {
     rhyme: 'sparse repeated phrases, chant-style hook',
     voice: 'second-person direct address, body/dance/sky imagery, simple repeated phrasing',
     structure: 'Intro → Verse → Build/Pre-Drop → Drop/Hook → Verse → Build → Drop → Outro',
-    lengthHint: '150-300 words',
+    lengthHint: 'sparse — a short repeated refrain over a drop is plenty',
+    quality: 'minimal',
   },
   'Indie': {
     rhyme: 'loose ABAB or slant rhymes, conversational meter',
     voice: 'first-person observational, slice-of-life imagery, ironic warmth',
     structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
-    lengthHint: '270-480 words',
+    lengthHint: 'verses are observational and image-rich — this audience reads lyrics',
+    quality: 'literary',
   },
   'Folk': {
     rhyme: 'AABB or ABAB end-rhymes, narrative ballad meter',
     voice: 'first-person reflective, nature/place/people imagery, past-tense storytelling',
     structure: 'Verse → Refrain → Verse → Refrain → Bridge → Refrain (often strophic, no big chorus)',
-    lengthHint: '320-580 words',
+    lengthHint: 'long-form ballad — multiple verses advancing a story, refrain is the emotional anchor',
+    quality: 'literary',
   },
   'Jazz': {
     rhyme: 'AABA standard form, sophisticated vocabulary, slant rhymes welcome',
     voice: 'first-person reflective, sophisticated romantic imagery, conversational delivery',
     structure: 'AABA standard form (32-bar) or Verse → Chorus → Bridge → Chorus',
-    lengthHint: '180-380 words',
+    lengthHint: 'short standard-form lyric — every line is a refined turn of phrase',
+    quality: 'literary',
   },
   'Lo-Fi': {
     rhyme: 'soft end-rhymes, repeated mantras, conversational meter',
     voice: 'first-person introspective, late-night/study imagery, calm present tense',
     structure: 'Verse → Hook → Verse → Hook (often very sparse vocals)',
-    lengthHint: '180-350 words',
+    lengthHint: 'sparse — vocals come and go; one strong scenic detail per verse',
+    quality: 'narrative',
   },
   'Metal': {
     rhyme: 'AABB or AABA, anthemic chorus, declarative dark imagery',
     voice: 'first-person catharsis, mythic/dark/political imagery, declarative vocal stance',
     structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
-    lengthHint: '250-450 words',
+    lengthHint: 'verses are catharsis with weight; chorus is the resolution statement — this audience reads lyrics, lean into mythic specificity',
+    quality: 'literary',
   },
   'Country': {
     rhyme: 'AABB couplets, narrative shuffle meter, plain-spoken vocabulary',
     voice: 'first-person plain-spoken, working-class/rural imagery, concrete specifics',
     structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
-    lengthHint: '280-500 words',
+    lengthHint: 'long-form narrative — name the place, the truck, the diner; specifics are the whole craft',
+    quality: 'narrative',
   },
   'Soul': {
     rhyme: 'flowing end-rhymes with vocal runs, AABB or ABAB',
     voice: 'first-person heartfelt, romantic or spiritual imagery, expressive vulnerability',
     structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
-    lengthHint: '250-450 words',
+    lengthHint: 'full song body — verses build the testimony, chorus is the resolution',
+    quality: 'literary',
   },
   'Funk': {
     rhyme: 'AABB or repeated short phrases, chant-style hook',
     voice: 'first or second person, body/groove imagery, playful direct address',
     structure: 'Intro → Verse → Hook → Verse → Hook → Bridge → Hook',
-    lengthHint: '200-400 words',
+    lengthHint: 'groove-driven — short snappy verses, repeated hook',
+    quality: 'hook-craft',
   },
   'Reggae': {
     rhyme: 'simple AABB, conscious refrain, repeated mantra hook',
     voice: 'first-person spiritual or political, communal imagery, declarative refrain',
     structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Chorus',
-    lengthHint: '250-450 words',
+    lengthHint: 'verses make the case, refrain is the communal answer',
+    quality: 'narrative',
   },
   'World': {
     rhyme: 'genre-authentic rhyme scheme; native-language phrasing where applicable',
     voice: 'first-person celebratory or romantic, regional cultural imagery',
     structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
-    lengthHint: '250-450 words',
+    lengthHint: 'genre-authentic body — regional specificity in imagery and vocabulary',
+    quality: 'narrative',
   },
   'Cinematic': {
     rhyme: 'sparse if vocal — usually instrumental; if vocal, vowel-driven choral phrasing',
     voice: 'collective or narrator POV, mythic/epic imagery, vowel-forward delivery',
     structure: 'Through-composed build-and-release; if structured, Refrain → Verse → Refrain',
-    lengthHint: '120-280 words (most cinematic music is instrumental)',
+    lengthHint: 'invocational — most cinematic music is instrumental; when vocal, few words and all weight',
+    quality: 'cinematic',
   },
 };
 
@@ -845,6 +910,32 @@ export function lookupLyricConvention(
   if (subGenre && SUBGENRE_LYRIC_HINTS[subGenre]) return SUBGENRE_LYRIC_HINTS[subGenre]!;
   if (genre && PRIMARY_GENRE_LYRIC_HINTS[genre]) return PRIMARY_GENRE_LYRIC_HINTS[genre]!;
   return null;
+}
+
+// Per-tier craft paragraph injected into the lyric system prompt. The tier
+// describes WHAT good looks like for this genre's audience — a Boom Bap head
+// quotes bars, a pop fan sings a chorus, a trance fan rides a chant. The bar
+// the lyric is held to should match.
+const QUALITY_TIER_GUIDANCE: Record<LyricQualityTier, string> = {
+  literary:
+    `This genre's audience are music lovers who read lyrics, quote favorite lines, and dismiss songs whose words feel hollow. Treat the lyric as a poem set to music. Bring concrete sensory detail (sight, body, weather, place, object), narrative arc, and at least one striking turn — an unexpected image, a contradiction, a question that lands. Layered metaphor and unusual vocabulary are welcome where they are earned. Greeting-card sentiment ("our love is fire", "we light up the sky") fails this audience instantly. If you cannot say something true and specific about the idea, reduce the line count instead of padding with abstractions.`,
+  narrative:
+    `Tell a real story with a real narrator. Anchor the song in physical detail — place names, body language, weather, objects, dialogue, time of day. Verse 1 sets the scene; verse 2 advances or complicates it; the chorus is the emotional fulcrum, not just a tagline. Plain-spoken language beats clever phrasing here. Specificity is the whole craft: a song about "missing someone" is generic; "her car still parked outside her mother's place on Tuesdays" is yours. Avoid filler conjunctions ("and I, and I", "oh well, oh well") that pad bars without advancing the story.`,
+  'hook-craft':
+    `The chorus IS the song. Spend most of the craft budget on a memorable, sing-able hook that lands inside the first three words and is repeated verbatim. Verses are setup — short, emotionally clear, never overwriting; their job is to make the chorus hit harder. Repetition of a strong line is a strength here, not a weakness. Avoid clever phrasing that obscures the hook or asks the listener to decode meaning during the chorus. The chorus should be quotable after one listen.`,
+  flow:
+    `Cadence, rhyme density, and pocket carry the song. Multi-syllable rhymes, internal rhymes, unexpected stress placement, and breath control matter more than narrative arc. But filler kills flow as fast as it kills literature: empty placeholder phrases ("yeah, yeah", "check it", random ad-libs replacing actual content) are the giveaway of weak writing. Each bar should land a punchline, image, observation, swagger, threat, or wit. Bring substance to the rhythm — the bar count is your meter, but the bars themselves still need weight.`,
+  minimal:
+    `Dance and electronic music is mostly instrumental. A short repeated refrain (4-8 lines) under a drop, paired with a sparse verse or none at all, is plenty. With so few words, each one must carry weight: pick strong, vowel-rich, sing-able phrases that work as melodic motifs. Direct address ("you", "we") and physical/sensory imagery beat abstract sentiment. Resist the urge to write more lyrics than the genre wants — fewer words landed are better than many words ignored.`,
+  cinematic:
+    `Vocals function as another instrument. Use vowel-rich, open-syllable phrasing. Register is invocation, ceremony, or atmosphere — not pop confession. Often non-narrative: a single repeated phrase or sacred-text-style refrain works. Latin or any vowel-forward language is welcome where appropriate. Few words, all weight.`,
+};
+
+export function lookupQualityTierGuidance(
+  tier: LyricQualityTier | null | undefined
+): string | null {
+  if (!tier) return null;
+  return QUALITY_TIER_GUIDANCE[tier] ?? null;
 }
 
 // Resolve visual conventions: primary-genre block, with optional subgenre

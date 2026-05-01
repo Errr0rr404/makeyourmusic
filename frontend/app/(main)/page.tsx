@@ -8,10 +8,11 @@ import api from '@/lib/api';
 import { TrackCard } from '@/components/track/TrackCard';
 import { OnboardingBanner } from '@/components/OnboardingBanner';
 import { VibePromptTile } from '@/components/VibePromptTile';
+import { LandingPage } from '@/components/landing/LandingPage';
 import { useAuthStore } from '@/lib/store/authStore';
 import {
   TrendingUp, Sparkles, Clock, ChevronRight, AlertCircle,
-  Music2, Play, Wand2, Radio, Zap,
+  Music2, Radio,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -66,6 +67,14 @@ function CardSkeleton() {
 
 export default function HomePage() {
   const { isAuthenticated, user } = useAuthStore();
+
+  // Unauthenticated visitors get the public landing page.
+  if (!isAuthenticated) return <LandingPage />;
+
+  return <AuthenticatedHome user={user} />;
+}
+
+function AuthenticatedHome({ user }: { user: ReturnType<typeof useAuthStore.getState>['user'] }) {
   const [trending, setTrending] = useState<Track[]>([]);
   const [latest, setLatest] = useState<Track[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -81,27 +90,20 @@ export default function HomePage() {
       const getData = <T,>(result: PromiseSettledResult<AxiosResponse<T>>) =>
         result.status === 'fulfilled' ? result.value.data : null;
 
-      const [trendingResult, latestResult, genresResult] = await Promise.allSettled([
-        api.get<{ tracks: Track[] }>('/tracks/trending'),
-        api.get<{ tracks: Track[] }>('/tracks?sort=newest&limit=12'),
-        api.get<{ genres: Genre[] }>('/genres'),
-      ]);
+      const [trendingResult, latestResult, genresResult, recommendationsResult, historyResult] =
+        await Promise.allSettled([
+          api.get<{ tracks: Track[] }>('/tracks/trending'),
+          api.get<{ tracks: Track[] }>('/tracks?sort=newest&limit=12'),
+          api.get<{ genres: Genre[] }>('/genres'),
+          api.get<{ tracks: Track[] }>('/tracks/recommendations?limit=12'),
+          api.get<{ tracks: Track[] }>('/tracks/history?limit=8'),
+        ]);
 
       setTrending(getData(trendingResult)?.tracks || []);
       setLatest(getData(latestResult)?.tracks || []);
       setGenres(getData(genresResult)?.genres || []);
-
-      if (isAuthenticated) {
-        const [recommendationsResult, historyResult] = await Promise.allSettled([
-          api.get<{ tracks: Track[] }>('/tracks/recommendations?limit=12'),
-          api.get<{ tracks: Track[] }>('/tracks/history?limit=8'),
-        ]);
-        setForYou(getData(recommendationsResult)?.tracks || []);
-        setHistory(getData(historyResult)?.tracks || []);
-      } else {
-        setForYou([]);
-        setHistory([]);
-      }
+      setForYou(getData(recommendationsResult)?.tracks || []);
+      setHistory(getData(historyResult)?.tracks || []);
 
       if ([trendingResult, latestResult, genresResult].every((r) => r.status === 'rejected')) {
         setError('Could not load content. Check your connection and try again.');
@@ -116,7 +118,7 @@ export default function HomePage() {
   useEffect(() => {
     loadContent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated]);
+  }, []);
 
   // Compute greeting after mount so the server-rendered HTML doesn't
   // disagree with the client's local hour. SSR happens in the server's
@@ -147,14 +149,9 @@ export default function HomePage() {
         </div>
       )}
 
-      {/* Hero */}
+      {/* Hero — personalized greeting + vibe prompt */}
       <section className="relative overflow-hidden rounded-2xl">
-        <div
-          className="absolute inset-0"
-          style={{
-            background: 'var(--hero-gradient), var(--hero-overlay)',
-          }}
-        />
+        <div className="absolute inset-0" style={{ background: 'var(--hero-gradient), var(--hero-overlay)' }} />
         <div className="absolute inset-0" style={{ background: 'linear-gradient(180deg, transparent 60%, var(--bg-elev-1) 100%)' }} />
         <div
           className="absolute inset-0 opacity-[0.18]"
@@ -164,106 +161,22 @@ export default function HomePage() {
             maskImage: 'linear-gradient(90deg, transparent 0%, black 18%, black 82%, transparent 100%)',
           }}
         />
-        <div className="relative grid gap-6 p-5 sm:gap-8 sm:p-6 md:p-10 lg:grid-cols-[minmax(0,1fr)_390px] lg:items-center lg:p-12">
-          {isAuthenticated ? (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="min-w-0"
-            >
-              <p className="text-sm font-semibold text-white/70 mb-1">{greeting},</p>
-              <h1 className="font-display font-extrabold tracking-tight text-3xl md:text-5xl text-white">
-                {displayName}.
-              </h1>
-              <p className="mt-3 text-base md:text-lg text-white/75 max-w-xl">
-                Tell us a vibe and we will build a playlist of AI music — instantly.
-              </p>
-            </motion.div>
-          ) : (
-            <motion.div
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
-              className="min-w-0"
-            >
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-[11px] font-bold uppercase tracking-widest text-white">
-                <Zap className="w-3 h-3" /> AI-generated music
-              </span>
-              <h1 className="mt-4 font-display font-extrabold tracking-tighter text-[2.6rem] md:text-6xl lg:text-7xl text-white leading-[1.05] max-w-3xl">
-                Sound that <span className="aurora-text">writes itself.</span>
-              </h1>
-              <p className="mt-4 text-base md:text-lg text-white/75 max-w-xl">
-                Discover tracks crafted by AI agents. Hit play, ride the algorithm.
-              </p>
-              <div className="mt-6 flex gap-3">
-                <Link href="/search" className="mym-cta">
-                  <Play className="w-4 h-4" fill="currentColor" /> Start listening
-                </Link>
-                <Link href="/register" className="mym-ghost">
-                  Sign up free
-                </Link>
-              </div>
-            </motion.div>
-          )}
-
-          <div className="hidden lg:block relative">
-            <div className="rounded-2xl border border-white/15 bg-black/25 p-5 shadow-2xl shadow-black/30 backdrop-blur-md">
-              <div className="flex items-center justify-between mb-5">
-                <div>
-                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-white/55">Agent session</p>
-                  <p className="mt-1 text-sm font-bold text-white">Midnight Lo-Fi Engine</p>
-                </div>
-                <span className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-teal-400/15 text-teal-200">
-                  <Radio className="w-4 h-4" />
-                </span>
-              </div>
-
-              <div className="rounded-xl bg-white/[0.06] p-4">
-                <div className="flex items-end gap-1 h-24">
-                  {Array.from({ length: 34 }).map((_, i) => (
-                    <span
-                      key={i}
-                      className="flex-1 rounded-t-sm"
-                      style={{
-                        height: `${24 + ((i * 17) % 68)}%`,
-                        background:
-                          i % 5 === 0
-                            ? 'var(--led-green, #2dd4bf)'
-                            : i % 3 === 0
-                              ? 'var(--brand, #f472b6)'
-                              : 'var(--led-amber, #a78bfa)',
-                        opacity: 0.78,
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div className="mt-4 space-y-2">
-                {[
-                  ['01', 'Rain on Neon Glass', 'cinematic synthwave'],
-                  ['02', 'Coffee After Orbit', 'mellow jazz'],
-                  ['03', 'Focus Loop 88', 'lo-fi with rain'],
-                ].map(([number, title, mood]) => (
-                  <div key={number} className="flex items-center gap-3 rounded-lg bg-white/[0.055] px-3 py-2.5">
-                    <span className="text-xs tabular-nums text-white/35">{number}</span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-white">{title}</span>
-                      <span className="block truncate text-[11px] text-white/45">{mood}</span>
-                    </span>
-                    <span className="flex gap-0.5">
-                      <span className="eq-bar" />
-                      <span className="eq-bar" />
-                      <span className="eq-bar" />
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="min-w-0 max-w-2xl lg:col-span-2">
+        <div className="relative grid gap-6 p-5 sm:gap-8 sm:p-6 md:p-10 lg:p-12">
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.4 }}
+            className="min-w-0"
+          >
+            <p className="text-sm font-semibold text-white/70 mb-1">{greeting},</p>
+            <h1 className="font-display font-extrabold tracking-tight text-3xl md:text-5xl text-white">
+              {displayName}.
+            </h1>
+            <p className="mt-3 text-base md:text-lg text-white/75 max-w-xl">
+              Tell us a vibe and we will build a playlist of AI music — instantly.
+            </p>
+          </motion.div>
+          <div className="min-w-0 max-w-2xl">
             <VibePromptTile />
           </div>
         </div>
@@ -271,20 +184,16 @@ export default function HomePage() {
 
       <OnboardingBanner />
 
-      {/* Loading state */}
       {loading ? (
-        <div className="space-y-12">
-          <section>
-            <div className="h-8 w-56 rounded-md bg-white/5 mb-5 shimmer" />
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
-              {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
-            </div>
-          </section>
-        </div>
+        <section>
+          <div className="h-8 w-56 rounded-md bg-white/5 mb-5 shimmer" />
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => <CardSkeleton key={i} />)}
+          </div>
+        </section>
       ) : (
         <>
-          {/* Jump back in (history) */}
-          {isAuthenticated && history.length > 0 && (
+          {history.length > 0 && (
             <section>
               <SectionHeader
                 title="Jump back in"
@@ -300,8 +209,7 @@ export default function HomePage() {
             </section>
           )}
 
-          {/* Made for You */}
-          {isAuthenticated && forYou.length > 0 && (
+          {forYou.length > 0 && (
             <section>
               <SectionHeader
                 title="Made for you"
@@ -317,7 +225,6 @@ export default function HomePage() {
             </section>
           )}
 
-          {/* Trending */}
           {trending.length > 0 && (
             <section>
               <SectionHeader
@@ -334,7 +241,6 @@ export default function HomePage() {
             </section>
           )}
 
-          {/* Latest */}
           {latest.length > 0 && (
             <section>
               <SectionHeader
@@ -351,7 +257,6 @@ export default function HomePage() {
             </section>
           )}
 
-          {/* Genres */}
           {genres.length > 0 && (
             <section>
               <SectionHeader
@@ -361,9 +266,6 @@ export default function HomePage() {
               />
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {genres.map((genre, i) => {
-                  // Tile gradient is built from the genre's color (DB-provided) or
-                  // the active skin's brand color when missing. The hex literal
-                  // here is only a fallback for genres that have no color saved.
                   const color = genre.color || '#d946ef';
                   return (
                     <Link
@@ -375,7 +277,7 @@ export default function HomePage() {
                       }}
                     >
                       <div
-                        className="absolute -bottom-6 -right-6 w-24 h-24 rounded-lg opacity-50 group-hover:opacity-80 transition-opacity rotate-[18deg]"
+                        className="absolute -bottom-6 -right-6 w-24 h-24 rounded-lg opacity-50 group-hover:opacity-80 transition-opacity"
                         style={{ background: color, transform: `rotate(${(i * 22) % 60 - 18}deg)` }}
                       />
                       <h3 className="relative font-display font-extrabold text-xl md:text-2xl text-white tracking-tight">
@@ -388,26 +290,6 @@ export default function HomePage() {
                   );
                 })}
               </div>
-            </section>
-          )}
-
-          {/* CTA for guests */}
-          {!isAuthenticated && (
-            <section className="rounded-2xl p-8 md:p-12 text-center"
-                     style={{ background: 'var(--aurora)' }}>
-              <Wand2 className="w-10 h-10 mx-auto mb-4 text-white" />
-              <h2 className="font-display font-extrabold text-3xl md:text-4xl text-white tracking-tight">
-                Make your own AI track.
-              </h2>
-              <p className="mt-2 text-white/85 max-w-xl mx-auto">
-                Sign up free to spin up agents, generate music, and publish to listeners worldwide.
-              </p>
-              <Link
-                href="/register"
-                className="mt-6 inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-white text-black font-bold text-sm hover:bg-white/90 transition-colors"
-              >
-                Create your free account
-              </Link>
             </section>
           )}
         </>

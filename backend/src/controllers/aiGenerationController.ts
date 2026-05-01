@@ -22,6 +22,7 @@ import {
   lookupVocalStyleHint,
   lookupEraHint,
   lookupLyricConvention,
+  lookupQualityTierGuidance,
   lookupVisualConvention,
 } from '../utils/musicCatalog';
 import { assertCanGenerate, getDailyUsage } from '../utils/aiUsage';
@@ -150,15 +151,17 @@ function hasCloudinaryCredentials(): boolean {
 // at internal metadata services (169.254.169.254), localhost, or
 // arbitrary external hosts the server can reach but the user can't.
 //
-// Hostnames here are deliberately broad on the suffix side — MiniMax / its
-// CDN partners rotate exact subdomains. We require https:// and an
-// allowlisted suffix; anything else is rejected before connect() runs.
+// Hostnames here are deliberately narrow — broad suffix matches like
+// `*.aliyuncs.com` would let any Alibaba OSS tenant qualify, which means a
+// malicious provider response could stash attacker-controlled content under
+// our SSRF allowlist. Pin to MiniMax-controlled buckets only. If MiniMax adds
+// new buckets, extend this list explicitly.
 const PROVIDER_HOST_ALLOWLIST = [
   /\.minimax\.io$/i,
   /\.minimaxi\.com$/i,
   /\.minimax\.chat$/i,
-  /\.aliyuncs\.com$/i,        // MiniMax serves audio via Alibaba OSS
-  /\.aliyun\.com$/i,
+  /^minimax-(?:public|cdn|prod)[a-z0-9-]*\.oss-[a-z0-9-]+\.aliyuncs\.com$/i,
+  /^minimax-algeng-chat-tts\.oss-[a-z0-9-]+\.aliyuncs\.com$/i,
   /\.cloudinary\.com$/i,      // some flows may already go through Cloudinary
 ];
 
@@ -433,6 +436,8 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
       conventionVoice: convention?.voice,
       conventionStructure: convention?.structure,
       conventionLengthHint: convention?.lengthHint,
+      conventionQualityGuidance:
+        lookupQualityTierGuidance(convention?.quality) || undefined,
     });
 
     // Always sanitize: even with the tightened system prompt, models
@@ -556,6 +561,8 @@ async function orchestrateAndPrepareLyrics(gen: {
         conventionVoice: autoConvention?.voice,
         conventionStructure: autoConvention?.structure,
         conventionLengthHint: autoConvention?.lengthHint,
+        conventionQualityGuidance:
+          lookupQualityTierGuidance(autoConvention?.quality) || undefined,
       });
       nextLyrics = sanitizeLyrics(result.lyrics);
     } catch (err) {
@@ -1712,6 +1719,7 @@ export const regenerateSection = async (req: RequestWithUser, res: Response) => 
       '\n[REWRITE_HERE]\n' +
       source.lyrics.slice(target.end);
     const sectionConvention = lookupLyricConvention(source.genre, source.subGenre);
+    const sectionQualityGuidance = lookupQualityTierGuidance(sectionConvention?.quality);
     const styleContext: string[] = [];
     if (source.genre || source.subGenre) {
       styleContext.push(
@@ -1727,12 +1735,29 @@ export const regenerateSection = async (req: RequestWithUser, res: Response) => 
     const styleBlock = styleContext.length
       ? `\n\nSong style frame (must stay inside this):\n${styleContext.join('\n')}`
       : '';
+    const qualityBarBlock = sectionQualityGuidance
+      ? `\n\nQUALITY BAR FOR THIS GENRE:\n${sectionQualityGuidance}`
+      : '';
 
+    // Craft bar mirrors the full lyric prompt: every line must earn its place,
+    // specifics over abstractions, no padding to match the old length. Keeping
+    // the rewrite "similar in length" to the original is fine when the original
+    // was strong — but if the original was filler, the rewrite should be
+    // tighter. Length follows substance, not the prior word count.
     const sysPrompt =
-      `You are rewriting a single section of an existing song. Output ONLY the new lyrics for the ${target.tag} section. ` +
-      `Match the existing meter, rhyme scheme, and theme. Stay inside the song's genre/mood/voice frame supplied below. ` +
-      `Do NOT include the section tag itself. Do NOT include other sections. Keep length similar to the original. ` +
-      `Do NOT include parenthetical stage directions, instrument cues, or [Guitar Solo]-style tags — output only sing-able lyrics.${styleBlock}`;
+      `You are rewriting a single section of an existing song. Output ONLY the new lyrics for the ${target.tag} section.` +
+      `\n\nCRAFT BAR (apply to every line):` +
+      `\n• Every line must do at least one of: advance the emotional arc, deliver a concrete image, reveal character or stakes, land a memorable hook, or provide a deliberate breath/refrain. Lines that do none of these are filler — cut them, do not pad.` +
+      `\n• Specific beats vague. Concrete sensory detail (sight, body, place, object, weather) over generic abstractions ("dreams", "soul", "heart", "fire", "shine").` +
+      `\n• Avoid worn clichés (neon lights, chasing dreams, heart of gold, fire in my veins, light up the sky) unless explicitly requested.` +
+      `\n• Length follows substance. Match the original's general size only if every line earns its place — never pad to fill the same word count. A tighter rewrite that lands beats a same-length rewrite that wanders.` +
+      `\n• Match the existing meter, rhyme scheme, and emotional theme of the surrounding sections so the rewrite feels native to the song.` +
+      `\n\nFORMATTING:` +
+      `\n• Do NOT include the section tag itself.` +
+      `\n• Do NOT include other sections.` +
+      `\n• Do NOT include parenthetical stage directions, instrument cues, or [Guitar Solo]-style tags — output only sing-able lyrics. Parentheses are allowed only for short vocal ad-libs ("(woah)", "(yeah)").` +
+      qualityBarBlock +
+      styleBlock;
     const userPrompt =
       `Existing song with the section to rewrite marked [REWRITE_HERE]:\n\n${surrounding}\n\n` +
       (typeof instructions === 'string' && instructions.trim()

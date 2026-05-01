@@ -6,6 +6,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { ImageUpload } from '@/components/upload/ImageUpload';
+import { AuthGateModal } from '@/components/auth/AuthGateModal';
 import { toast } from 'sonner';
 import {
   GENRE_TREE,
@@ -16,11 +17,17 @@ import {
 } from '@makeyourmusic/shared';
 import {
   type LucideIcon,
-  Sparkles, Wand2, Lock, Loader2, ChevronLeft, ChevronRight,
+  Sparkles, Wand2, Loader2, ChevronLeft, ChevronRight,
   Globe, LockKeyhole, CheckCircle2, AlertCircle, RotateCcw,
   Zap, FileText, Settings2, Headphones, Clock,
   Bot, BookOpen, Flame, Music2,
 } from 'lucide-react';
+
+// sessionStorage key for the in-progress draft. Survives the OAuth /
+// /register bounce-out so anonymous users don't lose their idea + style +
+// lyrics if they need to leave the page to authenticate.
+const DRAFT_KEY = 'mym_create_draft_v1';
+type PendingAction = 'generate' | 'lyrics' | null;
 
 type Step = 'idea' | 'style' | 'lyrics' | 'generate' | 'publish';
 
@@ -110,6 +117,13 @@ export default function CreatePage() {
   const pollRef = useRef<number | null>(null);
   const activeGenerationIdRef = useRef<string | null>(null);
   const loadedGenerationIdRef = useRef<string | null>(null);
+
+  // Auth-gate modal state. Anonymous users can fill out idea/style/lyrics —
+  // the modal fires only when they try to spend a credit (generate music or
+  // generate lyrics with AI).
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const pendingActionRef = useRef<PendingAction>(null);
+  const draftRestoredRef = useRef(false);
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -208,18 +222,49 @@ export default function CreatePage() {
     };
   }, []);
 
-  if (!isAuthenticated) {
-    return (
-      <div className="text-center py-20">
-        <Lock className="w-12 h-12 text-[hsl(var(--muted-foreground))] mx-auto mb-4" />
-        <h2 className="text-xl font-bold text-white mb-2">Create Music with AI</h2>
-        <p className="text-[hsl(var(--muted-foreground))] mb-4">Log in to start generating tracks</p>
-        <Link href="/login" className="px-6 py-2.5 rounded-full bg-[hsl(var(--primary))] text-white font-medium">
-          Log In
-        </Link>
-      </div>
-    );
-  }
+  // Restore once after auth hydration settles. We deliberately do NOT
+  // overwrite anything the user already typed in this session — restore
+  // only kicks in on the cold-load path back from /register or /login.
+  // Must live above the early returns to keep hook order stable.
+  useEffect(() => {
+    if (draftRestoredRef.current) return;
+    if (typeof window === 'undefined') return;
+    let raw: string | null = null;
+    try {
+      raw = sessionStorage.getItem(DRAFT_KEY);
+    } catch {}
+    if (!raw) {
+      draftRestoredRef.current = true;
+      return;
+    }
+    try {
+      const d = JSON.parse(raw);
+      if (typeof d.idea === 'string') setIdea(d.idea);
+      if (typeof d.title === 'string') setTitle(d.title);
+      if (typeof d.lyrics === 'string') setLyrics(d.lyrics);
+      if (typeof d.genre === 'string') setGenre(d.genre);
+      if (typeof d.subGenre === 'string') setSubGenre(d.subGenre);
+      if (typeof d.mood === 'string') setMood(d.mood);
+      if (typeof d.energy === 'string') setEnergy(d.energy);
+      if (typeof d.era === 'string') setEra(d.era);
+      if (typeof d.vocalStyle === 'string') setVocalStyle(d.vocalStyle);
+      if (typeof d.vibeReference === 'string') setVibeReference(d.vibeReference);
+      if (typeof d.style === 'string') setStyle(d.style);
+      if (typeof d.language === 'string') setLanguage(d.language);
+      if (typeof d.isInstrumental === 'boolean') setIsInstrumental(d.isInstrumental);
+      if (typeof d.durationSec === 'number') setDurationSec(d.durationSec);
+      if (typeof d.bpm === 'number' || d.bpm === null) setBpm(d.bpm);
+      if (typeof d.musicalKey === 'string') setMusicalKey(d.musicalKey);
+      if (typeof d.step === 'string' && ['idea', 'style', 'lyrics'].includes(d.step)) {
+        setStep(d.step as Step);
+      }
+    } catch {
+      // Corrupt draft — drop it.
+    } finally {
+      try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
+      draftRestoredRef.current = true;
+    }
+  }, []);
 
   if (hydratingGeneration) {
     return (
@@ -240,8 +285,37 @@ export default function CreatePage() {
     setStep('style');
   };
 
+  // ─── Draft persistence (anonymous → authenticated bridge) ──
+  // Snapshot the form to sessionStorage right before bouncing the user out
+  // for sign-up so they don't lose work if they take the full-page register
+  // path. The modal path keeps state in React already; this is cheap
+  // insurance for the bounce-out case.
+  const persistDraft = () => {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({
+          step, idea, title, lyrics, genre, subGenre, mood, energy, era,
+          vocalStyle, vibeReference, style, language, isInstrumental,
+          durationSec, bpm, musicalKey,
+        }),
+      );
+    } catch {
+      // Quota or disabled storage — no-op, the modal path still works.
+    }
+  };
+
+  const requireAuth = (action: PendingAction): boolean => {
+    if (useAuthStore.getState().isAuthenticated) return true;
+    pendingActionRef.current = action;
+    persistDraft();
+    setAuthModalOpen(true);
+    return false;
+  };
+
   // ─── Step 3: Lyrics ────────────────────────────────────
-  const handleGenerateLyrics = async () => {
+  const runGenerateLyrics = async () => {
     setLyricsError('');
     setGeneratingLyrics(true);
     try {
@@ -276,6 +350,11 @@ export default function CreatePage() {
     }
   };
 
+  const handleGenerateLyrics = () => {
+    if (!requireAuth('lyrics')) return;
+    runGenerateLyrics();
+  };
+
   // ─── Step 4: Generate music ────────────────────────────
   const pollGeneration = (id: string) => {
     activeGenerationIdRef.current = id;
@@ -304,7 +383,7 @@ export default function CreatePage() {
     tick();
   };
 
-  const handleGenerate = async () => {
+  const runGenerateMusic = async () => {
     if (!isInstrumental && !lyrics.trim()) {
       toast.error('Write or generate lyrics first');
       setStep('lyrics');
@@ -348,6 +427,26 @@ export default function CreatePage() {
         setUsage(error.response.data.usage);
       }
     }
+  };
+
+  const handleGenerate = () => {
+    if (!requireAuth('generate')) return;
+    runGenerateMusic();
+  };
+
+  // Resume the action the user was about to take when the auth wall fired.
+  // Runs after sign-in/sign-up via the in-page modal — full-navigation
+  // sign-up (via the "Create free account" link) intentionally does NOT
+  // auto-fire on return, so the user can review their restored draft first.
+  const handleAuthSuccess = () => {
+    const pending = pendingActionRef.current;
+    pendingActionRef.current = null;
+    try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
+    // Fetch usage now that we're authenticated, so the header shows credits
+    // before kicking off the generation.
+    api.get('/ai/usage').then((r) => setUsage(r.data.usage)).catch(() => {});
+    if (pending === 'generate') runGenerateMusic();
+    else if (pending === 'lyrics') runGenerateLyrics();
   };
 
   // ─── Step 5: Publish ───────────────────────────────────
@@ -486,6 +585,23 @@ export default function CreatePage() {
           />
         )}
       </div>
+
+      <AuthGateModal
+        open={authModalOpen}
+        onOpenChange={setAuthModalOpen}
+        onSuccess={handleAuthSuccess}
+        title={
+          pendingActionRef.current === 'lyrics'
+            ? 'Sign in to generate lyrics'
+            : 'Sign in to generate your track'
+        }
+        description={
+          pendingActionRef.current === 'lyrics'
+            ? 'Lyric generation uses your daily AI credits — quick sign-up unlocks them.'
+            : 'Your idea, lyrics, and style choices are saved — finish creating an account to bring the track to life.'
+        }
+        signupNext="/create"
+      />
     </div>
   );
 }

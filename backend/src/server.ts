@@ -6,12 +6,17 @@ import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/errorHandler';
 import { apiLimiter } from './middleware/rateLimiter';
-import { securityHeaders, requestId } from './middleware/security';
+import { securityHeaders, requestId, validateEnv } from './middleware/security';
 import { sanitizeBody } from './middleware/validation';
 import { performanceMonitor } from './middleware/performance';
 import { requestLogger } from './middleware/requestLogger';
 import logger from './utils/logger';
 import { initFirebaseAdmin } from './utils/firebaseAdmin';
+
+// Validate critical environment variables before doing anything else. Catches
+// shipping the literal placeholder JWT_SECRET=your-secret-key-change-in-production
+// at boot rather than after a token has been minted.
+validateEnv();
 
 // Initialize Firebase Admin SDK once on startup. Safe no-op if credentials are absent.
 initFirebaseAdmin();

@@ -60,6 +60,7 @@ export async function startStemsJob(audioUrl: string): Promise<StartResult> {
         output_format: 'mp3',
       },
     }),
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) {
     const txt = await res.text();
@@ -81,6 +82,7 @@ export async function pollStemsJob(jobId: string): Promise<PollResult> {
   if (!isConfigured()) throw new StemProviderUnavailable();
   const res = await fetch(`${REPLICATE_BASE}/predictions/${jobId}`, {
     headers: { Authorization: `Token ${process.env.REPLICATE_API_TOKEN}` },
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) throw new Error(`Replicate stems poll failed (${res.status})`);
   const json = (await res.json()) as any;

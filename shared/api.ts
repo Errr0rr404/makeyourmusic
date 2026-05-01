@@ -5,6 +5,12 @@ const TOKEN_KEY = 'accessToken';
 
 let _apiInstance: AxiosInstance | null = null;
 
+// Statuses we will retry on. Whitelisted instead of "anything 5xx" so we
+// don't burn requests on permanent failures (501 Not Implemented, 505 HTTP
+// Version Not Supported) and DO honor 408 / 429 (with Retry-After honored
+// by axios), which the original "always 5xx" rule missed.
+const RETRYABLE_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504, 522, 524]);
+
 // Callback registered by authStore so the refresh interceptor can push a new
 // access token back into the store. Keeps the api module free of a cyclic
 // import on authStore (which itself imports getApi).
@@ -24,6 +30,15 @@ export function onTokenRefreshFailed(cb: () => void): void {
  *   - Mobile: createApi('https://your-backend.railway.app/api')
  */
 export function createApi(baseURL: string): AxiosInstance {
+  // Calling createApi twice returns separate instances; the previous one's
+  // interceptors silently become orphaned. Warn so callers notice.
+  if (_apiInstance) {
+    // eslint-disable-next-line no-console
+    console.warn(
+      '[shared/api] createApi() called more than once — the previous instance is now orphaned.',
+    );
+  }
+
   const api = axios.create({
     baseURL,
     withCredentials: true,
@@ -78,11 +93,14 @@ export function createApi(baseURL: string): AxiosInstance {
       const isIdempotent =
         IDEMPOTENT_METHODS.has(method) || original?.metadata?.idempotent === true;
 
-      // Retry 5xx / network errors — only for idempotent methods.
+      // Retry transient failures (network errors + the whitelisted 4xx/5xx)
+      // only for idempotent methods.
+      const status = error.response?.status;
+      const isRetryableStatus = !error.response || (status != null && RETRYABLE_STATUSES.has(status));
       if (
         original &&
         isIdempotent &&
-        (!error.response || error.response.status >= 500) &&
+        isRetryableStatus &&
         (!original._retryCount || original._retryCount < MAX_RETRIES)
       ) {
         original._retryCount = (original._retryCount || 0) + 1;
@@ -142,12 +160,20 @@ export function createApi(baseURL: string): AxiosInstance {
               isRefreshing = false;
             }
           } else {
+            // Queue waits for the in-flight refresh to finish, then re-issues
+            // with the new token. Mark `_retry = true` so a second 401 on this
+            // request doesn't queue it AGAIN (which would deadlock once the
+            // refresh succeeded but a stale per-token grant was rejected).
+            original._retry = true;
             return new Promise((resolve, reject) => {
               failedQueue.push({ resolve, reject });
             }).then((token) => {
-              if (original.headers) {
-                original.headers.Authorization = `Bearer ${token}`;
+              if (!original.headers) {
+                return Promise.reject(
+                  new Error('Cannot retry queued request: missing headers on original config'),
+                );
               }
+              original.headers.Authorization = `Bearer ${token}`;
               return api(original);
             });
           }

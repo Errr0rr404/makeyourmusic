@@ -1154,6 +1154,38 @@ html.skin-vintage :where(
   [class^="to-rose-"], [class*=" to-rose-"]
 ) { --tw-gradient-to: var(--brand-strong); }
 
+/* ── Landing-page primitives ────────────────────────────── */
+:root { --brand-3: #2dd4bf; }
+html.skin-vintage { --brand-3: var(--led-green); }
+
+/* The landing page is full-bleed inside the main panel — escape padding. */
+.mym-landing-root {
+  margin: -16px -16px 0;
+  position: relative;
+}
+@media (min-width: 768px) {
+  .mym-landing-root { margin: -16px -32px 0; }
+}
+
+@keyframes mym-marquee { to { transform: translateX(-50%); } }
+.mym-marquee-track { animation: mym-marquee 50s linear infinite; }
+
+@keyframes mym-blink { 50% { opacity: 0; } }
+.mym-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  background: var(--brand);
+  margin-left: 3px;
+  animation: mym-blink 1s steps(1) infinite;
+  vertical-align: middle;
+}
+
+@keyframes mym-orbit-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes mym-orbit-spin-rev { to { transform: translate(-50%, -50%) rotate(-360deg); } }
+.mym-orbit-spin { animation: mym-orbit-spin 18s linear infinite; }
+.mym-orbit-spin-rev { animation: mym-orbit-spin-rev 28s linear infinite; }
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {

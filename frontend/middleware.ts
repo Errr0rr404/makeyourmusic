@@ -4,11 +4,14 @@ import { NextResponse, type NextRequest } from 'next/server';
 // Coarse-grained gating only — fine-grained role checks (e.g. ADMIN) still
 // happen client-side and at the API layer. The signal here is the presence
 // of the httpOnly `refreshToken` cookie set by the backend on login.
+//
+// `/create` is intentionally NOT protected — anonymous users can browse the
+// idea/style/lyrics steps; the auth wall fires inside the page right before
+// the actual /ai/music call (see frontend/app/(main)/create/page.tsx).
 const PROTECTED_PREFIXES = [
   '/admin',
   '/dashboard',
   '/studio',
-  '/create',
   '/notifications',
 ];
 

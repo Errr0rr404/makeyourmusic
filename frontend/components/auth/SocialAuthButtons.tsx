@@ -10,9 +10,17 @@ type Provider = 'google' | 'apple';
 export function SocialAuthButtons({
   onError,
   onPending,
+  onSuccess,
 }: {
   onError?: (msg: string) => void;
   onPending?: (pending: boolean) => void;
+  /**
+   * Called after successful sign-in. When provided, the component skips its
+   * default `router.push` so the caller (e.g. an in-page auth-gate modal) can
+   * keep the user on the current route and resume whatever action they were
+   * mid-way through.
+   */
+  onSuccess?: () => void;
 }) {
   const router = useRouter();
   const { firebaseSignIn } = useAuthStore();
@@ -25,6 +33,10 @@ export function SocialAuthButtons({
     try {
       const idToken = provider === 'google' ? await signInWithGoogle() : await signInWithApple();
       await firebaseSignIn(idToken);
+      if (onSuccess) {
+        onSuccess();
+        return;
+      }
       // Read ?next= from window.location to avoid useSearchParams() —
       // calling it here forces the entire auth route to bail out of static
       // generation, which has been failing the production build.
