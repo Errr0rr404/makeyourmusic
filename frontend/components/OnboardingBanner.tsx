@@ -17,12 +17,21 @@ export function OnboardingBanner() {
       setDismissed(true);
       return;
     }
-    const alreadySeen = localStorage.getItem(STORAGE_KEY) === '1';
+    let alreadySeen = false;
+    try {
+      alreadySeen = localStorage.getItem(STORAGE_KEY) === '1';
+    } catch {
+      // Safari private mode / sandboxed iframe — treat as not-seen.
+    }
     setDismissed(alreadySeen);
   }, [isAuthenticated]);
 
   const dismiss = () => {
-    localStorage.setItem(STORAGE_KEY, '1');
+    try {
+      localStorage.setItem(STORAGE_KEY, '1');
+    } catch {
+      // Safari private mode throws a SecurityError; don't crash the click handler.
+    }
     setDismissed(true);
   };
 

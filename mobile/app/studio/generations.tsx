@@ -117,12 +117,17 @@ export default function GenerationsScreen() {
     }, [load])
   );
 
-  // Poll if any are in progress
+  // Poll while any generation is in progress. Depend on a stable boolean
+  // so the interval only resets when the in-progress status genuinely
+  // changes, not on every load() resolve.
+  const hasInProgress = generations.some(
+    (g) => g.status === 'PENDING' || g.status === 'PROCESSING',
+  );
   useEffect(() => {
-    if (!generations.some((g) => g.status === 'PENDING' || g.status === 'PROCESSING')) return;
+    if (!hasInProgress) return;
     const interval = setInterval(load, 5000);
     return () => clearInterval(interval);
-  }, [generations, load]);
+  }, [hasInProgress, load]);
 
   // Cleanup audio on unmount
   useEffect(() => () => { sound.current?.unloadAsync?.(); }, []);
@@ -137,28 +142,45 @@ export default function GenerationsScreen() {
     }, [])
   );
 
+  // Reentrancy guard: two fast taps on different items used to race the
+  // createAsync() call, leaving the second's `sound.current` overwriting
+  // the first while the first was still loading. Mirror the create-screen
+  // pattern to short-circuit while a play call is mid-flight.
+  const previewBusyRef = useRef(false);
   const togglePlay = async (gen: Gen) => {
     if (!gen.audioUrl) return;
-    if (playingId === gen.id) {
-      await sound.current?.pauseAsync?.();
-      setPlayingId(null);
-      return;
+    if (previewBusyRef.current) return;
+    previewBusyRef.current = true;
+    try {
+      if (playingId === gen.id) {
+        await sound.current?.pauseAsync?.().catch(() => undefined);
+        setPlayingId(null);
+        return;
+      }
+      // Pause the main player before playing a generation preview, otherwise
+      // the user hears two streams simultaneously.
+      try { await TrackPlayer.pause(); } catch { /* not initialized */ }
+      // Stop previous
+      if (sound.current) {
+        await sound.current.unloadAsync?.().catch(() => undefined);
+        sound.current = null;
+      }
+      const { sound: s } = await Audio.Sound.createAsync({ uri: gen.audioUrl });
+      // If a faster tap landed first while we were awaiting createAsync,
+      // throw this one away.
+      if (sound.current) {
+        await s.unloadAsync().catch(() => undefined);
+        return;
+      }
+      sound.current = s;
+      s.setOnPlaybackStatusUpdate((status: any) => {
+        if (status.didJustFinish) setPlayingId(null);
+      });
+      await s.playAsync();
+      setPlayingId(gen.id);
+    } finally {
+      previewBusyRef.current = false;
     }
-    // Pause the main player before playing a generation preview, otherwise
-    // the user hears two streams simultaneously.
-    try { await TrackPlayer.pause(); } catch { /* not initialized */ }
-    // Stop previous
-    if (sound.current) {
-      await sound.current.unloadAsync?.();
-      sound.current = null;
-    }
-    const { sound: s } = await Audio.Sound.createAsync({ uri: gen.audioUrl });
-    sound.current = s;
-    s.setOnPlaybackStatusUpdate((status: any) => {
-      if (status.didJustFinish) setPlayingId(null);
-    });
-    await s.playAsync();
-    setPlayingId(gen.id);
   };
 
   const handleDelete = (gen: Gen) => {

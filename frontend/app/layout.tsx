@@ -77,6 +77,31 @@ export default async function RootLayout({
       suppressHydrationWarning
       data-scroll-behavior="smooth"
     >
+      <head>
+        {/*
+          Pre-paint theme sync. The cookie path covers most users, but if a
+          user changed their theme on a different device (or cookies are
+          disabled) we'd flash the cookie/SSR default for one frame before
+          the React effect hydrates. This blocking <script> reads
+          localStorage and applies the right classes BEFORE first paint.
+          Inline so it executes synchronously; trust it because it only
+          reads our own keys and toggles classes.
+        */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{
+              var s=localStorage.getItem('mym-skin');
+              var p=localStorage.getItem('mym-palette')||localStorage.getItem('theme');
+              var r=document.documentElement;
+              if(s==='vintage'){r.classList.remove('skin-modern');r.classList.add('skin-vintage');r.dataset.skin='vintage';}
+              else if(s==='modern'){r.classList.remove('skin-vintage');r.classList.add('skin-modern');r.dataset.skin='modern';}
+              var resolved=p;
+              if(p==='system'||!p){resolved=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light';}
+              if(resolved==='light'||resolved==='dark'){r.classList.remove('light','dark');r.classList.add(resolved);r.dataset.palette=resolved;}
+            }catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className="antialiased">
         <AppProviders initialSkin={skin} initialPalette={palette}>
           {children}

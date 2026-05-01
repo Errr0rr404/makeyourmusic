@@ -3,10 +3,8 @@ import { createApi, getApi } from '@makeyourmusic/shared';
 // Initialize the shared API client with the web-specific base URL
 const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api';
 
-// Log API URL in development for debugging
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  console.log('API Base URL:', API_URL);
-}
+// API URL is read from env at module-load. No verbose console log — devtools
+// network tab already shows the base URL on every request.
 
 // Create the singleton on module load
 const api = createApi(API_URL);

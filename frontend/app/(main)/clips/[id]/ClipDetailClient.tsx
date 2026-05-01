@@ -10,6 +10,7 @@ import {
   Heart, MessageCircle, Share2, Download, Copy, Loader2, Music2,
   Globe, LockKeyhole, Link as LinkIcon, Trash2, Pause, Play, AlertCircle,
 } from 'lucide-react';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 interface Clip {
   id: string;
@@ -54,6 +55,7 @@ interface Comment {
 
 export function ClipDetailClient({ id }: { id: string }) {
   const router = useRouter();
+  const confirm = useConfirm();
   const { user } = useAuthStore();
   const [clip, setClip] = useState<Clip | null>(null);
   const [liked, setLiked] = useState(false);
@@ -123,16 +125,19 @@ export function ClipDetailClient({ id }: { id: string }) {
       toast.error('Log in to like clips');
       return;
     }
-    const prev = liked;
-    setLiked(!prev);
-    setClip({ ...clip, likeCount: clip.likeCount + (prev ? -1 : 1) });
+    const prevLiked = liked;
+    const prevCount = clip.likeCount;
+    setLiked(!prevLiked);
+    setClip((c) => (c ? { ...c, likeCount: c.likeCount + (prevLiked ? -1 : 1) } : c));
     try {
       const r = await api.post(`/clips/${clip.id}/likes`);
       setLiked(Boolean(r.data.liked));
     } catch {
-      // revert
-      setLiked(prev);
-      setClip({ ...clip, likeCount: clip.likeCount });
+      // Properly revert both flag AND count to the captured prior values —
+      // the previous version reset likeCount to itself (no-op) and left the
+      // optimistic +1/-1 in place.
+      setLiked(prevLiked);
+      setClip((c) => (c ? { ...c, likeCount: prevCount } : c));
       toast.error('Could not save like');
     }
   };
@@ -159,7 +164,13 @@ export function ClipDetailClient({ id }: { id: string }) {
 
   const handleDelete = async () => {
     if (!clip) return;
-    if (!confirm('Delete this clip? This cannot be undone.')) return;
+    const ok = await confirm({
+      title: 'Delete this clip?',
+      message: 'This cannot be undone.',
+      confirmLabel: 'Delete',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/clips/${clip.id}`);
       toast.success('Clip deleted');

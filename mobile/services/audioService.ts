@@ -326,16 +326,34 @@ export function setupNativePlayerListeners() {
     },
   );
 
-  // Progress sync
+  // Progress sync. Reset the play-recorded marker whenever we observe the
+  // position drop near 0 AND the queueIndex changed — this covers the
+  // queue-with-duplicates case where the same track appears twice and only
+  // the first occurrence used to record a play.
+  let lastQueueIndex = store.getState().queueIndex;
+  let lastProgressWrite = 0;
   const progressSub = TrackPlayer.addEventListener(
     Event.PlaybackProgressUpdated,
     (event) => {
-      store.setState({
-        progress: event.position,
-        duration: event.duration,
-      });
+      // Throttle progress writes to ~2Hz. progressUpdateEventInterval=1
+      // fires every second, but writing every second made every screen with
+      // a MiniPlayer re-render at 1Hz — toss every other update.
+      const now = Date.now();
+      if (now - lastProgressWrite >= 500) {
+        store.setState({
+          progress: event.position,
+          duration: event.duration,
+        });
+        lastProgressWrite = now;
+      }
 
-      const currentTrack = store.getState().currentTrack;
+      const state = store.getState();
+      const currentTrack = state.currentTrack;
+      if (state.queueIndex !== lastQueueIndex && event.position < 1) {
+        playRecordedForTrackId = null;
+      }
+      lastQueueIndex = state.queueIndex;
+
       if (!currentTrack || playRecordedForTrackId === currentTrack.id) return;
 
       const completionThreshold = event.duration > 0

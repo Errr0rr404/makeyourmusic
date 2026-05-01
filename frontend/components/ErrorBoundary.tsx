@@ -91,6 +91,9 @@ export class ErrorBoundary extends Component<Props, State> {
       fetch(errorEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        // Cap the report request so a stuck endpoint can't leak open
+        // connections per error.
+        signal: AbortSignal.timeout(5_000),
         body: JSON.stringify({
           error: {
             message: error.message,

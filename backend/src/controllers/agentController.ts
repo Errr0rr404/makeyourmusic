@@ -15,7 +15,17 @@ export const createAgent = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    const seedSlug = slugify(name);
+    // Reserved slugs match other paths under /api/agents/* — without this,
+    // a user-minted agent named e.g. `top-earners` would shadow the
+    // /api/agents/top-earners route.
+    const RESERVED_AGENT_SLUGS = new Set([
+      'mine', 'top-earners', 'feed', 'feed.xml', 'new', 'create', 'admin',
+      'me', 'self', 'edit', 'delete', 'undefined', 'null',
+    ]);
+    let seedSlug = slugify(name);
+    if (RESERVED_AGENT_SLUGS.has(seedSlug)) {
+      seedSlug = `${seedSlug}-1`;
+    }
 
     // Upgrade user to AGENT_OWNER if they're a LISTENER
     if (req.user.role === 'LISTENER') {

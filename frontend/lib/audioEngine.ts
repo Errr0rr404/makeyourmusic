@@ -49,7 +49,10 @@ class AudioEngine {
       this.ctx = new (window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
     }
     if (this.ctx.state === 'suspended') {
-      this.ctx.resume();
+      // resume() throws (rejects) if there's no user gesture. Swallow so we
+      // don't surface an unhandled rejection — the user-gesture-driven play()
+      // call will succeed once they interact.
+      this.ctx.resume().catch(() => {});
     }
 
     // Tear down any existing wiring
@@ -87,9 +90,26 @@ class AudioEngine {
     this.masterGain.connect(this.analyser);
     this.analyser.connect(this.ctx.destination);
 
-    // Build per-slot source + gain, both feeding into EQ head
+    // Build per-slot source + gain, both feeding into EQ head. An
+    // HTMLMediaElement may only be wired to ONE MediaElementAudioSourceNode
+    // ever, even across different AudioContexts — calling
+    // createMediaElementSource on the same <audio> after a destroy() throws
+    // InvalidStateError. Catch and re-throw a clearer error so the player
+    // can decide to skip the engine wiring instead of dying with a cryptic
+    // browser exception.
     const buildSlot = (el: HTMLAudioElement, slot: SourceSlot): SlotNodes => {
-      const source = this.ctx!.createMediaElementSource(el);
+      let source: MediaElementAudioSourceNode;
+      try {
+        source = this.ctx!.createMediaElementSource(el);
+      } catch (err) {
+        const wrapped = new Error(
+          'AudioEngine: cannot wire audio element to a new context. ' +
+            'This usually means the element was already connected to a previous AudioContext. ' +
+            'Recreate the <audio> element to recover.',
+        );
+        (wrapped as Error & { cause?: unknown }).cause = err;
+        throw wrapped;
+      }
       const gain = this.ctx!.createGain();
       // Slot A starts active (gain=1), slot B silent (gain=0)
       gain.gain.value = slot === 'a' ? 1 : 0;

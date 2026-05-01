@@ -63,13 +63,20 @@ export default function SettingsPage() {
 
   const toggleEmailPref = async (key: keyof NonNullable<typeof emailPrefs>) => {
     if (!emailPrefs) return;
-    const prev = emailPrefs;
-    const next = { ...emailPrefs, [key]: !emailPrefs[key] };
-    setEmailPrefs(next);
+    // Use functional setState so rapid successive toggles see the latest
+    // committed prefs instead of the closure value at click time. Capture
+    // the requested next-value for the network call separately.
+    let nextValue: boolean | null = null;
+    setEmailPrefs((prefs) => {
+      if (!prefs) return prefs;
+      nextValue = !prefs[key];
+      return { ...prefs, [key]: nextValue };
+    });
+    if (nextValue === null) return;
     try {
-      await api.put('/auth/email-preferences', { [key]: next[key] });
+      await api.put('/auth/email-preferences', { [key]: nextValue });
     } catch {
-      setEmailPrefs(prev);
+      setEmailPrefs((prefs) => (prefs ? { ...prefs, [key]: !nextValue } : prefs));
       toast.error('Could not save preference');
     }
   };

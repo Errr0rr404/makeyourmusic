@@ -11,7 +11,14 @@ export function getStripe(): any | null {
   try {
     if (process.env.STRIPE_SECRET_KEY) {
       const Stripe = require('stripe');
-      stripeSingleton = new Stripe(process.env.STRIPE_SECRET_KEY);
+      // Cap Stripe SDK request timeout. Default 80s × N rows in the collab
+      // payout cron loop (up to 100 rows) can exceed the 15-min cron interval
+      // worst case. 15s per call lets the loop bail and retry next tick
+      // instead of stacking.
+      stripeSingleton = new Stripe(process.env.STRIPE_SECRET_KEY, {
+        timeout: 15_000,
+        maxNetworkRetries: 1,
+      });
     }
   } catch (err) {
     logger.error('Failed to initialize Stripe SDK', { error: (err as Error).message });

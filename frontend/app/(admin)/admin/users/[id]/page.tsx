@@ -118,7 +118,7 @@ export default function UserDetailPage() {
           <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-[hsl(var(--accent))] to-blue-500 flex items-center justify-center text-2xl font-bold overflow-hidden flex-shrink-0">
             {user.avatar ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={user.avatar} alt="" className="w-full h-full object-cover" />
+              <img src={user.avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
               (user.displayName || user.username).slice(0, 2).toUpperCase()
             )}
@@ -255,7 +255,7 @@ export default function UserDetailPage() {
                 <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-xs font-bold flex-shrink-0 overflow-hidden">
                   {a.avatar ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={a.avatar} alt="" className="w-full h-full object-cover" />
+                    <img src={a.avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   ) : (
                     a.name.slice(0, 2).toUpperCase()
                   )}

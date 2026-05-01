@@ -91,9 +91,31 @@ export function NotificationBell() {
     return () => clearInterval(interval);
   }, [isAuthenticated, loadUnreadCount]);
 
+  // Stack rapid open-toggles into a single in-flight request. Without an
+  // AbortController, an older response could resolve and overwrite the
+  // newer one, briefly painting stale notifications.
   useEffect(() => {
-    if (open) loadNotifications();
-  }, [open, loadNotifications]);
+    if (!open) return;
+    const controller = new AbortController();
+    (async () => {
+      if (!isAuthenticated) return;
+      setLoading(true);
+      try {
+        const res = await api.get('/notifications?limit=10', {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
+        setNotifications(res.data.notifications || []);
+        setUnreadCount(res.data.unreadCount || 0);
+      } catch (err) {
+        if (!controller.signal.aborted) console.error('Failed to load notifications', err);
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    })();
+    return () => controller.abort();
+  }, [open, isAuthenticated]);
+  void loadNotifications;
 
   // Force a re-render every minute while the panel is open so timeAgo()
   // values stay fresh ("5m" → "6m") without manual user interaction.

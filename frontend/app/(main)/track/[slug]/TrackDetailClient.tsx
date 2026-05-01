@@ -104,7 +104,7 @@ export function TrackDetailClient({ slug }: { slug: string }) {
     }
     try {
       const res = await api.post(`/social/likes/${track.id}`);
-      setTrack({ ...track, isLiked: res.data.liked, likeCount: track.likeCount + (res.data.liked ? 1 : -1) });
+      setTrack((t) => (t ? { ...t, isLiked: res.data.liked, likeCount: t.likeCount + (res.data.liked ? 1 : -1) } : t));
       toast.success(res.data.liked ? 'Added to liked tracks' : 'Removed from liked tracks');
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to like track');
@@ -116,7 +116,7 @@ export function TrackDetailClient({ slug }: { slug: string }) {
     if (!newComment.trim() || !track) return;
     try {
       const res = await api.post(`/social/comments/${track.id}`, { content: newComment });
-      setComments([res.data.comment, ...comments]);
+      setComments((c) => [res.data.comment, ...c]);
       setNewComment('');
       toast.success('Comment posted');
     } catch (err) {
@@ -220,9 +220,20 @@ export function TrackDetailClient({ slug }: { slug: string }) {
             </button>
             <button
               onClick={async () => {
+                // Validate the slug shape before embedding into a snippet
+                // that gets pasted onto third-party sites. An attacker-
+                // controlled slug with quotes/angle-brackets would otherwise
+                // become a self-XSS payload for whoever pastes it.
+                const safeSlug = /^[a-z0-9][a-z0-9-]{0,200}$/i.test(track.slug)
+                  ? track.slug
+                  : null;
+                if (!safeSlug) {
+                  toast.error('Cannot generate embed for this track');
+                  return;
+                }
                 const apiBase = process.env.NEXT_PUBLIC_API_URL || '';
                 const origin = apiBase ? apiBase.replace(/\/api\/?$/, '') : window.location.origin;
-                const snippet = `<iframe src="${origin}/embed/track/${track.slug}" width="320" height="120" frameborder="0" allow="autoplay" loading="lazy"></iframe>`;
+                const snippet = `<iframe src="${origin}/embed/track/${safeSlug}" width="320" height="120" frameborder="0" allow="autoplay" loading="lazy"></iframe>`;
                 await navigator.clipboard.writeText(snippet);
                 toast.success('Embed snippet copied');
               }}

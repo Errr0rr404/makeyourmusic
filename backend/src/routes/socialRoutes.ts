@@ -7,7 +7,7 @@ import {
 } from '../controllers/socialController';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { commentLimiter, socialPumpLimiter } from '../middleware/rateLimiter';
-import { createCommentRules, createPlaylistRules, validateRequest } from '../middleware/validation';
+import { createCommentRules, createPlaylistRules, updatePlaylistRules, validateRequest } from '../middleware/validation';
 
 const router = Router();
 
@@ -29,7 +29,7 @@ router.delete('/comments/:id', authenticate as any, deleteComment as any);
 router.get('/playlists/mine', authenticate as any, getMyPlaylists as any);
 router.get('/playlists/:idOrSlug', optionalAuth as any, getPlaylist as any);
 router.post('/playlists', authenticate as any, createPlaylistRules, validateRequest, createPlaylist as any);
-router.put('/playlists/:id', authenticate as any, createPlaylistRules, validateRequest, updatePlaylist as any);
+router.put('/playlists/:id', authenticate as any, updatePlaylistRules, validateRequest, updatePlaylist as any);
 router.post('/playlists/:playlistId/tracks', authenticate as any, addToPlaylist as any);
 router.delete('/playlists/:playlistId/tracks/:trackId', authenticate as any, removeFromPlaylist as any);
 router.delete('/playlists/:id', authenticate as any, deletePlaylist as any);

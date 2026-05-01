@@ -27,17 +27,23 @@ export default function VerifyEmailScreen() {
 
   useEffect(() => {
     if (!token) return;
+    let cancelled = false;
     (async () => {
       try {
         const res = await getApi().get(`/auth/verify-email/${token}`);
+        if (cancelled) return;
         setStatus('success');
         setMessage(res.data.message || 'Email verified');
         fetchUser().catch(() => {});
       } catch (err: any) {
+        if (cancelled) return;
         setStatus('error');
         setMessage(err.response?.data?.error || 'Invalid or expired verification token');
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [token, fetchUser]);
 
   const handleResend = async () => {

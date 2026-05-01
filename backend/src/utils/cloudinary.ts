@@ -103,6 +103,15 @@ export const uploadImageBase64 = async (
 ): Promise<UploadResult> => {
   checkCredentials();
 
+  // Hard size cap. Even if a future caller bypasses the 1MB JSON body limit
+  // (e.g. by routing through multipart), we refuse to push runaway 50MB
+  // images at Cloudinary on every request. base64 length × 0.75 ≈ raw bytes.
+  const MAX_RAW_BYTES = 8 * 1024 * 1024;
+  const rawByteEstimate = Math.floor(base64String.length * 0.75);
+  if (rawByteEstimate > MAX_RAW_BYTES) {
+    throw new Error(`Image too large: ${rawByteEstimate} bytes (max ${MAX_RAW_BYTES})`);
+  }
+
   const cloudinaryFolder = `makeyourmusic/${folder}`;
 
   try {
@@ -189,13 +198,26 @@ export function publicIdFromCloudinaryUrl(url: string): string {
   if (idx < 0) return '';
   const rest = url.slice(idx + '/upload/'.length).split('?')[0] ?? '';
   const segments = rest.split('/');
+  // Cloudinary's known transform-prefix set. Use an explicit list so a folder
+  // named like `ab_cdef` doesn't get mis-classified as a transform segment.
+  // (See https://cloudinary.com/documentation/transformation_reference for the full list.)
+  const TRANSFORM_PREFIXES = new Set([
+    'a', 'ar', 'b', 'bo', 'c', 'co', 'd', 'dl', 'dn', 'dpr', 'e', 'eo', 'f', 'fl', 'g',
+    'h', 'l', 'o', 'p', 'pg', 'q', 'r', 'so', 't', 'u', 'vc', 'w', 'x', 'y', 'z',
+  ]);
+  function isTransformSegment(seg: string): boolean {
+    if (seg.includes(',')) return true; // multi-flag transform always uses commas
+    // A transform "atom" looks like `f_auto` / `w_400` / `c_fill` — letters+`_`+value
+    const m = /^([a-z]{1,3})_/i.exec(seg);
+    if (!m) return false;
+    return TRANSFORM_PREFIXES.has(m[1]!.toLowerCase());
+  }
   let i = 0;
   while (i < segments.length) {
     const seg = segments[i];
     if (!seg) { i++; continue; }
     if (/^v\d+$/.test(seg)) { i++; break; }
-    // transform segment heuristic: contains `,` or has a 2-letter prefix + underscore
-    if (i < segments.length - 1 && (/[,]/.test(seg) || /^[a-z]{1,3}_/i.test(seg))) {
+    if (i < segments.length - 1 && isTransformSegment(seg)) {
       i++;
       continue;
     }

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, useRef, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -19,10 +19,21 @@ function ResetPasswordContent() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
+  // Track the redirect timeout so unmounting cancels it. Without this, a user
+  // who navigates away during the 2.5s success window still gets pushed to
+  // /login post-unmount.
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     if (!token) {
       setError('No reset token provided. Please use the link from your email.');
     }
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
   }, [token]);
 
   const validate = (): string | null => {
@@ -46,7 +57,7 @@ function ResetPasswordContent() {
     try {
       await api.post('/auth/reset-password', { token, password });
       setSuccess(true);
-      setTimeout(() => router.push('/login'), 2500);
+      redirectTimerRef.current = setTimeout(() => router.push('/login'), 2500);
     } catch (err) {
       const error = err as { response?: { data?: { error?: string } }; message?: string };
       setError(error.response?.data?.error || error.message || 'Password reset failed');

@@ -33,23 +33,36 @@ export default function VideoStudioPage() {
   const [gen, setGen] = useState<VideoGen | null>(null);
   const [error, setError] = useState('');
   const pollTimerRef = useRef<number | null>(null);
+  // Tracks whether we've torn down. Without this, an in-flight `tick` await
+  // could resolve after the cleanup ran and schedule a NEW setTimeout that
+  // escapes the cleanup → setState-after-unmount + leaked timer.
+  const pollCancelledRef = useRef(false);
 
   useEffect(() => {
+    pollCancelledRef.current = false;
     return () => {
+      pollCancelledRef.current = true;
       if (pollTimerRef.current) window.clearTimeout(pollTimerRef.current);
     };
   }, []);
 
   const startPolling = (id: string) => {
+    pollCancelledRef.current = false;
     const tick = async () => {
+      if (pollCancelledRef.current) return;
       try {
         const r = await api.get(`/ai/video/${id}`);
+        if (pollCancelledRef.current) return;
         const latest: VideoGen = r.data.generation;
         setGen(latest);
-        if (latest.status === 'PENDING' || latest.status === 'PROCESSING') {
+        if (
+          (latest.status === 'PENDING' || latest.status === 'PROCESSING') &&
+          !pollCancelledRef.current
+        ) {
           pollTimerRef.current = window.setTimeout(tick, 5000);
         }
       } catch (err) {
+        if (pollCancelledRef.current) return;
         setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to fetch status');
       }
     };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { getApi } from '@makeyourmusic/shared';
@@ -21,10 +21,17 @@ export default function ResetPasswordScreen() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
 
+  const redirectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!token) {
       setError('No reset token provided. Use the link from your email.');
     }
+    return () => {
+      if (redirectTimerRef.current) {
+        clearTimeout(redirectTimerRef.current);
+        redirectTimerRef.current = null;
+      }
+    };
   }, [token]);
 
   const validate = (): string | null => {
@@ -47,7 +54,7 @@ export default function ResetPasswordScreen() {
     try {
       await getApi().post('/auth/reset-password', { token, password });
       setSuccess(true);
-      setTimeout(() => router.replace('/(auth)/login'), 2500);
+      redirectTimerRef.current = setTimeout(() => router.replace('/(auth)/login'), 2500);
     } catch (err: any) {
       setError(err.response?.data?.error || err.message || 'Password reset failed');
     } finally {

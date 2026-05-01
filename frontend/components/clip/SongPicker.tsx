@@ -52,13 +52,14 @@ export function SongPicker({ open, onClose, onSelect }: SongPickerProps) {
   useEffect(() => {
     if (!open) return;
     let active = true;
+    const controller = new AbortController();
     const t = setTimeout(async () => {
       setLoading(true);
       try {
         const path = tab === 'mine' ? '/tracks/mine' : '/tracks';
         const params: Record<string, unknown> = { limit: 30 };
         if (search.trim()) params.search = search.trim();
-        const res = await api.get(path, { params });
+        const res = await api.get(path, { params, signal: controller.signal });
         if (!active) return;
         const list: ApiTrack[] = (res.data.tracks || []).filter((t: ApiTrack) => Boolean(t.audioUrl));
         setTracks(list);
@@ -68,7 +69,11 @@ export function SongPicker({ open, onClose, onSelect }: SongPickerProps) {
         if (active) setLoading(false);
       }
     }, 250);
-    return () => { active = false; clearTimeout(t); };
+    return () => {
+      active = false;
+      clearTimeout(t);
+      controller.abort();
+    };
   }, [open, tab, search]);
 
   if (!open) return null;
@@ -83,7 +88,11 @@ export function SongPicker({ open, onClose, onSelect }: SongPickerProps) {
     }
     a.src = track.audioUrl;
     a.currentTime = 0;
-    void a.play();
+    // Catch the iOS/Safari NotAllowedError so it doesn't surface as an
+    // unhandled promise rejection in the console — autoplay restrictions
+    // mean play() can reject even after a user gesture if the audio source
+    // is cross-origin.
+    a.play().catch(() => {});
     setPreviewId(track.id);
   };
 

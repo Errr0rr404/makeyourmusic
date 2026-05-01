@@ -66,11 +66,17 @@ export function TrackStems({ trackId, isOwner }: Props) {
   useEffect(() => {
     // PENDING = paid, waiting for the webhook to start the Replicate job.
     // PROCESSING = job in flight. Poll in both cases.
+    // Use a local timer id so the cleanup clears the timer it scheduled —
+    // assigning to pollRef.current and cleaning up on the SAME ref let a new
+    // effect's id overwrite the old one before the old effect's cleanup ran,
+    // doubling the polling rate.
+    let timerId: number | null = null;
     if (stems?.status === 'PENDING' || stems?.status === 'PROCESSING') {
-      pollRef.current = window.setTimeout(load, 5000);
+      timerId = window.setTimeout(load, 5000);
+      pollRef.current = timerId;
     }
     return () => {
-      if (pollRef.current) window.clearTimeout(pollRef.current);
+      if (timerId !== null) window.clearTimeout(timerId);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [stems?.status]);

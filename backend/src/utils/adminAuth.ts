@@ -66,15 +66,14 @@ export const verifyAdminPassword = async (input: string): Promise<boolean> => {
     );
     warnedMissing = true;
   }
-  // Constant-time compare via Buffer.byteLength + timingSafeEqual on equal-length buffers.
-  const ba = Buffer.from(input);
-  const bb = Buffer.from(expected);
-  if (ba.length !== bb.length) {
-    // Run a dummy compare so timing is roughly constant regardless of length match.
-    crypto.timingSafeEqual(ba.subarray(0, Math.min(ba.length, bb.length)), bb.subarray(0, Math.min(ba.length, bb.length)));
-    return false;
-  }
-  return crypto.timingSafeEqual(ba, bb);
+  // Constant-time compare. Hash both inputs to a fixed length first so the
+  // overall comparison runtime is independent of the input string length —
+  // the previous Buffer.from(input) compare leaked length via the early
+  // bb.length-vs-ba.length branch (and a dummy substring compare didn't
+  // actually equalize timing).
+  const inputDigest = crypto.createHash('sha256').update(input).digest();
+  const expectedDigest = crypto.createHash('sha256').update(expected).digest();
+  return crypto.timingSafeEqual(inputDigest, expectedDigest);
 };
 
 export const issueAdminToken = async (userId?: string): Promise<string> => {

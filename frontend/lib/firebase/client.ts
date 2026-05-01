@@ -7,8 +7,16 @@ import { firebaseConfig } from './config';
 let app: FirebaseApp | null = null;
 
 export function getFirebaseApp(): FirebaseApp {
-  if (app) return app;
-  app = getApps()[0] ?? initializeApp(firebaseConfig);
+  // After HMR, our cached `app` may have been GC'd by Firebase (rebuild
+  // resets module-level state in the SDK). Always cross-check against the
+  // SDK's own getApps() list and refresh the cache when it diverges.
+  const live = getApps()[0];
+  if (app && live && app === live) return app;
+  if (live) {
+    app = live;
+    return app;
+  }
+  app = initializeApp(firebaseConfig);
   return app;
 }
 

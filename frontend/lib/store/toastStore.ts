@@ -25,7 +25,13 @@ export const useToastStore = create<ToastStore>((set) => ({
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
     if (duration > 0) {
       timeoutId = setTimeout(() => {
-        set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+        // Skip the set() call if the toast was already removed (e.g. by
+        // user dismiss). The previous version always ran a no-op filter,
+        // waking subscribers needlessly.
+        const current = useToastStore.getState().toasts;
+        if (current.some((t) => t.id === id)) {
+          set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+        }
       }, duration);
     }
     set((s) => ({ toasts: [...s.toasts, { id, message, type, duration, timeoutId }] }));

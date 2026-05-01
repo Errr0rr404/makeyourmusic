@@ -38,7 +38,13 @@ export default function RootLayout() {
 
 function RootLayoutInner() {
   const router = useRouter();
-  const { isLoading, hydrate, fetchUser, isAuthenticated } = useAuthStore();
+  const { isLoading, isAuthenticated } = useAuthStore();
+  // Read store actions via getState() inside the boot effect rather than
+  // capturing them in destructuring — zustand actions are stable in
+  // practice, but reading on demand removes any chance of a stale closure
+  // if zustand internals ever change.
+  const hydrate = useAuthStore((s) => s.hydrate);
+  const fetchUser = useAuthStore((s) => s.fetchUser);
   const hydratePlayerPrefs = usePlayerStore((s) => s.hydratePrefs);
   const playerReady = useRef(false);
   const [booted, setBooted] = useState(false);
@@ -166,21 +172,35 @@ function RootLayoutInner() {
   // Sync Zustand -> native player
   const { currentTrack, queue, isPlaying, repeat, seekRequest } = usePlayerStore();
   const sync = useSyncPlayerToNative();
+  // Stash sync in a ref so syncQueue effect doesn't depend on a fresh
+  // object identity each render (§ML-4) and so cleanup can no-op late
+  // returns from the previous run.
+  const syncRef = useRef(sync);
+  syncRef.current = sync;
 
   // Sync queue when it changes
   const prevQueueRef = useRef<string>('');
   useEffect(() => {
+    let cancelled = false;
     const queueKey = queue.map((t) => t.id).join(',') + ':' + (currentTrack?.id || '');
     if (queueKey !== prevQueueRef.current && playerReady.current) {
       prevQueueRef.current = queueKey;
-      sync.syncQueue();
+      const promise = syncRef.current.syncQueue();
+      // Best-effort: swallow any post-unmount rejection rather than letting
+      // it bubble as an unhandled promise.
+      Promise.resolve(promise).catch(() => undefined).finally(() => {
+        void cancelled;
+      });
     }
+    return () => {
+      cancelled = true;
+    };
   }, [queue, currentTrack?.id]);
 
   // Sync play state
   useEffect(() => {
     if (playerReady.current) {
-      sync.syncPlayState();
+      Promise.resolve(syncRef.current.syncPlayState()).catch(() => undefined);
     }
   }, [isPlaying]);
 

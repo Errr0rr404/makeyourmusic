@@ -105,7 +105,18 @@ export async function processPendingCollabPayouts(
     orderBy: { createdAt: 'asc' },
   });
 
+  // Wall-clock budget: bail out of the loop if we run past 12 minutes so the
+  // cron tick (every 15 min) doesn't overrun and pile up.
+  const deadlineMs = Date.now() + 12 * 60 * 1000;
+
   for (const row of pending) {
+    if (Date.now() > deadlineMs) {
+      logger.warn('collab payout loop hit wall-clock budget; deferring remainder', {
+        processed: out.attempted,
+        remaining: pending.length - out.attempted,
+      });
+      break;
+    }
     out.attempted += 1;
 
     const [primary, recipient] = await Promise.all([

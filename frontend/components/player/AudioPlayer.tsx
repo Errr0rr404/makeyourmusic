@@ -417,8 +417,11 @@ export function AudioPlayer() {
 
     if (audio.currentTime > 30 && !playRecordedRef.current && currentTrack) {
       playRecordedRef.current = true;
+      const safe = Number.isFinite(audio.currentTime)
+        ? Math.max(0, Math.floor(audio.currentTime))
+        : 0;
       api.post(`/tracks/${currentTrack.id}/play`, {
-        durationPlayed: Math.floor(audio.currentTime),
+        durationPlayed: safe,
         completed: false,
       }).catch(() => {});
     }

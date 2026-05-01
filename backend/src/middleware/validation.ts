@@ -285,6 +285,14 @@ export const createPlaylistRules = [
   body('description').optional().trim().isLength({ max: 500 }).withMessage('Description max 500 characters'),
 ];
 
+// PUT /playlists/:id — title is optional on update; reusing createPlaylistRules
+// would force the user to send the title on every metadata edit.
+export const updatePlaylistRules = [
+  body('title').optional().trim().isLength({ min: 1, max: 100 }).withMessage('Title 1-100 characters'),
+  body('isPublic').optional().isBoolean().withMessage('isPublic must be a boolean'),
+  body('description').optional().trim().isLength({ max: 500 }).withMessage('Description max 500 characters'),
+];
+
 // ─── Admin rules ──────────────────────────────────────────
 
 export const updateRoleRules = [

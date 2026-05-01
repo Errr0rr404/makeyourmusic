@@ -14,17 +14,28 @@ export default function GenrePage({ params }: { params: Promise<{ slug: string }
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    // Reset state on slug change so a slow previous-route response can't
+    // briefly paint over the freshly-requested route's data.
+    setTracks([]);
+    setLoading(true);
+    setError(null);
+    const controller = new AbortController();
     async function load() {
       try {
-        setError(null);
-        const res = await api.get('/tracks', { params: { genre: slug, limit: 30 } });
+        const res = await api.get('/tracks', {
+          params: { genre: slug, limit: 30 },
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
         setTracks(res.data.tracks || []);
       } catch (err) {
+        if (controller.signal.aborted) return;
         setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load tracks');
       }
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
     load();
+    return () => controller.abort();
   }, [slug]);
 
   const genreName = slug.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());

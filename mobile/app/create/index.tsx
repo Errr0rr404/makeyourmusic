@@ -104,11 +104,22 @@ export default function CreateScreen() {
   const previewAudioUrlRef = useRef<string | null>(null);
   const [playingPreview, setPlayingPreview] = useState(false);
 
+  // Track unmount so a Sound.createAsync() that's still loading at unmount-
+  // time gets unloaded once it resolves. Without this, a fast unmount race
+  // assigned the new Sound to previewSound.current AFTER cleanup ran, so it
+  // never got unloaded — which kept iOS audio session ducking other apps.
+  const unmountedRef = useRef(false);
   useEffect(() => {
+    unmountedRef.current = false;
     return () => {
+      unmountedRef.current = true;
       if (pollTimer.current) clearTimeout(pollTimer.current);
       activeGenerationIdRef.current = null;
-      if (previewSound.current) previewSound.current.unloadAsync?.();
+      if (previewSound.current) {
+        const handle = previewSound.current;
+        previewSound.current = null;
+        handle.unloadAsync?.().catch(() => undefined);
+      }
     };
   }, []);
 
@@ -409,8 +420,14 @@ export default function CreateScreen() {
     previewBusyRef.current = true;
     try {
       if (playingPreview && previewSound.current) {
-        await previewSound.current.pauseAsync();
-        setPlayingPreview(false);
+        // Always flip the UI even if pauseAsync rejects (e.g. sound got
+        // unloaded between the play and pause taps). Otherwise the button
+        // sticks in "playing" state.
+        try {
+          await previewSound.current.pauseAsync();
+        } finally {
+          setPlayingPreview(false);
+        }
         return;
       }
       // Pause the main music player so the user doesn't hear two streams
@@ -425,9 +442,11 @@ export default function CreateScreen() {
       }
       if (!previewSound.current) {
         const { sound } = await Audio.Sound.createAsync({ uri: generation.audioUrl });
-        // If a faster tap already created another sound while we were
-        // awaiting createAsync, throw this one away.
-        if (previewSound.current) {
+        // If we unmounted OR a faster tap created another sound while we
+        // were awaiting createAsync, throw this one away — otherwise the
+        // post-unmount assignment leaks a never-unloaded Sound and keeps
+        // the audio session ducking.
+        if (unmountedRef.current || previewSound.current) {
           await sound.unloadAsync().catch(() => {});
           return;
         }

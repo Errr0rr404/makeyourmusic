@@ -94,9 +94,14 @@ export default function PlaylistPage() {
   const handleRemoveTrack = async (trackId: string) => {
     try {
       await api.delete(`/social/playlists/${playlist.id}/tracks/${trackId}`);
-      setPlaylist((p: Record<string, unknown>) => ({
+      // Filter strictly on the embedded track id (pt.track.id). Falling back
+      // to pt.id matched the playlistTrack join row id, which sometimes
+      // dropped the wrong row when the join id happened to equal the track
+      // id being removed in another playlist.
+      type PlaylistTrackRow = { id?: string; track?: { id?: string } };
+      setPlaylist((p: { tracks?: PlaylistTrackRow[] } & Record<string, unknown>) => ({
         ...p,
-        tracks: (p.tracks as Record<string, unknown>[]).filter((pt: Record<string, unknown>) => ((pt.track as Record<string, unknown>)?.id || pt.id) !== trackId),
+        tracks: (p.tracks || []).filter((pt) => pt.track?.id !== trackId),
       }));
       toast.success('Track removed');
     } catch (err) {

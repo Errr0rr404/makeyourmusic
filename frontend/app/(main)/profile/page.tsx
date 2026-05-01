@@ -189,7 +189,7 @@ export default function ProfilePage() {
             style={{ background: user?.avatar ? undefined : 'var(--aurora)' }}
           >
             {user?.avatar ? (
-              <img src={user.avatar} alt="" className="w-full h-full rounded-full object-cover" />
+              <img src={user.avatar} alt="" className="w-full h-full rounded-full object-cover" referrerPolicy="no-referrer" />
             ) : (
               user?.displayName?.[0]?.toUpperCase() || user?.username?.[0]?.toUpperCase() || 'U'
             )}

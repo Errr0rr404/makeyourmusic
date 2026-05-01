@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/api';
 import { toast } from 'sonner';
 import { Copy, Trash2, Plus, Key, Eye, EyeOff } from 'lucide-react';
+import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 interface ApiKeySummary {
   id: string;
@@ -19,6 +20,7 @@ interface ApiKeySummary {
 // Raw keys are only returned at creation time and shown once — we surface
 // that flow via a one-time modal so the user knows to copy it.
 export default function DevelopersPage() {
+  const confirm = useConfirm();
   const [keys, setKeys] = useState<ApiKeySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -61,7 +63,13 @@ export default function DevelopersPage() {
   };
 
   const revoke = async (id: string) => {
-    if (!confirm('Revoke this key? Apps using it will stop working immediately.')) return;
+    const ok = await confirm({
+      title: 'Revoke this key?',
+      message: 'Apps using it will stop working immediately.',
+      confirmLabel: 'Revoke',
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await api.delete(`/v1/keys/${id}`);
       toast.success('Key revoked');

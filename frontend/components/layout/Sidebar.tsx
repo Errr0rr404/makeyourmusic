@@ -59,14 +59,14 @@ export function Sidebar() {
       setPlaylists([]);
       return;
     }
-    let cancelled = false;
-    api.get('/social/playlists/mine')
+    const controller = new AbortController();
+    api.get('/social/playlists/mine', { signal: controller.signal })
       .then((res) => {
-        if (cancelled) return;
+        if (controller.signal.aborted) return;
         setPlaylists(res.data?.playlists || []);
       })
       .catch(() => undefined);
-    return () => { cancelled = true; };
+    return () => controller.abort();
   }, [isAuthenticated]);
 
   const handleCreatePlaylist = async () => {

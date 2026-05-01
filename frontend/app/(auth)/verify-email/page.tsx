@@ -36,19 +36,25 @@ function VerifyEmailContent() {
 
   useEffect(() => {
     if (!token) return;
+    const controller = new AbortController();
     async function verify() {
       try {
-        const res = await api.get(`/auth/verify-email/${token}`);
+        const res = await api.get(`/auth/verify-email/${token}`, {
+          signal: controller.signal,
+        });
+        if (controller.signal.aborted) return;
         setStatus('success');
         setMessage(res.data.message || 'Email verified');
         fetchUser().catch(() => {});
       } catch (err) {
+        if (controller.signal.aborted) return;
         const error = err as { response?: { data?: { error?: string } } };
         setStatus('error');
         setMessage(error.response?.data?.error || 'Invalid or expired verification token');
       }
     }
     verify();
+    return () => controller.abort();
   }, [token, fetchUser]);
 
   const handleResend = async (e: React.FormEvent) => {

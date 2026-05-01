@@ -51,6 +51,15 @@ process.env.DATABASE_URL = normalizeDatabaseUrl(databaseUrl);
 
 const getPrismaClient = (): PrismaClient => {
   if (globalForPrisma.prisma) {
+    // Detect duplicate PrismaClient instances created via divergent module
+    // paths (e.g. test mocks). Without this, two clients silently coexist —
+    // one accumulates pool connections while only one is actually used.
+    if (process.env.NODE_ENV !== 'production') {
+      const tag = (globalForPrisma.prisma as any).__mymInstanceTag;
+      if (!tag) {
+        (globalForPrisma.prisma as any).__mymInstanceTag = Symbol('prisma');
+      }
+    }
     return globalForPrisma.prisma;
   }
 

@@ -41,6 +41,7 @@ export default function FullScreenPlayer() {
   const [showQueue, setShowQueue] = useState(false);
   const [liked, setLiked] = useState(false);
   const [likeBusy, setLikeBusy] = useState(false);
+  const [scrubbingValue, setScrubbingValue] = useState<number | null>(null);
   const { isAuthenticated } = useAuthStore();
 
   const {
@@ -99,16 +100,18 @@ export default function FullScreenPlayer() {
     }
     if (likeBusy) return;
     setLikeBusy(true);
-    // Optimistic toggle
-    setLiked((prev) => !prev);
+    // Capture prior state so the rollback restores the EXACT pre-tap value
+    // — using `setLiked(prev => !prev)` for both the optimistic toggle and
+    // the rollback double-toggled if a queued second tap fired first.
+    const wasLiked = liked;
+    setLiked(!wasLiked);
     hapticLight();
     try {
       const api = getApi();
       const res = await api.post(`/social/likes/${currentTrack.id}`);
       setLiked(Boolean(res.data?.liked));
     } catch {
-      // Roll back on failure
-      setLiked((prev) => !prev);
+      setLiked(wasLiked);
       Alert.alert('Like failed', 'Could not update like. Try again.');
     } finally {
       setLikeBusy(false);
@@ -137,7 +140,10 @@ export default function FullScreenPlayer() {
   // race when the modal is dismissed concurrently with other navigation.
   useEffect(() => {
     if (!currentTrack) router.back();
-  }, [currentTrack]);
+    // Depend on `currentTrack?.id` so a same-track update doesn't fire a
+    // spurious back() if the store ever returns a fresh object reference.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentTrack?.id]);
 
   if (!currentTrack) return null;
 
@@ -371,13 +377,19 @@ export default function FullScreenPlayer() {
               </View>
             )}
 
-            {/* Progress + counter */}
+            {/* Progress + counter — local scrubbing state so the 1Hz native
+                progress writes don't fight the user's drag. While the user is
+                actively scrubbing we render `scrubbingValue`; on release we
+                commit via seek() and clear the scrub state. */}
             <View style={{ marginTop: 20 }}>
               <Slider
-                value={progress}
+                value={scrubbingValue ?? progress}
                 max={duration || 1}
-                onValueChange={setProgress}
-                onSlidingComplete={seek}
+                onValueChange={(v: number) => setScrubbingValue(v)}
+                onSlidingComplete={(v: number) => {
+                  setScrubbingValue(null);
+                  seek(v);
+                }}
               />
               {isVintage ? (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>

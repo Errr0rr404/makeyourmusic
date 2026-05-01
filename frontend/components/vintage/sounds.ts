@@ -7,6 +7,11 @@
  */
 let ctx: AudioContext | null = null;
 
+// Lazy: only create the context the first time the user actually triggers a
+// mechanical click (and only if the vintage skin + opt-in localStorage flag
+// allow it). Chrome caps a tab at ~6 simultaneous AudioContexts, and the
+// audioEngine already keeps one — creating this eagerly used to nudge users
+// closer to that limit even when they never interacted with the vintage UI.
 function getCtx(): AudioContext | null {
   if (typeof window === 'undefined') return null;
   if (ctx) return ctx;
@@ -17,6 +22,14 @@ function getCtx(): AudioContext | null {
     return ctx;
   } catch {
     return null;
+  }
+}
+
+/** Close the cached AudioContext — call on tab teardown / skin change to free the slot. */
+export function disposeMechanicalSounds(): void {
+  if (ctx) {
+    ctx.close().catch(() => {});
+    ctx = null;
   }
 }
 

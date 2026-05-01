@@ -38,8 +38,18 @@ export function Topbar() {
   useEffect(() => {
     if (fetchedUserRef.current) return;
     if (!user && isAuthenticated) {
-      fetchedUserRef.current = true;
-      fetchUser();
+      // Set the ref INSIDE the resolved promise so a transient network
+      // failure doesn't permanently block a retry — previously the ref was
+      // flipped before the await, which meant a single 5xx blocked any
+      // future fetchUser attempt for the lifetime of the mount.
+      fetchUser()
+        .then(() => {
+          fetchedUserRef.current = true;
+        })
+        .catch(() => {
+          // Leave the ref unset so the effect's next deps-driven run can
+          // retry once the network recovers.
+        });
     }
   }, [user, isAuthenticated, fetchUser]);
 

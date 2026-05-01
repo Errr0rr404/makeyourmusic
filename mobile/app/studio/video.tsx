@@ -30,7 +30,10 @@ const MAX_PROMPT = 1500;
 
 export default function VideoStudioScreen() {
   const router = useRouter();
-  const api = getApi();
+  // Resolve the api client lazily on each call rather than capturing once on
+  // mount — a logout/login between mount and the next request would
+  // otherwise be served by a stale auth interceptor.
+  const api = () => getApi();
 
   const [title, setTitle] = useState('');
   const [prompt, setPrompt] = useState('');
@@ -60,7 +63,7 @@ export default function VideoStudioScreen() {
     const tick = async () => {
       if (pollStoppedRef.current) return;
       try {
-        const r = await api.get(`/ai/video/${id}`);
+        const r = await api().get(`/ai/video/${id}`);
         if (pollStoppedRef.current) return;
         const latest: VideoGen = r.data.generation;
         setGen(latest);
@@ -91,7 +94,7 @@ export default function VideoStudioScreen() {
     setError('');
     setSubmitting(true);
     try {
-      const res = await api.post('/ai/video', {
+      const res = await api().post('/ai/video', {
         title: title.trim() || undefined,
         prompt: prompt.trim(),
         imageRefUrl: imageRefUrl || undefined,

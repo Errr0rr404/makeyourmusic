@@ -80,7 +80,12 @@ router.get('/track/:slug', async (req, res) => {
     //      header that browsers AND together (more restrictive wins).
     res.removeHeader('X-Frame-Options');
     const env = process.env.NODE_ENV || 'development';
-    const allowedDomains = process.env.EMBED_ALLOWED_DOMAINS || (env === 'production' ? '' : '*');
+    // Default to "'self'" in production when EMBED_ALLOWED_DOMAINS is unset —
+    // an empty `frame-ancestors` blocks every embed (silent breakage), and
+    // `*` in dev is permissive by design.
+    const allowedDomains =
+      process.env.EMBED_ALLOWED_DOMAINS ||
+      (env === 'production' ? "'self'" : '*');
     res.setHeader('Content-Security-Policy', `frame-ancestors ${allowedDomains}`);
     res.type('text/html').send(html);
   } catch (error) {

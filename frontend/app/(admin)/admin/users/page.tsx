@@ -94,15 +94,18 @@ export default function AdminUsersPage() {
   }, [params, refreshNonce]);
 
   const handleRoleChange = async (userId: string, newRole: AdminUserRow['role']) => {
-    const prev = users.find((u) => u.id === userId)?.role;
     setUsers((arr) => arr.map((u) => (u.id === userId ? { ...u, role: newRole } : u)));
     try {
       const api = getAdminApi();
       await api.put(`/admin/users/${userId}/role`, { role: newRole });
       toast.success(`Role updated to ${newRole}`);
     } catch (err) {
-      setUsers((arr) => arr.map((u) => (u.id === userId && prev ? { ...u, role: prev } : u)));
+      // Refresh from the server rather than rolling back to a captured `prev`.
+      // With rapid successive role changes a delayed rollback used to overwrite
+      // a more recent successful update; refreshing always reflects the
+      // current truth.
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to update role');
+      setRefreshNonce((n) => n + 1);
     }
   };
 

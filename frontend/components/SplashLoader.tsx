@@ -20,32 +20,39 @@ export const SplashLoader: React.FC<SplashLoaderProps> = ({ logo, appName, onCom
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState("Initializing Core Systems...");
     const completionTimeoutRef = useRef<number | null>(null);
+    // Track whether we already kicked off completion. React strict mode runs
+    // effects + their cleanups twice in dev, so without this guard the
+    // 800ms-delayed `onComplete` could fire twice.
+    const completedRef = useRef(false);
 
     useEffect(() => {
+        completedRef.current = false;
         const timer = setInterval(() => {
-            setProgress((prev) => {
-                if (prev >= 100) {
-                    clearInterval(timer);
-                    completionTimeoutRef.current = window.setTimeout(onComplete, 800);
-                    return 100;
-                }
-
-                // Update status message based on progress
-                const messageIndex = Math.floor((prev / 100) * STATUS_MESSAGES.length);
-                if (STATUS_MESSAGES[messageIndex]) {
-                    setStatus(STATUS_MESSAGES[messageIndex]);
-                }
-
-                return prev + 1.5;
-            });
+            // Pure incrementer — no side-effects from inside a setState updater
+            // (strict mode runs updaters twice, which used to schedule
+            // duplicate timers and re-set status from the wrong branch).
+            setProgress((prev) => (prev >= 100 ? 100 : prev + 1.5));
         }, 30);
         return () => {
             clearInterval(timer);
             if (completionTimeoutRef.current) {
                 window.clearTimeout(completionTimeoutRef.current);
+                completionTimeoutRef.current = null;
             }
         };
-    }, [onComplete]);
+    }, []);
+
+    // Drive status messages off `progress` state instead of inside the
+    // updater function. Same effect; no double-fire.
+    useEffect(() => {
+        const messageIndex = Math.floor((progress / 100) * STATUS_MESSAGES.length);
+        const next = STATUS_MESSAGES[Math.min(messageIndex, STATUS_MESSAGES.length - 1)];
+        if (next) setStatus(next);
+        if (progress >= 100 && !completedRef.current) {
+            completedRef.current = true;
+            completionTimeoutRef.current = window.setTimeout(onComplete, 800);
+        }
+    }, [progress, onComplete]);
 
     return (
         <motion.div
