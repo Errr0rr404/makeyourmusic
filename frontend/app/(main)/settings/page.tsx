@@ -147,6 +147,13 @@ export default function SettingsPage() {
     }
   };
 
+  const [deletePasswordPrompt, setDeletePasswordPrompt] = useState<{
+    username: string;
+  } | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletePasswordVisible, setDeletePasswordVisible] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
+
   const handleDeleteAccount = async () => {
     const username = (user as { username?: string })?.username || '';
     const ok = await confirm({
@@ -157,17 +164,35 @@ export default function SettingsPage() {
       requireInput: username,
     });
     if (!ok) return;
+    // Use a real password dialog instead of `window.prompt`. The native prompt
+    // bypasses password managers, doesn't autofill, and is intercepted by some
+    // browser extensions — none of which is acceptable for an account-deletion
+    // confirmation.
+    setDeletePassword('');
+    setDeletePasswordVisible(false);
+    setDeletePasswordPrompt({ username });
+  };
 
-    const password = window.prompt('Enter your password to confirm account deletion:');
-    if (!password) return;
-
+  const submitAccountDeletion = async () => {
+    if (!deletePasswordPrompt) return;
+    if (!deletePassword) {
+      toast.error('Password is required');
+      return;
+    }
+    setDeleteSubmitting(true);
     try {
-      await api.delete('/auth/account', { data: { password, confirmUsername: username } });
+      await api.delete('/auth/account', {
+        data: { password: deletePassword, confirmUsername: deletePasswordPrompt.username },
+      });
       toast.success('Account deleted');
+      setDeletePasswordPrompt(null);
+      setDeletePassword('');
       await logout();
       router.push('/');
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to delete account');
+    } finally {
+      setDeleteSubmitting(false);
     }
   };
 
@@ -581,6 +606,85 @@ export default function SettingsPage() {
           </button>
         </div>
       </section>
+
+      {/* Password confirmation dialog for account deletion */}
+      {deletePasswordPrompt && (
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deleteSubmitting) setDeletePasswordPrompt(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="delete-account-dialog-title"
+        >
+          <div className="w-full max-w-sm rounded-xl bg-[color:var(--surface)] border border-white/10 p-6 shadow-2xl">
+            <h2 id="delete-account-dialog-title" className="text-lg font-bold text-[color:var(--text)] mb-2">
+              Confirm with password
+            </h2>
+            <p className="text-sm text-[color:var(--text-muted)] mb-4">
+              Enter your password to permanently delete your account.
+            </p>
+            <form
+              autoComplete="on"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void submitAccountDeletion();
+              }}
+            >
+              {/* Hidden username field so password managers associate this
+                  field with the user's account. */}
+              <input
+                type="text"
+                name="username"
+                autoComplete="username"
+                value={deletePasswordPrompt.username}
+                readOnly
+                hidden
+              />
+              <div className="relative">
+                <input
+                  type={deletePasswordVisible ? 'text' : 'password'}
+                  name="password"
+                  autoComplete="current-password"
+                  autoFocus
+                  value={deletePassword}
+                  onChange={(e) => setDeletePassword(e.target.value)}
+                  className="w-full rounded-lg bg-[color:var(--surface-elevated)] border border-white/10 px-3 py-2 pr-10 text-sm text-[color:var(--text)] focus:outline-none focus:ring-2 focus:ring-red-500"
+                  placeholder="Password"
+                  disabled={deleteSubmitting}
+                />
+                <button
+                  type="button"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-[color:var(--text-muted)] hover:text-[color:var(--text)]"
+                  onClick={() => setDeletePasswordVisible((v) => !v)}
+                  aria-label={deletePasswordVisible ? 'Hide password' : 'Show password'}
+                >
+                  {deletePasswordVisible ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              <div className="mt-4 flex gap-2 justify-end">
+                <button
+                  type="button"
+                  onClick={() => setDeletePasswordPrompt(null)}
+                  disabled={deleteSubmitting}
+                  className="px-3 py-1.5 rounded-lg text-sm border border-white/10 text-[color:var(--text)] hover:bg-white/5"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={deleteSubmitting || !deletePassword}
+                  className="px-3 py-1.5 rounded-lg text-sm bg-red-600 hover:bg-red-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium flex items-center gap-2"
+                >
+                  {deleteSubmitting && <Loader2 className="w-3 h-3 animate-spin" />}
+                  Delete account
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

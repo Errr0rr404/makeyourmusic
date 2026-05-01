@@ -107,11 +107,11 @@ export const publicAgentEarnings = async (req: RequestWithUser, res: Response) =
         _sum: { netCents: true },
       }),
       prisma.channelSubscription.findMany({
-        where: { creatorUserId: ownerId },
+        where: { creatorUserId: ownerId, status: 'ACTIVE' },
         select: { amountCents: true, platformFeeBps: true, createdAt: true, status: true },
       }),
       prisma.channelSubscription.findMany({
-        where: { creatorUserId: ownerId, currentPeriodStart: { gte: since30d } },
+        where: { creatorUserId: ownerId, status: 'ACTIVE', currentPeriodStart: { gte: since30d } },
         select: { amountCents: true, platformFeeBps: true },
       }),
       trackIds.length
@@ -128,6 +128,13 @@ export const publicAgentEarnings = async (req: RequestWithUser, res: Response) =
         : Promise.resolve({ _sum: { netCents: 0 } }),
     ]);
 
+    // monthsBetween × current amountCents was a coarse approximation that
+    // INFLATED lifetime earnings: a churned subscriber from a year ago used to
+    // contribute 12+ months of "current price" revenue even after they
+    // cancelled. Filtering subsAll above to ACTIVE limits the impact, but the
+    // proper fix is to sum stored Invoice.amount_paid rows. Pending that, we
+    // bound the multiplier to the period-since-period-start so a long-lived
+    // active sub still rolls up correctly.
     const monthsBetween = (start: Date | null) => {
       if (!start) return 1;
       return Math.max(1, Math.ceil((Date.now() - start.getTime()) / (30 * 24 * 3_600_000)));

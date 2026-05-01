@@ -1,7 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # MakeYourMusic — Dependency Installation Script
-# Installs dependencies for all packages (root, backend, frontend, shared).
+# Installs dependencies for all packages (root, backend, frontend, shared, mobile).
 
 echo "════════════════════════════════════════"
 echo "   🎵 MakeYourMusic — Dependency Install"
@@ -14,8 +15,10 @@ if ! command -v node &> /dev/null; then
     exit 1
 fi
 
-NODE_VERSION=$(node -v | cut -d'v' -f2 | cut -d'.' -f1)
-if [ "$NODE_VERSION" -lt 22 ]; then
+# Strip any non-numeric suffix (e.g. v22.0.0-nightly) before comparing.
+NODE_VERSION_RAW=$(node -v | sed 's/^v//')
+NODE_VERSION_MAJOR=$(echo "$NODE_VERSION_RAW" | cut -d'.' -f1 | sed 's/[^0-9].*//')
+if [ -z "$NODE_VERSION_MAJOR" ] || [ "$NODE_VERSION_MAJOR" -lt 22 ]; then
     echo "❌ Node.js 22+ is required. Current version: $(node -v)"
     exit 1
 fi
@@ -23,19 +26,30 @@ fi
 echo "✅ Node.js version: $(node -v)"
 echo ""
 
-# Install root dependencies
-echo "📦 Installing root dependencies..."
-npm install || { echo "❌ Root installation failed"; exit 1; }
+# Resolve script directory so cd .. doesn't bleed across packages.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
 
-# Install backend dependencies
-echo "📦 Installing backend dependencies..."
-cd backend && npm install || { echo "❌ Backend installation failed"; exit 1; }
-cd ..
+install_pkg() {
+    local name="$1"
+    local dir="$2"
+    if [ ! -d "$dir" ]; then
+        echo "⚠️  Skipping $name — directory $dir not found"
+        return 0
+    fi
+    if [ ! -f "$dir/package.json" ]; then
+        echo "⚠️  Skipping $name — no package.json in $dir"
+        return 0
+    fi
+    echo "📦 Installing $name dependencies..."
+    (cd "$dir" && npm install) || { echo "❌ $name installation failed"; exit 1; }
+}
 
-# Install frontend dependencies
-echo "📦 Installing frontend dependencies..."
-cd frontend && npm install || { echo "❌ Frontend installation failed"; exit 1; }
-cd ..
+install_pkg "root"     "$SCRIPT_DIR"
+install_pkg "shared"   "$SCRIPT_DIR/shared"
+install_pkg "backend"  "$SCRIPT_DIR/backend"
+install_pkg "frontend" "$SCRIPT_DIR/frontend"
+install_pkg "mobile"   "$SCRIPT_DIR/mobile"
 
 echo ""
 echo "════════════════════════════════════════"

@@ -64,7 +64,29 @@ const PREFS_STORAGE_KEY = "music4ai-player-prefs-v1";
 // Writes (persistPlayerPrefs) update this synchronously and flush to storage
 // in the background — so the store stays sync-friendly while still persisting
 // on both web (localStorage) and mobile (SecureStore via the storage adapter).
-let persistedPrefs: Partial<PersistedPlayerPrefs> = {};
+//
+// On web we ALSO read localStorage synchronously at module init so the store's
+// initial state (volume, EQ, shuffle, etc.) reflects user prefs on first
+// paint. Without this, the initial-state branches below all fall through to
+// hardcoded defaults until the async hydratePrefs() resolves — visible to the
+// user as a momentary volume / EQ flicker after each refresh.
+let persistedPrefs: Partial<PersistedPlayerPrefs> = (() => {
+  try {
+    if (typeof globalThis !== 'undefined') {
+      const ls = (globalThis as { localStorage?: Storage }).localStorage;
+      if (ls) {
+        const raw = ls.getItem(PREFS_STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw) as Partial<PersistedPlayerPrefs>;
+          return parsed && typeof parsed === 'object' ? parsed : {};
+        }
+      }
+    }
+  } catch {
+    /* ignore — fall through to empty prefs and let hydratePrefs() fill in */
+  }
+  return {};
+})();
 let seekRequestId = 0;
 
 function persistPlayerPrefs(update: Partial<PersistedPlayerPrefs>): void {

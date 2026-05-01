@@ -8,10 +8,25 @@ export const securityHeaders = helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'"], // 'unsafe-inline' needed for Tailwind
+      // This server is API-only (no HTML pages). Drop unsafe-inline; CSS is
+      // never delivered via this origin, so 'self' is enough and the previous
+      // 'unsafe-inline' allow-listed CSS-injection XSS for free.
+      styleSrc: ["'self'"],
       scriptSrc: ["'self'"],
       imgSrc: ["'self'", 'data:', 'https:', 'blob:'], // Allow blob: for image previews
-      connectSrc: ["'self'", 'https://api.stripe.com', 'https://*.stripe.com', 'https://*.up.railway.app', 'https://*.railway.app'], // Allow Stripe and Railway
+      // Allow only your specific Railway deploys via env (RAILWAY_PUBLIC_DOMAIN).
+      // The previous wildcards on *.railway.app would let any Railway tenant
+      // host attacker content under our same connect-src budget.
+      connectSrc: [
+        "'self'",
+        'https://api.stripe.com',
+        'https://*.stripe.com',
+        ...(process.env.RAILWAY_PUBLIC_DOMAIN
+          ? [`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`]
+          : process.env.NODE_ENV !== 'production'
+            ? ['https://*.up.railway.app', 'https://*.railway.app']
+            : []),
+      ],
       fontSrc: ["'self'", 'data:', 'https:'],
       objectSrc: ["'none'"],
       // Audio/video streamed from Cloudinary or any HTTPS source. blob: lets

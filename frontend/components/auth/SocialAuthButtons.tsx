@@ -44,7 +44,20 @@ export function SocialAuthButtons({
       try {
         next = new URLSearchParams(window.location.search).get('next');
       } catch {}
-      const dest = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
+      // Resolve `next` against the current origin and require the resolved
+      // origin to match. Catches `/\\evil.com`, `/[some]:evil.com`,
+      // `\\evil.com`, and other tricks that simple prefix checks miss.
+      let dest = '/';
+      if (next) {
+        try {
+          const resolved = new URL(next, window.location.origin);
+          if (resolved.origin === window.location.origin) {
+            dest = `${resolved.pathname}${resolved.search}${resolved.hash}` || '/';
+          }
+        } catch {
+          /* unparseable — fall through to '/' */
+        }
+      }
       router.push(dest);
     } catch (err) {
       const error = err as { code?: string; message?: string };

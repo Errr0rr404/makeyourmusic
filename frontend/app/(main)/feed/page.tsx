@@ -22,23 +22,28 @@ export default function FeedPage() {
 
   useEffect(() => {
     if (!isAuthenticated) { setLoading(false); return; }
+    const controller = new AbortController();
     async function load() {
       setLoading(true);
       setError(null);
       try {
         if (tab === 'tracks') {
-          const res = await api.get('/tracks?sort=newest&limit=30');
+          const res = await api.get('/tracks?sort=newest&limit=30', { signal: controller.signal });
+          if (controller.signal.aborted) return;
           setTracks(res.data.tracks || []);
         } else {
-          const res = await api.get('/clips?feed=trending&limit=24');
+          const res = await api.get('/clips?feed=trending&limit=24', { signal: controller.signal });
+          if (controller.signal.aborted) return;
           setClips(res.data.clips || []);
         }
       } catch (err) {
+        if (controller.signal.aborted) return;
         setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load feed');
       }
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
     load();
+    return () => controller.abort();
   }, [isAuthenticated, retryKey, tab]);
 
   if (!isAuthenticated) {

@@ -12,6 +12,7 @@ import { Logo } from '../../components/ui/Logo';
 import { TouchableOpacity } from 'react-native';
 import { Bell, Play, Sparkles, Wand2 } from 'lucide-react-native';
 import { useTokens, useIsVintage } from '../../lib/theme';
+import { ThemeQuickMenu } from '../../components/ThemeQuickMenu';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -121,42 +122,55 @@ export default function HomeScreen() {
             {isAuthenticated ? displayName : 'Sound that writes itself'}
           </Text>
         </View>
-        {isAuthenticated && (
-          <TouchableOpacity
-            onPress={() => router.push('/notifications')}
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <View
             style={{
-              position: 'relative',
               padding: 10,
               borderRadius: tokens.radiusLg,
               backgroundColor: tokens.card,
               borderWidth: 1,
               borderColor: tokens.border,
             }}
-            accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
           >
-            <Bell size={20} color={tokens.textMute} />
-            {unreadCount > 0 && (
-              <View
-                style={{
-                  position: 'absolute',
-                  top: -4,
-                  right: -4,
-                  minWidth: 18,
-                  height: 18,
-                  borderRadius: 9,
-                  backgroundColor: tokens.brand,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  paddingHorizontal: 4,
-                }}
-              >
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
-                  {unreadCount > 99 ? '99+' : unreadCount}
-                </Text>
-              </View>
-            )}
-          </TouchableOpacity>
-        )}
+            <ThemeQuickMenu />
+          </View>
+          {isAuthenticated && (
+            <TouchableOpacity
+              onPress={() => router.push('/notifications')}
+              style={{
+                position: 'relative',
+                padding: 10,
+                borderRadius: tokens.radiusLg,
+                backgroundColor: tokens.card,
+                borderWidth: 1,
+                borderColor: tokens.border,
+              }}
+              accessibilityLabel={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ''}`}
+            >
+              <Bell size={20} color={tokens.textMute} />
+              {unreadCount > 0 && (
+                <View
+                  style={{
+                    position: 'absolute',
+                    top: -4,
+                    right: -4,
+                    minWidth: 18,
+                    height: 18,
+                    borderRadius: 9,
+                    backgroundColor: tokens.brand,
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    paddingHorizontal: 4,
+                  }}
+                >
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700' }}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </Text>
+                </View>
+              )}
+            </TouchableOpacity>
+          )}
+        </View>
       </View>
 
       {/* Hero card — guests get a sign-up CTA, members get a quick generate prompt */}

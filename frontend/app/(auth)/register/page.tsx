@@ -71,19 +71,25 @@ export default function RegisterPage() {
       );
       try { sessionStorage.removeItem('mym_ref'); } catch {}
       // Forward `?next=` so verify-email can route the user back where
-      // they started (e.g. /create with a half-finished draft).
+      // they started (e.g. /create with a half-finished draft). Resolve
+      // against the current origin and require the resolved origin to match —
+      // catches `/\\evil.com` and other open-redirect bypasses that simple
+      // prefix checks miss.
       let next: string | null = null;
       try {
         next = new URLSearchParams(window.location.search).get('next');
       } catch {}
-      const safeNext =
-        next &&
-        next.startsWith('/') &&
-        !next.startsWith('//') &&
-        !next.startsWith('/\\') &&
-        !/^\/[^/]*:/.test(next)
-          ? next
-          : '';
+      let safeNext = '';
+      if (next) {
+        try {
+          const resolved = new URL(next, window.location.origin);
+          if (resolved.origin === window.location.origin) {
+            safeNext = `${resolved.pathname}${resolved.search}${resolved.hash}`;
+          }
+        } catch {
+          /* unparseable — fall through to '' */
+        }
+      }
       router.push(safeNext ? `/verify-email?next=${encodeURIComponent(safeNext)}` : '/verify-email');
     } catch (err) {
       setError((err as Error).message);

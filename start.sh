@@ -1,4 +1,5 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
 # MakeYourMusic — Main Startup Script
 # AI-Generated Music Platform
@@ -123,12 +124,27 @@ if [ ! -f "backend/.env" ]; then
 fi
 echo -e "${GREEN}✓ backend/.env found${NC}"
 
-# Load DATABASE_URL
-if [ -z "${DATABASE_URL:-}" ]; then
-    export DATABASE_URL=$(grep "^DATABASE_URL=" backend/.env | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+# Load DATABASE_URL.
+# Strip ONLY a single pair of leading/trailing quotes from the value (a password
+# containing single-quotes/double-quotes used to be mangled by `tr -d "'"`).
+extract_env_value() {
+    local file="$1"
+    local key="$2"
+    local line
+    line=$(grep -E "^${key}=" "$file" | head -n 1)
+    [ -z "$line" ] && return 1
+    local value="${line#${key}=}"
+    if [[ "$value" =~ ^\".*\"$ ]] || [[ "$value" =~ ^\'.*\'$ ]]; then
+        value="${value:1:${#value}-2}"
+    fi
+    printf '%s' "$value"
+}
+
+if [ -z "${DATABASE_URL:-}" ] && [ -f "backend/.env" ]; then
+    export DATABASE_URL=$(extract_env_value "backend/.env" "DATABASE_URL")
 fi
 if [ -z "${DATABASE_URL:-}" ] && [ -f ".env" ]; then
-    export DATABASE_URL=$(grep "^DATABASE_URL=" .env | cut -d'=' -f2- | tr -d '"' | tr -d "'")
+    export DATABASE_URL=$(extract_env_value ".env" "DATABASE_URL")
 fi
 
 if [ -z "${DATABASE_URL:-}" ]; then
@@ -147,15 +163,25 @@ echo -e "${GREEN}✓ Prisma client generated${NC}"
 
 # Run migrations
 echo -e "${YELLOW}Running database migrations...${NC}"
+# Temporarily disable -e so we can branch on exit code without aborting.
+set +e
 MIGRATE_OUTPUT=$(npx prisma migrate deploy --schema=prisma/schema.prisma 2>&1)
 MIGRATE_EXIT=$?
+set -e
 
 if [ $MIGRATE_EXIT -eq 0 ]; then
     echo -e "${GREEN}✓ Migrations applied${NC}"
 else
     echo -e "${YELLOW}⚠ prisma migrate deploy failed; falling back to db push...${NC}"
-    npx prisma db push --schema=prisma/schema.prisma 2>&1 | tail -5
-    if [ $? -ne 0 ]; then
+    # Run db push WITHOUT a pipeline so $? captures prisma's exit code, not
+    # tail's. The previous version pipelined to `tail -5`, which always
+    # exits 0 — making a failed schema sync silently report success.
+    set +e
+    PUSH_OUTPUT=$(npx prisma db push --schema=prisma/schema.prisma 2>&1)
+    PUSH_EXIT=$?
+    set -e
+    echo "$PUSH_OUTPUT" | tail -5
+    if [ $PUSH_EXIT -ne 0 ]; then
         echo -e "${RED}✗ Database setup failed${NC}"
         exit 1
     fi

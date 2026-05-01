@@ -273,7 +273,15 @@ export function TrackStems({ trackId, isOwner }: Props) {
               </div>
               <button
                 onClick={() => {
-                  const cents = Math.round(parseFloat(priceInput || '0') * 100);
+                  // Strict price validation: parseFloat('1abc') silently
+                  // accepts as 1, which let users typo "$1.99 USD" and end
+                  // up listing for $1.00 instead of $1.99.
+                  const trimmed = (priceInput || '').trim();
+                  if (!/^\d+(\.\d{1,2})?$/.test(trimmed)) {
+                    toast.error('Enter a valid price (e.g. 4.99)');
+                    return;
+                  }
+                  const cents = Math.round(parseFloat(trimmed) * 100);
                   if (!Number.isFinite(cents) || cents <= 0) {
                     toast.error('Enter a valid price');
                     return;

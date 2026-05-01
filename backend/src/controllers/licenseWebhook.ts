@@ -79,10 +79,14 @@ export async function handleSyncLicenseCheckoutCompleted(session: any): Promise<
 }
 
 // payment_intent.payment_failed for license/stem purchases.
+// Only flip PENDING → REVOKED. The original `status: { not: 'REFUNDED' }`
+// filter would, in an out-of-order webhook delivery (payment_failed AFTER
+// checkout.session.completed marked the license PAID), revoke a paid license
+// — including the buyer's downloadToken.
 export async function handleSyncLicensePaymentFailed(paymentIntent: any): Promise<void> {
   if (!paymentIntent?.id) return;
   await prisma.syncLicense.updateMany({
-    where: { stripePaymentIntentId: paymentIntent.id, status: { not: 'REFUNDED' } },
+    where: { stripePaymentIntentId: paymentIntent.id, status: 'PENDING' },
     data: { status: 'REVOKED' },
   });
 }

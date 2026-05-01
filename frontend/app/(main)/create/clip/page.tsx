@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { Suspense, useEffect, useRef, useState, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import api from '@/lib/api';
@@ -27,7 +27,26 @@ interface UploadedVideo {
   height?: number;
 }
 
+// useSearchParams() requires a Suspense boundary in Next 15+ for static
+// rendering. Other auth pages already do this — wrap the inner content the
+// same way to avoid the build-time bail-out.
 export default function CreateClipPage() {
+  return (
+    <Suspense fallback={<CreateClipFallback />}>
+      <CreateClipPageContent />
+    </Suspense>
+  );
+}
+
+function CreateClipFallback() {
+  return (
+    <div className="flex items-center justify-center py-20">
+      <Loader2 className="w-6 h-6 animate-spin text-[hsl(var(--accent))]" />
+    </div>
+  );
+}
+
+function CreateClipPageContent() {
   const router = useRouter();
   const search = useSearchParams();
   const { isAuthenticated } = useAuthStore();

@@ -37,6 +37,13 @@ export function Lyrics({ lyrics, defaultOpen = false, trackId }: LyricsProps) {
   const progress = usePlayerStore((s) => s.progress);
   const isThisTrackPlaying = trackId != null && currentTrack?.id === trackId;
 
+  // Invalidate the cached karaoke lines whenever the trackId changes — without
+  // this, switching tracks while karaoke is on showed the previous track's
+  // lines until the user toggled karaoke off and back on.
+  useEffect(() => {
+    setKaraokeLines(null);
+  }, [trackId]);
+
   useEffect(() => {
     if (!karaokeMode || !trackId || karaokeLines) return;
     let cancelled = false;

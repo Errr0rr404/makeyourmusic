@@ -52,7 +52,14 @@ export default function ProfilePage() {
       }
     };
     void loadClips();
-  }, [isAuthenticated, user]);
+    // Depend on the user id (a stable string) — depending on `user` (a fresh
+    // object on every store update) re-ran this effect on every profile edit,
+    // triggering a triple-fetch storm. user.displayName/avatar/bio are read
+    // synchronously inside the effect for the form reset; if they change
+    // without a full re-mount, the form is intentionally not reset (the user
+    // is mid-edit).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, user?.id]);
 
   const loadStats = async () => {
     try {

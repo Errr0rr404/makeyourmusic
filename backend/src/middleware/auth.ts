@@ -10,10 +10,23 @@ const TV_TTL_MS = 60_000;
 const TV_MAX = 5_000;
 const tvCache = new Map<string, { tv: number; expiresAt: number }>();
 
-async function getCurrentTokenVersion(userId: string): Promise<number | null> {
+// Sentinel returned when the DB lookup itself failed (vs. user not found).
+// Lets callers distinguish "user genuinely doesn't exist" from "transient DB
+// error" so authenticate / optionalAuth can apply consistent semantics.
+const TV_DB_ERROR = Symbol('tv_db_error');
+type TvResult = number | null | typeof TV_DB_ERROR;
+
+async function getCurrentTokenVersion(userId: string): Promise<TvResult> {
   const cached = tvCache.get(userId);
   const now = Date.now();
-  if (cached && cached.expiresAt > now) return cached.tv;
+  if (cached && cached.expiresAt > now) {
+    // Bump on access for true LRU ordering — Map preserves insertion order,
+    // so re-inserting moves the key to the end and shields hot keys from
+    // eviction.
+    tvCache.delete(userId);
+    tvCache.set(userId, cached);
+    return cached.tv;
+  }
   try {
     const u = await prisma.user.findUnique({
       where: { id: userId },
@@ -21,14 +34,14 @@ async function getCurrentTokenVersion(userId: string): Promise<number | null> {
     });
     if (!u) return null;
     if (tvCache.size >= TV_MAX) {
-      // Cheap LRU-ish eviction: drop oldest entry.
+      // True LRU: drop the oldest entry (Map iteration order = insertion).
       const firstKey = tvCache.keys().next().value;
       if (firstKey) tvCache.delete(firstKey);
     }
     tvCache.set(userId, { tv: u.tokenVersion, expiresAt: now + TV_TTL_MS });
     return u.tokenVersion;
   } catch {
-    return null;
+    return TV_DB_ERROR;
   }
 }
 
@@ -59,6 +72,11 @@ export const authenticate = async (req: RequestWithUser, res: Response, next: Ne
     // the per-request DB cost.
     if (typeof decoded.tv === 'number') {
       const currentTv = await getCurrentTokenVersion(decoded.userId);
+      if (currentTv === TV_DB_ERROR) {
+        // DB unreachable. Fail closed to match the rest of authenticate.
+        res.status(503).json({ error: 'Authentication service unavailable' });
+        return;
+      }
       if (currentTv === null || currentTv !== decoded.tv) {
         res.status(401).json({ error: 'Token revoked' });
         return;
@@ -91,7 +109,11 @@ export const optionalAuth = async (req: RequestWithUser, _res: Response, next: N
           return;
         }
         const currentTv = await getCurrentTokenVersion(decoded.userId);
-        if (currentTv === null || currentTv !== decoded.tv) {
+        // For optionalAuth, both "user not found" and "DB error" should leave
+        // the request unauthenticated. The previous version conflated the two
+        // by returning null in both cases; with the new sentinel the policy
+        // is now explicit and matched here.
+        if (currentTv === TV_DB_ERROR || currentTv === null || currentTv !== decoded.tv) {
           next();
           return;
         }

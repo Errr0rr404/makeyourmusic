@@ -12,6 +12,7 @@ import {
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Button } from '../../components/ui/Button';
 import { useTokens } from '../../lib/theme';
+import { asSlug } from '../../lib/validateSlug';
 
 type NotifType = 'NEW_TRACK' | 'NEW_FOLLOWER' | 'TRACK_LIKED' | 'COMMENT' | 'SYSTEM';
 
@@ -90,10 +91,15 @@ export default function NotificationsScreen() {
       setUnreadCount((c) => Math.max(0, c - 1));
       getApi().put(`/notifications/${n.id}/read`).catch(() => {});
     }
-    if (n.data?.trackSlug) {
-      router.push(`/track/${n.data.trackSlug}`);
-    } else if (n.data?.agentSlug) {
-      router.push(`/agent/${n.data.agentSlug}`);
+    // Validate slugs before routing — notification payloads are server-
+    // controlled but a compromised push or a misconfigured campaign could
+    // otherwise hand expo-router an arbitrary string as a route.
+    const trackSlug = asSlug(n.data?.trackSlug);
+    const agentSlug = asSlug(n.data?.agentSlug);
+    if (trackSlug) {
+      router.push(`/track/${trackSlug}`);
+    } else if (agentSlug) {
+      router.push(`/agent/${agentSlug}`);
     }
   };
 

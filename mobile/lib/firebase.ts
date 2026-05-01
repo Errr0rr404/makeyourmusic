@@ -1,5 +1,14 @@
 import { initializeApp, getApps, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import {
+  getAuth,
+  initializeAuth,
+  // @ts-expect-error -- getReactNativePersistence is not in firebase/auth's
+  // public type definitions but is a documented runtime export. See:
+  // https://firebase.google.com/docs/auth/web/start#sign-in-and-sign-up
+  getReactNativePersistence,
+  type Auth,
+} from 'firebase/auth';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // Same project as web. Public client values — safe to ship in the bundle.
 const firebaseConfig = {
@@ -21,6 +30,7 @@ export const googleOAuthClientIds = {
 } as const;
 
 let app: FirebaseApp | null = null;
+let cachedAuth: Auth | null = null;
 
 export function getFirebaseApp(): FirebaseApp {
   if (app) return app;
@@ -29,5 +39,19 @@ export function getFirebaseApp(): FirebaseApp {
 }
 
 export function getFirebaseAuth(): Auth {
-  return getAuth(getFirebaseApp());
+  if (cachedAuth) return cachedAuth;
+  const fbApp = getFirebaseApp();
+  // initializeAuth must be called BEFORE the first getAuth() to register the
+  // RN-AsyncStorage persistence layer. Without persistence, Firebase Auth
+  // state evaporates on every cold start and offline `getIdToken()` fails.
+  // Calling initializeAuth twice on the same app throws — wrap in try/catch
+  // and fall back to getAuth() on the second hit (e.g. Fast Refresh).
+  try {
+    cachedAuth = initializeAuth(fbApp, {
+      persistence: getReactNativePersistence(AsyncStorage),
+    });
+  } catch {
+    cachedAuth = getAuth(fbApp);
+  }
+  return cachedAuth;
 }

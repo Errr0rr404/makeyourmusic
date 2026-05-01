@@ -42,25 +42,37 @@ export default function VideoStudioScreen() {
   const [gen, setGen] = useState<VideoGen | null>(null);
   const [error, setError] = useState('');
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Flag observed inside the poll loop. Without this, an in-flight `tick`
+  // could resolve after the cleanup ran and schedule a NEW setTimeout that
+  // escaped cleanup → memory leak + setState-after-unmount warning.
+  const pollStoppedRef = useRef(false);
 
   useEffect(() => {
+    pollStoppedRef.current = false;
     return () => {
+      pollStoppedRef.current = true;
       if (pollTimer.current) clearTimeout(pollTimer.current);
     };
   }, []);
 
   const startPolling = (id: string) => {
+    pollStoppedRef.current = false;
     const tick = async () => {
+      if (pollStoppedRef.current) return;
       try {
         const r = await api.get(`/ai/video/${id}`);
+        if (pollStoppedRef.current) return;
         const latest: VideoGen = r.data.generation;
         setGen(latest);
         if (latest.status === 'PENDING' || latest.status === 'PROCESSING') {
-          pollTimer.current = setTimeout(tick, 5000);
+          if (!pollStoppedRef.current) {
+            pollTimer.current = setTimeout(tick, 5000);
+          }
         } else if (latest.status === 'COMPLETED') {
           hapticSuccess();
         }
       } catch (err: any) {
+        if (pollStoppedRef.current) return;
         setError(err?.response?.data?.error || 'Failed to fetch status');
       }
     };

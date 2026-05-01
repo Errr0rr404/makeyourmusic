@@ -34,5 +34,8 @@ export function middleware(req: NextRequest) {
 
 export const config = {
   // Run on every path except static assets, Next internals, and /api proxies.
-  matcher: ['/((?!api|_next|favicon.ico|robots.txt|sitemap.xml|manifest.json|.*\\.).*)'],
+  // The dot rule was previously `.*\.` which excluded any path containing a
+  // `.` ANYWHERE, so user-controlled segments with a dot (e.g. /agent/foo.bar)
+  // skipped auth gating entirely. Tighten to "extension at end of path" only.
+  matcher: ['/((?!api|_next|favicon.ico|robots.txt|sitemap.xml|manifest.json|.*\\.[a-zA-Z0-9]+$).*)'],
 };

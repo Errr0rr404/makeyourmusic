@@ -38,13 +38,19 @@ const CORS_HOSTS = new Set<string>([
 
 function isSameOrigin(url: string): boolean {
   if (!url) return false;
-  if (url.startsWith('/')) return true;
+  // Resolve against the current location so relative URLs (with or without a
+  // leading slash) and protocol-relative URLs (//cdn.example/foo.mp3) get
+  // classified by the actual resolved origin instead of falling into the
+  // catch-all "true" branch. The previous "if startsWith('/') return true"
+  // shortcut also missed protocol-relative URLs entirely.
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(url, window.location.href);
     if (parsed.origin === window.location.origin) return true;
     return CORS_HOSTS.has(parsed.hostname);
   } catch {
-    return true;
+    // Genuinely unparseable — treat as cross-origin so we don't try to wire
+    // it through Web Audio (which would fail with a tainted-canvas error).
+    return false;
   }
 }
 
@@ -66,6 +72,11 @@ export function AudioPlayer() {
   const crossfadeTimerRef = useRef<number | null>(null);
   const crossfadePromoteTimeoutRef = useRef<number | null>(null);
   const crossfadeSafetyTimeoutRef = useRef<number | null>(null);
+  // Tracked so cancelCrossfade() can remove the canplay listener attached
+  // inside startCrossfade. Without this, a stale listener could fire AFTER
+  // cancellation and flip the slot gains, muting the new track and unmuting
+  // the old one.
+  const crossfadeCanPlayCleanupRef = useRef<(() => void) | null>(null);
 
   const playRecordedRef = useRef(false);
   const engineInitRef = useRef(false);
@@ -100,6 +111,10 @@ export function AudioPlayer() {
     if (crossfadeSafetyTimeoutRef.current) {
       window.clearTimeout(crossfadeSafetyTimeoutRef.current);
       crossfadeSafetyTimeoutRef.current = null;
+    }
+    if (crossfadeCanPlayCleanupRef.current) {
+      crossfadeCanPlayCleanupRef.current();
+      crossfadeCanPlayCleanupRef.current = null;
     }
     crossfadingRef.current = false;
     preloadedTrackIdRef.current = null;
@@ -332,10 +347,25 @@ export function AudioPlayer() {
         }, 33);
       }
 
-      // Promote after the ramp completes.
+      // Promote after the ramp completes. Capture the expected next-track id
+      // so we can detect user actions that mutated the queue mid-crossfade
+      // (skip / remove / reorder) — promoting in that case would advance to
+      // the wrong track.
+      const expectedNextId = next.id;
       crossfadePromoteTimeoutRef.current = window.setTimeout(() => {
         crossfadePromoteTimeoutRef.current = null;
         if (!crossfadingRef.current) return;
+        // Re-read the queue from the store at promote time. Closure values
+        // for queue/queueIndex are stale by now if the user took action.
+        const fresh = usePlayerStore.getState();
+        const expectedTrackStillNext =
+          fresh.queue[fresh.queueIndex + 1]?.id === expectedNextId;
+        if (!expectedTrackStillNext) {
+          // User mutated the queue mid-crossfade. Bail without promoting; the
+          // load-effect will pick up whatever the user intended on its own.
+          cancelCrossfade();
+          return;
+        }
         try { active.pause(); } catch {}
         if (engineInitRef.current) {
           audioEngine.setSlotGain(activeSlotRef.current, 0);
@@ -360,17 +390,21 @@ export function AudioPlayer() {
       startGains();
     } else {
       const onCanPlay = () => {
+        cleanup();
+        if (crossfadingRef.current) startGains();
+      };
+      const cleanup = () => {
         inactive.removeEventListener('canplay', onCanPlay);
         if (crossfadeSafetyTimeoutRef.current) {
           window.clearTimeout(crossfadeSafetyTimeoutRef.current);
           crossfadeSafetyTimeoutRef.current = null;
         }
-        if (crossfadingRef.current) startGains();
+        crossfadeCanPlayCleanupRef.current = null;
       };
+      crossfadeCanPlayCleanupRef.current = cleanup;
       inactive.addEventListener('canplay', onCanPlay);
       crossfadeSafetyTimeoutRef.current = window.setTimeout(() => {
-        inactive.removeEventListener('canplay', onCanPlay);
-        crossfadeSafetyTimeoutRef.current = null;
+        cleanup();
         if (crossfadingRef.current && inactive.readyState < 2) cancelCrossfade();
       }, 5000);
     }
@@ -410,8 +444,12 @@ export function AudioPlayer() {
     } else {
       if (currentTrack && !playRecordedRef.current) {
         playRecordedRef.current = true;
+        // Streaming sources can leave duration as NaN/Infinity. Floor() of
+        // NaN is NaN, which the server-side validator rejects. Guard so we
+        // either send a finite value or skip the metric.
+        const safeDuration = Number.isFinite(duration) ? Math.max(0, Math.floor(duration)) : 0;
         api.post(`/tracks/${currentTrack.id}/play`, {
-          durationPlayed: Math.floor(duration),
+          durationPlayed: safeDuration,
           completed: true,
         }).catch(() => {});
       }
@@ -449,7 +487,7 @@ export function AudioPlayer() {
         className="hidden"
         onTimeUpdate={() => { if (activeSlotRef.current === 'a') handleTimeUpdate(); }}
         onLoadedMetadata={() => {
-          if (activeSlotRef.current === 'a' && audioARef.current) setDuration(audioARef.current.duration);
+          if (activeSlotRef.current === 'a' && audioARef.current && Number.isFinite(audioARef.current.duration)) setDuration(audioARef.current.duration);
         }}
         onEnded={() => { if (activeSlotRef.current === 'a') handleEnded(); }}
       />
@@ -459,7 +497,7 @@ export function AudioPlayer() {
         className="hidden"
         onTimeUpdate={() => { if (activeSlotRef.current === 'b') handleTimeUpdate(); }}
         onLoadedMetadata={() => {
-          if (activeSlotRef.current === 'b' && audioBRef.current) setDuration(audioBRef.current.duration);
+          if (activeSlotRef.current === 'b' && audioBRef.current && Number.isFinite(audioBRef.current.duration)) setDuration(audioBRef.current.duration);
         }}
         onEnded={() => { if (activeSlotRef.current === 'b') handleEnded(); }}
       />

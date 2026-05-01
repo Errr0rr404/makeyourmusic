@@ -214,9 +214,13 @@ export const resolveTakedown = async (req: RequestWithUser, res: Response) => {
           where: { trackId: takedown.trackId, status: 'PENDING', id: { not: id } },
         });
         if (otherPending === 0) {
+          // REJECT path — clear the takedown markers but DO NOT touch
+          // isPublic. Forcing isPublic=true would expose tracks the creator
+          // had explicitly made private; we only want to lift the takedown
+          // hide, not republish.
           await tx.track.update({
             where: { id: takedown.trackId },
-            data: { takedownStatus: null, takedownReason: null, isPublic: true },
+            data: { takedownStatus: null, takedownReason: null },
           });
         }
       }

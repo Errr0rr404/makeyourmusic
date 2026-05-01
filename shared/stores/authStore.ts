@@ -88,7 +88,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({ user, accessToken, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ isLoading: false });
-      throw new Error(error.response?.data?.error || 'Sign-in failed');
+      throw new Error(error?.response?.data?.error || error?.message || 'Sign-in failed');
     }
   },
 
@@ -105,7 +105,7 @@ export const useAuthStore = create<AuthStore>((set) => ({
       set({ user, accessToken, isAuthenticated: true, isLoading: false });
     } catch (error: any) {
       set({ isLoading: false });
-      throw new Error(error.response?.data?.error || 'Registration failed');
+      throw new Error(error?.response?.data?.error || error?.message || 'Registration failed');
     }
   },
 

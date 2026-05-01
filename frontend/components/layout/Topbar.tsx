@@ -6,6 +6,7 @@ import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/authStore';
 import { Search, User, LogOut, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { NotificationBell } from '@/components/notifications/NotificationBell';
+import { ThemeMenu } from '@/components/ThemeMenu';
 import { cn } from '@/lib/utils';
 
 export function Topbar() {
@@ -112,6 +113,7 @@ export function Topbar() {
       </div>
 
       <div className="flex items-center gap-2">
+        <ThemeMenu />
         {isAuthenticated ? (
           <>
             <Link href="/create" className="hidden md:inline-flex mym-pill">

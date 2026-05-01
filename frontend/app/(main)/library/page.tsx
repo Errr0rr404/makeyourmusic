@@ -31,11 +31,15 @@ function LibraryContent() {
   const [tab, setTab] = useState<Tab>(initialTab);
 
   // Keep the active tab in sync if the URL changes (back/forward, sidebar click).
+  // Depend on the serialized querystring rather than the URLSearchParams object
+  // reference — the latter is a fresh instance on every render, so the effect
+  // re-ran on every render even when the URL didn't change.
+  const searchParamsString = searchParams.toString();
   useEffect(() => {
     const next = TAB_ALIAS[searchParams.get('tab') ?? ''];
     if (next && next !== tab) setTab(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParamsString]);
 
   const switchTab = (next: Tab) => {
     setTab(next);

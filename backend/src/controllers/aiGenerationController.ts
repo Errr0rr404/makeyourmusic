@@ -1557,9 +1557,10 @@ async function pollVideoGeneration(generationId: string, providerJobId: string):
         });
         return;
       }
-      // else keep polling
+      // else keep polling — only write when status actually changes (avoids
+      // ~60 redundant writes per video over a 10-min poll loop).
       await prisma.videoGeneration.updateMany({
-        where: { id: generationId },
+        where: { id: generationId, status: { not: 'PROCESSING' } },
         data: { status: 'PROCESSING' },
       });
     } catch (err) {

@@ -263,11 +263,24 @@ export function useSyncPlayerToNative() {
   };
 }
 
+// Module-level guard. Repeated calls to setupNativePlayerListeners() — most
+// commonly via Fast Refresh remount of the root layout — used to add a fresh
+// listener each time, so a single track-change event would fire N times,
+// inflate `tracks/:id/play` counts, and write to the store N times.
+let _nativeListenersCleanup: (() => void) | null = null;
+
 /**
  * Listen to native TrackPlayer events and sync state back to Zustand.
- * Call this from a useEffect in the root layout.
+ * Call this from a useEffect in the root layout. Idempotent: subsequent
+ * calls return the existing cleanup without re-registering.
  */
 export function setupNativePlayerListeners() {
+  if (_nativeListenersCleanup) {
+    // Already wired up — reuse the existing cleanup so the caller's effect
+    // can still tear down on unmount without re-registering listeners.
+    return _nativeListenersCleanup;
+  }
+
   const store = usePlayerStore;
 
   // When the native player changes track (e.g. queue end, skip)
@@ -342,11 +355,14 @@ export function setupNativePlayerListeners() {
     },
   );
 
-  return () => {
+  const cleanup = () => {
     trackChangeSub.remove();
     playbackSub.remove();
     progressSub.remove();
+    _nativeListenersCleanup = null;
   };
+  _nativeListenersCleanup = cleanup;
+  return cleanup;
 }
 
 // Re-export hooks for convenience

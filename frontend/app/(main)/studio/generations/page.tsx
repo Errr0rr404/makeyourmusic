@@ -100,12 +100,19 @@ export default function GenerationsPage() {
     load();
   }, [load]);
 
-  // Poll if any are in progress
+  // Poll while any generations are in progress. Depending on `generations`
+  // (the array reference) caused this effect to tear down + restart the
+  // interval after every load() resolved, firing extra loads mid-cycle.
+  // Reduce to a stable boolean so the interval only resets when the in-progress
+  // status genuinely changes.
+  const hasInProgress = generations.some(
+    (g) => g.status === 'PENDING' || g.status === 'PROCESSING',
+  );
   useEffect(() => {
-    if (!generations.some((g) => g.status === 'PENDING' || g.status === 'PROCESSING')) return;
+    if (!hasInProgress) return;
     const interval = setInterval(load, 5000);
     return () => clearInterval(interval);
-  }, [generations, load]);
+  }, [hasInProgress, load]);
 
   const handleVariation = async (gen: Gen) => {
     try {

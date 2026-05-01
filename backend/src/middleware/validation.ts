@@ -125,21 +125,24 @@ export const sanitizeBody = (req: Request, _res: Response, next: NextFunction): 
       if (Array.isArray(obj)) {
         return obj.map((item) => sanitize(item, parentKey));
       }
-      // Handle objects
+      // Handle objects. Use Object.entries() instead of `for…in` so we walk
+      // OWN enumerables only — `for…in` walks the prototype chain, which
+      // depending on the body parser can pull in attacker-controlled
+      // prototype-pollution properties.
       if (obj && typeof obj === 'object') {
         const sanitized: Record<string, unknown> = {};
-        for (const key in obj) {
+        for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
           // Skip password fields - don't sanitize them
           if (PASSWORD_FIELDS.has(key)) {
-            sanitized[key] = obj[key];
-          } 
+            sanitized[key] = value;
+          }
           // Handle email specifically
           else if (key === 'email') {
-            sanitized[key] = sanitizeEmail(obj[key] as string);
+            sanitized[key] = sanitizeEmail(value as string);
           }
           // Recursively sanitize nested objects/arrays
           else {
-            sanitized[key] = sanitize(obj[key], key);
+            sanitized[key] = sanitize(value, key);
           }
         }
         return sanitized;
@@ -175,7 +178,11 @@ export const nameValidation = body('name')
   .trim()
   .isLength({ min: 1, max: 100 })
   .withMessage('Name must be between 1 and 100 characters')
-  .matches(/^[a-zA-Z\s'-]+$/)
+  // Allow any Unicode letter/mark plus spaces, hyphens, apostrophes. The
+  // ASCII-only regex used to reject names with accented Latin (Café), Cyrillic,
+  // CJK, Hangul, Greek, Arabic, etc. — i.e. most of the platform's stated
+  // K-pop / Mando-pop / global pop audience.
+  .matches(/^[\p{L}\p{M}\s'-]+$/u)
   .withMessage('Name contains invalid characters');
 
 // ─── Auth-specific rules ──────────────────────────────────

@@ -14,6 +14,7 @@ import {
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
+import { ThemeQuickMenu } from '../../components/ThemeQuickMenu';
 import { pickAndUploadImage } from '../../lib/uploadImage';
 import { hapticSelection, hapticSuccess } from '../../services/hapticService';
 import { useTokens, useIsVintage, type ThemeTokens } from '../../lib/theme';
@@ -208,9 +209,12 @@ export default function ProfileScreen() {
           >
             Profile
           </Text>
-          <TouchableOpacity onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Settings" hitSlop={6}>
-            <SettingsIcon size={20} color={tokens.textMute} />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16 }}>
+            <ThemeQuickMenu />
+            <TouchableOpacity onPress={() => router.push('/settings')} accessibilityRole="button" accessibilityLabel="Settings" hitSlop={6}>
+              <SettingsIcon size={20} color={tokens.textMute} />
+            </TouchableOpacity>
+          </View>
         </View>
 
         {/* Avatar + info */}

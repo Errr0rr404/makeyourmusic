@@ -30,7 +30,12 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', { promise, reason });
-  // Don't crash the server on unhandled promise rejections — log and continue
+  // Treat as fatal — Node's default since v15. A rejected Prisma transaction
+  // or half-applied state mutation can leave the process running with stale
+  // pool connections, mid-transaction locks, or torn caches; better to crash
+  // and let the process supervisor restart cleanly. Match the uncaughtException
+  // exit pattern (1s for log flush) so we get the same diagnostic output.
+  setTimeout(() => process.exit(1), 1000);
 });
 
 // Routes
@@ -112,9 +117,26 @@ app.use(
   })
 );
 
-// Stripe webhook needs raw body for signature verification — mount BEFORE json parsing
+// Stripe webhook needs raw body for signature verification — mount BEFORE json parsing.
+// Apply a dedicated rate limiter so an attacker spamming unsigned POSTs can't
+// burn CPU on constructEvent and starve legitimate traffic. Stripe production
+// retries are well under this rate; raise if you see legitimate retries
+// getting limited.
 import { handleWebhook } from './controllers/subscriptionController';
-app.post('/api/subscription/webhook', express.raw({ type: 'application/json' }), handleWebhook as any);
+import rateLimit from 'express-rate-limit';
+const webhookLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 120,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: 'Webhook rate limit exceeded.',
+});
+app.post(
+  '/api/subscription/webhook',
+  webhookLimiter,
+  express.raw({ type: 'application/json' }),
+  handleWebhook as any,
+);
 
 // Body parsing — keep modest since file uploads go through multer (50MB) and
 // don't need this codepath. 1MB is plenty for JSON metadata and form fields.
@@ -207,11 +229,12 @@ if (process.env.NODE_ENV !== 'test') {
       }
       process.exit(0);
     });
-    // Force shutdown after 10s if graceful shutdown hangs
+    // Force shutdown after 10s if graceful shutdown hangs. .unref() so the
+    // timer doesn't keep the event loop alive when the close completes early.
     setTimeout(() => {
       logger.error('Forced shutdown after timeout');
       process.exit(1);
-    }, 10000);
+    }, 10000).unref();
   };
 
   process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));

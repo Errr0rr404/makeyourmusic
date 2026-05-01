@@ -29,6 +29,7 @@ class AudioEngine {
   private masterGain: GainNode | null = null;
   private analyser: AnalyserNode | null = null;
   private analyserData: Uint8Array<ArrayBuffer> | null = null;
+  private freqData: Uint8Array<ArrayBuffer> | null = null;
   private connected = false;
 
   /**
@@ -73,6 +74,7 @@ class AudioEngine {
     this.analyser.fftSize = 1024;
     this.analyser.smoothingTimeConstant = 0.6;
     this.analyserData = new Uint8Array(new ArrayBuffer(this.analyser.fftSize));
+    this.freqData = new Uint8Array(new ArrayBuffer(this.analyser.frequencyBinCount));
 
     // Wire EQ → masterGain → analyser → destination
     let head: AudioNode | null = null;
@@ -176,11 +178,13 @@ class AudioEngine {
 
   /** Frequency-band sample (0..1) at the given bucket fraction (0..1). */
   getFreqLevel(fraction: number): number {
-    if (!this.analyser) return 0;
-    const buf = new Uint8Array(new ArrayBuffer(this.analyser.frequencyBinCount));
-    this.analyser.getByteFrequencyData(buf);
-    const idx = Math.floor(fraction * buf.length);
-    return (buf[idx] ?? 0) / 255;
+    if (!this.analyser || !this.freqData) return 0;
+    // Reuse the cached buffer instead of allocating ~512B per call. With a
+    // VU meter sampling at 60fps across multiple components, the previous
+    // per-call allocation produced steady GC pressure.
+    this.analyser.getByteFrequencyData(this.freqData);
+    const idx = Math.floor(fraction * this.freqData.length);
+    return (this.freqData[idx] ?? 0) / 255;
   }
 
   private disconnectAll() {
@@ -197,6 +201,7 @@ class AudioEngine {
     if (this.analyser) { try { this.analyser.disconnect(); } catch (e) { console.warn('[AudioEngine] analyser disconnect error:', e); } }
     this.analyser = null;
     this.analyserData = null;
+    this.freqData = null;
   }
 
   destroy() {

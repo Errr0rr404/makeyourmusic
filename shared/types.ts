@@ -188,7 +188,7 @@ export interface Tip {
   status: TipStatus;
   createdAt: string;
   fromUser?: { id: string; username: string; displayName: string | null; avatar: string | null } | null;
-  toUserId?: string;
+  toUserId: string;
   trackId?: string | null;
 }
 
@@ -336,6 +336,19 @@ export interface ApiError {
 }
 
 export interface PaginatedResponse<T> {
+  total: number;
+  page: number;
+  totalPages: number;
+  items: T[];
+}
+
+/**
+ * Loosely-typed legacy paginated response. Use only as a transitional bridge
+ * for backend endpoints that still return one of the named-field shapes
+ * (`tracks` / `agents` / etc.) instead of `items`. New code should consume
+ * `PaginatedResponse<T>` and the backend should normalize its responses.
+ */
+export interface LegacyPaginatedResponse<T> {
   total: number;
   page: number;
   totalPages: number;

@@ -7,6 +7,21 @@ export interface EmailMessage {
   text: string;
 }
 
+const EMAIL_PROVIDER_TIMEOUT_MS = 15_000;
+
+// Minimal HTML attribute / text escape for values interpolated into our
+// templates. Used for tokens and link URLs so a future
+// FRONTEND_URL=https://example.com"><script>... can't break out of an
+// `<a href="...">` attribute.
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 type EmailProvider = 'resend' | 'sendgrid' | 'smtp' | 'console';
 
 function getProvider(): EmailProvider {
@@ -34,6 +49,7 @@ async function sendViaResend(msg: EmailMessage): Promise<void> {
       html: msg.html,
       text: msg.text,
     }),
+    signal: AbortSignal.timeout(EMAIL_PROVIDER_TIMEOUT_MS),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -42,6 +58,15 @@ async function sendViaResend(msg: EmailMessage): Promise<void> {
 }
 
 async function sendViaSendgrid(msg: EmailMessage): Promise<void> {
+  // SendGrid v3 expects `from` as `{ email, name? }`. Build a structured value
+  // so a bare EMAIL_FROM like 'no-reply@example.com' (no angle-bracket name)
+  // doesn't get rejected as a malformed object.
+  const fromRaw = getFromAddress();
+  const m = fromRaw.match(/^\s*(.*?)\s*<\s*(.+?)\s*>\s*$/);
+  const fromObj = m
+    ? { email: m[2]!, name: m[1] || undefined }
+    : { email: fromRaw };
+
   const res = await fetch('https://api.sendgrid.com/v3/mail/send', {
     method: 'POST',
     headers: {
@@ -50,13 +75,14 @@ async function sendViaSendgrid(msg: EmailMessage): Promise<void> {
     },
     body: JSON.stringify({
       personalizations: [{ to: [{ email: msg.to }] }],
-      from: { email: getFromAddress().match(/<(.+)>/)?.[1] || getFromAddress() },
+      from: fromObj,
       subject: msg.subject,
       content: [
         { type: 'text/plain', value: msg.text },
         { type: 'text/html', value: msg.html },
       ],
     }),
+    signal: AbortSignal.timeout(EMAIL_PROVIDER_TIMEOUT_MS),
   });
   if (!res.ok) {
     const body = await res.text();
@@ -155,7 +181,8 @@ function getFrontendUrl(): string {
 }
 
 export function buildVerificationEmail(email: string, token: string): EmailMessage {
-  const link = `${getFrontendUrl()}/verify-email?token=${token}`;
+  const link = `${getFrontendUrl()}/verify-email?token=${encodeURIComponent(token)}`;
+  const safeLink = escapeHtml(link);
   return {
     to: email,
     subject: 'Verify your MakeYourMusic email',
@@ -164,8 +191,8 @@ export function buildVerificationEmail(email: string, token: string): EmailMessa
       <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#111">
         <h1 style="font-size:24px;margin:0 0 16px">Welcome to MakeYourMusic</h1>
         <p style="font-size:16px;line-height:1.5;color:#333">Confirm your email to unlock your account.</p>
-        <p style="margin:24px 0"><a href="${link}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Verify Email</a></p>
-        <p style="font-size:13px;color:#666">Or paste this link: <br/><code style="word-break:break-all">${link}</code></p>
+        <p style="margin:24px 0"><a href="${safeLink}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Verify Email</a></p>
+        <p style="font-size:13px;color:#666">Or paste this link: <br/><code style="word-break:break-all">${safeLink}</code></p>
         <p style="font-size:13px;color:#666;margin-top:24px">This link expires in 24 hours. If you didn't create an account, ignore this email.</p>
       </div>
     `.trim(),
@@ -173,7 +200,8 @@ export function buildVerificationEmail(email: string, token: string): EmailMessa
 }
 
 export function buildPasswordResetEmail(email: string, token: string): EmailMessage {
-  const link = `${getFrontendUrl()}/reset-password?token=${token}`;
+  const link = `${getFrontendUrl()}/reset-password?token=${encodeURIComponent(token)}`;
+  const safeLink = escapeHtml(link);
   return {
     to: email,
     subject: 'Reset your MakeYourMusic password',
@@ -182,8 +210,8 @@ export function buildPasswordResetEmail(email: string, token: string): EmailMess
       <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#111">
         <h1 style="font-size:24px;margin:0 0 16px">Reset your password</h1>
         <p style="font-size:16px;line-height:1.5;color:#333">We received a request to reset your MakeYourMusic password.</p>
-        <p style="margin:24px 0"><a href="${link}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Reset Password</a></p>
-        <p style="font-size:13px;color:#666">Or paste this link: <br/><code style="word-break:break-all">${link}</code></p>
+        <p style="margin:24px 0"><a href="${safeLink}" style="display:inline-block;padding:12px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Reset Password</a></p>
+        <p style="font-size:13px;color:#666">Or paste this link: <br/><code style="word-break:break-all">${safeLink}</code></p>
         <p style="font-size:13px;color:#666;margin-top:24px">This link expires in 1 hour. If you didn't request this, ignore this email — your password won't change.</p>
       </div>
     `.trim(),

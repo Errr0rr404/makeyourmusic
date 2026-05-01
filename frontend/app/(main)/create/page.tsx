@@ -140,6 +140,24 @@ export default function CreatePage() {
     api.get('/genres').then((r) => setGenres(r.data.genres || [])).catch(() => {});
   }, [isAuthenticated]);
 
+  // Pre-fill the idea field from `?prompt=`. Niche-page CTAs (and other deep
+  // links from /n/[slug]) push /create?prompt=… to seed the form; without
+  // this hook those links delivered users to a blank page.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const promptParam = new URLSearchParams(window.location.search).get('prompt');
+      if (promptParam && !idea) {
+        setIdea(promptParam);
+      }
+    } catch {
+      /* ignore — best effort */
+    }
+    // Run once after mount; we deliberately don't track `idea` so a user
+    // clearing the field doesn't get the prompt re-injected.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated || typeof window === 'undefined') return;
 

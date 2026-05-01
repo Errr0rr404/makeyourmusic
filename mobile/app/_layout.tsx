@@ -48,6 +48,13 @@ function RootLayoutInner() {
   useEffect(() => {
     let cleanupPlayer: (() => void) | undefined;
     let cleanupNotifications: (() => void) | undefined;
+    // Track whether the cleanup ran before the async setup finished. Without
+    // this, Fast Refresh remounts could leak listeners: the cleanup function
+    // executed (capturing undefined handles), then the IIFE finished and
+    // assigned subscription handles to the dead closure — those listeners
+    // were never removed. Now if `unmounted` flips before we finish setup,
+    // we run the partial cleanup ourselves at the end of each await step.
+    let unmounted = false;
 
     (async () => {
       // Run auth hydration, onboarding check, and download cache load in parallel
@@ -57,20 +64,33 @@ function RootLayoutInner() {
         hydratePlayerPrefs(),
         hydrateDownloadCache().catch(() => undefined),
       ]);
+      if (unmounted) return;
       await fetchUser();
+      if (unmounted) return;
 
       setNeedsOnboarding(!seen);
       setBooted(true);
 
       // Audio player
       const ready = await setupPlayer();
+      if (unmounted) return;
       if (ready) {
         playerReady.current = true;
         cleanupPlayer = setupNativePlayerListeners();
+        if (unmounted) {
+          cleanupPlayer();
+          cleanupPlayer = undefined;
+          return;
+        }
       }
 
       // Push notifications
       await registerForPushNotifications();
+      if (unmounted) {
+        cleanupPlayer?.();
+        cleanupPlayer = undefined;
+        return;
+      }
       cleanupNotifications = setupNotificationListeners((data) => {
         // Navigate on notification tap. Notification payloads are
         // server-controlled, but we still validate before navigation so a
@@ -89,12 +109,20 @@ function RootLayoutInner() {
           router.push(`/agent/${data.agentSlug}`);
         }
       });
+      if (unmounted) {
+        cleanupNotifications?.();
+        cleanupNotifications = undefined;
+        cleanupPlayer?.();
+        cleanupPlayer = undefined;
+      }
     })();
 
     return () => {
+      unmounted = true;
       cleanupPlayer?.();
       cleanupNotifications?.();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Once booted, if user hasn't seen onboarding, route to it AFTER Stack is mounted
