@@ -26,6 +26,10 @@ let playRecordedForTrackId: string | null = null;
 //      queued item active during add(), which would otherwise overwrite the
 //      user's selected track before skip(index) completes.
 let isSyncingQueue = false;
+let queueSyncInFlight = false;
+let queueSyncPending = false;
+let lastNativeQueueKey = '';
+let suppressNativeTrackEventsUntil = 0;
 
 /**
  * Initialize react-native-track-player with capabilities.
@@ -94,63 +98,102 @@ function toNativeTrack(track: TrackItem) {
   };
 }
 
+async function rebuildNativeQueue(nativeTracks: ReturnType<typeof toNativeTrack>[], queueKey: string) {
+  await TrackPlayer.reset();
+  await TrackPlayer.add(nativeTracks);
+  lastNativeQueueKey = queueKey;
+}
+
+async function syncLatestQueueToNative() {
+  const snapshot = usePlayerStore.getState();
+  const requestedTrack = snapshot.currentTrack;
+
+  if (!requestedTrack) {
+    if (lastNativeQueueKey) {
+      await TrackPlayer.reset();
+      lastNativeQueueKey = '';
+    }
+    return;
+  }
+
+  let requestedQueue = snapshot.queue.length > 0 ? snapshot.queue : [requestedTrack];
+  let requestedIndex = requestedQueue.findIndex((t) => t.id === requestedTrack.id);
+
+  if (requestedIndex < 0) {
+    requestedQueue = [requestedTrack, ...requestedQueue.filter((t) => t.id !== requestedTrack.id)];
+    requestedIndex = 0;
+    usePlayerStore.setState({ queue: requestedQueue, queueIndex: 0 });
+  }
+
+  const queueKey = requestedQueue.map((t) => t.id).join(',');
+  const nativeTracks = requestedQueue.map(toNativeTrack);
+
+  try {
+    if (lastNativeQueueKey !== queueKey) {
+      await rebuildNativeQueue(nativeTracks, queueKey);
+    }
+    await TrackPlayer.skip(requestedIndex, 0);
+  } catch {
+    // If native state drifted from our cache, rebuild once and apply the
+    // selection again. This keeps agent-list taps from falling back to item 0.
+    lastNativeQueueKey = '';
+    await rebuildNativeQueue(nativeTracks, queueKey);
+    await TrackPlayer.skip(requestedIndex, 0);
+  }
+
+  playRecordedForTrackId = null;
+
+  const latest = usePlayerStore.getState();
+  if (latest.currentTrack?.id === requestedTrack.id && latest.queueIndex !== requestedIndex) {
+    usePlayerStore.setState({
+      queueIndex: requestedIndex,
+      progress: 0,
+    });
+  }
+
+  // Apply play state AFTER the queue is loaded. The separate syncPlayState
+  // effect fires on the same render, so without this the native player can get
+  // play() on an empty queue and require a second tap.
+  if (usePlayerStore.getState().isPlaying) {
+    await TrackPlayer.play();
+  } else {
+    await TrackPlayer.pause();
+  }
+  suppressNativeTrackEventsUntil = Date.now() + 500;
+
+  const after = usePlayerStore.getState();
+  const afterQueueKey = after.queue.map((t) => t.id).join(',');
+  if (after.currentTrack?.id !== requestedTrack.id || afterQueueKey !== queueKey) {
+    queueSyncPending = true;
+  }
+}
+
 /**
  * Sync the Zustand player store state to the native TrackPlayer.
  * Call this from a useEffect in the root layout.
  */
 export function useSyncPlayerToNative() {
-  const {
-    currentTrack,
-    queue,
-    isPlaying,
-    progress,
-    repeat,
-    shuffle,
-    playbackSpeed,
-  } = usePlayerStore();
-
   // This function is designed to be called inside useEffect
   return {
     syncQueue: async () => {
-      if (!isInitialized || !currentTrack) return;
+      if (!isInitialized) return;
 
-      const requestedTrack = currentTrack;
-      const requestedIndex = queue.findIndex((t) => t.id === requestedTrack.id);
+      if (queueSyncInFlight) {
+        queueSyncPending = true;
+        return;
+      }
+
+      queueSyncInFlight = true;
       isSyncingQueue = true;
       try {
-        const nativeTracks = queue.map(toNativeTrack);
-        await TrackPlayer.reset();
-        await TrackPlayer.add(nativeTracks);
-
-        // Skip to the current track
-        if (requestedIndex >= 0) {
-          await TrackPlayer.skip(requestedIndex);
-        }
-        playRecordedForTrackId = null;
-
-        const latest = usePlayerStore.getState();
-        if (latest.currentTrack?.id === requestedTrack.id && latest.queueIndex !== requestedIndex) {
-          usePlayerStore.setState({
-            queueIndex: requestedIndex >= 0 ? requestedIndex : 0,
-            progress: 0,
-          });
-        }
-
-        // Apply play state AFTER the queue is loaded. The separate
-        // syncPlayState effect fires on the same render, so without this
-        // the native player gets a play() on an empty queue, which fails
-        // silently and requires the user to tap a second time. Reading
-        // the latest store state (rather than the closed-over isPlaying)
-        // also captures any toggle the user issued mid-sync.
-        const desired = usePlayerStore.getState().isPlaying;
-        if (desired) {
-          await TrackPlayer.play();
-        } else {
-          await TrackPlayer.pause();
-        }
+        do {
+          queueSyncPending = false;
+          await syncLatestQueueToNative();
+        } while (queueSyncPending);
       } catch (err) {
         console.error('syncQueue error:', err);
       } finally {
+        queueSyncInFlight = false;
         isSyncingQueue = false;
       }
     },
@@ -213,6 +256,13 @@ export function setupNativePlayerListeners() {
       if (event.track) {
         const queue = store.getState().queue;
         const match = queue.find((t) => t.id === event.track?.id);
+        if (
+          match &&
+          Date.now() < suppressNativeTrackEventsUntil &&
+          match.id !== store.getState().currentTrack?.id
+        ) {
+          return;
+        }
         if (match && match.id !== store.getState().currentTrack?.id) {
           store.setState({
             currentTrack: match,
