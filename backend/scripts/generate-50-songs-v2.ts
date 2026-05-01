@@ -37,9 +37,13 @@ const ONLY_SET = (process.env.ONLY || '')
   .filter((n) => Number.isFinite(n) && n > 0);
 const DO_COVER_ART = process.env.COVER_ART !== '0';
 const DO_PUBLISH = process.env.PUBLISH !== '0';
-const POLL_INTERVAL_MS = 8_000;
+// The /api/ai/* router has a 20-req-per-60s burst limiter. Each generation
+// costs roughly: 1 (POST music) + N (status polls) + 1 (cover art) + 1
+// (publish). At 25s polling and a typical 3-min generation, that's ~7-8 polls
+// → ~10 req per song, well under the burst budget.
+const POLL_INTERVAL_MS = 25_000;
 const POLL_MAX_MS = 8 * 60_000; // 8 min — MiniMax music typically returns in 60-180s
-const INTER_REQUEST_DELAY_MS = 12_000;
+const INTER_REQUEST_DELAY_MS = 8_000;
 
 interface Seed {
   /** Human-readable working title used as the published track title. */
@@ -428,6 +432,42 @@ async function login(): Promise<string> {
   return res.data.accessToken as string;
 }
 
+// Two distinct 429 responses share the AI router. The burst limiter
+// (aiBurstLimiter, 20/60s) returns "Too many AI requests. Slow down." while
+// the per-user daily quota (assertCanGenerate) returns "Daily ... limit
+// reached" or "Daily free-tier limit reached". We must retry the burst case
+// (just sleep through the window) but abort the daily case.
+function classify429(message: string | undefined): 'burst' | 'daily' | 'unknown' {
+  if (!message) return 'unknown';
+  if (/Too many AI requests/i.test(message)) return 'burst';
+  if (/Daily.*limit reached|Daily free-tier limit/i.test(message)) return 'daily';
+  return 'unknown';
+}
+
+// Wrap any AI-router call so a burst-limit 429 sleeps and retries up to
+// `maxAttempts` times. Daily-quota 429s and other errors propagate. The
+// per-attempt delay is 65s — slightly past the 60s burst window so we always
+// re-enter with a clean budget.
+async function callWithBurstRetry<T>(label: string, fn: () => Promise<T>, maxAttempts = 4): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastErr = err;
+      const e = err as AxiosError<{ error?: string }>;
+      if (e.response?.status !== 429) throw err;
+      const kind = classify429(e.response.data?.error);
+      if (kind === 'daily') throw err; // abort path — caller decides
+      // burst or unknown 429: wait and retry
+      const wait = 65_000;
+      console.warn(`    ${label} hit burst 429 (attempt ${attempt}/${maxAttempts}); waiting ${Math.round(wait / 1000)}s`);
+      await sleep(wait);
+    }
+  }
+  throw lastErr;
+}
+
 async function fetchAgents(token: string): Promise<AgentLite[]> {
   const res = await axios.get(`${API_BASE}/agents/mine`, {
     headers: { Authorization: `Bearer ${token}` },
@@ -517,9 +557,11 @@ async function startMusicGeneration(token: string, seed: Seed, agentId?: string)
   if (seed.key) body.key = seed.key;
   if (agentId) body.agentId = agentId;
 
-  const res = await axios.post(`${API_BASE}/ai/music`, body, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+  const res = await callWithBurstRetry('POST /ai/music', () =>
+    axios.post(`${API_BASE}/ai/music`, body, {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+  );
   return { id: res.data.generation.id as string };
 }
 
@@ -531,9 +573,11 @@ async function pollGeneration(
   const start = Date.now();
   while (Date.now() - start < POLL_MAX_MS) {
     await sleep(POLL_INTERVAL_MS);
-    const res = await axios.get(`${API_BASE}/ai/generations/${generationId}`, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await callWithBurstRetry(`GET ${label} status`, () =>
+      axios.get(`${API_BASE}/ai/generations/${generationId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
     const gen = res.data.generation;
     process.stdout.write(`\r    ${label} status=${gen.status} elapsed=${Math.round((Date.now() - start) / 1000)}s    `);
     if (gen.status === 'COMPLETED') {
@@ -561,9 +605,11 @@ async function generateCoverArt(token: string, seed: Seed): Promise<string | nul
     aspectRatio: '1:1',
   };
   try {
-    const res = await axios.post(`${API_BASE}/ai/cover-art`, body, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await callWithBurstRetry('POST /ai/cover-art', () =>
+      axios.post(`${API_BASE}/ai/cover-art`, body, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
     return (res.data.coverArt as string) || null;
   } catch (err) {
     const e = err as AxiosError<{ error?: string }>;
@@ -589,9 +635,11 @@ async function publishGeneration(
   if (genreId) body.genreId = genreId;
   if (coverArt) body.coverArt = coverArt;
   try {
-    const res = await axios.post(`${API_BASE}/ai/generations/${generationId}/publish`, body, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await callWithBurstRetry('POST /publish', () =>
+      axios.post(`${API_BASE}/ai/generations/${generationId}/publish`, body, {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+    );
     return { id: res.data.track.id as string, slug: res.data.track.slug as string };
   } catch (err) {
     const e = err as AxiosError<{ error?: string }>;
@@ -687,9 +735,11 @@ async function main() {
       const detail = e.response?.data?.error || e.message;
       entry.error = `${status || ''} ${detail}`.trim();
       console.warn(`  ✗ error: ${entry.error}`);
-      // 429 from quota means stop — daily limit is reached. Manual unblock
-      // (env bump or tier upgrade) is required before resuming.
-      if (status === 429) {
+      // Only abort on the daily-quota 429 — burst-limit 429s are already
+      // retried inside callWithBurstRetry, so anything that bubbles up here
+      // labelled "Too many AI requests" is a per-call retry exhaustion (rare)
+      // and we should keep going on the next seed rather than abort.
+      if (status === 429 && classify429(detail) === 'daily') {
         console.warn(`  ⚠ daily quota exhausted — aborting batch. Resume with START_AT=${idx}.`);
         await appendReport(report);
         return;

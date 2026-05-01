@@ -1299,7 +1299,11 @@ export const generateCoverArt = async (req: RequestWithUser, res: Response) => {
       aspectRatio: ratio,
       n: 1,
       promptOptimizer: true,
-      responseFormat: 'url',
+      // MiniMax serves image URLs over plain http:// from Alibaba OSS, which
+      // our SSRF guard rejects (https-only). Asking for base64 sidesteps the
+      // network fetch entirely — the bytes come back in the API response body
+      // and we round-trip them through Cloudinary directly.
+      responseFormat: 'base64',
     });
     const first = result.images[0];
     if (!first) {
