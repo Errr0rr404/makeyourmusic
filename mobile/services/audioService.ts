@@ -21,9 +21,10 @@ let isInitialized = false;
 let playRecordedForTrackId: string | null = null;
 // True while syncQueue() is mid-flight. We use this to:
 //   1. Suppress syncPlayState() so it doesn't call play() on an empty queue.
-//   2. Suppress native→zustand PlaybackState updates that fire transiently
-//      while reset/add/skip are in progress (those would otherwise flip
-//      isPlaying:true→false and require a second tap from the user).
+//   2. Suppress native→zustand updates that fire transiently while
+//      reset/add/skip are in progress. TrackPlayer can briefly mark the first
+//      queued item active during add(), which would otherwise overwrite the
+//      user's selected track before skip(index) completes.
 let isSyncingQueue = false;
 
 /**
@@ -113,6 +114,8 @@ export function useSyncPlayerToNative() {
     syncQueue: async () => {
       if (!isInitialized || !currentTrack) return;
 
+      const requestedTrack = currentTrack;
+      const requestedIndex = queue.findIndex((t) => t.id === requestedTrack.id);
       isSyncingQueue = true;
       try {
         const nativeTracks = queue.map(toNativeTrack);
@@ -120,11 +123,18 @@ export function useSyncPlayerToNative() {
         await TrackPlayer.add(nativeTracks);
 
         // Skip to the current track
-        const idx = queue.findIndex((t) => t.id === currentTrack.id);
-        if (idx >= 0) {
-          await TrackPlayer.skip(idx);
+        if (requestedIndex >= 0) {
+          await TrackPlayer.skip(requestedIndex);
         }
         playRecordedForTrackId = null;
+
+        const latest = usePlayerStore.getState();
+        if (latest.currentTrack?.id === requestedTrack.id && latest.queueIndex !== requestedIndex) {
+          usePlayerStore.setState({
+            queueIndex: requestedIndex >= 0 ? requestedIndex : 0,
+            progress: 0,
+          });
+        }
 
         // Apply play state AFTER the queue is loaded. The separate
         // syncPlayState effect fires on the same render, so without this
@@ -199,6 +209,7 @@ export function setupNativePlayerListeners() {
   const trackChangeSub = TrackPlayer.addEventListener(
     Event.PlaybackActiveTrackChanged,
     async (event) => {
+      if (isSyncingQueue) return;
       if (event.track) {
         const queue = store.getState().queue;
         const match = queue.find((t) => t.id === event.track?.id);

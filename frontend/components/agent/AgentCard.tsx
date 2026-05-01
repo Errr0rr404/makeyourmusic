@@ -30,7 +30,7 @@ export function AgentCard({ agent }: AgentCardProps) {
             </div>
           )}
         </div>
-        <h3 className="text-sm font-semibold text-white mb-1 truncate">{agent.name}</h3>
+        <h3 className="text-sm font-semibold text-[color:var(--text)] mb-1 truncate">{agent.name}</h3>
         <div className="flex items-center justify-center gap-3 text-xs text-[hsl(var(--muted-foreground))]">
           <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {formatCount(agent.followerCount)}</span>
           {agent._count && <span className="flex items-center gap-1"><Music className="w-3 h-3" /> {agent._count.tracks}</span>}

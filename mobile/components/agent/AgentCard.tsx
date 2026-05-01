@@ -1,4 +1,4 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { View, Text, TouchableOpacity, type ViewStyle } from 'react-native';
 import { Image } from 'expo-image';
 import { Bot } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -14,17 +14,26 @@ interface AgentCardProps {
     _count?: { tracks: number; followers: number };
     followerCount?: number;
   };
+  variant?: 'carousel' | 'grid';
+  style?: ViewStyle;
 }
 
-export function AgentCard({ agent }: AgentCardProps) {
+export function AgentCard({ agent, variant = 'carousel', style }: AgentCardProps) {
   const router = useRouter();
   const tokens = useTokens();
   const isVintage = useIsVintage();
   const followers = agent._count?.followers ?? agent.followerCount ?? 0;
+  const isGrid = variant === 'grid';
+  const avatarSize = isGrid ? 72 : 80;
 
   return (
     <TouchableOpacity
-      style={{ width: 112, marginRight: 16, alignItems: 'center' }}
+      style={[
+        isGrid
+          ? { flex: 1, alignItems: 'center' }
+          : { width: 112, marginRight: 16, alignItems: 'center' },
+        style,
+      ]}
       onPress={() => router.push(`/agent/${agent.slug}`)}
       activeOpacity={0.7}
       accessibilityRole="button"
@@ -32,9 +41,9 @@ export function AgentCard({ agent }: AgentCardProps) {
     >
       <View
         style={{
-          width: 80,
-          height: 80,
-          borderRadius: isVintage ? tokens.radiusMd : 40,
+          width: avatarSize,
+          height: avatarSize,
+          borderRadius: isVintage ? tokens.radiusMd : avatarSize / 2,
           overflow: 'hidden',
           backgroundColor: tokens.card,
           marginBottom: 8,
@@ -45,7 +54,7 @@ export function AgentCard({ agent }: AgentCardProps) {
         {agent.avatar ? (
           <Image
             source={{ uri: agent.avatar }}
-            style={{ width: 80, height: 80 }}
+            style={{ width: avatarSize, height: avatarSize }}
             contentFit="cover"
             transition={200}
             cachePolicy="memory-disk"

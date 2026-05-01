@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuthStore } from '@makeyourmusic/shared';
 import { Check } from 'lucide-react-native';
@@ -166,14 +166,9 @@ export default function RegisterScreen() {
             secureTextEntry
           />
 
-          <TouchableOpacity
-            onPress={() => setAcceptTerms(!acceptTerms)}
-            style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16, paddingVertical: 8 }}
-            accessibilityRole="checkbox"
-            accessibilityState={{ checked: acceptTerms }}
-            accessibilityLabel="Accept terms of service and privacy policy"
-          >
-            <View
+          <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 16, paddingVertical: 8 }}>
+            <TouchableOpacity
+              onPress={() => setAcceptTerms(!acceptTerms)}
               style={{
                 width: 24,
                 height: 24,
@@ -185,14 +180,29 @@ export default function RegisterScreen() {
                 backgroundColor: acceptTerms ? tokens.brand : tokens.card,
                 borderColor: acceptTerms ? tokens.brand : tokens.border,
               }}
+              accessibilityRole="checkbox"
+              accessibilityState={{ checked: acceptTerms }}
+              accessibilityLabel="Accept terms of service and privacy policy"
             >
               {acceptTerms && <Check size={14} color={tokens.brandText} strokeWidth={3} />}
-            </View>
+            </TouchableOpacity>
             <Text style={{ color: tokens.textMute, fontSize: 13, flex: 1, lineHeight: 19 }}>
-              I agree to the <Text style={{ color: tokens.accent, fontWeight: '600' }}>Terms of Service</Text> and{' '}
-              <Text style={{ color: tokens.accent, fontWeight: '600' }}>Privacy Policy</Text>
+              I agree to the{' '}
+              <Text
+                style={{ color: tokens.accent, fontWeight: '600' }}
+                onPress={() => Linking.openURL('https://makeyourmusic.ai/terms')}
+              >
+                Terms of Service
+              </Text>{' '}
+              and{' '}
+              <Text
+                style={{ color: tokens.accent, fontWeight: '600' }}
+                onPress={() => Linking.openURL('https://makeyourmusic.ai/privacy')}
+              >
+                Privacy Policy
+              </Text>
             </Text>
-          </TouchableOpacity>
+          </View>
 
           <Button title="Create Account" onPress={handleRegister} loading={loading} disabled={!acceptTerms} size="lg" />
 

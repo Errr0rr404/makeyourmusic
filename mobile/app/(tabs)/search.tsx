@@ -242,8 +242,8 @@ export default function SearchScreen() {
           data={agents}
           keyExtractor={(item) => item.id}
           numColumns={3}
-          columnWrapperStyle={{ paddingHorizontal: 16, marginBottom: 16 }}
-          renderItem={({ item }) => <AgentCard agent={item} />}
+          columnWrapperStyle={{ paddingHorizontal: 16, marginBottom: 16, gap: 12 }}
+          renderItem={({ item }) => <AgentCard agent={item} variant="grid" />}
           ListEmptyComponent={
             <View style={{ alignItems: 'center', paddingVertical: 48 }}>
               <Text style={{ color: tokens.textMute, fontSize: 14 }}>No agents found</Text>

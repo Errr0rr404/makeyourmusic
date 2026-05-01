@@ -146,7 +146,7 @@ export default function LoginScreen() {
           <Button title="Sign In" onPress={handleLogin} loading={loading} size="lg" />
 
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 24 }}>
-            <Text style={{ color: tokens.textMute, fontSize: 13 }}>Don&apos;t have an account? </Text>
+            <Text style={{ color: tokens.textMute, fontSize: 13 }}>Don't have an account? </Text>
             <TouchableOpacity onPress={() => router.replace('/(auth)/register')} accessibilityRole="button">
               <Text style={{ color: tokens.accent, fontSize: 13, fontWeight: '600' }}>Sign up</Text>
             </TouchableOpacity>

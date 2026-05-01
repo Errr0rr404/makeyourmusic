@@ -46,6 +46,7 @@ export default function FullScreenPlayer() {
     currentTrack,
     queue,
     isPlaying,
+    playTrack,
     togglePlay,
     nextTrack,
     prevTrack,
@@ -581,7 +582,13 @@ export default function FullScreenPlayer() {
               renderItem={({ item, index }) => {
                 const active = currentTrack?.id === item.id;
                 return (
-                  <View
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (active) togglePlay();
+                      else playTrack(item, queue);
+                      setShowQueue(false);
+                      hapticLight();
+                    }}
                     style={{
                       flexDirection: 'row',
                       alignItems: 'center',
@@ -589,6 +596,9 @@ export default function FullScreenPlayer() {
                       paddingVertical: 8,
                       backgroundColor: active ? tokens.accentSoft : 'transparent',
                     }}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={`Play ${item.title}`}
                   >
                     <View style={{ width: 28, alignItems: 'center', marginRight: 8 }}>
                       <Text
@@ -649,7 +659,7 @@ export default function FullScreenPlayer() {
                     >
                       {formatDuration(item.duration)}
                     </Text>
-                  </View>
+                  </TouchableOpacity>
                 );
               }}
             />

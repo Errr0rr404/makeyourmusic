@@ -533,7 +533,7 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
   return (
     <View className="px-4 pt-2">
       <View className="bg-mym-card rounded-xl border border-mym-border p-4">
-        <Text className="text-mym-text text-sm font-semibold mb-2">What&apos;s the song about?</Text>
+        <Text className="text-mym-text text-sm font-semibold mb-2">What's the song about?</Text>
         <TextInput
           value={idea}
           onChangeText={setIdea}
@@ -639,7 +639,7 @@ function LyricsStep({ lyrics, setLyrics, generating, error, isInstrumental, setI
           <View className="flex-row items-start gap-2 bg-mym-surface border border-mym-border rounded-lg p-3">
             <BookOpen size={14} color="#8b5cf6" />
             <Text className="text-mym-muted text-xs flex-1">
-              Instrumental mode — no lyrics. We&apos;ll generate a vocal-free track.
+              Instrumental mode — no lyrics. We'll generate a vocal-free track.
             </Text>
           </View>
         )}
@@ -953,7 +953,7 @@ function GenerateStep({ generation, error, onRetry, onStartOver, onBack }: any) 
         </View>
         <Text className="text-mym-text text-xl font-bold mb-2">{label}</Text>
         <Text className="text-mym-muted text-sm text-center mb-1">
-          This usually takes 30–90 seconds. Feel free to leave this screen — we&apos;ll save the result.
+          This usually takes 30–90 seconds. Feel free to leave this screen — we'll save the result.
         </Text>
         <Text className="text-mym-muted text-xs">
           Elapsed: {Math.floor(elapsed / 60)}:{(elapsed % 60).toString().padStart(2, '0')}

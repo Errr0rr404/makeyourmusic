@@ -20,7 +20,7 @@ export function BrandLogo({
       <span className="flex min-w-0 flex-col leading-tight">
         {/* Modern: gradient-able sans-serif */}
         <span className={cn(
-          'modern-only font-display font-extrabold text-white tracking-tight',
+          'modern-only font-display font-extrabold text-[color:var(--text)] tracking-tight',
           textClassName,
         )}>
           MakeYourMusic

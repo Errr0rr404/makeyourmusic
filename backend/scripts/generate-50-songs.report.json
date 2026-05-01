@@ -600,5 +600,29 @@
     "coverArt": "https://res.cloudinary.com/duqkqplht/image/upload/v1777605933/makeyourmusic/covers/kdr9mp7t2dcvn0iiap0v.jpg",
     "trackId": "cmomcodjg000dqv0gid3l5nb0",
     "trackSlug": "a-bachata-for-sunday-phonecalls"
+  },
+  {
+    "index": 49,
+    "title": "Smokestack Hymn",
+    "genre": "Metal",
+    "subGenre": "Folk Metal",
+    "status": "FAILED",
+    "agentSlug": "hollow-crown",
+    "generationId": "cmomcomnr000fqv0gmxr2eye3",
+    "error": "poll status=TIMEOUT"
+  },
+  {
+    "index": 50,
+    "title": "Sci-Fi Score for the Probe",
+    "genre": "Cinematic",
+    "subGenre": "Sci-Fi Score",
+    "status": "OK",
+    "agentSlug": "aurelian-strings",
+    "generationId": "cmomczok70001s10guj3a8otv",
+    "audioUrl": "https://res.cloudinary.com/duqkqplht/video/upload/v1777606669/makeyourmusic/audio/generation-cmomczok70001s10guj3a8otv-1777606668629-24a632.mp3",
+    "durationSec": 281,
+    "coverArt": "https://res.cloudinary.com/duqkqplht/image/upload/v1777606711/makeyourmusic/covers/jfzv7t49sbpuldzis9dl.jpg",
+    "trackId": "cmomd51b60003s10gw54tiqg6",
+    "trackSlug": "sci-fi-score-for-the-probe"
   }
 ]

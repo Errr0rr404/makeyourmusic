@@ -17,11 +17,12 @@ export function TrackRow({ track, queue, index, showAgent = true }: TrackRowProp
   const router = useRouter();
   const tokens = useTokens();
   const isVintage = useIsVintage();
-  const { playTrack, currentTrack, isPlaying } = usePlayerStore();
+  const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayerStore();
   const isActive = currentTrack?.id === track.id;
 
   const handlePlay = () => {
-    playTrack(track, queue);
+    if (isActive) togglePlay();
+    else playTrack(track, queue);
   };
 
   return (

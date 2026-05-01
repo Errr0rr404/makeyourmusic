@@ -78,7 +78,7 @@ export default function ForgotPasswordScreen() {
               Reset your password
             </Text>
             <Text style={{ color: tokens.textMute, fontSize: 13, textAlign: 'center' }}>
-              We&apos;ll send you a link to create a new password
+              We'll send you a link to create a new password
             </Text>
           </View>
 
@@ -101,7 +101,7 @@ export default function ForgotPasswordScreen() {
                 <View style={{ flex: 1 }}>
                   <Text style={{ color: '#4ade80', fontWeight: '600', marginBottom: 4 }}>Check your inbox</Text>
                   <Text style={{ color: 'rgba(74, 222, 128, 0.8)', fontSize: 13 }}>
-                    If an account with that email exists, we&apos;ve sent a reset link. It expires in 1 hour.
+                    If an account with that email exists, we've sent a reset link. It expires in 1 hour.
                   </Text>
                 </View>
               </View>
