@@ -427,9 +427,46 @@ interface RunReport {
   agentSlug?: string;
 }
 
+// Access tokens have a 15-min TTL — a 50-song run takes 2-3 hours, so we
+// must refresh proactively. The TokenManager re-logs in when the token is
+// older than 12 minutes (3-min safety margin) or when a request comes back
+// with 401. callWithAuth wraps any token-bearing axios call so callers don't
+// have to think about expiry.
+class TokenManager {
+  private token: string | null = null;
+  private issuedAt = 0;
+  private static MAX_AGE_MS = 12 * 60_000;
+
+  async get(force = false): Promise<string> {
+    const stale = force || !this.token || Date.now() - this.issuedAt > TokenManager.MAX_AGE_MS;
+    if (stale) {
+      const res = await axios.post(`${API_BASE}/auth/login`, { email: EMAIL, password: PASSWORD });
+      this.token = res.data.accessToken as string;
+      this.issuedAt = Date.now();
+    }
+    return this.token!;
+  }
+}
+
+const tokens = new TokenManager();
+
 async function login(): Promise<string> {
-  const res = await axios.post(`${API_BASE}/auth/login`, { email: EMAIL, password: PASSWORD });
-  return res.data.accessToken as string;
+  return tokens.get(true);
+}
+
+// Wrap any axios call that needs the demo bearer token. Re-logs in once on
+// 401 (token rotated mid-run, server restart, etc.) before propagating.
+async function callWithAuth<T>(label: string, fn: (token: string) => Promise<T>): Promise<T> {
+  const token = await tokens.get();
+  try {
+    return await fn(token);
+  } catch (err) {
+    const e = err as AxiosError<{ error?: string }>;
+    if (e.response?.status !== 401) throw err;
+    console.warn(`    ${label} got 401 — refreshing token`);
+    const fresh = await tokens.get(true);
+    return await fn(fresh);
+  }
 }
 
 // Two distinct 429 responses share the AI router. The burst limiter
@@ -468,10 +505,10 @@ async function callWithBurstRetry<T>(label: string, fn: () => Promise<T>, maxAtt
   throw lastErr;
 }
 
-async function fetchAgents(token: string): Promise<AgentLite[]> {
-  const res = await axios.get(`${API_BASE}/agents/mine`, {
-    headers: { Authorization: `Bearer ${token}` },
-  });
+async function fetchAgents(): Promise<AgentLite[]> {
+  const res = await callWithAuth('GET /agents/mine', (t) =>
+    axios.get(`${API_BASE}/agents/mine`, { headers: { Authorization: `Bearer ${t}` } })
+  );
   return (res.data.agents || []) as AgentLite[];
 }
 
@@ -538,7 +575,7 @@ function pickAgent(agents: AgentLite[], seed: Seed, index: number): AgentLite | 
   return agents[index % agents.length] || null;
 }
 
-async function startMusicGeneration(token: string, seed: Seed, agentId?: string): Promise<{ id: string }> {
+async function startMusicGeneration(seed: Seed, agentId?: string): Promise<{ id: string }> {
   const body: Record<string, unknown> = {
     title: seed.title,
     idea: seed.idea,
@@ -558,15 +595,14 @@ async function startMusicGeneration(token: string, seed: Seed, agentId?: string)
   if (agentId) body.agentId = agentId;
 
   const res = await callWithBurstRetry('POST /ai/music', () =>
-    axios.post(`${API_BASE}/ai/music`, body, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    callWithAuth('POST /ai/music', (t) =>
+      axios.post(`${API_BASE}/ai/music`, body, { headers: { Authorization: `Bearer ${t}` } })
+    )
   );
   return { id: res.data.generation.id as string };
 }
 
 async function pollGeneration(
-  token: string,
   generationId: string,
   label: string
 ): Promise<{ status: 'COMPLETED' | 'FAILED' | 'TIMEOUT'; audioUrl?: string; durationSec?: number; error?: string }> {
@@ -574,9 +610,11 @@ async function pollGeneration(
   while (Date.now() - start < POLL_MAX_MS) {
     await sleep(POLL_INTERVAL_MS);
     const res = await callWithBurstRetry(`GET ${label} status`, () =>
-      axios.get(`${API_BASE}/ai/generations/${generationId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      callWithAuth(`GET ${label} status`, (t) =>
+        axios.get(`${API_BASE}/ai/generations/${generationId}`, {
+          headers: { Authorization: `Bearer ${t}` },
+        })
+      )
     );
     const gen = res.data.generation;
     process.stdout.write(`\r    ${label} status=${gen.status} elapsed=${Math.round((Date.now() - start) / 1000)}s    `);
@@ -593,7 +631,7 @@ async function pollGeneration(
   return { status: 'TIMEOUT' };
 }
 
-async function generateCoverArt(token: string, seed: Seed): Promise<string | null> {
+async function generateCoverArt(seed: Seed): Promise<string | null> {
   const body = {
     title: seed.title,
     prompt: seed.coverVibe || seed.idea,
@@ -606,9 +644,11 @@ async function generateCoverArt(token: string, seed: Seed): Promise<string | nul
   };
   try {
     const res = await callWithBurstRetry('POST /ai/cover-art', () =>
-      axios.post(`${API_BASE}/ai/cover-art`, body, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      callWithAuth('POST /ai/cover-art', (t) =>
+        axios.post(`${API_BASE}/ai/cover-art`, body, {
+          headers: { Authorization: `Bearer ${t}` },
+        })
+      )
     );
     return (res.data.coverArt as string) || null;
   } catch (err) {
@@ -618,8 +658,26 @@ async function generateCoverArt(token: string, seed: Seed): Promise<string | nul
   }
 }
 
+async function patchTrackCover(trackId: string, coverArt: string): Promise<boolean> {
+  try {
+    await callWithBurstRetry('PATCH /tracks/:id/cover', () =>
+      callWithAuth('PATCH /tracks/:id/cover', (t) =>
+        axios.patch(
+          `${API_BASE}/tracks/${trackId}/cover`,
+          { coverArt },
+          { headers: { Authorization: `Bearer ${t}` } }
+        )
+      )
+    );
+    return true;
+  } catch (err) {
+    const e = err as AxiosError<{ error?: string }>;
+    console.warn(`    cover-backfill failed: ${e.response?.data?.error || e.message}`);
+    return false;
+  }
+}
+
 async function publishGeneration(
-  token: string,
   generationId: string,
   seed: Seed,
   agentId: string,
@@ -636,9 +694,11 @@ async function publishGeneration(
   if (coverArt) body.coverArt = coverArt;
   try {
     const res = await callWithBurstRetry('POST /publish', () =>
-      axios.post(`${API_BASE}/ai/generations/${generationId}/publish`, body, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
+      callWithAuth('POST /publish', (t) =>
+        axios.post(`${API_BASE}/ai/generations/${generationId}/publish`, body, {
+          headers: { Authorization: `Bearer ${t}` },
+        })
+      )
     );
     return { id: res.data.track.id as string, slug: res.data.track.slug as string };
   } catch (err) {
@@ -661,10 +721,10 @@ async function main() {
   console.log(`▶️  Target: ${API_BASE}`);
   console.log(`▶️  Login as: ${EMAIL}`);
 
-  const token = await login();
+  await login();
   console.log('✓ logged in');
 
-  const [agents, genres] = await Promise.all([fetchAgents(token), fetchGenres()]);
+  const [agents, genres] = await Promise.all([fetchAgents(), fetchGenres()]);
   console.log(`✓ loaded ${agents.length} agents, ${genres.length} platform genres`);
 
   const report: RunReport[] = [];
@@ -691,11 +751,11 @@ async function main() {
     report.push(entry);
 
     try {
-      const { id: generationId } = await startMusicGeneration(token, seed, agent?.id);
+      const { id: generationId } = await startMusicGeneration(seed, agent?.id);
       entry.generationId = generationId;
       console.log(`  ▶ kicked off generation ${generationId}`);
 
-      const poll = await pollGeneration(token, generationId, tag);
+      const poll = await pollGeneration(generationId, tag);
       if (poll.status !== 'COMPLETED') {
         entry.error = poll.error || `poll status=${poll.status}`;
         console.warn(`  ✗ generation did not complete: ${entry.error}`);
@@ -709,7 +769,7 @@ async function main() {
 
       let coverArt: string | null = null;
       if (DO_COVER_ART) {
-        coverArt = await generateCoverArt(token, seed);
+        coverArt = await generateCoverArt(seed);
         if (coverArt) {
           entry.coverArt = coverArt;
           console.log(`  ✓ cover art ready`);
@@ -717,7 +777,7 @@ async function main() {
       }
 
       if (DO_PUBLISH && agent) {
-        const track = await publishGeneration(token, generationId, seed, agent.id, genreId, coverArt);
+        const track = await publishGeneration(generationId, seed, agent.id, genreId, coverArt);
         if (track) {
           entry.trackId = track.id;
           entry.trackSlug = track.slug;

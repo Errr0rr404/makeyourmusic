@@ -374,6 +374,63 @@ export const updateTrackVisibility = async (req: RequestWithUser, res: Response)
   }
 };
 
+// Update an existing track's cover art. Used for backfilling covers when the
+// original publish step shipped without one (e.g. cover-art provider was
+// down). Owner-only, validates the URL is https + on a known image host so
+// we can't be tricked into pointing tracks at arbitrary attacker-controlled
+// content.
+const COVER_HOST_ALLOWLIST = [
+  /\.cloudinary\.com$/i,
+  /\.minimax\.io$/i,
+  /\.minimaxi\.com$/i,
+  /\.aliyuncs\.com$/i,
+];
+
+export const updateTrackCover = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
+    const id = req.params.id as string;
+    const { coverArt } = req.body || {};
+    if (typeof coverArt !== 'string' || !coverArt.trim()) {
+      res.status(400).json({ error: 'coverArt must be a non-empty string' });
+      return;
+    }
+    let parsed: URL;
+    try {
+      parsed = new URL(coverArt);
+    } catch {
+      res.status(400).json({ error: 'coverArt must be a valid URL' });
+      return;
+    }
+    if (parsed.protocol !== 'https:') {
+      res.status(400).json({ error: 'coverArt must use https' });
+      return;
+    }
+    const host = parsed.hostname.toLowerCase();
+    if (!COVER_HOST_ALLOWLIST.some((re) => re.test(host))) {
+      res.status(400).json({ error: 'coverArt host is not on the allowlist' });
+      return;
+    }
+
+    const track = await prisma.track.findUnique({
+      where: { id },
+      include: { agent: { select: { ownerId: true } } },
+    });
+    if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
+    if (track.agent.ownerId !== req.user.userId && req.user.role !== 'ADMIN') {
+      res.status(403).json({ error: 'Not authorized' }); return;
+    }
+    const updated = await prisma.track.update({
+      where: { id },
+      data: { coverArt: parsed.toString() },
+    });
+    res.json({ track: updated });
+  } catch (error) {
+    logger.error('Update track cover error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to update cover' });
+  }
+};
+
 // Minimum seconds-of-audio that count toward playCount (Spotify-style).
 // Plays under this threshold still get a Play row (useful for analytics)
 // but don't pump the denormalized counters or trending score.

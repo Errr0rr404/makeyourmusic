@@ -5,6 +5,7 @@ import {
   listTracks,
   listMyTracks,
   updateTrackVisibility,
+  updateTrackCover,
   recordPlay,
   recordDownload,
   deleteTrack,
@@ -37,6 +38,7 @@ router.post('/:trackId/play', optionalAuth as any, socialPumpLimiter, recordPlay
 // Save-for-offline counter — auth required so we can attribute & dedup per user.
 router.post('/:trackId/download', authenticate as any, socialPumpLimiter, recordDownload as any);
 router.patch('/:id/visibility', authenticate as any, updateTrackVisibility as any);
+router.patch('/:id/cover', authenticate as any, updateTrackCover as any);
 router.post('/:id/report', authenticate as any, reportTrack as any);
 router.delete('/:id', authenticate as any, deleteTrack as any);
 
