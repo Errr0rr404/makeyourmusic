@@ -359,7 +359,15 @@ export default function GenerationsScreen() {
                   </TouchableOpacity>
                   {!item.track ? (
                     <TouchableOpacity
-                      onPress={() => router.push(`/create?generation=${item.id}`)}
+                      onPress={() => {
+                        const genId = item.id;
+                        console.log('Publishing generation:', genId);
+                        if (!genId) {
+                          Alert.alert('Error', 'Invalid generation ID');
+                          return;
+                        }
+                        router.push(`/create?generation=${genId}`);
+                      }}
                       accessibilityLabel="Publish generation"
                       accessibilityRole="button"
                       className="flex-row items-center gap-1 px-3 py-2 rounded-lg bg-mym-accent/20 border border-mym-accent/30"
@@ -369,7 +377,14 @@ export default function GenerationsScreen() {
                     </TouchableOpacity>
                   ) : (
                     <TouchableOpacity
-                      onPress={() => router.push(`/track/${item.track!.slug}`)}
+                      onPress={() => {
+                        const slug = item.track?.slug;
+                        if (!slug) {
+                          Alert.alert('Error', 'Track not available');
+                          return;
+                        }
+                        router.push(`/track/${slug}`);
+                      }}
                       accessibilityLabel="Open track"
                       accessibilityRole="button"
                       className="flex-row items-center gap-1 px-3 py-2 rounded-lg bg-mym-surface border border-mym-border"

@@ -137,11 +137,19 @@ export default function ProfileScreen() {
     setMyTracks((ts) => ts.map((t) => (t.id === track.id ? { ...t, isPublic: next } : t)));
     try {
       await getApi().patch(`/tracks/${track.id}/visibility`, { isPublic: next });
-      hapticSelection();
     } catch (err: any) {
       console.error('Toggle visibility failed:', err?.response?.data || err?.message);
       setMyTracks((ts) => ts.map((t) => (t.id === track.id ? { ...t, isPublic: !next } : t)));
-      Alert.alert('Error', err?.response?.data?.error || 'Could not update visibility');
+      const errorMessage = typeof err?.response?.data?.error === 'string'
+        ? err.response.data.error
+        : 'Could not update visibility';
+      Alert.alert('Error', errorMessage);
+      return;
+    }
+    try {
+      hapticSelection();
+    } catch (e) {
+      console.error('Haptic feedback failed:', e);
     }
   };
 
