@@ -22,7 +22,7 @@ import {
   Bot, BookOpen, Flame, Music2,
 } from 'lucide-react';
 
-type Step = 'idea' | 'lyrics' | 'style' | 'generate' | 'publish';
+type Step = 'idea' | 'style' | 'lyrics' | 'generate' | 'publish';
 
 interface Agent {
   id: string;
@@ -142,16 +142,17 @@ export default function CreatePage() {
       return;
     }
     if (!title.trim()) setTitle(idea.slice(0, 60));
-    setStep('lyrics');
+    setStep('style');
   };
 
-  // ─── Step 2: Lyrics ────────────────────────────────────
+  // ─── Step 3: Lyrics ────────────────────────────────────
   const handleGenerateLyrics = async () => {
     setLyricsError('');
     setGeneratingLyrics(true);
     try {
       const res = await api.post('/ai/lyrics', {
         idea,
+        title,
         genre,
         subGenre,
         mood,
@@ -161,6 +162,9 @@ export default function CreatePage() {
         vibeReference,
         style,
         language,
+        durationSec,
+        bpm: bpm ?? undefined,
+        key: musicalKey || undefined,
       });
       const generated = (res.data.lyrics || '').trim();
       if (!generated) {
@@ -300,20 +304,6 @@ export default function CreatePage() {
           />
         )}
 
-        {step === 'lyrics' && (
-          <LyricsStep
-            lyrics={lyrics}
-            setLyrics={setLyrics}
-            generating={generatingLyrics}
-            error={lyricsError}
-            isInstrumental={isInstrumental}
-            setIsInstrumental={setIsInstrumental}
-            onGenerate={handleGenerateLyrics}
-            onBack={() => setStep('idea')}
-            onNext={() => setStep('style')}
-          />
-        )}
-
         {step === 'style' && (
           <StyleStep
             genre={genre}
@@ -331,6 +321,7 @@ export default function CreatePage() {
             vibeReference={vibeReference}
             setVibeReference={setVibeReference}
             isInstrumental={isInstrumental}
+            setIsInstrumental={setIsInstrumental}
             style={style}
             setStyle={setStyle}
             durationSec={durationSec}
@@ -341,9 +332,26 @@ export default function CreatePage() {
             setBpm={setBpm}
             musicalKey={musicalKey}
             setMusicalKey={setMusicalKey}
-            onBack={() => setStep('lyrics')}
-            onNext={handleGenerate}
+            onBack={() => setStep('idea')}
+            onNext={() => {
+              if (isInstrumental) handleGenerate();
+              else setStep('lyrics');
+            }}
             usage={usage}
+          />
+        )}
+
+        {step === 'lyrics' && (
+          <LyricsStep
+            lyrics={lyrics}
+            setLyrics={setLyrics}
+            generating={generatingLyrics}
+            error={lyricsError}
+            isInstrumental={isInstrumental}
+            setIsInstrumental={setIsInstrumental}
+            onGenerate={handleGenerateLyrics}
+            onBack={() => setStep('style')}
+            onNext={handleGenerate}
           />
         )}
 
@@ -355,7 +363,7 @@ export default function CreatePage() {
             onStartOver={handleStartOver}
             onBack={() => {
               stopPolling();
-              setStep('style');
+              setStep(isInstrumental ? 'style' : 'lyrics');
             }}
           />
         )}
@@ -399,7 +407,7 @@ function Header({ usage }: { usage: Usage | null }) {
         </div>
         <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">Create a track</h1>
         <p className="text-sm text-white/50 mt-1">
-          Write lyrics, pick a vibe, and let the AI compose your song
+          Pick the sound, shape the lyrics, and let the AI compose your song
         </p>
       </div>
       {usage && (
@@ -425,8 +433,8 @@ function Header({ usage }: { usage: Usage | null }) {
 
 const STEPS: { key: Step; label: string; icon: LucideIcon }[] = [
   { key: 'idea', label: 'Idea', icon: Zap },
-  { key: 'lyrics', label: 'Lyrics', icon: FileText },
   { key: 'style', label: 'Style', icon: Settings2 },
+  { key: 'lyrics', label: 'Lyrics', icon: FileText },
   { key: 'generate', label: 'Generate', icon: Wand2 },
   { key: 'publish', label: 'Publish', icon: Headphones },
 ];
@@ -544,14 +552,14 @@ function IdeaStep({
           disabled={!idea.trim()}
           className="flex w-full items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium hover:bg-[hsl(var(--primary))]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors sm:w-auto"
         >
-          Next: Lyrics <ChevronRight className="w-4 h-4" />
+          Next: Style <ChevronRight className="w-4 h-4" />
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Step 2: Lyrics ──────────────────────────────────────
+// ─── Step 3: Lyrics ──────────────────────────────────────
 
 function LyricsStep({
   lyrics, setLyrics, generating, error, isInstrumental, setIsInstrumental, onGenerate, onBack, onNext,
@@ -567,7 +575,7 @@ function LyricsStep({
         <div>
           <h2 className="text-lg font-bold text-white mb-1">Write or generate lyrics</h2>
           <p className="text-sm text-[hsl(var(--muted-foreground))]">
-            Use <code className="text-white/80">[Verse]</code>, <code className="text-white/80">[Chorus]</code>, etc. on their own lines for structure
+            The lyric generator now uses the style choices you made first.
           </p>
         </div>
         <label className="flex items-center gap-2 cursor-pointer self-start sm:shrink-0">
@@ -645,20 +653,20 @@ function LyricsStep({
           disabled={!isInstrumental && !lyrics.trim()}
           className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-[hsl(var(--primary))] text-white text-sm font-medium hover:bg-[hsl(var(--primary))]/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          Next: Style <ChevronRight className="w-4 h-4" />
+          <Wand2 className="w-4 h-4" /> Generate Music
         </button>
       </div>
     </div>
   );
 }
 
-// ─── Step 3: Style ───────────────────────────────────────
+// ─── Step 2: Style ───────────────────────────────────────
 
 function StyleStep({
   genre, setGenre, subGenre, setSubGenre,
   mood, setMood, energy, setEnergy, era, setEra,
   vocalStyle, setVocalStyle, vibeReference, setVibeReference,
-  isInstrumental, style, setStyle,
+  isInstrumental, setIsInstrumental, style, setStyle,
   durationSec, setDurationSec, language, setLanguage,
   bpm, setBpm, musicalKey, setMusicalKey,
   onBack, onNext, usage,
@@ -670,7 +678,7 @@ function StyleStep({
   era: string; setEra: (v: string) => void;
   vocalStyle: string; setVocalStyle: (v: string) => void;
   vibeReference: string; setVibeReference: (v: string) => void;
-  isInstrumental: boolean;
+  isInstrumental: boolean; setIsInstrumental: (v: boolean) => void;
   style: string; setStyle: (v: string) => void;
   durationSec: number; setDurationSec: (v: number) => void;
   language: string; setLanguage: (v: string) => void;
@@ -697,11 +705,35 @@ function StyleStep({
   return (
     <div className="space-y-5 p-5 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
       <div>
-        <h2 className="text-lg font-bold text-white mb-1">Pick the vibe</h2>
+        <h2 className="text-lg font-bold text-white mb-1">Pick the sound first</h2>
         <p className="text-sm text-[hsl(var(--muted-foreground))]">
-          These hints shape the arrangement, instruments, and energy. Only genre is suggested — everything else is optional.
+          These hints shape the arrangement, vocal cadence, and lyrics generated next. Only genre is suggested — everything else is optional.
         </p>
       </div>
+
+      <button
+        type="button"
+        onClick={() => setIsInstrumental(!isInstrumental)}
+        className={`flex w-full items-center justify-between gap-4 rounded-xl border px-4 py-3 text-left transition-colors ${
+          isInstrumental
+            ? 'border-[hsl(var(--accent))]/50 bg-[hsl(var(--accent))]/10'
+            : 'border-[hsl(var(--border))] bg-[hsl(var(--secondary))]'
+        }`}
+      >
+        <span className="min-w-0">
+          <span className="block text-sm font-semibold text-white">
+            {isInstrumental ? 'Instrumental track' : 'Vocal track'}
+          </span>
+          <span className="mt-0.5 block text-xs text-[hsl(var(--muted-foreground))]">
+            {isInstrumental
+              ? 'Skip lyrics and generate a vocal-free arrangement.'
+              : 'Choose the sound first, then generate lyrics that fit it.'}
+          </span>
+        </span>
+        <span className={`flex h-6 w-11 shrink-0 rounded-full p-0.5 ${isInstrumental ? 'bg-[hsl(var(--accent))]' : 'bg-white/15'}`}>
+          <span className={`h-5 w-5 rounded-full bg-white transition-transform ${isInstrumental ? 'translate-x-5' : ''}`} />
+        </span>
+      </button>
 
       <div>
         <label className="block text-sm font-medium text-white mb-2">
@@ -816,7 +848,7 @@ function StyleStep({
         className="text-xs font-semibold text-purple-300 hover:text-purple-200 flex items-center gap-1"
       >
         {showAdvanced ? <ChevronLeft className="w-3 h-3 rotate-90" /> : <ChevronRight className="w-3 h-3 rotate-90" />}
-        Advanced options {showAdvanced ? '(hide)' : '(era, vocal style, language, duration, notes)'}
+        Advanced options {showAdvanced ? '(hide)' : '(era, vocals, language, tempo, key)'}
       </button>
 
       {showAdvanced && (
@@ -990,7 +1022,7 @@ function StyleStep({
           disabled={!!insufficientCredits}
           className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-pink-500 text-white text-sm font-bold hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed transition-transform"
         >
-          <Wand2 className="w-4 h-4" /> Generate Music
+          <Wand2 className="w-4 h-4" /> {isInstrumental ? 'Generate Music' : 'Next: Lyrics'}
         </button>
       </div>
     </div>

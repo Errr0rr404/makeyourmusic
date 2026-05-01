@@ -65,6 +65,7 @@ const PREFS_STORAGE_KEY = "music4ai-player-prefs-v1";
 // in the background — so the store stays sync-friendly while still persisting
 // on both web (localStorage) and mobile (SecureStore via the storage adapter).
 let persistedPrefs: Partial<PersistedPlayerPrefs> = {};
+let seekRequestId = 0;
 
 function persistPlayerPrefs(update: Partial<PersistedPlayerPrefs>): void {
   persistedPrefs = { ...persistedPrefs, ...update };
@@ -82,6 +83,7 @@ export interface PlayerState {
   volume: number;
   progress: number;
   duration: number;
+  seekRequest: { id: number; position: number } | null;
   shuffle: boolean;
   repeat: 'none' | 'one' | 'all';
   autoplay: boolean;
@@ -160,6 +162,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   volume: typeof persistedPrefs.volume === "number" ? persistedPrefs.volume : 0.8,
   progress: 0,
   duration: 0,
+  seekRequest: null,
   shuffle: typeof persistedPrefs.shuffle === "boolean" ? persistedPrefs.shuffle : false,
   repeat: persistedPrefs.repeat ?? 'none',
   autoplay: typeof persistedPrefs.autoplay === "boolean" ? persistedPrefs.autoplay : true,
@@ -279,7 +282,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     if (queue.length === 0) return;
 
     if (progress > 3) {
-      set({ progress: 0 });
+      set({ progress: 0, seekRequest: { id: ++seekRequestId, position: 0 } });
       return;
     }
 
@@ -291,11 +294,14 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       set({ currentTrack: queue[prevIndex], queueIndex: prevIndex, isPlaying: true, progress: 0 });
     } else {
       // At start with no repeat — just restart current track
-      set({ progress: 0 });
+      set({ progress: 0, seekRequest: { id: ++seekRequestId, position: 0 } });
     }
   },
 
-  seek: (position) => set({ progress: position }),
+  seek: (position) => {
+    const next = Math.max(0, position);
+    set({ progress: next, seekRequest: { id: ++seekRequestId, position: next } });
+  },
   setVolume: (volume) => {
     const next = Math.max(0, Math.min(1, volume));
     persistPlayerPrefs({ volume: next });
@@ -488,6 +494,7 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       isPlaying: false,
       progress: 0,
       duration: 0,
+      seekRequest: null,
     });
   },
 }));

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Share, Alert, Modal, FlatList } from 'rea
 import { useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
 import { usePlayerStore, useAuthStore, getApi, formatDuration } from '@makeyourmusic/shared';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   ChevronDown,
   Play,
@@ -35,6 +35,7 @@ export default function FullScreenPlayer() {
   const router = useRouter();
   const tokens = useTokens();
   const isVintage = useIsVintage();
+  const insets = useSafeAreaInsets();
   const [showSettings, setShowSettings] = useState(false);
   const [showKaraoke, setShowKaraoke] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
@@ -57,6 +58,7 @@ export default function FullScreenPlayer() {
     toggleShuffle,
     toggleRepeat,
     setProgress,
+    seek,
     playbackSpeed,
     eqEnabled,
     sleepTimerEnd,
@@ -186,16 +188,17 @@ export default function FullScreenPlayer() {
   const onMuted = tokens.textMute;
   const onText = tokens.text;
   const tapeProgress = duration > 0 ? progress / duration : 0;
+  const headerTopPadding = Math.max(insets.top, 20);
 
   return (
     <>
       <Stack.Screen options={{ headerShown: false }} />
       <SwipeableDismiss onDismiss={() => router.back()}>
-      <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
-        <View style={{ flex: 1, paddingHorizontal: 24 }}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }} edges={['bottom']}>
+        <View style={{ flex: 1, paddingHorizontal: 24, paddingTop: headerTopPadding }}>
           {/* Header */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 16 }}>
-            <TouchableOpacity onPress={() => router.back()} style={{ padding: 8 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 12 }}>
+            <TouchableOpacity onPress={() => router.back()} style={{ padding: 8, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}>
               <ChevronDown size={28} color={onText} />
             </TouchableOpacity>
             <View style={{ alignItems: 'center' }}>
@@ -219,7 +222,7 @@ export default function FullScreenPlayer() {
             </View>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
               <TouchableOpacity
-                style={{ padding: 8 }}
+                style={{ padding: 8, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
                 accessibilityLabel="Audio settings"
                 onPress={() => {
                   setShowSettings(true);
@@ -242,7 +245,7 @@ export default function FullScreenPlayer() {
                 )}
               </TouchableOpacity>
               <TouchableOpacity
-                style={{ padding: 8 }}
+                style={{ padding: 8, minWidth: 44, minHeight: 44, alignItems: 'center', justifyContent: 'center' }}
                 accessibilityLabel="Queue"
                 onPress={() => {
                   setShowQueue(true);
@@ -370,7 +373,12 @@ export default function FullScreenPlayer() {
 
             {/* Progress + counter */}
             <View style={{ marginTop: 20 }}>
-              <Slider value={progress} max={duration || 1} onValueChange={setProgress} />
+              <Slider
+                value={progress}
+                max={duration || 1}
+                onValueChange={setProgress}
+                onSlidingComplete={seek}
+              />
               {isVintage ? (
                 <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end', marginTop: 8 }}>
                   <View style={{ alignItems: 'flex-start', gap: 2 }}>

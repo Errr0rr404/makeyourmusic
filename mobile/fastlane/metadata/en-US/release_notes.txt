@@ -1,0 +1,1 @@
+Initial release of MakeYourMusic - your AI-powered music creation studio.

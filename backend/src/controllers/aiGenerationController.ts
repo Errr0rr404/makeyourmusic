@@ -256,6 +256,50 @@ async function audioUrlFromGenerationResult(
   throw new Error('MiniMax completed without audio output');
 }
 
+function buildLyricsStyleContext(args: {
+  plan: OrchestrationPlan | null;
+  genre?: string;
+  subGenre?: string;
+  mood?: string;
+  energy?: string;
+  era?: string;
+  vocalStyle?: string;
+  vibeDescriptors?: string;
+  style?: string;
+  durationSec?: number;
+  bpm?: number;
+  musicalKey?: string;
+}): string {
+  const lines: string[] = [];
+  const genreLine = [args.plan?.genre || args.genre, args.plan?.subGenre || args.subGenre]
+    .filter(Boolean)
+    .join(' / ');
+  if (genreLine) lines.push(`Genre + subgenre: ${genreLine}`);
+  if (args.mood) lines.push(`Mood: ${args.mood}`);
+  if (args.energy) lines.push(`Energy: ${args.energy}`);
+  if (args.era) lines.push(`Era / production period: ${args.era}`);
+  if (args.plan?.bpm || args.bpm) lines.push(`Tempo: ${args.plan?.bpm || args.bpm} BPM`);
+  if (args.plan?.key || args.musicalKey) lines.push(`Key: ${args.plan?.key || args.musicalKey}`);
+  if (args.plan?.structure?.length) lines.push(`Planned structure: ${args.plan.structure.join(' -> ')}`);
+  if (args.plan?.arrangementArc) lines.push(`Arrangement arc: ${args.plan.arrangementArc}`);
+  if (args.plan?.vocalDirection || args.vocalStyle) {
+    lines.push(`Vocal direction: ${args.plan?.vocalDirection || args.vocalStyle}`);
+  }
+  if (args.plan?.instrumentation?.length) {
+    lines.push(`Instrumentation palette: ${args.plan.instrumentation.join(', ')}`);
+  }
+  if (args.plan?.vibeDescriptors || args.vibeDescriptors) {
+    lines.push(`Translated vibe: ${args.plan?.vibeDescriptors || args.vibeDescriptors}`);
+  }
+  if (args.style) lines.push(`User extra style notes: ${args.style}`);
+  if (args.durationSec) lines.push(`Target duration: ${args.durationSec} seconds`);
+
+  if (lines.length === 0) {
+    return 'No explicit style selections were provided. Infer a coherent lyric structure, cadence, and vocal density from the concept instead of defaulting to generic pop.';
+  }
+  return lines.join('\n');
+}
+
 // ─── Lyrics (synchronous, fast) ───────────────────────────
 
 export const generateLyrics = async (req: RequestWithUser, res: Response) => {
@@ -277,6 +321,9 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
       vibeReference,
       style,
       language,
+      durationSec,
+      bpm,
+      key: musicalKey,
     } = req.body || {};
     if (!idea || typeof idea !== 'string' || idea.trim().length === 0) {
       res.status(400).json({ error: 'idea is required' });
@@ -288,6 +335,18 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
     }
 
     const lang = typeof language === 'string' ? language : 'English';
+    const durationVal =
+      typeof durationSec === 'number' && Number.isFinite(durationSec) && durationSec > 0
+        ? Math.round(durationSec)
+        : undefined;
+    const bpmVal =
+      typeof bpm === 'number' && Number.isFinite(bpm) && bpm >= 40 && bpm <= 240
+        ? Math.round(bpm)
+        : undefined;
+    const keyVal =
+      typeof musicalKey === 'string' && musicalKey.trim().length <= 20
+        ? musicalKey.trim() || undefined
+        : undefined;
 
     // Orchestrate first: turn raw inputs into a coherent plan that includes a
     // lyricsBrief (theme, perspective, imagery, hooks). The lyrics generator
@@ -308,6 +367,9 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
         style: typeof style === 'string' ? style : null,
         isInstrumental: false,
         language: lang,
+        durationSec: durationVal ?? null,
+        bpm: bpmVal ?? null,
+        key: keyVal ?? null,
       });
     } catch (err) {
       logger.warn('Orchestration failed in lyrics path, falling back', {
@@ -333,6 +395,20 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
     const lyricSubGenre =
       plan?.subGenre || (typeof subGenre === 'string' ? subGenre : undefined);
     const convention = lookupLyricConvention(lyricGenre || null, lyricSubGenre || null);
+    const styleContext = buildLyricsStyleContext({
+      plan,
+      genre: typeof genre === 'string' ? genre : undefined,
+      subGenre: typeof subGenre === 'string' ? subGenre : undefined,
+      mood: typeof mood === 'string' ? mood : undefined,
+      energy: typeof energy === 'string' ? energy : undefined,
+      era: typeof era === 'string' ? era : undefined,
+      vocalStyle: typeof vocalStyle === 'string' ? vocalStyle : undefined,
+      vibeDescriptors,
+      style: typeof style === 'string' ? style : undefined,
+      durationSec: durationVal,
+      bpm: bpmVal,
+      musicalKey: keyVal,
+    });
 
     const result = await minimaxGenerateLyrics({
       idea: plan?.refinedConcept?.trim() || idea,
@@ -347,6 +423,10 @@ export const generateLyrics = async (req: RequestWithUser, res: Response) => {
       vibeDescriptors,
       style: typeof style === 'string' ? style : undefined,
       language: lang,
+      durationSec: durationVal,
+      bpm: bpmVal,
+      musicalKey: keyVal,
+      styleContext,
       lyricsBrief: plan?.lyricsBrief || undefined,
       hookLine: plan?.hookLine || undefined,
       conventionRhyme: convention?.rhyme,
@@ -398,6 +478,7 @@ async function orchestrateAndPrepareLyrics(gen: {
   era: string | null;
   vocalStyle: string | null;
   vibeReference: string | null;
+  durationSec: number | null;
   referenceAudioUrl: string | null;
   providerModel: string | null;
 }): Promise<{ prompt: string | null; lyrics: string | null }> {
@@ -426,6 +507,7 @@ async function orchestrateAndPrepareLyrics(gen: {
       vocalStyle: gen.vocalStyle,
       vibeReference: gen.vibeReference,
       isInstrumental: gen.isInstrumental,
+      durationSec: gen.durationSec,
     });
   } catch (err) {
     logger.warn('Orchestration failed, proceeding with original prompt', {
@@ -446,6 +528,17 @@ async function orchestrateAndPrepareLyrics(gen: {
         autoGenre || null,
         autoSubGenre || null
       );
+      const styleContext = buildLyricsStyleContext({
+        plan,
+        genre: gen.genre || undefined,
+        subGenre: gen.subGenre || undefined,
+        mood: gen.mood || undefined,
+        energy: gen.energy || undefined,
+        era: gen.era || undefined,
+        vocalStyle: gen.vocalStyle || undefined,
+        vibeDescriptors: plan.vibeDescriptors || undefined,
+        durationSec: gen.durationSec || undefined,
+      });
       const result = await minimaxGenerateLyrics({
         idea: plan.refinedConcept || gen.prompt || gen.title || 'song',
         genre: autoGenre,
@@ -455,6 +548,8 @@ async function orchestrateAndPrepareLyrics(gen: {
         era: gen.era || undefined,
         vocalStyle: plan.vocalDirection || gen.vocalStyle || undefined,
         vibeDescriptors: plan.vibeDescriptors || undefined,
+        durationSec: gen.durationSec || undefined,
+        styleContext,
         lyricsBrief: plan.lyricsBrief || undefined,
         hookLine: plan.hookLine || undefined,
         conventionRhyme: autoConvention?.rhyme,

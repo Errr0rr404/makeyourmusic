@@ -373,6 +373,10 @@ export interface LyricsParams {
   vibeDescriptors?: string; // already-translated vibe reference (no artist names)
   language?: string;
   style?: string;
+  durationSec?: number;
+  bpm?: number;
+  musicalKey?: string;
+  styleContext?: string;
   // Optional brief from the orchestration planner: emotional arc, perspective,
   // imagery seeds, hooks. When present, we trust this as the primary direction
   // and treat `idea` as raw context.
@@ -403,6 +407,10 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
     vibeDescriptors,
     language = 'English',
     style,
+    durationSec,
+    bpm,
+    musicalKey,
+    styleContext,
     lyricsBrief,
     hookLine,
     conventionRhyme,
@@ -419,6 +427,13 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
   if (vocalStyle) constraints.push(`Vocal style: ${vocalStyle}`);
   if (vibeDescriptors) constraints.push(`Sonic vibe: ${vibeDescriptors}`);
   if (style) constraints.push(`Extra notes: ${style}`);
+  if (typeof durationSec === 'number' && Number.isFinite(durationSec)) {
+    constraints.push(`Target song length: ${Math.round(durationSec)} seconds`);
+  }
+  if (typeof bpm === 'number' && Number.isFinite(bpm)) {
+    constraints.push(`Tempo: ${Math.round(bpm)} BPM`);
+  }
+  if (musicalKey) constraints.push(`Key: ${musicalKey}`);
 
   // Genre-specific lyric conventions, when supplied by the controller from the
   // catalog. These give the model concrete rhyme/voice/structure/length cues
@@ -462,9 +477,13 @@ export async function minimaxGenerateLyrics(params: LyricsParams): Promise<{
   const hookBlock = hookLine?.trim()
     ? `Suggested hook / chorus line (anchor the chorus around this — keep it or refine it, but use the same hook each time the chorus returns):\n"${hookLine.trim()}"\n`
     : '';
+  const styleContextBlock = styleContext?.trim()
+    ? `Producer style context (use this to choose lyric cadence, density, section length, rhyme shape, and hook contour — do NOT write instrument cues or production notes as lyrics):\n${styleContext.trim()}\n`
+    : '';
 
   const user =
     `Write a song about: ${idea}\n` +
+    (styleContextBlock ? `\n${styleContextBlock}` : '') +
     (briefBlock ? `\n${briefBlock}` : '') +
     (hookBlock ? `\n${hookBlock}` : '') +
     (conventionBlock ? `${conventionBlock}` : '') +
@@ -500,6 +519,9 @@ export interface OrchestrationInput {
   style?: string | null;
   isInstrumental?: boolean;
   language?: string;
+  durationSec?: number | null;
+  bpm?: number | null;
+  key?: string | null;
 }
 
 export interface OrchestrationPlan {
@@ -621,6 +643,13 @@ export async function minimaxOrchestrate(
     inputs.push(`Vibe reference (artists/sounds): ${input.vibeReference}`);
   }
   if (input.style) inputs.push(`Extra style notes: ${input.style}`);
+  if (typeof input.durationSec === 'number' && Number.isFinite(input.durationSec)) {
+    inputs.push(`Target duration: ${Math.round(input.durationSec)} seconds`);
+  }
+  if (typeof input.bpm === 'number' && Number.isFinite(input.bpm)) {
+    inputs.push(`User-pinned tempo: ${Math.round(input.bpm)} BPM`);
+  }
+  if (input.key) inputs.push(`User-pinned key: ${input.key}`);
   inputs.push(`Has lyrics: ${isInstrumental ? 'no (instrumental)' : 'yes'}`);
 
   const system =
@@ -628,16 +657,17 @@ export async function minimaxOrchestrate(
     `You are reasoning about HOW the song should be produced — instruments, arrangement, structure, vocal direction — BEFORE any lyric or audio generation runs. ` +
     `\n\nRULES: ` +
     `\n(1) Translate any artist/band references into specific musical descriptors (instruments, production techniques, vocal qualities). NEVER output artist or band names anywhere in the JSON. ` +
-    `\n(2) Pick a coherent BPM, key, and time signature that fit the genre/mood. Use the GENRE PRIORS table below as your default — only deviate when the user concept clearly justifies it. ` +
-    `\n(3) The structure must match the named genre's conventions: hook-driven Verse-PreChorus-Chorus for pop/rock/R&B, 16-bar Verse + 8-bar Hook for hip-hop, Build-Drop for dance/electronic, strophic Verse-Refrain for folk/singer-songwriter, AABA for classic jazz, through-composed build-and-release for cinematic. Do not impose pop-form on genres that don't use it. ` +
-    `\n(4) "musicPrompt" is fed verbatim to a music-generation model. Write it as a dense, comma-separated production brief covering genre, BPM, key, instrumentation, vocal direction, energy arc, and era. Do NOT include lyrics, section headings, or stage directions in musicPrompt. Lead with the most genre-defining instruments. ` +
-    `\n(5) "lyricsBrief" is a paragraph for a lyric writer. Describe the emotional arc, narrative perspective (1st/2nd/3rd person, present/past tense), 3-5 concrete imagery seeds, and the hook/refrain motif. Do NOT write the actual lyrics. ${isInstrumental ? 'For instrumental tracks, set lyricsBrief to an empty string.' : ''} ` +
-    `\n(6) "hookLine" is a short draft of the chorus / refrain hook line — under 10 words, memorable, sing-able. ${isInstrumental ? 'Set to null for instrumental tracks.' : 'Required for vocal tracks.'} ` +
-    `\n(7) "instrumentation" is a list of short instrument/sound descriptors (e.g. "fingerpicked acoustic", "warm Rhodes", "brushed snare"). Choose count from the genre's range in the priors table — typically 5-8 for pop/rock/R&B, 2-5 for folk/lo-fi, 8-14 for cinematic/orchestral, 2-4 for ambient. ` +
-    `\n(8) "structure" is an array of section names matching the genre. Allowed canonical names: "Intro", "Verse", "Verse 2", "Pre-Chorus", "Chorus", "Post-Chorus", "Hook", "Refrain", "Bridge", "Final Chorus", "Drop", "Build", "Breakdown", "Outro", "Vamp", "Head", "Solo Section". Do NOT use "Guitar Solo" / "Instrumental" — instrumental moments are conveyed through "Solo Section" or "Breakdown" labels. ` +
-    `\n(9) "arrangementArc" is one short sentence describing the energy/density progression (e.g. "sparse intro → builds at chorus → stripped bridge → fullest final chorus"). ` +
-    `\n(10) "vocalDirection" ${isInstrumental ? 'must be null (instrumental track)' : 'should describe gender/timbre, vocal range register, delivery (belted/whispered/rap/etc.), use of harmonies/ad-libs, and any post-processing (auto-tune, doubled, etc.)'}. ` +
-    `\n(11) Output ONLY valid JSON. No commentary, no markdown fences.\n` +
+    `\n(2) Treat explicit user style fields (genre, subgenre, mood, energy, era, vocal style, extra style notes, tempo, key, duration) as constraints. If a field is missing, infer the most coherent default from the concept and the GENRE PRIORS table; do not ask follow-up questions and do not collapse to generic pop unless the concept points there. ` +
+    `\n(3) Pick a coherent BPM, key, and time signature that fit the genre/mood. Respect user-pinned tempo/key when supplied. Use the GENRE PRIORS table below as your default — only deviate when the user concept clearly justifies it. ` +
+    `\n(4) The structure must match the named genre's conventions: hook-driven Verse-PreChorus-Chorus for pop/rock/R&B, 16-bar Verse + 8-bar Hook for hip-hop, Build-Drop for dance/electronic, strophic Verse-Refrain for folk/singer-songwriter, AABA for classic jazz, through-composed build-and-release for cinematic. Do not impose pop-form on genres that don't use it. ` +
+    `\n(5) "musicPrompt" is fed verbatim to a music-generation model. Write it as a dense, comma-separated production brief covering genre, BPM, key, instrumentation, vocal direction, energy arc, and era. Do NOT include lyrics, section headings, or stage directions in musicPrompt. Lead with the most genre-defining instruments. ` +
+    `\n(6) "lyricsBrief" is a paragraph for a lyric writer. Describe the emotional arc, narrative perspective (1st/2nd/3rd person, present/past tense), 3-5 concrete imagery seeds, hook/refrain motif, and how the production style affects lyric rhythm (short rap bars, long folk lines, sparse dance hooks, etc.). Do NOT write the actual lyrics. ${isInstrumental ? 'For instrumental tracks, set lyricsBrief to an empty string.' : ''} ` +
+    `\n(7) "hookLine" is a short draft of the chorus / refrain hook line — under 10 words, memorable, sing-able. ${isInstrumental ? 'Set to null for instrumental tracks.' : 'Required for vocal tracks.'} ` +
+    `\n(8) "instrumentation" is a list of short instrument/sound descriptors (e.g. "fingerpicked acoustic", "warm Rhodes", "brushed snare"). Choose count from the genre's range in the priors table — typically 5-8 for pop/rock/R&B, 2-5 for folk/lo-fi, 8-14 for cinematic/orchestral, 2-4 for ambient. ` +
+    `\n(9) "structure" is an array of section names matching the genre. Allowed canonical names: "Intro", "Verse", "Verse 2", "Pre-Chorus", "Chorus", "Post-Chorus", "Hook", "Refrain", "Bridge", "Final Chorus", "Drop", "Build", "Breakdown", "Outro", "Vamp", "Head", "Solo Section". Do NOT use "Guitar Solo" / "Instrumental" — instrumental moments are conveyed through "Solo Section" or "Breakdown" labels. ` +
+    `\n(10) "arrangementArc" is one short sentence describing the energy/density progression (e.g. "sparse intro → builds at chorus → stripped bridge → fullest final chorus"). ` +
+    `\n(11) "vocalDirection" ${isInstrumental ? 'must be null (instrumental track)' : 'should describe gender/timbre, vocal range register, delivery (belted/whispered/rap/etc.), use of harmonies/ad-libs, and any post-processing (auto-tune, doubled, etc.)'}. ` +
+    `\n(12) Output ONLY valid JSON. No commentary, no markdown fences.\n` +
     ORCHESTRATION_GENRE_PRIORS;
 
   const schema =

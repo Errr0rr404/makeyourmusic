@@ -5,6 +5,7 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { View, ActivityIndicator } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TrackPlayer from 'react-native-track-player';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bootstrap } from '../lib/bootstrap';
@@ -27,9 +28,11 @@ TrackPlayer.registerPlaybackService(() => require('../services/trackPlayerServic
 
 export default function RootLayout() {
   return (
-    <ThemeProvider>
-      <RootLayoutInner />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <RootLayoutInner />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }
 
@@ -133,7 +136,7 @@ function RootLayoutInner() {
   }, [booted, needsOnboarding, router]);
 
   // Sync Zustand -> native player
-  const { currentTrack, queue, isPlaying, repeat } = usePlayerStore();
+  const { currentTrack, queue, isPlaying, repeat, seekRequest } = usePlayerStore();
   const sync = useSyncPlayerToNative();
 
   // Sync queue when it changes
@@ -152,6 +155,14 @@ function RootLayoutInner() {
       sync.syncPlayState();
     }
   }, [isPlaying]);
+
+  // Sync explicit seek requests. Passive progress updates from native audio
+  // use setProgress and intentionally do not trigger this effect.
+  useEffect(() => {
+    if (playerReady.current && seekRequest) {
+      sync.syncSeek(seekRequest.position);
+    }
+  }, [seekRequest?.id]);
 
   // Sync repeat mode
   useEffect(() => {

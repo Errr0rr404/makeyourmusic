@@ -30,6 +30,7 @@ let queueSyncInFlight = false;
 let queueSyncPending = false;
 let lastNativeQueueKey = '';
 let suppressNativeTrackEventsUntil = 0;
+let pendingSeekPosition: number | null = null;
 
 /**
  * Initialize react-native-track-player with capabilities.
@@ -142,13 +143,19 @@ async function syncLatestQueueToNative() {
   }
 
   playRecordedForTrackId = null;
+  const pendingSeek = pendingSeekPosition;
+  pendingSeekPosition = null;
 
   const latest = usePlayerStore.getState();
   if (latest.currentTrack?.id === requestedTrack.id && latest.queueIndex !== requestedIndex) {
     usePlayerStore.setState({
       queueIndex: requestedIndex,
-      progress: 0,
+      progress: pendingSeek ?? 0,
     });
+  }
+
+  if (pendingSeek !== null) {
+    await TrackPlayer.seekTo(pendingSeek);
   }
 
   // Apply play state AFTER the queue is loaded. The separate syncPlayState
@@ -210,6 +217,21 @@ export function useSyncPlayerToNative() {
         }
       } catch (err) {
         console.error('syncPlayState error:', err);
+      }
+    },
+
+    syncSeek: async (position: number) => {
+      if (!isInitialized) return;
+      const next = Math.max(0, position);
+      if (isSyncingQueue || queueSyncInFlight) {
+        pendingSeekPosition = next;
+        return;
+      }
+      try {
+        await TrackPlayer.seekTo(next);
+      } catch (err) {
+        pendingSeekPosition = next;
+        console.error('syncSeek error:', err);
       }
     },
 

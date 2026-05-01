@@ -1,0 +1,85 @@
+default_platform(:ios)
+
+platform :ios do
+
+  desc "Authenticate with App Store Connect API key"
+  lane :api_key do
+    app_store_connect_api_key(
+      key_id: ENV["ASC_KEY_ID"],
+      issuer_id: ENV["ASC_ISSUER_ID"],
+      key_filepath: ENV["ASC_KEY_PATH"],
+      in_house: false
+    )
+  end
+
+  desc "Build for iOS Simulator (development)"
+  lane :build_simulator do
+    sh("eas", "build", "--platform", "ios", "--profile", "development-simulator", "--local")
+  end
+
+  desc "Build for iOS (internal distribution)"
+  lane :build_internal do
+    sh("eas", "build", "--platform", "ios", "--profile", "preview", "--non-interactive")
+  end
+
+  desc "Build for iOS (production)"
+  lane :build_production do
+    sh("eas", "build", "--platform", "ios", "--profile", "production", "--non-interactive")
+  end
+
+  desc "Submit to TestFlight (beta testing)"
+  lane :beta do
+    api_key if ENV["ASC_KEY_ID"]
+    build_production
+    submit_to_testflight
+  end
+
+  desc "Upload metadata + screenshots only (no binary)"
+  lane :metadata do
+    api_key if ENV["ASC_KEY_ID"]
+    deliver(
+      app_identifier: "com.worldofz.makeyourmusic",
+      copyright: "© 2026 MakeYourMusic",
+      skip_binary_upload: true,
+      skip_screenshots: false,
+      overwrite_screenshots: true,
+      skip_metadata: false,
+      force: true,
+      app_review_information: {
+        first_name: "Zannatun",
+        last_name: "Sheum",
+        phone_number: "+1 929-373-9212",
+        email_address: "zan.sheum@gmail.com"
+      }
+    )
+  end
+
+  desc "Full release: build + upload + submit for review"
+  lane :release do
+    api_key if ENV["ASC_KEY_ID"]
+    build_production
+    deliver(
+      app_identifier: "com.worldofz.makeyourmusic",
+      submit_for_review: true,
+      automatic_release: false,
+      force: true,
+      skip_screenshots: false,
+      overwrite_screenshots: true,
+      skip_metadata: false,
+      submission_information: {
+        add_id_info_uses_idfa: false,
+        export_compliance_uses_encryption: false,
+        content_rights_has_rights: true,
+        content_rights_contains_third_party_content: false
+      }
+    )
+  end
+
+  private
+
+  desc "Submit to TestFlight"
+  lane :submit_to_testflight do
+    sh("eas", "submit", "--platform", "ios", "--profile", "production", "--latest", "--non-interactive")
+  end
+
+end

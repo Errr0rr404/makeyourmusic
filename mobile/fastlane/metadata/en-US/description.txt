@@ -1,0 +1,16 @@
+MakeYourMusic is your personal AI-powered music creation studio.
+
+Create professional-quality tracks with the help of AI. Whether you're a beginner or an experienced musician, our AI assistant helps you compose, arrange, and produce music.
+
+FEATURES
+• AI-powered music generation
+• Text-to-music creation
+• Stem separation and remixing
+• Karaoke with lyrics display
+• Professional audio quality
+• Collaborative features
+• Real-time audio processing
+
+REQUIREMENTS
+• iOS 17.0 or later
+• Internet connection for AI features

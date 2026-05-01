@@ -6,27 +6,52 @@ interface SliderProps {
   value: number;
   max: number;
   onValueChange: (value: number) => void;
+  onSlidingComplete?: (value: number) => void;
 }
 
-export default function Slider({ value, max, onValueChange }: SliderProps) {
+export default function Slider({ value, max, onValueChange, onSlidingComplete }: SliderProps) {
   const tokens = useTokens();
   const isVintage = useIsVintage();
   const [, setWidth] = useState(0);
   const widthRef = useRef(0);
+  const maxRef = useRef(max);
+  const onValueChangeRef = useRef(onValueChange);
+  const onSlidingCompleteRef = useRef(onSlidingComplete);
+  const lastValueRef = useRef(value);
+
+  maxRef.current = max;
+  onValueChangeRef.current = onValueChange;
+  onSlidingCompleteRef.current = onSlidingComplete;
+  lastValueRef.current = value;
+
+  const valueFromX = (x: number) => {
+    const width = widthRef.current;
+    const limit = Math.max(0, maxRef.current);
+    if (width <= 0 || limit <= 0) return 0;
+    return Math.max(0, Math.min(limit, (x / width) * limit));
+  };
+
+  const updateValue = (x: number) => {
+    const next = valueFromX(x);
+    lastValueRef.current = next;
+    onValueChangeRef.current(next);
+  };
 
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderGrant: (evt) => {
-        const x = evt.nativeEvent.locationX;
-        const newVal = Math.max(0, Math.min(max, (x / widthRef.current) * max));
-        onValueChange(newVal);
+        updateValue(evt.nativeEvent.locationX);
       },
       onPanResponderMove: (evt) => {
-        const x = evt.nativeEvent.locationX;
-        const newVal = Math.max(0, Math.min(max, (x / widthRef.current) * max));
-        onValueChange(newVal);
+        updateValue(evt.nativeEvent.locationX);
+      },
+      onPanResponderRelease: () => {
+        onSlidingCompleteRef.current?.(lastValueRef.current);
+      },
+      onPanResponderTerminate: () => {
+        onSlidingCompleteRef.current?.(lastValueRef.current);
       },
     }),
   ).current;

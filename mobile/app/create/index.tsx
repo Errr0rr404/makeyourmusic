@@ -22,7 +22,11 @@ import { Audio } from 'expo-av';
 import TrackPlayer from 'react-native-track-player';
 import { useTokens, useIsVintage } from '../../lib/theme';
 
-type Step = 'idea' | 'lyrics' | 'style' | 'generate' | 'publish';
+type Step = 'idea' | 'style' | 'lyrics' | 'generate' | 'publish';
+
+const TEMPO_OPTIONS = [80, 100, 120, 140, 160, 180];
+const MUSICAL_KEY_OPTIONS = ['C major', 'G major', 'D major', 'A minor', 'E minor', 'F minor'];
+const LANGUAGE_OPTIONS = ['English', 'Spanish', 'French', 'Korean', 'Japanese', 'Mandarin', 'Portuguese', 'Italian', 'German', 'Hindi'];
 
 interface Generation {
   id: string;
@@ -59,6 +63,8 @@ export default function CreateScreen() {
   const [language, setLanguage] = useState('English');
   const [isInstrumental, setIsInstrumental] = useState(false);
   const [durationSec, setDurationSec] = useState(120);
+  const [bpm, setBpm] = useState<number | null>(null);
+  const [musicalKey, setMusicalKey] = useState('');
 
   const [generatingLyrics, setGeneratingLyrics] = useState(false);
   const [lyricsError, setLyricsError] = useState('');
@@ -135,6 +141,7 @@ export default function CreateScreen() {
     try {
       const res = await getApi().post('/ai/lyrics', {
         idea,
+        title,
         genre,
         subGenre,
         mood,
@@ -144,6 +151,9 @@ export default function CreateScreen() {
         vibeReference,
         style,
         language,
+        durationSec,
+        bpm: bpm ?? undefined,
+        key: musicalKey || undefined,
       });
       const text = (res.data.lyrics || '').trim();
       if (!text) {
@@ -223,6 +233,8 @@ export default function CreateScreen() {
         style,
         durationSec,
         isInstrumental,
+        bpm: bpm ?? undefined,
+        key: musicalKey || undefined,
       });
       const g: Generation = res.data.generation;
       activeGenerationIdRef.current = g.id;
@@ -355,7 +367,7 @@ export default function CreateScreen() {
 
         <ScrollView
           className="flex-1"
-          contentContainerStyle={{ paddingBottom: 140 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 40 }}
           keyboardShouldPersistTaps="handled"
         >
           {step === 'idea' && (
@@ -366,22 +378,8 @@ export default function CreateScreen() {
               setTitle={setTitle}
               onNext={() => {
                 if (!title.trim()) setTitle(idea.slice(0, 60));
-                setStep('lyrics');
+                setStep('style');
               }}
-            />
-          )}
-
-          {step === 'lyrics' && (
-            <LyricsStep
-              lyrics={lyrics}
-              setLyrics={setLyrics}
-              generating={generatingLyrics}
-              error={lyricsError}
-              isInstrumental={isInstrumental}
-              setIsInstrumental={setIsInstrumental}
-              onGenerate={generateLyrics}
-              onBack={() => setStep('idea')}
-              onNext={() => setStep('style')}
             />
           )}
 
@@ -402,14 +400,36 @@ export default function CreateScreen() {
               vibeReference={vibeReference}
               setVibeReference={setVibeReference}
               isInstrumental={isInstrumental}
+              setIsInstrumental={setIsInstrumental}
               style={style}
               setStyle={setStyle}
               durationSec={durationSec}
               setDurationSec={setDurationSec}
               language={language}
               setLanguage={setLanguage}
+              bpm={bpm}
+              setBpm={setBpm}
+              musicalKey={musicalKey}
+              setMusicalKey={setMusicalKey}
               usage={usage}
-              onBack={() => setStep('lyrics')}
+              onBack={() => setStep('idea')}
+              onNext={() => {
+                if (isInstrumental) startGeneration();
+                else setStep('lyrics');
+              }}
+            />
+          )}
+
+          {step === 'lyrics' && (
+            <LyricsStep
+              lyrics={lyrics}
+              setLyrics={setLyrics}
+              generating={generatingLyrics}
+              error={lyricsError}
+              isInstrumental={isInstrumental}
+              setIsInstrumental={setIsInstrumental}
+              onGenerate={generateLyrics}
+              onBack={() => setStep('style')}
               onNext={startGeneration}
             />
           )}
@@ -422,7 +442,7 @@ export default function CreateScreen() {
               onStartOver={startOver}
               onBack={() => {
                 if (pollTimer.current) clearTimeout(pollTimer.current);
-                setStep('style');
+                setStep(isInstrumental ? 'style' : 'lyrics');
               }}
             />
           )}
@@ -460,22 +480,21 @@ export default function CreateScreen() {
 
 function Header({ usage }: { usage: Usage | null }) {
   return (
-    <View className="flex-row items-center justify-between px-4 py-3">
-      <View>
-        <View className="flex-row items-center gap-1.5">
-          <Sparkles size={14} color="#a855f7" />
-          <Text className="text-purple-300 text-xs font-bold uppercase tracking-wider">AI Music Studio</Text>
+    <View className="flex-row items-center justify-between px-4 pt-2 pb-1">
+      <View className="flex-row items-center gap-2 flex-1">
+        <View className="w-8 h-8 rounded-full bg-mym-accent/15 items-center justify-center">
+          <Sparkles size={15} color="#a855f7" />
         </View>
-        <Text className="text-mym-text text-2xl font-bold mt-0.5">Create a track</Text>
+        <View className="flex-1">
+          <Text className="text-mym-text text-xl font-bold" numberOfLines={1}>Create a track</Text>
+          <Text className="text-mym-muted text-[11px]">AI music studio</Text>
+        </View>
       </View>
       {usage && (
-        <View className="items-end">
-          <Text className="text-mym-muted text-[10px] uppercase">Today</Text>
-          <Text className="text-mym-text text-lg font-bold">
-            {usage.used}<Text className="text-white/40">/{usage.limit}</Text>
-          </Text>
-          <Text className="text-mym-muted text-[10px]">
-            {usage.tier === 'PREMIUM' ? 'Premium' : 'Free'}
+        <View className="rounded-full bg-mym-card border border-mym-border px-3 py-1.5 items-end">
+          <Text className="text-mym-muted text-[9px] uppercase tracking-wider">{usage.tier === 'PREMIUM' ? 'Premium' : 'Free'}</Text>
+          <Text className="text-mym-text text-sm font-bold">
+            {usage.remaining}<Text className="text-mym-muted text-xs"> left</Text>
           </Text>
         </View>
       )}
@@ -487,41 +506,35 @@ function Header({ usage }: { usage: Usage | null }) {
 
 const STEPS: { key: Step; label: string; icon: any }[] = [
   { key: 'idea', label: 'Idea', icon: Zap },
-  { key: 'lyrics', label: 'Lyrics', icon: FileText },
   { key: 'style', label: 'Style', icon: Settings2 },
+  { key: 'lyrics', label: 'Lyrics', icon: FileText },
   { key: 'generate', label: 'Generate', icon: Wand2 },
   { key: 'publish', label: 'Publish', icon: Headphones },
 ];
 
 function Stepper({ current }: { current: Step }) {
   const currentIdx = STEPS.findIndex((s) => s.key === current);
+  const CurrentIcon = STEPS[currentIdx]?.icon || Zap;
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 16, paddingVertical: 8, gap: 6 }}>
-      {STEPS.map((s, i) => {
-        const isActive = i === currentIdx;
-        const isDone = i < currentIdx;
-        const Icon = s.icon;
-        return (
-          <View key={s.key} className="flex-row items-center gap-2">
-            <View
-              className={`flex-row items-center gap-1.5 px-3 py-1.5 rounded-full ${
-                isActive ? 'bg-mym-accent/20' : isDone ? 'bg-green-900/30' : 'bg-mym-card'
-              }`}
-            >
-              {isDone ? (
-                <CheckCircle2 size={12} color="#4ade80" />
-              ) : (
-                <Icon size={12} color={isActive ? '#8b5cf6' : '#71717a'} />
-              )}
-              <Text className={`text-xs font-bold ${isActive ? 'text-mym-accent' : isDone ? 'text-green-400' : 'text-mym-muted'}`}>
-                {s.label}
-              </Text>
-            </View>
-            {i < STEPS.length - 1 && <View className="w-3 h-[1px] bg-mym-border" />}
-          </View>
-        );
-      })}
-    </ScrollView>
+    <View className="px-4 pt-1 pb-2">
+      <View className="flex-row items-center justify-between mb-2">
+        <View className="flex-row items-center gap-1.5">
+          <CurrentIcon size={13} color="#a78bfa" />
+          <Text className="text-mym-text text-xs font-bold">{STEPS[currentIdx]?.label || 'Create'}</Text>
+        </View>
+        <Text className="text-mym-muted text-[11px] font-semibold">{currentIdx + 1}/{STEPS.length}</Text>
+      </View>
+      <View className="flex-row gap-1">
+        {STEPS.map((s, i) => (
+          <View
+            key={s.key}
+            className={`h-1.5 flex-1 rounded-full ${
+              i <= currentIdx ? 'bg-mym-accent' : 'bg-mym-card'
+            }`}
+          />
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -531,7 +544,7 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
   const tokens = useTokens();
   const mutedHex = tokens.textMute;
   return (
-    <View className="px-4 pt-2">
+    <View className="px-4 pt-1">
       <View className="bg-mym-card rounded-xl border border-mym-border p-4">
         <Text className="text-mym-text text-sm font-semibold mb-2">What's the song about?</Text>
         <TextInput
@@ -559,13 +572,13 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
           className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm"
         />
       </View>
-      <View className="flex-row justify-end mt-4">
+      <View className="mt-4">
         <TouchableOpacity
           onPress={onNext}
           disabled={!idea.trim()}
-          className={`flex-row items-center gap-1 px-5 py-3 rounded-xl ${idea.trim() ? 'bg-mym-accent' : 'bg-mym-card'}`}
+          className={`h-14 flex-row items-center justify-center gap-1 rounded-xl ${idea.trim() ? 'bg-mym-accent' : 'bg-mym-card'}`}
         >
-          <Text className={`text-sm font-semibold ${idea.trim() ? 'text-white' : 'text-mym-muted'}`}>Next: Lyrics</Text>
+          <Text className={`text-sm font-semibold ${idea.trim() ? 'text-white' : 'text-mym-muted'}`}>Next: Style</Text>
           <ChevronRight size={14} color={idea.trim() ? '#fff' : '#71717a'} />
         </TouchableOpacity>
       </View>
@@ -573,19 +586,19 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
   );
 }
 
-// ─── Step 2: Lyrics ──────────────────────────────────────
+// ─── Step 3: Lyrics ──────────────────────────────────────
 
 function LyricsStep({ lyrics, setLyrics, generating, error, isInstrumental, setIsInstrumental, onGenerate, onBack, onNext }: any) {
   const tokens = useTokens();
   const mutedHex = tokens.textMute;
   return (
-    <View className="px-4 pt-2">
+    <View className="px-4 pt-1">
       <View className="bg-mym-card rounded-xl border border-mym-border p-4">
         <View className="flex-row items-start justify-between mb-3">
           <View className="flex-1 pr-2">
             <Text className="text-mym-text text-lg font-bold">Write or generate lyrics</Text>
             <Text className="text-mym-muted text-xs">
-              Use <Text className="text-mym-text">[Verse]</Text>, <Text className="text-mym-text">[Chorus]</Text> tags on their own lines for structure
+              The AI will use the style choices from the previous step.
             </Text>
           </View>
           <TouchableOpacity
@@ -645,32 +658,33 @@ function LyricsStep({ lyrics, setLyrics, generating, error, isInstrumental, setI
         )}
       </View>
 
-      <View className="flex-row justify-between mt-4">
-        <TouchableOpacity onPress={onBack} className="flex-row items-center gap-1 px-4 py-3">
+      <View className="flex-row gap-3 mt-4">
+        <TouchableOpacity onPress={onBack} className="h-14 flex-row items-center justify-center gap-1 px-4 rounded-xl bg-mym-card border border-mym-border">
           <ChevronLeft size={14} color="#a1a1aa" />
           <Text className="text-mym-muted text-sm">Back</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onNext}
           disabled={!isInstrumental && !lyrics.trim()}
-          className={`flex-row items-center gap-1 px-5 py-3 rounded-xl ${(isInstrumental || lyrics.trim()) ? 'bg-mym-accent' : 'bg-mym-card'}`}
+          className={`h-14 flex-1 flex-row items-center justify-center gap-1 rounded-xl ${(isInstrumental || lyrics.trim()) ? 'bg-mym-accent' : 'bg-mym-card'}`}
         >
-          <Text className={`text-sm font-semibold ${(isInstrumental || lyrics.trim()) ? 'text-white' : 'text-mym-muted'}`}>Next: Style</Text>
-          <ChevronRight size={14} color={(isInstrumental || lyrics.trim()) ? '#fff' : '#71717a'} />
+          <Wand2 size={14} color={(isInstrumental || lyrics.trim()) ? '#fff' : '#71717a'} />
+          <Text className={`text-sm font-semibold ${(isInstrumental || lyrics.trim()) ? 'text-white' : 'text-mym-muted'}`}>Generate Music</Text>
         </TouchableOpacity>
       </View>
     </View>
   );
 }
 
-// ─── Step 3: Style ───────────────────────────────────────
+// ─── Step 2: Style ───────────────────────────────────────
 
 function StyleStep({
   genre, setGenre, subGenre, setSubGenre,
   mood, setMood, energy, setEnergy, era, setEra,
   vocalStyle, setVocalStyle, vibeReference, setVibeReference,
-  isInstrumental, style, setStyle,
+  isInstrumental, setIsInstrumental, style, setStyle,
   durationSec, setDurationSec, language, setLanguage,
+  bpm, setBpm, musicalKey, setMusicalKey,
   usage, onBack, onNext,
 }: any) {
   const tokens = useTokens();
@@ -691,12 +705,29 @@ function StyleStep({
   };
 
   return (
-    <View className="px-4 pt-2">
+    <View className="px-4 pt-1">
       <View className="bg-mym-card rounded-xl border border-mym-border p-4">
-        <Text className="text-mym-text text-lg font-bold mb-1">Pick the vibe</Text>
+        <Text className="text-mym-text text-lg font-bold mb-1">Pick the sound first</Text>
         <Text className="text-mym-muted text-xs mb-4">
-          Only genre is suggested — the rest is optional.
+          Lyrics generated next will follow this genre, vocal direction, and energy.
         </Text>
+
+        <TouchableOpacity
+          onPress={() => setIsInstrumental(!isInstrumental)}
+          className={`flex-row items-center justify-between rounded-xl border px-3 py-3 mb-4 ${isInstrumental ? 'bg-mym-accent/15 border-mym-accent/40' : 'bg-mym-surface border-mym-border'}`}
+        >
+          <View className="flex-1 pr-3">
+            <Text className="text-mym-text text-sm font-semibold">
+              {isInstrumental ? 'Instrumental track' : 'Vocal track'}
+            </Text>
+            <Text className="text-mym-muted text-xs mt-0.5">
+              {isInstrumental ? 'Skip lyrics and generate a vocal-free arrangement.' : 'Write or generate lyrics after choosing the style.'}
+            </Text>
+          </View>
+          <View className={`w-11 h-6 rounded-full p-0.5 ${isInstrumental ? 'bg-mym-accent' : 'bg-mym-border'}`}>
+            <View className={`w-5 h-5 rounded-full bg-white ${isInstrumental ? 'self-end' : 'self-start'}`} />
+          </View>
+        </TouchableOpacity>
 
         <Text className="text-mym-text text-sm font-semibold mb-2">Genre</Text>
         <View className="flex-row flex-wrap gap-2 mb-4">
@@ -798,7 +829,7 @@ function StyleStep({
             style={{ transform: [{ rotate: showAdvanced ? '90deg' : '0deg' }] }}
           />
           <Text className="text-purple-300 text-xs font-semibold">
-            Advanced {showAdvanced ? '(hide)' : '(era, vocals, language, duration, notes)'}
+            Advanced {showAdvanced ? '(hide)' : '(era, vocals, language, tempo, key)'}
           </Text>
         </TouchableOpacity>
 
@@ -840,6 +871,26 @@ function StyleStep({
               </>
             )}
 
+            {!isInstrumental && (
+              <>
+                <Text className="text-mym-text text-sm font-semibold mb-2">Language</Text>
+                <View className="flex-row flex-wrap gap-2 mb-4">
+                  {LANGUAGE_OPTIONS.map((lang) => (
+                    <TouchableOpacity
+                      key={lang}
+                      onPress={() => {
+                        setLanguage(lang);
+                        hapticSelection();
+                      }}
+                      className={`px-3 py-1.5 rounded-full ${language === lang ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+                    >
+                      <Text className={`text-xs font-semibold ${language === lang ? 'text-white' : 'text-mym-muted'}`}>{lang}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </>
+            )}
+
             <Text className="text-mym-text text-sm font-semibold mb-2">
               Duration ({Math.floor(durationSec / 60)}:{(durationSec % 60).toString().padStart(2, '0')})
             </Text>
@@ -856,6 +907,60 @@ function StyleStep({
                   <Text className={`text-xs font-semibold ${durationSec === d ? 'text-white' : 'text-mym-muted'}`}>
                     {d < 60 ? `${d}s` : `${d / 60}:${(d % 60).toString().padStart(2, '0')}`}
                   </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text className="text-mym-text text-sm font-semibold mb-2">
+              Tempo <Text className="text-mym-muted font-normal">{bpm ? `(${bpm} BPM)` : '(auto)'}</Text>
+            </Text>
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              <TouchableOpacity
+                onPress={() => {
+                  setBpm(null);
+                  hapticSelection();
+                }}
+                className={`px-3 py-1.5 rounded-full ${!bpm ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+              >
+                <Text className={`text-xs font-semibold ${!bpm ? 'text-white' : 'text-mym-muted'}`}>Auto</Text>
+              </TouchableOpacity>
+              {TEMPO_OPTIONS.map((tempo) => (
+                <TouchableOpacity
+                  key={tempo}
+                  onPress={() => {
+                    setBpm(tempo);
+                    hapticSelection();
+                  }}
+                  className={`px-3 py-1.5 rounded-full ${bpm === tempo ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+                >
+                  <Text className={`text-xs font-semibold ${bpm === tempo ? 'text-white' : 'text-mym-muted'}`}>{tempo}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text className="text-mym-text text-sm font-semibold mb-2">
+              Key <Text className="text-mym-muted font-normal">{musicalKey || '(auto)'}</Text>
+            </Text>
+            <View className="flex-row flex-wrap gap-2 mb-4">
+              <TouchableOpacity
+                onPress={() => {
+                  setMusicalKey('');
+                  hapticSelection();
+                }}
+                className={`px-3 py-1.5 rounded-full ${!musicalKey ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+              >
+                <Text className={`text-xs font-semibold ${!musicalKey ? 'text-white' : 'text-mym-muted'}`}>Auto</Text>
+              </TouchableOpacity>
+              {MUSICAL_KEY_OPTIONS.map((keyName) => (
+                <TouchableOpacity
+                  key={keyName}
+                  onPress={() => {
+                    setMusicalKey(keyName);
+                    hapticSelection();
+                  }}
+                  className={`px-3 py-1.5 rounded-full ${musicalKey === keyName ? 'bg-mym-accent' : 'bg-mym-surface border border-mym-border'}`}
+                >
+                  <Text className={`text-xs font-semibold ${musicalKey === keyName ? 'text-white' : 'text-mym-muted'}`}>{keyName}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -887,19 +992,19 @@ function StyleStep({
         </View>
       )}
 
-      <View className="flex-row justify-between mt-4">
-        <TouchableOpacity onPress={onBack} className="flex-row items-center gap-1 px-4 py-3">
+      <View className="flex-row gap-3 mt-5 mb-2">
+        <TouchableOpacity onPress={onBack} className="h-14 flex-row items-center justify-center gap-1 px-4 rounded-xl bg-mym-card border border-mym-border">
           <ChevronLeft size={14} color="#a1a1aa" />
           <Text className="text-mym-muted text-sm">Back</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onNext}
           disabled={!!insufficient}
-          className="flex-row items-center gap-1 px-5 py-3 rounded-xl bg-purple-600"
+          className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-purple-600"
           style={{ opacity: insufficient ? 0.5 : 1 }}
         >
-          <Wand2 size={14} color="#fff" />
-          <Text className="text-white text-sm font-bold">Generate Music</Text>
+          <Wand2 size={16} color="#fff" />
+          <Text className="text-white text-base font-bold">{isInstrumental ? 'Generate Music' : 'Next: Lyrics'}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -917,7 +1022,7 @@ function GenerateStep({ generation, error, onRetry, onStartOver, onBack }: any) 
 
   if (error) {
     return (
-      <View className="px-4 pt-6">
+      <View className="px-4 pt-2">
         <View className="bg-mym-card border border-red-500/30 rounded-xl p-6 items-center">
           <AlertCircle size={40} color="#f87171" />
           <Text className="text-mym-text text-xl font-bold mt-3 mb-2">Generation failed</Text>
@@ -946,18 +1051,24 @@ function GenerateStep({ generation, error, onRetry, onStartOver, onBack }: any) 
     : 'Working…';
 
   return (
-    <View className="px-4 pt-6">
-      <View className="bg-mym-card border border-mym-border rounded-xl p-8 items-center">
-        <View className="w-20 h-20 rounded-full bg-purple-600 items-center justify-center mb-4">
-          <Wand2 size={32} color="#fff" />
+    <View className="px-4 pt-2" style={{ flexGrow: 1, justifyContent: 'center' }}>
+      <View className="bg-mym-card border border-mym-border rounded-xl p-6 items-center justify-center" style={{ minHeight: 340 }}>
+        <View className="w-24 h-24 rounded-full bg-purple-600/20 border border-purple-500/30 items-center justify-center mb-5">
+          {generation?.status === 'COMPLETED' ? (
+            <CheckCircle2 size={38} color="#4ade80" />
+          ) : (
+            <Loader2 size={38} color="#a855f7" />
+          )}
         </View>
         <Text className="text-mym-text text-xl font-bold mb-2">{label}</Text>
-        <Text className="text-mym-muted text-sm text-center mb-1">
+        <Text className="text-mym-muted text-sm text-center mb-4">
           This usually takes 30–90 seconds. Feel free to leave this screen — we'll save the result.
         </Text>
-        <Text className="text-mym-muted text-xs">
+        <View className="rounded-full bg-mym-surface border border-mym-border px-4 py-2">
+          <Text className="text-mym-muted text-xs font-semibold">
           Elapsed: {Math.floor(elapsed / 60)}:{(elapsed % 60).toString().padStart(2, '0')}
-        </Text>
+          </Text>
+        </View>
       </View>
     </View>
   );
@@ -982,7 +1093,7 @@ function PublishStep({
   const hasAgents = agents.length > 0;
 
   return (
-    <View className="px-4 pt-2">
+    <View className="px-4 pt-1">
       <View className="bg-mym-card border border-mym-border rounded-xl p-4">
         <View className="flex-row items-start gap-3 mb-4">
           <View className="w-10 h-10 rounded-full bg-green-900/40 items-center justify-center">
@@ -1117,15 +1228,15 @@ function PublishStep({
         </View>
       </View>
 
-      <View className="flex-row justify-between mt-4">
-        <TouchableOpacity onPress={onStartOver} className="flex-row items-center gap-1 px-4 py-3">
+      <View className="flex-row gap-3 mt-4 mb-2">
+        <TouchableOpacity onPress={onStartOver} className="h-14 flex-row items-center justify-center gap-1 px-4 rounded-xl bg-mym-card border border-mym-border">
           <RotateCcw size={14} color="#a1a1aa" />
           <Text className="text-mym-muted text-sm">Start over</Text>
         </TouchableOpacity>
         <TouchableOpacity
           onPress={onPublish}
           disabled={publishing || !hasAgents || !title.trim()}
-          className="flex-row items-center gap-1 px-5 py-3 rounded-xl bg-purple-600"
+          className="h-14 flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-purple-600"
           style={{ opacity: publishing || !hasAgents || !title.trim() ? 0.5 : 1 }}
         >
           {publishing ? (
@@ -1133,7 +1244,7 @@ function PublishStep({
           ) : (
             <Flame size={14} color="#fff" />
           )}
-          <Text className="text-white text-sm font-bold">{publishing ? 'Publishing…' : 'Publish track'}</Text>
+          <Text className="text-white text-base font-bold">{publishing ? 'Publishing…' : 'Publish track'}</Text>
         </TouchableOpacity>
       </View>
     </View>
