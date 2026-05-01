@@ -2,10 +2,39 @@ import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
+import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApi } from '@makeyourmusic/shared';
 
 const PUSH_TOKEN_KEY = 'makeyourmusic-push-token';
+
+// Push tokens identify the device — not strictly secret, but worth keeping
+// out of AsyncStorage. Use SecureStore where available, fall back to
+// AsyncStorage for environments without it.
+async function setStoredPushToken(token: string): Promise<void> {
+  try {
+    await SecureStore.setItemAsync(PUSH_TOKEN_KEY, token);
+  } catch {
+    await AsyncStorage.setItem(PUSH_TOKEN_KEY, token);
+  }
+}
+async function getStoredPushToken(): Promise<string | null> {
+  try {
+    const v = await SecureStore.getItemAsync(PUSH_TOKEN_KEY);
+    if (v) return v;
+  } catch {
+    /* fall through */
+  }
+  return AsyncStorage.getItem(PUSH_TOKEN_KEY);
+}
+async function removeStoredPushToken(): Promise<void> {
+  try {
+    await SecureStore.deleteItemAsync(PUSH_TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+  await AsyncStorage.removeItem(PUSH_TOKEN_KEY).catch(() => undefined);
+}
 
 // Configure how notifications appear when the app is in the foreground.
 // `shouldShowAlert` is deprecated in Expo SDK 54+ — `shouldShowBanner` and
@@ -88,7 +117,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
       token: token.data,
       platform: Platform.OS,
     });
-    await AsyncStorage.setItem(PUSH_TOKEN_KEY, token.data);
+    await setStoredPushToken(token.data);
   } catch {
     // Silent — will retry on next launch or login
   }
@@ -101,14 +130,14 @@ export async function registerForPushNotifications(): Promise<string | null> {
  * user doesn't keep receiving pushes for the previous account on this device.
  */
 export async function unregisterPushToken(): Promise<void> {
-  const cached = await AsyncStorage.getItem(PUSH_TOKEN_KEY);
+  const cached = await getStoredPushToken();
   if (!cached) return;
   try {
     await getApi().post('/notifications/unregister-token', { token: cached });
   } catch {
     // Silent — the token record will get overwritten when the next user logs in
   } finally {
-    await AsyncStorage.removeItem(PUSH_TOKEN_KEY);
+    await removeStoredPushToken();
   }
 }
 
@@ -117,16 +146,29 @@ export async function unregisterPushToken(): Promise<void> {
  */
 export function setupNotificationListeners(
   onNotificationTap: (data: any) => void,
+  onForegroundNotification?: (data: any) => void,
 ): () => void {
-  // When user taps a notification
-  const subscription = Notifications.addNotificationResponseReceivedListener(
+  // Tap (background → foreground) handler.
+  const tapSub = Notifications.addNotificationResponseReceivedListener(
     (response) => {
       const data = response.notification.request.content.data;
       onNotificationTap(data);
     },
   );
+  // Foreground delivery — without this, the unread-badge / in-app banner only
+  // updated when a screen happened to focus and re-poll. Optional: when no
+  // handler is provided, skip the foreground listener entirely.
+  let foregroundSub: { remove: () => void } | null = null;
+  if (onForegroundNotification) {
+    foregroundSub = Notifications.addNotificationReceivedListener((notification) => {
+      onForegroundNotification(notification.request.content.data);
+    });
+  }
 
-  return () => subscription.remove();
+  return () => {
+    tapSub.remove();
+    foregroundSub?.remove();
+  };
 }
 
 /**

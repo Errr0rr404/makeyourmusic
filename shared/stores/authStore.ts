@@ -6,6 +6,11 @@ import { usePlayerStore } from './playerStore';
 
 const TOKEN_KEY = 'accessToken';
 
+// Module-level retry guard so a 5xx storm on /auth/me can't hammer the
+// backend during an outage. fetchUser checks this and backs off.
+let lastFetchUserFailedAt = 0;
+const FETCH_USER_BACKOFF_MS = 30_000;
+
 export interface AuthState {
   user: User | null;
   accessToken: string | null;
@@ -117,7 +122,15 @@ export const useAuthStore = create<AuthStore>((set) => ({
       /* ignore */
     }
     const storage = getStorage();
-    await storage.removeItem(TOKEN_KEY);
+    // Wrap removeItem in try/catch — on failure (e.g. iOS SecureStore quota
+    // bug, Safari private mode) we still want to force the in-memory state
+    // back to logged-out so the UI doesn't get stuck thinking the user is
+    // authenticated when their disk token is gone or unwritable.
+    try {
+      await storage.removeItem(TOKEN_KEY);
+    } catch {
+      /* ignore — fall through to state reset */
+    }
     set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
     usePlayerStore.getState().resetPlayer();
   },
@@ -135,9 +148,17 @@ export const useAuthStore = create<AuthStore>((set) => ({
     // logging them out on transient errors is the easiest way to ruin a
     // session.
     set({ isLoading: true, accessToken: token, isAuthenticated: true });
+    // If a recent attempt failed transiently (5xx / network), refuse to
+    // hammer the backend — back off for a short window. The next call
+    // outside the window will re-try.
+    if (Date.now() - lastFetchUserFailedAt < FETCH_USER_BACKOFF_MS) {
+      set({ isLoading: false });
+      return;
+    }
     try {
       const api = getApi();
       const res = await api.get('/auth/me');
+      lastFetchUserFailedAt = 0;
       set({ user: res.data.user, accessToken: token, isAuthenticated: true, isLoading: false });
     } catch (err: any) {
       const status = err?.response?.status;
@@ -146,10 +167,16 @@ export const useAuthStore = create<AuthStore>((set) => ({
         // response interceptor in api.ts already attempted a refresh by the
         // time we get here, so reaching this branch means refresh also
         // failed authoritatively.
-        await storage.removeItem(TOKEN_KEY);
+        try {
+          await storage.removeItem(TOKEN_KEY);
+        } catch {
+          /* ignore */
+        }
         set({ user: null, accessToken: null, isAuthenticated: false, isLoading: false });
       } else {
         // Network error / 5xx / timeout — keep the token, stay logged in.
+        // Mark the failure so we don't retry storm.
+        lastFetchUserFailedAt = Date.now();
         set({ isLoading: false });
       }
     }

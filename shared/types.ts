@@ -33,7 +33,10 @@ export interface User {
   bio?: string | null;
   emailVerified?: boolean;
   createdAt?: string;
-  subscription?: { tier: SubscriptionTier; status: SubscriptionStatus } | null;
+  // Slim projection of Subscription shipped with /auth/me responses. Make
+  // the relationship to the full Subscription model explicit so a future
+  // change to that model surfaces here at compile time.
+  subscription?: Pick<Subscription, 'tier' | 'status'> | null;
   _count?: { likes: number; playlists: number; follows: number };
 }
 
@@ -306,13 +309,24 @@ export interface TrackStems {
 
 // ─── Notification ────────────────────────────────────────
 
+// Per-NotificationType payload shape. Use a discriminated union instead of
+// `Record<string, any>` so consumers don't crash on missing fields and so
+// new notification kinds force a TypeScript update across the codebase.
+export type NotificationData =
+  | { kind?: 'new_track'; trackSlug: string; agentSlug?: string }
+  | { kind?: 'new_follower'; followerId: string; followerUsername?: string }
+  | { kind?: 'track_liked'; trackSlug: string; likerUsername?: string }
+  | { kind?: 'comment'; trackSlug: string; commentId: string }
+  | { kind: 'tip'; tipId: string; amountCents: number }
+  | { kind?: 'system'; [k: string]: unknown };
+
 export interface Notification {
   id: string;
   type: NotificationType;
   title: string;
   message: string;
   read: boolean;
-  data?: Record<string, any> | null;
+  data?: NotificationData | null;
   createdAt: string;
 }
 

@@ -92,8 +92,20 @@ if [ "$DO_CLEAN" = true ]; then
     echo -e "${YELLOW}🧹 Cleaning cache and logs...${NC}"
     [ -d "frontend/.next" ] && rm -rf frontend/.next && echo -e "${GREEN}✓ Removed frontend/.next${NC}"
     [ -d "backend/dist" ] && rm -rf backend/dist && echo -e "${GREEN}✓ Removed backend/dist${NC}"
-    rm -f *.log frontend/*.log backend/*.log 2>/dev/null && echo -e "${GREEN}✓ Cleaned log files${NC}"
-    find . -name ".DS_Store" -delete 2>/dev/null
+    # Enable nullglob so `rm -f *.log` doesn't echo a literal "*.log" when
+    # there are no matches, which used to add a confusing line to the
+    # success message.
+    shopt -s nullglob
+    rm -f *.log frontend/*.log backend/*.log 2>/dev/null
+    shopt -u nullglob
+    echo -e "${GREEN}✓ Cleaned log files${NC}"
+    # Skip node_modules / .git when sweeping .DS_Store — recursing into them
+    # is slow and pointless (those dirs are gitignored / rebuilt).
+    find . \
+      -path './node_modules' -prune -o \
+      -path './.git' -prune -o \
+      -path '*/node_modules' -prune -o \
+      -name '.DS_Store' -print -delete 2>/dev/null || true
     echo -e "${GREEN}✅ Cleanup complete${NC}\n"
 fi
 

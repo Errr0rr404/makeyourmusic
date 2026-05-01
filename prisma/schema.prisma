@@ -505,6 +505,9 @@ model Clip {
   @@index([status])
   @@index([visibility, status, trendingScore(sort: Desc)])
   @@index([visibility, status, createdAt(sort: Desc)])
+  // "Popular clips for this sound" feed query. Without this composite, large
+  // tracks (lots of clips) hit a sequential scan + sort.
+  @@index([trackId, status, visibility, trendingScore(sort: Desc)])
   @@map("clips")
 }
 
@@ -763,6 +766,8 @@ model Subscription {
   userId String @unique @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  // Index renewal/expiry sweep cron queries.
+  @@index([status, currentPeriodEnd])
   @@map("subscriptions")
 }
 
@@ -1192,7 +1197,9 @@ model ReferralEarning {
   createdAt DateTime @default(now()) @map("created_at")
 
   referrerId String @map("referrer_id")
-  referrer   User   @relation("ReferralEarningReferrer", fields: [referrerId], references: [id], onDelete: Cascade)
+  // Restrict — deleting a referrer would otherwise wipe owed-money rows.
+  // Force the deletion path to settle outstanding referrals first.
+  referrer   User   @relation("ReferralEarningReferrer", fields: [referrerId], references: [id], onDelete: Restrict)
   // The referee who actually generated the earning. Tracked separately so we
   // can query "how much have I earned from each referral".
   refereeId  String @map("referee_id")
@@ -1201,7 +1208,8 @@ model ReferralEarning {
   // Prevent double-credit: webhook retries with the same source/sourceId
   // will collide on this constraint instead of creating duplicate earnings.
   @@unique([source, sourceId, referrerId])
-  @@index([source, sourceId])
+  // The unique constraint above already creates a usable index for the
+  // (source, sourceId) prefix; a separate @@index would be redundant.
   @@index([referrerId, paidOut])
   @@index([refereeId])
   @@index([createdAt(sort: Desc)])

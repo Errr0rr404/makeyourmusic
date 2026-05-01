@@ -205,12 +205,36 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   showQueue: false,
 
   playTrack: (track, queue) => {
-    const newQueue = queue || [track];
-    const index = newQueue.findIndex((t) => t.id === track.id);
+    if (queue) {
+      const index = queue.findIndex((t) => t.id === track.id);
+      set({
+        currentTrack: track,
+        queue: [...queue],
+        queueIndex: index >= 0 ? index : 0,
+        isPlaying: true,
+        progress: 0,
+      });
+      return;
+    }
+    // No explicit queue: if the track is already in the current queue, jump
+    // to it instead of replacing the queue with a single-track array. The
+    // previous behavior wiped the user's carefully built radio/playlist queue
+    // when they tapped a track they were already lining up.
+    const currentQueue = get().queue;
+    const existingIdx = currentQueue.findIndex((t) => t.id === track.id);
+    if (existingIdx >= 0) {
+      set({
+        currentTrack: track,
+        queueIndex: existingIdx,
+        isPlaying: true,
+        progress: 0,
+      });
+      return;
+    }
     set({
       currentTrack: track,
-      queue: [...newQueue],
-      queueIndex: index >= 0 ? index : 0,
+      queue: [track],
+      queueIndex: 0,
       isPlaying: true,
       progress: 0,
     });
@@ -266,22 +290,22 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       nextIndex = 0;
     } else if (autoplay) {
       // Radio mode: fetch similar and keep playing. Fire-and-forget.
-      const currentIdx = queueIndex;
+      // Capture the current track id BEFORE awaiting autoFillIfNeeded so a
+      // user action mid-await (skip / play a different track) doesn't get
+      // silently overwritten when the await resolves.
+      const expectedTrackId = get().currentTrack?.id;
       get().autoFillIfNeeded().then(() => {
         const fresh = get();
-        const effectiveIndex = fresh.queueIndex === currentIdx ? queueIndex : fresh.queueIndex;
+        if (fresh.currentTrack?.id !== expectedTrackId) {
+          // User moved on while we were awaiting — let their action stand.
+          return;
+        }
+        const effectiveIndex = fresh.queueIndex;
         if (effectiveIndex < fresh.queue.length - 1) {
           const ni = effectiveIndex + 1;
           set({
             currentTrack: fresh.queue[ni],
             queueIndex: ni,
-            isPlaying: true,
-            progress: 0,
-          });
-        } else if (fresh.queue.length > effectiveIndex) {
-          set({
-            currentTrack: fresh.queue[effectiveIndex],
-            queueIndex: effectiveIndex,
             isPlaying: true,
             progress: 0,
           });
@@ -373,8 +397,11 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     let newCurrentTrack: typeof s.currentTrack = s.currentTrack;
 
     if (removedTrackIsCurrent) {
-      newCurrentTrack = newQueue.length > 0 ? (newQueue[Math.min(s.queueIndex, newQueue.length - 1)] ?? null) : null;
-      newQueueIndex = newCurrentTrack ? s.queueIndex : -1;
+      // Clamp newQueueIndex to a valid array index. Without the clamp,
+      // removing the LAST item while it was current left newQueueIndex
+      // pointing past the end of the new array.
+      newQueueIndex = newQueue.length > 0 ? Math.min(s.queueIndex, newQueue.length - 1) : -1;
+      newCurrentTrack = newQueueIndex >= 0 ? (newQueue[newQueueIndex] ?? null) : null;
     } else if (removedBeforeCurrent) {
       newQueueIndex = s.queueIndex - 1;
     }
@@ -473,15 +500,19 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
   },
 
   tickSleepTimer: () => {
-    const { sleepTimerEnd } = get();
+    const { sleepTimerEnd, sleepTimer } = get();
     if (!sleepTimerEnd) return;
 
     const remaining = Math.max(0, sleepTimerEnd - Date.now());
     if (remaining <= 0) {
       set({ isPlaying: false, sleepTimer: null, sleepTimerEnd: null });
-    } else {
-      set({ sleepTimer: Math.ceil(remaining / 60000) });
+      return;
     }
+    const nextDisplay = Math.ceil(remaining / 60000);
+    // Skip the set() if the displayed minute hasn't changed — every-second
+    // ticks would otherwise wake every store subscriber for no visual change.
+    if (nextDisplay === sleepTimer) return;
+    set({ sleepTimer: nextDisplay });
   },
 
   toggleSettings: () => set((s) => ({ showSettings: !s.showSettings, showQueue: false })),
@@ -521,7 +552,19 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
         Array.isArray(parsed.eqBands) &&
         parsed.eqBands.length === DEFAULT_EQ_BANDS.length
       ) {
-        patch.eqBands = parsed.eqBands;
+        // Validate each entry — corrupted entries with `null` slots used to
+        // flow into the EQ adapter as NaN gain, blowing up the audio graph.
+        const isValidBand = (b: unknown): b is EQBand =>
+          !!b &&
+          typeof b === 'object' &&
+          typeof (b as EQBand).frequency === 'number' &&
+          Number.isFinite((b as EQBand).frequency) &&
+          typeof (b as EQBand).gain === 'number' &&
+          Number.isFinite((b as EQBand).gain) &&
+          typeof (b as EQBand).label === 'string';
+        if (parsed.eqBands.every(isValidBand)) {
+          patch.eqBands = parsed.eqBands;
+        }
       }
       if (typeof parsed.crossfade === 'number') patch.crossfade = parsed.crossfade;
       if (Object.keys(patch).length > 0) set(patch);

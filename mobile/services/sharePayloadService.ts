@@ -33,11 +33,18 @@ function getModule(): ShareGroupNative | null {
 export async function consumePendingShare(): Promise<SharePayload | null> {
   const mod = getModule();
   if (!mod) return null;
+  let raw: string | null = null;
   try {
-    const raw = await mod.readPendingShare();
-    if (!raw) return null;
+    raw = await mod.readPendingShare();
+  } catch {
+    return null;
+  }
+  if (!raw) return null;
+  // Always clear the stored payload — even on JSON.parse failure. Without
+  // the finally, malformed JSON used to sit forever and fail on every
+  // subsequent launch.
+  try {
     const parsed = JSON.parse(raw) as Partial<SharePayload>;
-    await mod.clearPendingShare();
     return {
       text: parsed.text || '',
       urls: parsed.urls || [],
@@ -46,5 +53,7 @@ export async function consumePendingShare(): Promise<SharePayload | null> {
     };
   } catch {
     return null;
+  } finally {
+    await mod.clearPendingShare().catch(() => undefined);
   }
 }

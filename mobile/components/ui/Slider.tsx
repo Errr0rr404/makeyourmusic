@@ -32,6 +32,11 @@ export default function Slider({ value, max, onValueChange, onSlidingComplete }:
   };
 
   const updateValue = (x: number) => {
+    // Skip updates before onLayout has fired (width === 0). Without this
+    // guard, the first touch BEFORE the slider has measured itself emits
+    // 0 to onValueChange — which (for the player's progress slider) would
+    // pause-and-rewind audio to 0:00 on accidental taps.
+    if (widthRef.current <= 0) return;
     const next = valueFromX(x);
     lastValueRef.current = next;
     onValueChangeRef.current(next);

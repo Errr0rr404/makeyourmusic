@@ -2,12 +2,12 @@
   "$schema": "https://railway.com/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "if [ \"$RAILWAY_SERVICE_NAME\" = \"morlo-web\" ] || [ \"$RAILWAY_SERVICE_NAME\" = \"makeyourmusic-web\" ]; then npm ci --prefix shared && npm ci --prefix frontend && npx prisma generate --schema=./prisma/schema.prisma && npm run build --prefix frontend; else cd backend && npm ci && npx prisma generate --schema=../prisma/schema.prisma && npm run build; fi",
+    "buildCommand": "bash scripts/railway-build.sh",
     "watchPatterns": ["backend/**", "prisma/**", "shared/**", "frontend/**"]
   },
   "deploy": {
-    "preDeployCommand": "if [ \"$RAILWAY_SERVICE_NAME\" = \"morlo-web\" ] || [ \"$RAILWAY_SERVICE_NAME\" = \"makeyourmusic-web\" ]; then echo \"Skipping database sync for web service\"; else cd backend && npx prisma db push --schema=../prisma/schema.prisma --skip-generate; fi",
-    "startCommand": "if [ \"$RAILWAY_SERVICE_NAME\" = \"morlo-web\" ] || [ \"$RAILWAY_SERVICE_NAME\" = \"makeyourmusic-web\" ]; then cd frontend && npm start -- -p $PORT; else cd backend && npm start; fi",
+    "preDeployCommand": "bash scripts/railway-predeploy.sh",
+    "startCommand": "bash scripts/railway-start.sh",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 5
   }
