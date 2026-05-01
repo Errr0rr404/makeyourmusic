@@ -44,6 +44,12 @@ export default function SettingsPage() {
   const [pwdLoading, setPwdLoading] = useState(false);
   const [pwdError, setPwdError] = useState('');
   const [resendLoading, setResendLoading] = useState(false);
+  const [deletePasswordPrompt, setDeletePasswordPrompt] = useState<{
+    username: string;
+  } | null>(null);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [deletePasswordVisible, setDeletePasswordVisible] = useState(false);
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   // Email preferences
   const [emailPrefs, setEmailPrefs] = useState<{
@@ -153,13 +159,6 @@ export default function SettingsPage() {
       setResendLoading(false);
     }
   };
-
-  const [deletePasswordPrompt, setDeletePasswordPrompt] = useState<{
-    username: string;
-  } | null>(null);
-  const [deletePassword, setDeletePassword] = useState('');
-  const [deletePasswordVisible, setDeletePasswordVisible] = useState(false);
-  const [deleteSubmitting, setDeleteSubmitting] = useState(false);
 
   const handleDeleteAccount = async () => {
     const username = (user as { username?: string })?.username || '';

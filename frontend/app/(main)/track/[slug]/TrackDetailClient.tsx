@@ -104,7 +104,7 @@ export function TrackDetailClient({ slug }: { slug: string }) {
     }
     try {
       const res = await api.post(`/social/likes/${track.id}`);
-      setTrack((t) => (t ? { ...t, isLiked: res.data.liked, likeCount: t.likeCount + (res.data.liked ? 1 : -1) } : t));
+      if (track) setTrack({ ...track, isLiked: res.data.liked, likeCount: track.likeCount + (res.data.liked ? 1 : -1) });
       toast.success(res.data.liked ? 'Added to liked tracks' : 'Removed from liked tracks');
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to like track');
