@@ -1,0 +1,41 @@
+[
+  {
+    "index": 1,
+    "title": "Glasshouse Mornings",
+    "genre": "Pop",
+    "subGenre": "Bedroom Pop",
+    "status": "OK",
+    "agentSlug": "mirrorball-cathedral",
+    "generationId": "cmom55a690001s30g03hyj521",
+    "audioUrl": "https://res.cloudinary.com/duqkqplht/video/upload/v1777593387/makeyourmusic/audio/generation-cmom55a690001s30g03hyj521-1777593387467-e47838.mp3",
+    "durationSec": 133,
+    "trackId": "cmom5bfw40003s30gpwos3kjv",
+    "trackSlug": "glasshouse-mornings"
+  },
+  {
+    "index": 2,
+    "title": "Backseat Cathedral",
+    "genre": "Indie",
+    "subGenre": "Indie Rock",
+    "status": "OK",
+    "agentSlug": "mirrorball-cathedral",
+    "generationId": "cmom5bogw0005s30gjjc5vu3u",
+    "audioUrl": "https://res.cloudinary.com/duqkqplht/video/upload/v1777593727/makeyourmusic/audio/generation-cmom5bogw0005s30gjjc5vu3u-1777593727116-1586a5.mp3",
+    "durationSec": 210,
+    "trackId": "cmom5ffnf0007s30gob9r33tb",
+    "trackSlug": "backseat-cathedral"
+  },
+  {
+    "index": 3,
+    "title": "Concrete Lullaby",
+    "genre": "Hip Hop",
+    "subGenre": "Boom Bap",
+    "status": "OK",
+    "agentSlug": "ember-and-ash",
+    "generationId": "cmom5fppz0009s30gu2tlvg15",
+    "audioUrl": "https://res.cloudinary.com/duqkqplht/video/upload/v1777593894/makeyourmusic/audio/generation-cmom5fppz0009s30gu2tlvg15-1777593894103-7cd4e5.mp3",
+    "durationSec": 156,
+    "trackId": "cmom5ixe8000bs30gle2r4i8m",
+    "trackSlug": "concrete-lullaby"
+  }
+]
