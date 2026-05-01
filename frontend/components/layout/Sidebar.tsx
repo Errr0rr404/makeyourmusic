@@ -12,6 +12,21 @@ import { useAuthStore } from '@/lib/store/authStore';
 import api from '@/lib/api';
 import { BrandLogo } from '@/components/brand/BrandLogo';
 
+function PlaylistCoverImage({ src, alt }: { src?: string | null; alt: string }) {
+  const [imgError, setImgError] = useState(false);
+  if (!src || imgError) {
+    return <ListMusic className="w-4 h-4 text-[color:var(--text-mute)]" />;
+  }
+  return (
+    <img
+      src={src}
+      alt={alt}
+      className="w-full h-full object-cover"
+      onError={() => setImgError(true)}
+    />
+  );
+}
+
 const primaryNav = [
   { href: '/', label: 'Home', icon: Home },
   { href: '/search', label: 'Search', icon: Search },
@@ -240,11 +255,7 @@ export function Sidebar() {
                     )}
                   >
                     <span className="w-10 h-10 rounded-md overflow-hidden bg-[color:var(--bg-elev-3)] flex items-center justify-center flex-shrink-0">
-                      {pl.coverArt ? (
-                        <img src={pl.coverArt} alt={pl.title} className="w-full h-full object-cover" />
-                      ) : (
-                        <ListMusic className="w-4 h-4 text-[color:var(--text-mute)]" />
-                      )}
+                      <PlaylistCoverImage src={pl.coverArt} alt={pl.title} />
                     </span>
                     <span className="flex flex-col leading-tight min-w-0">
                       <span className="font-semibold text-white truncate">{pl.title}</span>

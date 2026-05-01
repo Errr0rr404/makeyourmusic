@@ -81,8 +81,8 @@ export default function AdminUsersPage() {
         setUsers(res.data.users || []);
         setTotal(res.data.total || 0);
         setTotalPages(res.data.totalPages || 1);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.response?.data?.error || 'Failed to load users');
+      } catch (err) {
+        if (!cancelled) setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load users');
       } finally {
         if (!cancelled) {
           setLoading(false);
@@ -100,9 +100,9 @@ export default function AdminUsersPage() {
       const api = getAdminApi();
       await api.put(`/admin/users/${userId}/role`, { role: newRole });
       toast.success(`Role updated to ${newRole}`);
-    } catch (err: any) {
+    } catch (err) {
       setUsers((arr) => arr.map((u) => (u.id === userId && prev ? { ...u, role: prev } : u)));
-      toast.error(err?.response?.data?.error || 'Failed to update role');
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to update role');
     }
   };
 

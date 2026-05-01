@@ -49,8 +49,8 @@ export default function VideoStudioPage() {
         if (latest.status === 'PENDING' || latest.status === 'PROCESSING') {
           pollTimerRef.current = window.setTimeout(tick, 5000);
         }
-      } catch (err: any) {
-        setError(err?.response?.data?.error || 'Failed to fetch status');
+      } catch (err) {
+        setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to fetch status');
       }
     };
     pollTimerRef.current = window.setTimeout(tick, 3000);
@@ -79,8 +79,8 @@ export default function VideoStudioPage() {
       setGen(created);
       toast.success('Video generation started');
       startPolling(created.id);
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || 'Failed to start video generation';
+    } catch (err) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to start video generation';
       setError(msg);
       toast.error(msg);
     } finally {

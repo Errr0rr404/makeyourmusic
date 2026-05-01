@@ -67,8 +67,8 @@ export function TipButton({ creatorUserId, creatorName, trackId, variant = 'defa
       } else {
         toast.error('Could not start checkout');
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Tip failed');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Tip failed');
     } finally {
       setBusy(false);
     }

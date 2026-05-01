@@ -81,8 +81,8 @@ export function PublishGenerationDialog({ generation, open, onClose, onPublished
       toast.success('Track published!');
       onPublished(res.data.track);
       router.push(`/track/${res.data.track.slug}`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to publish');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to publish');
     } finally {
       setPublishing(false);
     }

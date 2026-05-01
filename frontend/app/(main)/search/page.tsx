@@ -1,11 +1,11 @@
 'use client';
 
 import { useEffect, useState, useRef, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
 import { TrackCard } from '@/components/track/TrackCard';
 import { AgentCard } from '@/components/agent/AgentCard';
-import { Search, AlertCircle } from 'lucide-react';
+import { Search, AlertCircle, SlidersHorizontal, X } from 'lucide-react';
 import type { Agent, Track } from '@makeyourmusic/shared';
 
 function getSearchError(err: unknown): string {
@@ -35,6 +35,7 @@ interface GenreOption {
 }
 
 function SearchContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const q = searchParams.get('q') || '';
   const sort = searchParams.get('sort') || 'newest';
@@ -48,6 +49,18 @@ function SearchContent() {
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  const activeGenreName = genres.find((g) => g.slug === genre)?.name || '';
+
+  const navigateSearch = (next: { sort?: string; genre?: string }) => {
+    const params = new URLSearchParams();
+    if (q) params.set('q', q);
+    const nextSort = next.sort ?? sort;
+    const nextGenre = next.genre ?? genre;
+    if (nextSort && nextSort !== 'newest') params.set('sort', nextSort);
+    if (nextGenre) params.set('genre', nextGenre);
+    const qs = params.toString();
+    router.push(qs ? `/search?${qs}` : '/search');
+  };
 
   // Fetch genres once
   useEffect(() => {
@@ -119,53 +132,72 @@ function SearchContent() {
 
       {/* Sort & Genre Filter (for tracks) */}
       {tab === 'tracks' && (
-        <div className="space-y-3 mb-6">
-          <div className="flex flex-wrap gap-2">
-            {([
-              ['newest', 'Newest'],
-              ['popular', 'Most played'],
-              ['liked', 'Most liked'],
-            ] as const).map(([val, label]) => {
-              const params = new URLSearchParams();
-              if (q) params.set('q', q);
-              params.set('sort', val);
-              if (genre) params.set('genre', genre);
-              const isActive = sort === val;
-              return (
-                <a key={val} href={`/search?${params.toString()}`}
-                  className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${isActive
-                    ? 'bg-[color:var(--text)] text-[color:var(--bg)]'
-                    : 'bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] hover:text-[color:var(--text)]'}`}>
-                  {label}
-                </a>
-              );
-            })}
-          </div>
-          {genres.length > 0 && (
-            <div className="flex flex-wrap gap-2">
-              <a href={`/search?${new URLSearchParams({ ...(q ? { q } : {}), sort }).toString()}`}
-                className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${!genre
-                  ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)] border border-[color:var(--brand)]/40'
-                  : 'bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] hover:text-[color:var(--text)] border border-transparent'}`}>
-                All genres
-              </a>
-              {genres.map((g) => {
-                const params = new URLSearchParams();
-                if (q) params.set('q', q);
-                params.set('sort', sort);
-                params.set('genre', g.slug);
-                const isActive = genre === g.slug;
-                return (
-                  <a key={g.id} href={`/search?${params.toString()}`}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${isActive
-                      ? 'bg-[color:var(--brand-soft)] text-[color:var(--brand)] border border-[color:var(--brand)]/40'
-                      : 'bg-[color:var(--bg-elev-2)] text-[color:var(--text-mute)] hover:text-[color:var(--text)] border border-transparent'}`}>
-                    {g.name}
-                  </a>
-                );
-              })}
+        <div className="mb-6 rounded-xl border border-[color:var(--stroke)] bg-[color:var(--bg-elev-1)] p-3 sm:p-4">
+          <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-[color:var(--text)]">
+              <SlidersHorizontal className="h-4 w-4 text-[color:var(--brand)]" />
+              <span>Track filters</span>
+              {(activeGenreName || sort !== 'newest') && (
+                <span className="truncate text-xs font-medium text-[color:var(--text-mute)]">
+                  {activeGenreName || 'All genres'} · {sort === 'popular' ? 'Most played' : sort === 'liked' ? 'Most liked' : 'Newest'}
+                </span>
+              )}
             </div>
-          )}
+
+            <div className="grid gap-3 sm:grid-cols-[minmax(260px,1fr)_220px_auto] sm:items-end">
+              <div>
+                <p className="mb-1.5 text-xs font-semibold text-[color:var(--text-mute)]">Sort</p>
+                <div className="grid grid-cols-3 rounded-lg border border-[color:var(--stroke)] bg-[color:var(--bg-elev-2)] p-1">
+                  {([
+                    ['newest', 'Newest'],
+                    ['popular', 'Played'],
+                    ['liked', 'Liked'],
+                  ] as const).map(([val, label]) => {
+                    const isActive = sort === val;
+                    return (
+                      <button
+                        key={val}
+                        type="button"
+                        onClick={() => navigateSearch({ sort: val })}
+                        className={`rounded-md px-3 py-2 text-xs font-bold transition-colors ${isActive
+                          ? 'bg-[color:var(--brand)] text-white'
+                          : 'text-[color:var(--text-mute)] hover:text-[color:var(--text)]'}`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {genres.length > 0 && (
+                <label className="block">
+                  <span className="mb-1.5 block text-xs font-semibold text-[color:var(--text-mute)]">Genre</span>
+                  <select
+                    value={genre}
+                    onChange={(e) => navigateSearch({ genre: e.target.value })}
+                    className="h-10 w-full rounded-lg border border-[color:var(--stroke)] bg-[color:var(--bg-elev-2)] px-3 text-sm font-semibold text-[color:var(--text)] outline-none transition-colors focus:border-[color:var(--brand)]"
+                  >
+                    <option value="">All genres</option>
+                    {genres.map((g) => (
+                      <option key={g.id} value={g.slug}>{g.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+
+              {(genre || sort !== 'newest') && (
+                <button
+                  type="button"
+                  onClick={() => navigateSearch({ sort: 'newest', genre: '' })}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[color:var(--stroke)] px-3 text-sm font-semibold text-[color:var(--text-mute)] transition-colors hover:text-[color:var(--text)]"
+                >
+                  <X className="h-4 w-4" />
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

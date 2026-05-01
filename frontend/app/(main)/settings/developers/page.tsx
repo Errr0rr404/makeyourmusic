@@ -31,8 +31,8 @@ export default function DevelopersPage() {
     try {
       const { data } = await api.get<{ keys: ApiKeySummary[] }>('/v1/keys');
       setKeys(data.keys);
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to load API keys');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load API keys');
     } finally {
       setLoading(false);
     }
@@ -53,8 +53,8 @@ export default function DevelopersPage() {
       setRevealed({ name: data.key.name, secret: data.secret });
       setNewName('');
       await load();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to create API key');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to create API key');
     } finally {
       setCreating(false);
     }
@@ -66,8 +66,8 @@ export default function DevelopersPage() {
       await api.delete(`/v1/keys/${id}`);
       toast.success('Key revoked');
       await load();
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to revoke key');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to revoke key');
     }
   };
 
@@ -140,7 +140,7 @@ export default function DevelopersPage() {
           <div className="bg-[hsl(var(--bg-elev-2))] border border-[hsl(var(--border))] rounded-lg max-w-lg w-full p-6 space-y-4">
             <h2 className="text-lg font-semibold">Your new key — copy it now</h2>
             <p className="text-sm text-[hsl(var(--muted-foreground))]">
-              This is the only time we'll show <strong>{revealed.name}</strong>'s secret.
+              This is the only time we&apos;ll show <strong>{revealed.name}</strong>&apos;s secret.
               Store it in your password manager or a server env var.
             </p>
             <div className="relative">
@@ -177,7 +177,7 @@ export default function DevelopersPage() {
                 setSecretVisible(false);
               }}
             >
-              I've copied it
+              I&apos;ve copied it
             </button>
           </div>
         </div>

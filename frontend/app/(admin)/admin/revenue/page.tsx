@@ -64,8 +64,8 @@ export default function AdminRevenuePage() {
         const api = getAdminApi();
         const res = await api.get('/admin/revenue');
         if (!cancelled) setData(res.data);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.response?.data?.error || 'Failed to load revenue');
+      } catch (err) {
+        if (!cancelled) setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load revenue');
       }
     })();
     return () => { cancelled = true; };

@@ -21,8 +21,8 @@ interface Detail {
     bio: string | null;
     createdAt: string;
     emailVerified: boolean;
-    subscription: any;
-    connectAccount: any;
+    subscription: Record<string, unknown> | null;
+    connectAccount: Record<string, unknown> | null;
     agents: Array<{
       id: string; name: string; slug: string; avatar: string | null;
       status: string; totalPlays: number; followerCount: number;
@@ -73,8 +73,8 @@ export default function UserDetailPage() {
         const api = getAdminApi();
         const res = await api.get(`/admin/users/${id}`);
         if (!cancelled) setData(res.data);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.response?.data?.error || 'Failed to load user');
+      } catch (err) {
+        if (!cancelled) setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load user');
       }
     })();
     return () => { cancelled = true; };
@@ -159,7 +159,7 @@ export default function UserDetailPage() {
           value={stats.monthlyRevenueUsd}
           color="emerald"
           icon={<Crown className="w-4 h-4" />}
-          sub={user.subscription?.status || 'FREE'}
+          sub={(user.subscription as { status?: string } | null)?.status || 'FREE'}
         />
         <MoneyCard
           label="AI cost (lifetime)"
@@ -188,24 +188,29 @@ export default function UserDetailPage() {
       {user.subscription && (
         <div className="bg-[hsl(var(--card))] border border-white/5 rounded-2xl p-5">
           <h2 className="text-sm font-semibold mb-3">Subscription</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
-            <DetailRow label="Tier" value={user.subscription.tier} />
-            <DetailRow label="Status" value={user.subscription.status} />
-            <DetailRow
-              label="Period start"
-              value={user.subscription.currentPeriodStart ? new Date(user.subscription.currentPeriodStart).toLocaleDateString() : '—'}
-            />
-            <DetailRow
-              label="Renews / ends"
-              value={user.subscription.currentPeriodEnd ? new Date(user.subscription.currentPeriodEnd).toLocaleDateString() : '—'}
-            />
-            {user.subscription.stripeCustomerId && (
-              <DetailRow label="Stripe customer" value={user.subscription.stripeCustomerId} mono />
-            )}
-            {user.subscription.stripeSubId && (
-              <DetailRow label="Stripe sub" value={user.subscription.stripeSubId} mono />
-            )}
-          </div>
+          {(() => {
+            const sub = user.subscription as { tier?: string; status?: string; currentPeriodStart?: string; currentPeriodEnd?: string; stripeCustomerId?: string; stripeSubId?: string } | null;
+            return (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                <DetailRow label="Tier" value={sub?.tier || '—'} />
+                <DetailRow label="Status" value={sub?.status || '—'} />
+                <DetailRow
+                  label="Period start"
+                  value={sub?.currentPeriodStart ? new Date(sub.currentPeriodStart).toLocaleDateString() : '—'}
+                />
+                <DetailRow
+                  label="Renews / ends"
+                  value={sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toLocaleDateString() : '—'}
+                />
+                {sub?.stripeCustomerId && (
+                  <DetailRow label="Stripe customer" value={sub.stripeCustomerId} mono />
+                )}
+                {sub?.stripeSubId && (
+                  <DetailRow label="Stripe sub" value={sub.stripeSubId} mono />
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 

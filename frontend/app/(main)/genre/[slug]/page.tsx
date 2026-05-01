@@ -8,6 +8,7 @@ import { AlertCircle } from 'lucide-react';
 
 export default function GenrePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [tracks, setTracks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -18,8 +19,8 @@ export default function GenrePage({ params }: { params: Promise<{ slug: string }
         setError(null);
         const res = await api.get('/tracks', { params: { genre: slug, limit: 30 } });
         setTracks(res.data.tracks || []);
-      } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to load tracks');
+      } catch (err) {
+        setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load tracks');
       }
       setLoading(false);
     }

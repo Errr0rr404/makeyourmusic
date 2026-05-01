@@ -38,7 +38,7 @@ export function AddToPlaylistDialog({ trackId, trackTitle, open, onClose }: Prop
     api
       .get('/social/playlists/mine')
       .then((r) => setPlaylists(r.data.playlists || []))
-      .catch((err) => setError(err.response?.data?.error || 'Failed to load playlists'))
+      .catch((err) => setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load playlists'))
       .finally(() => setLoading(false));
   }, [open, isAuthenticated]);
 
@@ -50,8 +50,8 @@ export function AddToPlaylistDialog({ trackId, trackTitle, open, onClose }: Prop
       await api.post(`/social/playlists/${playlist.id}/tracks`, { trackId });
       toast.success(`Added "${trackTitle}" to "${playlist.title}"`);
       onClose();
-    } catch (err: any) {
-      const msg = err.response?.data?.error || 'Could not add to playlist';
+    } catch (err) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Could not add to playlist';
       if (msg.toLowerCase().includes('unique')) {
         toast.info('Already in this playlist');
         onClose();
@@ -73,8 +73,8 @@ export function AddToPlaylistDialog({ trackId, trackTitle, open, onClose }: Prop
       await api.post(`/social/playlists/${playlistId}/tracks`, { trackId });
       toast.success(`Created "${title}" and added track`);
       onClose();
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Could not create playlist');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Could not create playlist');
     } finally {
       setCreating(false);
     }

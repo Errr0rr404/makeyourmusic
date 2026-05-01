@@ -33,8 +33,8 @@ export default function TakedownPage() {
       });
       setSubmittedId(data.id);
       toast.success('Takedown filed — the track has been hidden pending review.');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to file takedown');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to file takedown');
     } finally {
       setSubmitting(false);
     }
@@ -45,7 +45,7 @@ export default function TakedownPage() {
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold">Takedown received</h1>
         <p>Your reference ID is <code className="font-mono">{submittedId}</code>.</p>
-        <p>The track is hidden from public listings while we review the claim. You'll receive a follow-up at the email you provided.</p>
+        <p>The track is hidden from public listings while we review the claim. You&apos;ll receive a follow-up at the email you provided.</p>
       </div>
     );
   }

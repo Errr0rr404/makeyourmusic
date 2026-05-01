@@ -44,6 +44,18 @@ interface Generation {
   durationSec?: number | null;
   title?: string | null;
   lyrics?: string | null;
+  genre?: string | null;
+  subGenre?: string | null;
+  mood?: string | null;
+  energy?: string | null;
+  era?: string | null;
+  vocalStyle?: string | null;
+  vibeReference?: string | null;
+  isInstrumental?: boolean;
+  coverArt?: string | null;
+  agentId?: string | null;
+  agent?: { id: string } | null;
+  track?: { slug: string } | null;
 }
 
 interface Usage {
@@ -92,10 +104,12 @@ export default function CreatePage() {
   const [publishCover, setPublishCover] = useState('');
   const [publishPublic, setPublishPublic] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [hydratingGeneration, setHydratingGeneration] = useState(false);
 
   // Polling refs must be declared at top-level before any early return (rules-of-hooks)
   const pollRef = useRef<number | null>(null);
   const activeGenerationIdRef = useRef<string | null>(null);
+  const loadedGenerationIdRef = useRef<string | null>(null);
 
   const stopPolling = () => {
     if (pollRef.current) {
@@ -111,6 +125,78 @@ export default function CreatePage() {
     api.get('/agents/mine').then((r) => setAgents(r.data.agents || [])).catch(() => {});
     api.get('/genres').then((r) => setGenres(r.data.genres || [])).catch(() => {});
   }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (!isAuthenticated || typeof window === 'undefined') return;
+
+    const generationId = new URLSearchParams(window.location.search).get('generation');
+    if (!generationId) {
+      loadedGenerationIdRef.current = null;
+      return;
+    }
+    if (loadedGenerationIdRef.current === generationId) return;
+
+    let cancelled = false;
+    loadedGenerationIdRef.current = generationId;
+    setHydratingGeneration(true);
+    setGenError('');
+
+    if (pollRef.current) {
+      window.clearTimeout(pollRef.current);
+      pollRef.current = null;
+    }
+    activeGenerationIdRef.current = null;
+
+    (async () => {
+      try {
+        const res = await api.get(`/ai/generations/${generationId}`);
+        if (cancelled) return;
+        const g: Generation = res.data.generation;
+
+        if (g.track?.slug) {
+          router.replace(`/track/${g.track.slug}`);
+          return;
+        }
+
+        setGeneration(g);
+        setTitle(g.title || '');
+        setLyrics(g.lyrics || '');
+        setGenre(g.genre || '');
+        setSubGenre(g.subGenre || '');
+        setMood(g.mood || '');
+        setEnergy(g.energy || '');
+        setEra(g.era || '');
+        setVocalStyle(g.vocalStyle || '');
+        setVibeReference(g.vibeReference || '');
+        setIsInstrumental(Boolean(g.isInstrumental));
+        if (typeof g.durationSec === 'number') setDurationSec(g.durationSec);
+        setPublishCover(g.coverArt || '');
+        const existingAgentId = g.agent?.id || g.agentId;
+        if (existingAgentId) setPublishAgentId(existingAgentId);
+
+        if (g.status === 'COMPLETED' && g.audioUrl) {
+          setStep('publish');
+        } else {
+          setStep('generate');
+          if (g.status === 'FAILED') setGenError(g.errorMessage || 'Generation failed');
+        }
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const message =
+          typeof err === 'object' && err !== null && 'response' in err
+            ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+            : undefined;
+        toast.error(message || 'Could not load this generation');
+        router.replace('/studio/generations');
+      } finally {
+        if (!cancelled) setHydratingGeneration(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isAuthenticated, router]);
 
   useEffect(() => {
     return () => {
@@ -131,6 +217,15 @@ export default function CreatePage() {
         <Link href="/login" className="px-6 py-2.5 rounded-full bg-[hsl(var(--primary))] text-white font-medium">
           Log In
         </Link>
+      </div>
+    );
+  }
+
+  if (hydratingGeneration) {
+    return (
+      <div className="flex min-h-[40vh] flex-col items-center justify-center text-center">
+        <Loader2 className="h-8 w-8 animate-spin text-[hsl(var(--accent))]" />
+        <p className="mt-4 text-sm font-medium text-white">Loading generation</p>
       </div>
     );
   }
@@ -173,8 +268,9 @@ export default function CreatePage() {
       }
       setLyrics(generated);
       toast.success('Lyrics generated — edit freely');
-    } catch (err: any) {
-      setLyricsError(err.response?.data?.error || err.message || 'Failed to generate lyrics');
+    } catch (err) {
+      const error = err as { response?: { data?: { error?: string } }; message?: string };
+      setLyricsError(error.response?.data?.error || error.message || 'Failed to generate lyrics');
     } finally {
       setGeneratingLyrics(false);
     }
@@ -244,11 +340,12 @@ export default function CreatePage() {
       setGeneration(g);
       if (res.data.usage) setUsage(res.data.usage);
       pollGeneration(g.id);
-    } catch (err: any) {
-      const msg = err.response?.data?.error || err.message || 'Failed to start generation';
+    } catch (err) {
+      const error = err as { response?: { data?: { error?: string; usage?: Usage }; status?: number }; message?: string };
+      const msg = error.response?.data?.error || error.message || 'Failed to start generation';
       setGenError(msg);
-      if (err.response?.status === 429 && err.response?.data?.usage) {
-        setUsage(err.response.data.usage);
+      if (error.response?.status === 429 && error.response?.data?.usage) {
+        setUsage(error.response.data.usage);
       }
     }
   };
@@ -272,8 +369,8 @@ export default function CreatePage() {
       });
       toast.success('Track published!');
       router.push(`/track/${res.data.track.slug}`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to publish');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to publish');
     } finally {
       setPublishing(false);
     }
@@ -290,7 +387,7 @@ export default function CreatePage() {
 
   return (
     <div className="max-w-3xl mx-auto animate-fade-in">
-      <Header usage={usage} />
+      <Header usage={usage} step={step} />
       <Stepper current={step} />
 
       <div className="mt-6">
@@ -395,7 +492,8 @@ export default function CreatePage() {
 
 // ─── Header ──────────────────────────────────────────────
 
-function Header({ usage }: { usage: Usage | null }) {
+function Header({ usage, step }: { usage: Usage | null; step: Step }) {
+  const isPublishing = step === 'publish';
   return (
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between mb-6">
       <div className="min-w-0">
@@ -405,9 +503,13 @@ function Header({ usage }: { usage: Usage | null }) {
             AI Music Studio
           </span>
         </div>
-        <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">Create a track</h1>
+        <h1 className="text-2xl md:text-3xl font-bold text-white leading-tight">
+          {isPublishing ? 'Publish track' : 'Create a track'}
+        </h1>
         <p className="text-sm text-white/50 mt-1">
-          Pick the sound, shape the lyrics, and let the AI compose your song
+          {isPublishing
+            ? 'Review details, choose visibility, and publish your finished generation'
+            : 'Pick the sound, shape the lyrics, and let the AI compose your song'}
         </p>
       </div>
       {usage && (

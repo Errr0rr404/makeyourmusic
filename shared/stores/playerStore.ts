@@ -244,13 +244,22 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
       nextIndex = 0;
     } else if (autoplay) {
       // Radio mode: fetch similar and keep playing. Fire-and-forget.
+      const currentIdx = queueIndex;
       get().autoFillIfNeeded().then(() => {
         const fresh = get();
-        if (fresh.queueIndex < fresh.queue.length - 1) {
-          const ni = fresh.queueIndex + 1;
+        const effectiveIndex = fresh.queueIndex === currentIdx ? queueIndex : fresh.queueIndex;
+        if (effectiveIndex < fresh.queue.length - 1) {
+          const ni = effectiveIndex + 1;
           set({
             currentTrack: fresh.queue[ni],
             queueIndex: ni,
+            isPlaying: true,
+            progress: 0,
+          });
+        } else if (fresh.queue.length > effectiveIndex) {
+          set({
+            currentTrack: fresh.queue[effectiveIndex],
+            queueIndex: effectiveIndex,
             isPlaying: true,
             progress: 0,
           });
@@ -335,11 +344,24 @@ export const usePlayerStore = create<PlayerStore>((set, get) => ({
     return { queue: [...s.queue, ...fresh] };
   }),
   removeFromQueue: (trackId) => set((s) => {
+    const removedTrackIsCurrent = s.currentTrack?.id === trackId;
+    const removedBeforeCurrent = s.queue.findIndex((t) => t.id === trackId) < s.queueIndex;
     const newQueue = s.queue.filter((t) => t.id !== trackId);
-    const newIndex = s.currentTrack
-      ? newQueue.findIndex((t) => t.id === s.currentTrack!.id)
-      : -1;
-    return { queue: newQueue, queueIndex: newIndex >= 0 ? newIndex : s.queueIndex };
+    let newQueueIndex = s.queueIndex;
+    let newCurrentTrack: typeof s.currentTrack = s.currentTrack;
+
+    if (removedTrackIsCurrent) {
+      newCurrentTrack = newQueue.length > 0 ? (newQueue[Math.min(s.queueIndex, newQueue.length - 1)] ?? null) : null;
+      newQueueIndex = newCurrentTrack ? s.queueIndex : -1;
+    } else if (removedBeforeCurrent) {
+      newQueueIndex = s.queueIndex - 1;
+    }
+
+    return {
+      queue: newQueue,
+      queueIndex: newQueueIndex,
+      currentTrack: newCurrentTrack,
+    };
   }),
   clearQueue: () => set({ queue: [], queueIndex: -1 }),
 

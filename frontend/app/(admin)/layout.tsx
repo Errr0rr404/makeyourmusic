@@ -34,8 +34,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         setAuthed(true);
         setPassword('');
         toast.success('Welcome to the admin panel');
-      } catch (err: any) {
-        toast.error(err?.response?.data?.error || 'Incorrect password');
+      } catch (err) {
+        toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Incorrect password');
       } finally {
         setSubmitting(false);
       }

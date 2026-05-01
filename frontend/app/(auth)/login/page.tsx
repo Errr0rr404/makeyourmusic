@@ -44,8 +44,8 @@ function LoginForm() {
           ? next
           : '/';
       router.push(dest);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError((err as Error).message);
     }
   };
 

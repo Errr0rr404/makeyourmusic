@@ -86,14 +86,14 @@ export const optionalAuth = async (req: RequestWithUser, _res: Response, next: N
       const token = authHeader.substring(7);
       if (token) {
         const decoded = await verifyAccessToken(token);
-        if (typeof decoded.tv === 'number') {
-          const currentTv = await getCurrentTokenVersion(decoded.userId);
-          if (currentTv === null || currentTv !== decoded.tv) {
-            // Stale token — treat as unauthenticated, don't 401 for optional
-            // auth.
-            next();
-            return;
-          }
+        if (typeof decoded.tv !== 'number') {
+          next();
+          return;
+        }
+        const currentTv = await getCurrentTokenVersion(decoded.userId);
+        if (currentTv === null || currentTv !== decoded.tv) {
+          next();
+          return;
         }
         req.user = {
           userId: decoded.userId,

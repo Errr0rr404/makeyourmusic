@@ -3,7 +3,7 @@ import {
   View, Text, TouchableOpacity, TextInput, ScrollView, Image, ActivityIndicator,
   Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import {
   useAuthStore, getApi,
   GENRE_TREE, MOOD_OPTIONS, ENERGY_OPTIONS, ERA_OPTIONS, VOCAL_STYLE_OPTIONS,
@@ -34,6 +34,20 @@ interface Generation {
   audioUrl?: string | null;
   errorMessage?: string | null;
   durationSec?: number | null;
+  title?: string | null;
+  lyrics?: string | null;
+  genre?: string | null;
+  subGenre?: string | null;
+  mood?: string | null;
+  energy?: string | null;
+  era?: string | null;
+  vocalStyle?: string | null;
+  vibeReference?: string | null;
+  isInstrumental?: boolean;
+  coverArt?: string | null;
+  agentId?: string | null;
+  agent?: { id: string } | null;
+  track?: { slug: string } | null;
 }
 
 interface Usage {
@@ -46,6 +60,8 @@ interface Usage {
 
 export default function CreateScreen() {
   const router = useRouter();
+  const { generation: rawGenerationId } = useLocalSearchParams<{ generation?: string | string[] }>();
+  const generationId = Array.isArray(rawGenerationId) ? rawGenerationId[0] : rawGenerationId;
   const { isAuthenticated, user } = useAuthStore();
   const [step, setStep] = useState<Step>('idea');
 
@@ -79,9 +95,11 @@ export default function CreateScreen() {
   const [publishCover, setPublishCover] = useState('');
   const [publishPublic, setPublishPublic] = useState(true);
   const [publishing, setPublishing] = useState(false);
+  const [loadingExistingGeneration, setLoadingExistingGeneration] = useState(false);
 
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const activeGenerationIdRef = useRef<string | null>(null);
+  const loadedGenerationIdRef = useRef<string | null>(null);
   const previewSound = useRef<any>(null);
   const previewAudioUrlRef = useRef<string | null>(null);
   const [playingPreview, setPlayingPreview] = useState(false);
@@ -120,6 +138,84 @@ export default function CreateScreen() {
     getApi().get('/genres').then((r) => setGenres(r.data.genres || [])).catch(() => {});
   }, [isAuthenticated]);
 
+  useEffect(() => {
+    if (!generationId) {
+      loadedGenerationIdRef.current = null;
+      return;
+    }
+    if (!isAuthenticated || loadedGenerationIdRef.current === generationId) return;
+
+    let cancelled = false;
+    loadedGenerationIdRef.current = generationId;
+    setLoadingExistingGeneration(true);
+    setGenError('');
+
+    if (pollTimer.current) {
+      clearTimeout(pollTimer.current);
+      pollTimer.current = null;
+    }
+    activeGenerationIdRef.current = null;
+    if (previewSound.current) {
+      previewSound.current.unloadAsync?.().catch(() => {});
+      previewSound.current = null;
+      previewAudioUrlRef.current = null;
+      setPlayingPreview(false);
+    }
+
+    (async () => {
+      try {
+        const res = await getApi().get(`/ai/generations/${generationId}`);
+        if (cancelled) return;
+        const g: Generation = res.data.generation;
+
+        if (g.track?.slug) {
+          router.replace(`/track/${g.track.slug}`);
+          return;
+        }
+
+        setGeneration(g);
+        setTitle(g.title || '');
+        setLyrics(g.lyrics || '');
+        setGenre(g.genre || '');
+        setSubGenre(g.subGenre || '');
+        setMood(g.mood || '');
+        setEnergy(g.energy || '');
+        setEra(g.era || '');
+        setVocalStyle(g.vocalStyle || '');
+        setVibeReference(g.vibeReference || '');
+        setIsInstrumental(Boolean(g.isInstrumental));
+        if (typeof g.durationSec === 'number') setDurationSec(g.durationSec);
+        setPublishCover(g.coverArt || '');
+        const existingAgentId = g.agent?.id || g.agentId;
+        if (existingAgentId) setPublishAgentId(existingAgentId);
+
+        if (g.status === 'COMPLETED' && g.audioUrl) {
+          setStep('publish');
+        } else {
+          setStep('generate');
+          if (g.status === 'FAILED') setGenError(g.errorMessage || 'Generation failed');
+        }
+      } catch (err: unknown) {
+        if (cancelled) return;
+        const message =
+          typeof err === 'object' && err !== null && 'response' in err
+            ? (err as { response?: { data?: { error?: string } } }).response?.data?.error
+            : undefined;
+        Alert.alert(
+          'Generation unavailable',
+          message || 'Could not load this generation.'
+        );
+        router.replace('/studio/generations');
+      } finally {
+        if (!cancelled) setLoadingExistingGeneration(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [generationId, isAuthenticated, router]);
+
   if (!isAuthenticated) {
     return (
       <ScreenContainer scrollable={false}>
@@ -128,6 +224,17 @@ export default function CreateScreen() {
           <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Create Music with AI</Text>
           <Text className="text-mym-muted text-sm mb-6 text-center">Log in to generate tracks</Text>
           <Button title="Sign in" onPress={() => router.push('/(auth)/login')} size="lg" />
+        </View>
+      </ScreenContainer>
+    );
+  }
+
+  if (loadingExistingGeneration) {
+    return (
+      <ScreenContainer scrollable={false}>
+        <View className="flex-1 items-center justify-center px-6">
+          <ActivityIndicator color="#8b5cf6" size="large" />
+          <Text className="text-mym-text text-base font-semibold mt-4">Loading generation</Text>
         </View>
       </ScreenContainer>
     );
@@ -362,7 +469,7 @@ export default function CreateScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         style={{ flex: 1 }}
       >
-        <Header usage={usage} />
+        <Header usage={usage} step={step} />
         <Stepper current={step} />
 
         <ScrollView
@@ -478,7 +585,8 @@ export default function CreateScreen() {
 
 // ─── Header ──────────────────────────────────────────────
 
-function Header({ usage }: { usage: Usage | null }) {
+function Header({ usage, step }: { usage: Usage | null; step: Step }) {
+  const isPublishing = step === 'publish';
   return (
     <View className="flex-row items-center justify-between px-4 pt-2 pb-1">
       <View className="flex-row items-center gap-2 flex-1">
@@ -486,8 +594,12 @@ function Header({ usage }: { usage: Usage | null }) {
           <Sparkles size={15} color="#a855f7" />
         </View>
         <View className="flex-1">
-          <Text className="text-mym-text text-xl font-bold" numberOfLines={1}>Create a track</Text>
-          <Text className="text-mym-muted text-[11px]">AI music studio</Text>
+          <Text className="text-mym-text text-xl font-bold" numberOfLines={1}>
+            {isPublishing ? 'Publish track' : 'Create a track'}
+          </Text>
+          <Text className="text-mym-muted text-[11px]">
+            {isPublishing ? 'Review details and choose visibility' : 'AI music studio'}
+          </Text>
         </View>
       </View>
       {usage && (

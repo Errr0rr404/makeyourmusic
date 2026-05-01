@@ -71,8 +71,8 @@ export default function RegisterPage() {
       );
       try { sessionStorage.removeItem('mym_ref'); } catch {}
       router.push('/verify-email');
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err) {
+      setError((err as Error).message);
     }
   };
 

@@ -43,9 +43,13 @@ function LibraryContent() {
     params.set('tab', next);
     router.replace(`/library?${params.toString()}`, { scroll: false });
   };
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [likedTracks, setLikedTracks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [playlists, setPlaylists] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [historyTracks, setHistoryTracks] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [forYouTracks, setForYouTracks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,18 +64,19 @@ function LibraryContent() {
         api.get('/tracks/history?limit=30'),
         api.get('/tracks/recommendations?limit=20'),
       ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const ok = (r: PromiseSettledResult<any>) => r.status === 'fulfilled' ? r.value : null;
-      setLikedTracks(ok(likesRes)?.data.tracks || []);
-      setPlaylists(ok(playlistsRes)?.data.playlists || []);
-      setHistoryTracks(ok(historyRes)?.data.tracks || []);
-      setForYouTracks(ok(forYouRes)?.data.tracks || []);
+      setLikedTracks(ok(likesRes)?.data?.tracks || []);
+      setPlaylists(ok(playlistsRes)?.data?.playlists || []);
+      setHistoryTracks(ok(historyRes)?.data?.tracks || []);
+      setForYouTracks(ok(forYouRes)?.data?.tracks || []);
 
       if ([likesRes, playlistsRes].every((r) => r.status === 'rejected')) {
-        const firstFailure = likesRes.status === 'rejected' ? (likesRes.reason as any) : null;
+        const firstFailure = likesRes.status === 'rejected' ? (likesRes.reason as { response?: { data?: { error?: string } } }) : null;
         setError(firstFailure?.response?.data?.error || 'Failed to load library');
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load library');
+    } catch (err) {
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load library');
     } finally {
       setLoading(false);
     }
@@ -102,8 +107,8 @@ function LibraryContent() {
         setLikedTracks(prev => prev.filter(t => t.id !== trackId));
       }
       toast.success(res.data.liked ? 'Added to liked tracks' : 'Removed from liked tracks');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to update like');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to update like');
     }
   };
 

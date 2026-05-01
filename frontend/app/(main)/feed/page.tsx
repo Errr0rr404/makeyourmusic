@@ -13,6 +13,7 @@ type Tab = 'tracks' | 'clips';
 export default function FeedPage() {
   const { isAuthenticated } = useAuthStore();
   const [tab, setTab] = useState<Tab>('tracks');
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [tracks, setTracks] = useState<any[]>([]);
   const [clips, setClips] = useState<ClipGridItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,8 +33,8 @@ export default function FeedPage() {
           const res = await api.get('/clips?feed=trending&limit=24');
           setClips(res.data.clips || []);
         }
-      } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to load feed');
+      } catch (err) {
+        setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load feed');
       }
       setLoading(false);
     }

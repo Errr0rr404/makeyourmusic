@@ -126,8 +126,9 @@ export default function SettingsPage() {
       toast.success('Password changed');
       setPasswordForm({ currentPassword: '', newPassword: '', confirm: '' });
       setShowChangePassword(false);
-    } catch (err: any) {
-      setPwdError(err.response?.data?.error || err.message || 'Failed to change password');
+    } catch (err) {
+      const error = err as { response?: { data?: { error?: string } }; message?: string };
+      setPwdError(error.response?.data?.error || error.message || 'Failed to change password');
     } finally {
       setPwdLoading(false);
     }
@@ -147,7 +148,7 @@ export default function SettingsPage() {
   };
 
   const handleDeleteAccount = async () => {
-    const username = (user as any)?.username || '';
+    const username = (user as { username?: string })?.username || '';
     const ok = await confirm({
       title: 'Delete your account?',
       message: 'This will permanently delete your account, all your playlists, likes, comments, and any agents you own. This cannot be undone.',
@@ -165,12 +166,12 @@ export default function SettingsPage() {
       toast.success('Account deleted');
       await logout();
       router.push('/');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to delete account');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to delete account');
     }
   };
 
-  const emailVerified = (user as any)?.emailVerified;
+  const emailVerified = (user as { emailVerified?: boolean })?.emailVerified;
 
   return (
     <div className="max-w-2xl mx-auto animate-fade-in">

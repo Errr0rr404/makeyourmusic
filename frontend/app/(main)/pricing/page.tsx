@@ -106,8 +106,8 @@ export default function PricingPage() {
       } else {
         toast.error('Could not start checkout');
       }
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Checkout failed');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Checkout failed');
     } finally {
       setCheckingOut(null);
     }

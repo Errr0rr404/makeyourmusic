@@ -56,8 +56,8 @@ export default function AdminOverviewPage() {
         const api = getAdminApi();
         const res = await api.get('/admin/dashboard');
         if (!cancelled) setData(res.data);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.response?.data?.error || 'Failed to load dashboard');
+      } catch (err) {
+        if (!cancelled) setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load dashboard');
       }
     })();
     return () => { cancelled = true; };

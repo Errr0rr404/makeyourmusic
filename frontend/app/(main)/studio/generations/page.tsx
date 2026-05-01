@@ -84,13 +84,13 @@ export default function GenerationsPage() {
       if (genRes.status === 'fulfilled') {
         setGenerations(genRes.value.data.music || []);
       } else {
-        setError((genRes.reason as any)?.response?.data?.error || 'Failed to load generations');
+        setError((genRes.reason as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load generations');
       }
       if (usageRes.status === 'fulfilled') {
         setUsage(usageRes.value.data.usage);
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to load generations');
+    } catch (err) {
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load generations');
     } finally {
       setLoading(false);
     }
@@ -112,11 +112,12 @@ export default function GenerationsPage() {
       const res = await api.post(`/ai/generations/${gen.id}/variation`);
       setGenerations((prev) => [res.data.generation, ...prev]);
       toast.success('New variation started — it will appear at the top');
-    } catch (err: any) {
-      if (err.response?.status === 429) {
-        toast.error(err.response.data?.error || 'Daily limit reached');
+    } catch (err) {
+      const error = err as { response?: { status?: number; data?: { error?: string } } };
+      if (error.response?.status === 429) {
+        toast.error(error.response.data?.error || 'Daily limit reached');
       } else {
-        toast.error(err.response?.data?.error || 'Could not create variation');
+        toast.error(error.response?.data?.error || 'Could not create variation');
       }
     }
   };
@@ -135,8 +136,8 @@ export default function GenerationsPage() {
       await api.delete(`/ai/generations/${gen.id}`);
       setGenerations((prev) => prev.filter((g) => g.id !== gen.id));
       toast.success('Generation deleted');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to delete');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to delete');
     }
   };
 
@@ -343,7 +344,7 @@ export default function GenerationsPage() {
           generationTitle={extendGen.title || ''}
           open
           onClose={() => setExtendGen(null)}
-          onStarted={(newGen) => setGenerations((prev) => [newGen, ...prev])}
+          onStarted={(newGen) => setGenerations((prev) => [newGen as unknown as Gen, ...prev])}
         />
       )}
     </div>

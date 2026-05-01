@@ -11,8 +11,24 @@ import { formatCount } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';
 import { TipButton } from '@/components/creator/TipButton';
 
+interface AgentData {
+  id: string;
+  name: string;
+  slug: string;
+  avatar: string | null;
+  coverImage?: string | null;
+  isFollowing?: boolean;
+  followerCount?: number;
+  totalPlays?: number;
+  ownerId?: string;
+  bio?: string | null;
+  genres?: Array<{ genre: { id: string; name: string } }>;
+  _count?: { tracks: number };
+}
+
 export function AgentDetailClient({ slug }: { slug: string }) {
-  const [agent, setAgent] = useState<any>(null);
+  const [agent, setAgent] = useState<AgentData | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [tracks, setTracks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -33,8 +49,8 @@ export function AgentDetailClient({ slug }: { slug: string }) {
           const tracksRes = await api.get(`/tracks?agentId=${fetchedAgent.id}&limit=50`);
           setTracks(tracksRes.data.tracks || []);
         }
-      } catch (err: any) {
-        setError(err.response?.data?.error || 'Failed to load agent');
+      } catch (err) {
+        setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load agent');
       }
       setLoading(false);
     }
@@ -51,11 +67,11 @@ export function AgentDetailClient({ slug }: { slug: string }) {
       setAgent({
         ...agent,
         isFollowing: res.data.following,
-        followerCount: agent.followerCount + (res.data.following ? 1 : -1),
+        followerCount: (agent.followerCount ?? 0) + (res.data.following ? 1 : -1),
       });
       toast.success(res.data.following ? `Following ${agent.name}` : `Unfollowed ${agent.name}`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to follow agent');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to follow agent');
     }
   };
 
@@ -107,9 +123,9 @@ export function AgentDetailClient({ slug }: { slug: string }) {
             </div>
             <h1 className="text-3xl font-bold text-white">{agent.name}</h1>
             <div className="flex items-center gap-4 mt-2 text-sm text-[hsl(var(--muted-foreground))]">
-              <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {formatCount(agent.followerCount)} followers</span>
+              <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {formatCount(agent.followerCount ?? 0)} followers</span>
               <span className="flex items-center gap-1"><Music className="w-4 h-4" /> {agent._count?.tracks || 0} tracks</span>
-              <span className="flex items-center gap-1"><Play className="w-4 h-4" /> {formatCount(agent.totalPlays)} plays</span>
+              <span className="flex items-center gap-1"><Play className="w-4 h-4" /> {formatCount(agent.totalPlays ?? 0)} plays</span>
             </div>
             <AgentEarningsBadge slug={agent.slug} />
           </div>
@@ -135,9 +151,9 @@ export function AgentDetailClient({ slug }: { slug: string }) {
       )}
 
       {/* Genres */}
-      {agent.genres?.length > 0 && (
+      {agent.genres && agent.genres.length > 0 && (
         <div className="flex gap-2 mb-6">
-          {agent.genres.map((ag: any) => (
+          {agent.genres.map((ag) => (
             <span key={ag.genre.id} className="px-3 py-1 rounded-full bg-[hsl(var(--secondary))] text-xs font-medium text-[hsl(var(--muted-foreground))]">
               {ag.genre.name}
             </span>
@@ -149,13 +165,13 @@ export function AgentDetailClient({ slug }: { slug: string }) {
       {tracks.length > 0 && (
         <div className="flex items-center gap-3 mb-6">
           <button
-            onClick={() => playTrack(tracks[0], tracks)}
+            onClick={() => (playTrack as (t: unknown, q: unknown[]) => void)(tracks[0], tracks)}
             className="flex items-center gap-2 h-11 px-5 rounded-full bg-[hsl(var(--accent))] text-white font-semibold hover:scale-[1.03] transition-transform"
           >
             <Play className="w-5 h-5 fill-current" /> Play
           </button>
           <button
-            onClick={() => { void startRadio(tracks[0]); toast.success(`AI Radio from ${agent.name}`); }}
+            onClick={() => { void (startRadio as (t: unknown) => void)(tracks[0]); toast.success(`AI Radio from ${agent.name}`); }}
             className="flex items-center gap-2 h-11 px-5 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-semibold hover:scale-[1.03] transition-transform"
           >
             <Radio className="w-4 h-4" /> AI Radio

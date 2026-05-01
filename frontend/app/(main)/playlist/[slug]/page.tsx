@@ -18,6 +18,7 @@ export default function PlaylistPage() {
   const confirm = useConfirm();
   const { isAuthenticated, user } = useAuthStore();
   const { playTrack } = usePlayerStore();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [playlist, setPlaylist] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -35,11 +36,12 @@ export default function PlaylistPage() {
         const res = await api.get(`/social/playlists/${slug}`);
         setPlaylist(res.data.playlist);
         setEditTitle(res.data.playlist?.title || '');
-      } catch (err: any) {
-        if (err.response?.status === 404) {
+      } catch (err) {
+        const error = err as { response?: { status?: number; data?: { error?: string } } };
+        if (error.response?.status === 404) {
           setError('Playlist not found');
         } else {
-          setError(err.response?.data?.error || 'Failed to load playlist');
+          setError(error.response?.data?.error || 'Failed to load playlist');
         }
       } finally {
         setLoading(false);
@@ -50,7 +52,7 @@ export default function PlaylistPage() {
 
   const handlePlayAll = () => {
     if (playlist?.tracks?.length > 0) {
-      const tracks = playlist.tracks.map((pt: any) => pt.track || pt);
+      const tracks = playlist.tracks.map((pt: Record<string, unknown>) => pt.track || pt);
       playTrack(tracks[0], tracks);
     }
   };
@@ -60,11 +62,11 @@ export default function PlaylistPage() {
     setSaving(true);
     try {
       await api.put(`/social/playlists/${playlist.id}`, { title: editTitle.trim() });
-      setPlaylist((p: any) => ({ ...p, title: editTitle.trim() }));
+      setPlaylist((p: Record<string, unknown>) => ({ ...p, title: editTitle.trim() }));
       setEditing(false);
       toast.success('Playlist updated');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to update');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to update');
     } finally {
       setSaving(false);
     }
@@ -83,8 +85,8 @@ export default function PlaylistPage() {
       await api.delete(`/social/playlists/${playlist.id}`);
       toast.success('Playlist deleted');
       router.push('/library');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to delete');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to delete');
       setDeleting(false);
     }
   };
@@ -92,13 +94,13 @@ export default function PlaylistPage() {
   const handleRemoveTrack = async (trackId: string) => {
     try {
       await api.delete(`/social/playlists/${playlist.id}/tracks/${trackId}`);
-      setPlaylist((p: any) => ({
+      setPlaylist((p: Record<string, unknown>) => ({
         ...p,
-        tracks: p.tracks.filter((pt: any) => (pt.track?.id || pt.id) !== trackId),
+        tracks: (p.tracks as Record<string, unknown>[]).filter((pt: Record<string, unknown>) => ((pt.track as Record<string, unknown>)?.id || pt.id) !== trackId),
       }));
       toast.success('Track removed');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to remove track');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to remove track');
     }
   };
 
@@ -131,6 +133,7 @@ export default function PlaylistPage() {
 
   if (!playlist) return null;
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tracks = playlist.tracks?.map((pt: any) => pt.track || pt) || [];
   const isPaid = playlist.accessTier === 'PAID';
   const isOwner = user?.id === playlist.userId;
@@ -144,8 +147,8 @@ export default function PlaylistPage() {
       const safe = validatePaymentRedirect(res.data?.url);
       if (safe) window.location.href = safe;
       else toast.error('Could not start checkout');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to subscribe');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to subscribe');
     } finally {
       setSubscribing(false);
     }

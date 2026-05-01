@@ -30,9 +30,10 @@ function VerifyEmailContent() {
         setStatus('success');
         setMessage(res.data.message || 'Email verified');
         fetchUser().catch(() => {});
-      } catch (err: any) {
+      } catch (err) {
+        const error = err as { response?: { data?: { error?: string } } };
         setStatus('error');
-        setMessage(err.response?.data?.error || 'Invalid or expired verification token');
+        setMessage(error.response?.data?.error || 'Invalid or expired verification token');
       }
     }
     verify();
@@ -159,7 +160,7 @@ function ResendForm({
   setResendEmail,
   handleResend,
 }: {
-  user: any;
+  user: { email?: string } | null;
   resending: boolean;
   resent: boolean;
   resendEmail: string;

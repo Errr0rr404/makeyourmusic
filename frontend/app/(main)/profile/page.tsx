@@ -19,9 +19,11 @@ export default function ProfilePage() {
   const { playTrack } = usePlayerStore();
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [stats, setStats] = useState<any>(null);
   const [form, setForm] = useState({ displayName: '', bio: '', avatar: '' });
   const [error, setError] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [myTracks, setMyTracks] = useState<any[]>([]);
   const [tracksTab, setTracksTab] = useState<'all' | 'public' | 'private'>('all');
   const [tracksLoading, setTracksLoading] = useState(false);
@@ -32,7 +34,7 @@ export default function ProfilePage() {
     if (!isAuthenticated) return;
     setForm({
       displayName: user?.displayName || '',
-      bio: (user as any)?.bio || '',
+      bio: (user as { bio?: string })?.bio || '',
       avatar: user?.avatar || '',
     });
     loadStats();
@@ -103,8 +105,8 @@ export default function ProfilePage() {
       await api.delete(`/tracks/${trackId}`);
       setMyTracks((ts) => ts.filter((t) => t.id !== trackId));
       toast.success('Track deleted');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to delete');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to delete');
     }
   };
 
@@ -126,8 +128,8 @@ export default function ProfilePage() {
       await fetchUser();
       setEditing(false);
       toast.success('Profile updated');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to update profile');
+    } catch (err) {
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to update profile');
     } finally {
       setSaving(false);
     }
@@ -147,7 +149,7 @@ export default function ProfilePage() {
   }
 
   const roleBadge = (role: string) => {
-    const map: Record<string, { label: string; color: string; icon: any }> = {
+    const map: Record<string, { label: string; color: string; icon: React.ComponentType<{ className?: string }> }> = {
       ADMIN: { label: 'Admin', color: 'text-rose-400 bg-rose-500/10 ring-1 ring-rose-500/20', icon: Shield },
       AGENT_OWNER: { label: 'Creator', color: 'text-[color:var(--brand)] bg-[color:var(--brand-soft)] ring-1 ring-[color:var(--brand)]/30', icon: Crown },
       LISTENER: { label: 'Listener', color: 'text-[color:var(--text-soft)] bg-[color:var(--bg-elev-2)] ring-1 ring-[color:var(--stroke)]', icon: Music },
@@ -271,7 +273,7 @@ export default function ProfilePage() {
           { label: 'Liked Songs', value: stats?.likedTracks ?? '—', icon: Heart, color: 'text-rose-400' },
           { label: 'Playlists', value: stats?.playlists ?? '—', icon: Music, color: 'text-[color:var(--brand)]' },
           { label: 'Member Since', value: user?.createdAt ? new Date(user.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' }) : '—', icon: Calendar, color: 'text-sky-400' },
-          { label: 'Subscription', value: (user as any)?.subscription?.tier || 'Free', icon: Crown, color: 'text-amber-400' },
+          { label: 'Subscription', value: (user as { subscription?: { tier?: string } })?.subscription?.tier || 'Free', icon: Crown, color: 'text-amber-400' },
         ].map((stat) => (
           <div key={stat.label} className="bg-[color:var(--bg-elev-1)] rounded-xl p-4 border border-[color:var(--stroke)]">
             <stat.icon className={`w-5 h-5 ${stat.color} mb-2`} />

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'motion/react';
 
 interface SplashLoaderProps {
@@ -19,13 +19,14 @@ const STATUS_MESSAGES = [
 export const SplashLoader: React.FC<SplashLoaderProps> = ({ logo, appName, onComplete, color = '#3b82f6' }) => {
     const [progress, setProgress] = useState(0);
     const [status, setStatus] = useState("Initializing Core Systems...");
+    const completionTimeoutRef = useRef<number | null>(null);
 
     useEffect(() => {
         const timer = setInterval(() => {
             setProgress((prev) => {
                 if (prev >= 100) {
                     clearInterval(timer);
-                    setTimeout(onComplete, 800);
+                    completionTimeoutRef.current = window.setTimeout(onComplete, 800);
                     return 100;
                 }
 
@@ -38,7 +39,12 @@ export const SplashLoader: React.FC<SplashLoaderProps> = ({ logo, appName, onCom
                 return prev + 1.5;
             });
         }, 30);
-        return () => clearInterval(timer);
+        return () => {
+            clearInterval(timer);
+            if (completionTimeoutRef.current) {
+                window.clearTimeout(completionTimeoutRef.current);
+            }
+        };
     }, [onComplete]);
 
     return (

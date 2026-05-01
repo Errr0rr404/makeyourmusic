@@ -50,7 +50,7 @@ export default function CreatorPlaylistsPage() {
     const e = editFor(p);
     setSavingId(p.id);
     try {
-      const body: any = { accessTier: e.tier };
+      const body: { accessTier: string; monthlyPriceCents?: number } = { accessTier: e.tier };
       if (e.tier === 'PAID') {
         const cents = Math.round(parseFloat(e.price) * 100);
         if (!Number.isFinite(cents) || cents < 100 || cents > 9900) {
@@ -69,9 +69,10 @@ export default function CreatorPlaylistsPage() {
         return next;
       });
       toast.success('Saved');
-    } catch (err: any) {
-      const msg = err.response?.data?.error || 'Failed to save';
-      const code = err.response?.data?.code;
+    } catch (err) {
+      const error = err as { response?: { data?: { error?: string; code?: string } } };
+      const msg = error.response?.data?.error || 'Failed to save';
+      const code = error.response?.data?.code;
       if (code === 'CONNECT_REQUIRED') {
         toast.error('Set up payouts first');
       } else if (code === 'CREATOR_TIER_REQUIRED') {

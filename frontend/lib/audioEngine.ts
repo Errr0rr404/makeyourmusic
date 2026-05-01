@@ -45,7 +45,7 @@ class AudioEngine {
     }
 
     if (!this.ctx) {
-      this.ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      this.ctx = new (window.AudioContext || (window as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)();
     }
     if (this.ctx.state === 'suspended') {
       this.ctx.resume();
@@ -186,15 +186,15 @@ class AudioEngine {
   private disconnectAll() {
     for (const slot of Object.values(this.slots)) {
       if (!slot) continue;
-      try { slot.source.disconnect(); } catch {}
-      try { slot.gain.disconnect(); } catch {}
+      try { slot.source.disconnect(); } catch (e) { console.warn('[AudioEngine] source disconnect error:', e); }
+      try { slot.gain.disconnect(); } catch (e) { console.warn('[AudioEngine] gain disconnect error:', e); }
     }
     this.slots = {};
-    this.filterNodes.forEach((f) => { try { f.disconnect(); } catch {} });
+    this.filterNodes.forEach((f) => { try { f.disconnect(); } catch (e) { console.warn('[AudioEngine] filter disconnect error:', e); } });
     this.filterNodes = [];
-    if (this.masterGain) { try { this.masterGain.disconnect(); } catch {} }
+    if (this.masterGain) { try { this.masterGain.disconnect(); } catch (e) { console.warn('[AudioEngine] masterGain disconnect error:', e); } }
     this.masterGain = null;
-    if (this.analyser) { try { this.analyser.disconnect(); } catch {} }
+    if (this.analyser) { try { this.analyser.disconnect(); } catch (e) { console.warn('[AudioEngine] analyser disconnect error:', e); } }
     this.analyser = null;
     this.analyserData = null;
   }
@@ -202,7 +202,7 @@ class AudioEngine {
   destroy() {
     this.disconnectAll();
     if (this.ctx && this.ctx.state !== 'closed') {
-      this.ctx.close().catch(() => {});
+      this.ctx.close().catch((e) => console.warn('[AudioEngine] context close error:', e));
     }
     this.ctx = null;
     this.connected = false;

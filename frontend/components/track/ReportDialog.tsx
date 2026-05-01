@@ -58,8 +58,8 @@ export function ReportDialog({ targetId, targetType, targetTitle, open, onClose 
       await api.post(path, { reason, notes: notes.trim() || undefined });
       setSubmitted(true);
       toast.success('Report submitted — thank you');
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Failed to submit report');
+    } catch (err) {
+      setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to submit report');
     } finally {
       setSubmitting(false);
     }

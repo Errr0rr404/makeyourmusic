@@ -72,8 +72,8 @@ export default function GenerationsPage() {
         setItems(res.data.items || []);
         setTotal(res.data.total || 0);
         setTotalPages(res.data.totalPages || 1);
-      } catch (err: any) {
-        if (!cancelled) setError(err?.response?.data?.error || 'Failed to load generations');
+      } catch (err) {
+        if (!cancelled) setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load generations');
       } finally {
         if (!cancelled) setLoading(false);
       }

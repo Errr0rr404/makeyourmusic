@@ -44,8 +44,8 @@ function PayoutsPageInner() {
       setAccount(statusRes.data?.account || null);
       const sub = subRes.data?.subscription;
       if (sub?.status === 'ACTIVE') setTier(sub.tier);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to load Connect status');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load Connect status');
     }
   };
 
@@ -76,8 +76,8 @@ function PayoutsPageInner() {
       const safe = validatePaymentRedirect(res.data?.url);
       if (safe) window.location.href = safe;
       else toast.error('Could not start onboarding');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to start onboarding');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to start onboarding');
     } finally {
       setBusy(false);
     }
@@ -90,8 +90,8 @@ function PayoutsPageInner() {
       const safe = validatePaymentRedirect(res.data?.url);
       if (safe) window.open(safe, '_blank', 'noopener,noreferrer');
       else toast.error('Could not open dashboard');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to open Stripe dashboard');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to open Stripe dashboard');
     } finally {
       setBusy(false);
     }

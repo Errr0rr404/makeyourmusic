@@ -10,7 +10,7 @@ interface Props {
   generationTitle: string;
   open: boolean;
   onClose: () => void;
-  onStarted: (newGeneration: any) => void;
+  onStarted: (newGeneration: Record<string, unknown>) => void;
 }
 
 const MAX_LYRICS = 6000;
@@ -47,8 +47,8 @@ export function ExtendGenerationDialog({
       setExtraLyrics('');
       setInstructions('');
       onClose();
-    } catch (err: any) {
-      const msg = err?.response?.data?.error || 'Failed to start extension';
+    } catch (err) {
+      const msg = (err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to start extension';
       setError(msg);
     } finally {
       setSubmitting(false);

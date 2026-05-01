@@ -65,8 +65,9 @@ export default function NotificationsPage() {
       const res = await api.get(`/notifications?${filter === 'unread' ? 'unread=true&' : ''}limit=50`);
       setNotifications(res.data.notifications || []);
       setUnreadCount(res.data.unreadCount || 0);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Failed to load notifications');
+    } catch (err) {
+      const error = err as { response?: { data?: { error?: string } }; message?: string };
+      setError(error.response?.data?.error || error.message || 'Failed to load notifications');
     } finally {
       setLoading(false);
     }

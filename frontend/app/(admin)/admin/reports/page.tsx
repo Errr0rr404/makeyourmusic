@@ -41,8 +41,8 @@ export default function AdminReportsPage() {
         const api = getAdminApi();
         const res = await api.get('/admin/reports?limit=100');
         if (!cancelled) setReports(res.data.reports || []);
-      } catch (err: any) {
-        if (!cancelled) toast.error(err?.response?.data?.error || 'Failed to load reports');
+      } catch (err) {
+        if (!cancelled) toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load reports');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -57,8 +57,8 @@ export default function AdminReportsPage() {
       await api.put(`/admin/reports/${id}`, { status });
       setReports((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
       toast.success(status === 'RESOLVED' ? 'Report resolved' : 'Report dismissed');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to update report');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to update report');
     } finally {
       setResolvingId(null);
     }

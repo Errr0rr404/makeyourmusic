@@ -15,6 +15,7 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 export default function DashboardPage() {
   const { isAuthenticated } = useAuthStore();
   const confirm = useConfirm();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [agents, setAgents] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateAgent, setShowCreateAgent] = useState(false);
@@ -25,6 +26,7 @@ export default function DashboardPage() {
     title: '', audioUrl: '', coverArt: '', duration: '', genreId: '', mood: '',
     aiModel: '', aiPrompt: '', videoUrl: '', isPublic: true,
   });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [genres, setGenres] = useState<any[]>([]);
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,7 +40,7 @@ export default function DashboardPage() {
         ]);
         setAgents(agentsRes.data.agents || []);
         setGenres(genresRes.data.genres || []);
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to load dashboard:', err);
       }
       setLoading(false);
@@ -50,7 +52,7 @@ export default function DashboardPage() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const payload: any = { name: agentForm.name };
+      const payload: Record<string, string> = { name: agentForm.name };
       if (agentForm.bio) payload.bio = agentForm.bio;
       if (agentForm.avatar) payload.avatar = agentForm.avatar;
       if (agentForm.coverImage) payload.coverImage = agentForm.coverImage;
@@ -59,8 +61,8 @@ export default function DashboardPage() {
       setShowCreateAgent(false);
       setAgentForm({ name: '', bio: '', avatar: '', coverImage: '' });
       toast.success(`Agent "${res.data.agent.name}" created`);
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to create agent');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to create agent');
     } finally {
       setSubmitting(false);
     }
@@ -77,8 +79,8 @@ export default function DashboardPage() {
       const res = await api.get('/agents/mine');
       setAgents(res.data.agents || []);
       toast.success('Track uploaded');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to upload track');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to upload track');
     } finally {
       setSubmitting(false);
     }
@@ -96,8 +98,8 @@ export default function DashboardPage() {
       await api.delete(`/agents/${id}`);
       setAgents(agents.filter(a => a.id !== id));
       toast.success('Agent deleted');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to delete agent');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to delete agent');
     }
   };
 

@@ -25,7 +25,7 @@ interface Props {
   isOwner: boolean;
 }
 
-const STEM_PARTS: Array<{ key: 'drums' | 'bass' | 'vocals' | 'other'; label: string; Icon: any }> = [
+const STEM_PARTS: Array<{ key: 'drums' | 'bass' | 'vocals' | 'other'; label: string; Icon: React.ComponentType<{ className?: string }> }> = [
   { key: 'drums', label: 'Drums', Icon: Drum },
   { key: 'bass', label: 'Bass', Icon: Music },
   { key: 'vocals', label: 'Vocals', Icon: Mic },
@@ -45,8 +45,8 @@ export function TrackStems({ trackId, isOwner }: Props) {
     try {
       const r = await api.get(`/licenses/tracks/${trackId}/stems`);
       setStems(r.data.stems || null);
-    } catch (err: any) {
-      if (err?.response?.status !== 404) {
+    } catch (err) {
+      if ((err as { response?: { status?: number } })?.response?.status !== 404) {
         // 404 just means no stems yet — silent
       }
       setStems(null);
@@ -94,8 +94,8 @@ export function TrackStems({ trackId, isOwner }: Props) {
         return;
       }
       toast.error('Failed to start checkout');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to start checkout');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to start checkout');
     } finally {
       setRequesting(false);
     }
@@ -108,8 +108,8 @@ export function TrackStems({ trackId, isOwner }: Props) {
       const r = await api.post(`/licenses/tracks/${trackId}/stems/request`);
       setStems(r.data.stems);
       toast.success('Stem separation restarted');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to retry');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to retry');
     } finally {
       setRequesting(false);
     }
@@ -123,8 +123,8 @@ export function TrackStems({ trackId, isOwner }: Props) {
       });
       setStems(r.data.stems);
       toast.success(cents ? 'Stems are now for sale' : 'Stems removed from sale');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to update price');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to update price');
     } finally {
       setSavingPrice(false);
     }
@@ -140,8 +140,8 @@ export function TrackStems({ trackId, isOwner }: Props) {
       const safe = validatePaymentRedirect(data?.checkoutUrl);
       if (safe) window.location.href = safe;
       else toast.error('Could not start checkout');
-    } catch (err: any) {
-      toast.error(err?.response?.data?.error || 'Failed to start checkout');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to start checkout');
     } finally {
       setBuying(false);
     }
@@ -233,7 +233,7 @@ export function TrackStems({ trackId, isOwner }: Props) {
         <>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
             {STEM_PARTS.map(({ key, label, Icon }) => {
-              const url = (stems as any)[`${key}Url`] as string | null;
+              const url = (stems as unknown as Record<string, unknown>)[`${key}Url`] as string | null;
               return (
                 <a
                   key={key}

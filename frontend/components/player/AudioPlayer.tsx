@@ -65,6 +65,7 @@ export function AudioPlayer() {
   const crossfadingRef = useRef(false);
   const crossfadeTimerRef = useRef<number | null>(null);
   const crossfadePromoteTimeoutRef = useRef<number | null>(null);
+  const crossfadeSafetyTimeoutRef = useRef<number | null>(null);
 
   const playRecordedRef = useRef(false);
   const engineInitRef = useRef(false);
@@ -95,6 +96,10 @@ export function AudioPlayer() {
     if (crossfadePromoteTimeoutRef.current) {
       window.clearTimeout(crossfadePromoteTimeoutRef.current);
       crossfadePromoteTimeoutRef.current = null;
+    }
+    if (crossfadeSafetyTimeoutRef.current) {
+      window.clearTimeout(crossfadeSafetyTimeoutRef.current);
+      crossfadeSafetyTimeoutRef.current = null;
     }
     crossfadingRef.current = false;
     preloadedTrackIdRef.current = null;
@@ -356,12 +361,16 @@ export function AudioPlayer() {
     } else {
       const onCanPlay = () => {
         inactive.removeEventListener('canplay', onCanPlay);
+        if (crossfadeSafetyTimeoutRef.current) {
+          window.clearTimeout(crossfadeSafetyTimeoutRef.current);
+          crossfadeSafetyTimeoutRef.current = null;
+        }
         if (crossfadingRef.current) startGains();
       };
       inactive.addEventListener('canplay', onCanPlay);
-      // Safety: if it never loads in time, abort
-      window.setTimeout(() => {
+      crossfadeSafetyTimeoutRef.current = window.setTimeout(() => {
         inactive.removeEventListener('canplay', onCanPlay);
+        crossfadeSafetyTimeoutRef.current = null;
         if (crossfadingRef.current && inactive.readyState < 2) cancelCrossfade();
       }, 5000);
     }

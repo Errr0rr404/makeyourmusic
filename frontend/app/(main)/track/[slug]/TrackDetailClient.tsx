@@ -20,12 +20,16 @@ import { useConfirm } from '@/components/ui/ConfirmDialog';
 export function TrackDetailClient({ slug }: { slug: string }) {
   const confirm = useConfirm();
   const { user } = useAuthStore();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [track, setTrack] = useState<any>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [similar, setSimilar] = useState<any[]>([]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [trackClips, setTrackClips] = useState<any[]>([]);
   const [showAddToPlaylist, setShowAddToPlaylist] = useState(false);
   const [showReport, setShowReport] = useState(false);
@@ -73,8 +77,8 @@ export function TrackDetailClient({ slug }: { slug: string }) {
             setTrackClips(clipsRes.value.data.clips || []);
           }
         }
-      } catch (err: any) {
-        if (!cancelled) setError(err.response?.data?.error || 'Failed to load track');
+      } catch (err) {
+        if (!cancelled) setError((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load track');
       }
       if (!cancelled) setLoading(false);
     }
@@ -102,8 +106,8 @@ export function TrackDetailClient({ slug }: { slug: string }) {
       const res = await api.post(`/social/likes/${track.id}`);
       setTrack({ ...track, isLiked: res.data.liked, likeCount: track.likeCount + (res.data.liked ? 1 : -1) });
       toast.success(res.data.liked ? 'Added to liked tracks' : 'Removed from liked tracks');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to like track');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to like track');
     }
   };
 
@@ -115,8 +119,8 @@ export function TrackDetailClient({ slug }: { slug: string }) {
       setComments([res.data.comment, ...comments]);
       setNewComment('');
       toast.success('Comment posted');
-    } catch (err: any) {
-      toast.error(err.response?.data?.error || 'Failed to post comment');
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to post comment');
     }
   };
 
@@ -132,8 +136,8 @@ export function TrackDetailClient({ slug }: { slug: string }) {
       }
       const platform = typeof navigator.share === 'function' ? 'native' : 'copy';
       api.post(`/social/shares/${track.id}`, { platform }).catch(() => {});
-    } catch (err: any) {
-      if (err?.name !== 'AbortError') {
+    } catch (err) {
+      if ((err as Error)?.name !== 'AbortError') {
         toast.error('Failed to share track');
       }
     }
@@ -227,26 +231,26 @@ export function TrackDetailClient({ slug }: { slug: string }) {
               className="p-2.5 rounded-full border border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-white hover:border-white/30 transition-colors">
               <Code className="w-5 h-5" />
             </button>
-            {(track as any).licenseable && (track as any).licensePriceCents && (
+            {(track.licenseable as boolean) && (track.licensePriceCents as number) && (
               <button
                 onClick={async () => {
                   try {
                     const { data } = await api.post<{ checkoutUrl: string }>('/licenses/checkout', {
-                      trackId: track.id,
+                      trackId: track.id as string,
                       kind: 'sync',
                     });
                     const safe = validatePaymentRedirect(data.checkoutUrl);
                     if (safe) window.location.href = safe;
                     else toast.error('Could not start checkout');
-                  } catch (err: any) {
-                    toast.error(err?.response?.data?.error || 'Failed to start checkout');
+                  } catch (err) {
+                    toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to start checkout');
                   }
                 }}
-                title={`License this track for $${((track as any).licensePriceCents / 100).toFixed(2)}`}
+                title={`License this track for $${((track.licensePriceCents as number) / 100).toFixed(2)}`}
                 className="inline-flex items-center gap-1 h-10 px-4 rounded-full border border-amber-400/40 text-amber-200 hover:bg-amber-400/10 text-sm font-medium transition-colors"
               >
                 <DollarSign className="w-4 h-4" />
-                License ${((track as any).licensePriceCents / 100).toFixed(2)}
+                License ${((track.licensePriceCents as number) / 100).toFixed(2)}
               </button>
             )}
             {isAuthenticated && (
@@ -420,8 +424,8 @@ export function TrackDetailClient({ slug }: { slug: string }) {
                             );
                             setEditingCommentId(null);
                             toast.success('Comment updated');
-                          } catch (err: any) {
-                            toast.error(err.response?.data?.error || 'Failed to update');
+                          } catch (err) {
+                            toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to update');
                           }
                         }}
                         className="p-2 text-green-400 hover:bg-green-500/10 rounded-lg"
@@ -466,8 +470,8 @@ export function TrackDetailClient({ slug }: { slug: string }) {
                           await api.delete(`/social/comments/${comment.id}`);
                           setComments((prev) => prev.filter((c) => c.id !== comment.id));
                           toast.success('Comment deleted');
-                        } catch (err: any) {
-                          toast.error(err.response?.data?.error || 'Failed to delete');
+                        } catch (err) {
+                          toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to delete');
                         }
                       }}
                       className="p-1.5 text-[hsl(var(--muted-foreground))] hover:text-red-400 hover:bg-red-500/10 rounded"

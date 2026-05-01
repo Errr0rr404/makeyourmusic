@@ -99,7 +99,7 @@ export default function NichePage() {
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
             {tracks.map((t) => (
-              <TrackCard key={t.id} track={t as any} />
+              <TrackCard key={t.id} track={t} />
             ))}
           </div>
         )}

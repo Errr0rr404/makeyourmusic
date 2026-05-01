@@ -19,8 +19,9 @@ export default function ForgotPasswordPage() {
     try {
       await api.post('/auth/forgot-password', { email });
       setSubmitted(true);
-    } catch (err: any) {
-      setError(err.response?.data?.error || err.message || 'Something went wrong');
+    } catch (err) {
+      const error = err as { response?: { data?: { error?: string } }; message?: string };
+      setError(error.response?.data?.error || error.message || 'Something went wrong');
     } finally {
       setLoading(false);
     }
@@ -35,7 +36,7 @@ export default function ForgotPasswordPage() {
             <BrandLogo markClassName="h-10 w-10" textClassName="text-2xl" />
           </Link>
           <h1 className="font-display font-extrabold text-3xl text-white tracking-tight">Reset password</h1>
-          <p className="text-[color:var(--text-mute)] mt-1.5 text-sm">We'll email you a link to set a new one.</p>
+          <p className="text-[color:var(--text-mute)] mt-1.5 text-sm">We&apos;ll email you a link to set a new one.</p>
         </div>
 
         {submitted ? (
@@ -45,7 +46,7 @@ export default function ForgotPasswordPage() {
               <div>
                 <p className="font-semibold mb-1 text-emerald-200">Check your inbox</p>
                 <p className="text-emerald-300/80">
-                  If an account with that email exists, we've sent a reset link. It expires in 1 hour.
+                  If an account with that email exists, we&apos;ve sent a reset link. It expires in 1 hour.
                 </p>
               </div>
             </div>

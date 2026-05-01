@@ -34,8 +34,9 @@ export function SocialAuthButtons({
       } catch {}
       const dest = next && next.startsWith('/') && !next.startsWith('//') ? next : '/';
       router.push(dest);
-    } catch (err: any) {
-      const code = err?.code as string | undefined;
+    } catch (err) {
+      const error = err as { code?: string; message?: string };
+      const code = error?.code;
       // Treat user-cancellation as a non-error.
       if (
         code === 'auth/popup-closed-by-user' ||
@@ -44,7 +45,7 @@ export function SocialAuthButtons({
       ) {
         return;
       }
-      onError?.(err?.message || 'Sign-in failed');
+      onError?.(error?.message || 'Sign-in failed');
     } finally {
       setBusy(null);
       onPending?.(false);

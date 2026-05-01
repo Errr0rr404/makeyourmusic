@@ -35,8 +35,8 @@ export default function ReferralsPage() {
         setCode(cdata.code);
         setUsername(cdata.username);
         setStats(sdata);
-      } catch (err: any) {
-        toast.error(err?.response?.data?.error || 'Failed to load referrals');
+      } catch (err) {
+        toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to load referrals');
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -60,7 +60,7 @@ export default function ReferralsPage() {
       <header>
         <h1 className="text-2xl font-semibold">Refer creators, earn forever*</h1>
         <p className="text-sm text-[hsl(var(--muted-foreground))] mt-2">
-          *Earn {(stats?.bps ?? 1000) / 100}% of every creator's earnings (tips, paid playlists, sync licenses)
+          *Earn {(stats?.bps ?? 1000) / 100}% of every creator&apos;s earnings (tips, paid playlists, sync licenses)
           for {Math.round((stats?.windowDays ?? 365) / 30)} months from their signup. Paid out automatically via Stripe.
         </p>
       </header>
