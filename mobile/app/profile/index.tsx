@@ -127,14 +127,21 @@ export default function ProfileScreen() {
   };
 
   const toggleVisibility = async (track: Track) => {
+    if (!track?.id) {
+      console.error('toggleVisibility called with invalid track:', track);
+      Alert.alert('Error', 'Invalid track data');
+      return;
+    }
     const next = !track.isPublic;
+    console.log('Toggle visibility:', track.id, 'from', track.isPublic, 'to', next);
     setMyTracks((ts) => ts.map((t) => (t.id === track.id ? { ...t, isPublic: next } : t)));
     try {
       await getApi().patch(`/tracks/${track.id}/visibility`, { isPublic: next });
       hapticSelection();
-    } catch {
+    } catch (err: any) {
+      console.error('Toggle visibility failed:', err?.response?.data || err?.message);
       setMyTracks((ts) => ts.map((t) => (t.id === track.id ? { ...t, isPublic: !next } : t)));
-      Alert.alert('Error', 'Could not update visibility');
+      Alert.alert('Error', err?.response?.data?.error || 'Could not update visibility');
     }
   };
 
