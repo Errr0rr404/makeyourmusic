@@ -1768,6 +1768,19 @@ export const regenerateSection = async (req: RequestWithUser, res: Response) => 
         : '') +
       `Output the new ${target.tag} body only.`;
 
+    // Moderate user-supplied instructions BEFORE calling MiniMax — running
+    // moderation only after the chat returns let a slur-laden direction
+    // reach the upstream model. Moderating here costs nothing (local rule
+    // checks) and short-circuits the network call on policy violations.
+    if (typeof instructions === 'string' && instructions.trim()) {
+      const directionsCheck = moderateLyrics(instructions);
+      const directionsErr = moderationToError(directionsCheck);
+      if (directionsErr && directionsCheck.severity === 'BLOCK') {
+        res.status(400).json({ error: directionsErr });
+        return;
+      }
+    }
+
     const { minimaxChat } = await import('../utils/minimax');
     const chat = await minimaxChat({
       messages: [

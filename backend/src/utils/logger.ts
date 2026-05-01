@@ -8,63 +8,64 @@ if (!fs.existsSync(logsDir)) {
   fs.mkdirSync(logsDir, { recursive: true });
 }
 
-// Sensitive fields that should be masked in logs. Substring match (case-insensitive),
-// so `passwordHash`, `keyHash`, `webhookSecret`, `clientSecret`, `setCookie` are all caught.
-const SENSITIVE_FIELDS = [
+// Sensitive field names — exact match on lowercased key (case-insensitive).
+// Substring matching used to over-redact normal fields like `tokenPrefix`,
+// `tokenized`, `passwordlessLogin`, etc., and would mask user-visible UI
+// fields by accident.
+const SENSITIVE_FIELDS = new Set([
   'password',
-  'passwordHash',
+  'passwordhash',
   'token',
-  'accessToken',
-  'refreshToken',
-  'idToken',
-  'apiKey',
-  'keyHash',
+  'accesstoken',
+  'refreshtoken',
+  'idtoken',
+  'apikey',
+  'keyhash',
   'secret',
-  'webhookSecret',
-  'clientSecret',
+  'webhooksecret',
+  'clientsecret',
   'authorization',
   'bearer',
   'cookie',
-  'setCookie',
+  'setcookie',
   'signature',
-  'creditCard',
-  'cardNumber',
+  'creditcard',
+  'cardnumber',
   'cvv',
   'ssn',
-];
+]);
 
-// Mask sensitive data in log objects. Recurses into arrays so a list of
-// authorization headers or token strings doesn't sneak through.
-const maskSensitiveData = (obj: Record<string, unknown>): Record<string, unknown> => {
-  if (!obj || typeof obj !== 'object') return obj;
-
-  const masked: Record<string, unknown> = {};
+// Mutate `obj` in place so winston's symbol-keyed fields (LEVEL, MESSAGE,
+// SPLAT) are preserved; the previous version returned a new object that
+// silently dropped all symbol keys, breaking custom transports.
+const maskSensitiveDataInPlace = (obj: Record<string, unknown>): void => {
+  if (!obj || typeof obj !== 'object') return;
   for (const [key, value] of Object.entries(obj)) {
     const lowerKey = key.toLowerCase();
-    if (SENSITIVE_FIELDS.some(field => lowerKey.includes(field.toLowerCase()))) {
-      masked[key] = '[REDACTED]';
-    } else if (Array.isArray(value)) {
-      masked[key] = value.map((v) =>
-        v && typeof v === 'object' && !Array.isArray(v)
-          ? maskSensitiveData(v as Record<string, unknown>)
-          : v
-      );
+    if (SENSITIVE_FIELDS.has(lowerKey)) {
+      (obj as Record<string, unknown>)[key] = '[REDACTED]';
+      continue;
+    }
+    if (Array.isArray(value)) {
+      for (const item of value) {
+        if (item && typeof item === 'object') {
+          maskSensitiveDataInPlace(item as Record<string, unknown>);
+        }
+      }
     } else if (value && typeof value === 'object') {
-      masked[key] = maskSensitiveData(value as Record<string, unknown>);
-    } else {
-      masked[key] = value;
+      maskSensitiveDataInPlace(value as Record<string, unknown>);
     }
   }
-  return masked;
 };
 
-// Custom format to mask sensitive data
+// Custom format to mask sensitive data — operates IN PLACE on info so winston
+// keeps its symbol-keyed fields.
 const maskFormat = winston.format((info) => {
   if (info.meta && typeof info.meta === 'object') {
-    info.meta = maskSensitiveData(info.meta as Record<string, unknown>);
+    maskSensitiveDataInPlace(info.meta as Record<string, unknown>);
   }
-  // Also check the info object itself for sensitive data
-  return maskSensitiveData(info as Record<string, unknown>) as winston.Logform.TransformableInfo;
+  maskSensitiveDataInPlace(info as Record<string, unknown>);
+  return info;
 });
 
 // Define log format

@@ -696,7 +696,10 @@ export const shareClip = async (req: RequestWithUser, res: Response) => {
 
     const ops: any[] = [
       prisma.clipShare.create({
-        data: { clipId: id, userId: req.user?.userId, platform: normalized },
+        // Pass `null` explicitly for anon — depending on schema nullability,
+        // `undefined` can either silently skip the column or be stored as the
+        // string "undefined" depending on the driver path.
+        data: { clipId: id, userId: req.user?.userId ?? null, platform: normalized },
       }),
     ];
     if (counted) {

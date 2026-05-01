@@ -120,23 +120,39 @@ export const register = async (req: RequestWithUser, res: Response) => {
       if (referrer) referredById = referrer.id;
     }
 
-    const user = await prisma.user.create({
-      data: {
-        email,
-        passwordHash,
-        username,
-        displayName: displayName || username,
-        role: 'LISTENER',
-        emailVerificationToken: hashedVerificationToken,
-        emailVerificationExpires: verificationExpires,
-        referredById,
-        subscription: { create: { tier: 'FREE', status: 'ACTIVE' } },
-      },
-      select: {
-        id: true, email: true, username: true, displayName: true, role: true, avatar: true,
-        emailVerified: true, tokenVersion: true,
-      },
-    });
+    let user;
+    try {
+      user = await prisma.user.create({
+        data: {
+          email,
+          passwordHash,
+          username,
+          displayName: displayName || username,
+          role: 'LISTENER',
+          emailVerificationToken: hashedVerificationToken,
+          emailVerificationExpires: verificationExpires,
+          referredById,
+          subscription: { create: { tier: 'FREE', status: 'ACTIVE' } },
+        },
+        select: {
+          id: true, email: true, username: true, displayName: true, role: true, avatar: true,
+          emailVerified: true, tokenVersion: true,
+        },
+      });
+    } catch (createErr: any) {
+      // Race against the findFirst above: a concurrent register with the same
+      // email/username can pass the uniqueness check then collide here.
+      // Convert P2002 to a clean 409 instead of bubbling as a 500.
+      if (createErr?.code === 'P2002') {
+        const target = createErr?.meta?.target;
+        const isEmail = Array.isArray(target) ? target.includes('email') : target === 'email';
+        res.status(409).json({
+          error: isEmail ? 'Email already registered' : 'Username already taken',
+        });
+        return;
+      }
+      throw createErr;
+    }
 
     await dispatchVerificationEmail(user.email, rawVerificationToken);
 

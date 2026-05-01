@@ -70,6 +70,18 @@ export const disableLicensing = async (req: RequestWithUser, res: Response) => {
       res.status(403).json({ error: 'Only the track owner can disable licensing' });
       return;
     }
+    // Refuse to disable while a buyer's checkout session is mid-flight —
+    // otherwise the buyer's webhook would still complete and create a PAID
+    // license at a price the seller has just removed.
+    const pendingCount = await prisma.syncLicense.count({
+      where: { trackId, status: 'PENDING' },
+    });
+    if (pendingCount > 0) {
+      res.status(409).json({
+        error: 'A purchase is in progress for this track. Try again in a few minutes.',
+      });
+      return;
+    }
     await prisma.track.update({
       where: { id: trackId },
       data: { licenseable: false },

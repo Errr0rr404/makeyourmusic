@@ -186,9 +186,15 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
           res.json({ received: true, duplicate: true });
           return;
         }
-        // Other DB error — log and continue (don't block the webhook on a
-        // transient DB issue, just lose idempotency for this one).
-        logger.warn('Webhook idempotency record failed', { error: (err as Error).message });
+        // Other DB errors are NOT safe to ignore — losing idempotency on a
+        // transient blip means Stripe's retry runs the handler twice and
+        // double-credits referrals / sends two notifications. Return 500 so
+        // Stripe retries against a DB that's recovered.
+        logger.error('Webhook idempotency record failed; returning 500 for retry', {
+          error: (err as Error).message,
+        });
+        res.status(500).json({ error: 'Webhook idempotency check failed' });
+        return;
       }
     }
 
@@ -393,8 +399,19 @@ async function handlePlatformCheckoutCompleted(session: any) {
     });
     return;
   }
+  // Only accept literal CREATOR / PREMIUM in metadata. The previous
+  // ternary defaulted to PREMIUM on any non-CREATOR value (including
+  // missing/typo'd metadata), which silently UPGRADED users to a higher
+  // tier than they paid for. Reject and log for follow-up reconciliation.
   const requestedTier = (session.metadata?.tier as string)?.toUpperCase();
-  const tier = requestedTier === 'CREATOR' ? 'CREATOR' : 'PREMIUM';
+  if (requestedTier !== 'CREATOR' && requestedTier !== 'PREMIUM') {
+    logger.error('checkout.session.completed has missing/invalid tier metadata', {
+      sessionId: session.id,
+      requestedTier,
+    });
+    return;
+  }
+  const tier = requestedTier;
 
   const s = getStripe();
   let periodStart: Date | null = null;

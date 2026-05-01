@@ -19,16 +19,26 @@ function loadCredentials(): admin.ServiceAccount | null {
     }
   }
 
-  // 2. Local file fallback (dev)
-  const localPath = path.resolve(__dirname, '../../firebase-service-account.json');
-  if (fs.existsSync(localPath)) {
-    try {
-      return JSON.parse(fs.readFileSync(localPath, 'utf8')) as admin.ServiceAccount;
-    } catch (err) {
-      logger.error('Failed to read firebase-service-account.json', {
-        error: (err as Error).message,
-      });
-      return null;
+  // 2. Local file fallback (dev). Try common locations — `__dirname` differs
+  // between `dist/utils` and `src/utils` builds, so anchor to process.cwd()
+  // and walk up a couple levels.
+  const candidates = [
+    path.resolve(process.cwd(), 'firebase-service-account.json'),
+    path.resolve(process.cwd(), 'backend/firebase-service-account.json'),
+    path.resolve(__dirname, '../../firebase-service-account.json'),
+    path.resolve(__dirname, '../../../firebase-service-account.json'),
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      try {
+        return JSON.parse(fs.readFileSync(candidate, 'utf8')) as admin.ServiceAccount;
+      } catch (err) {
+        logger.error('Failed to read firebase-service-account.json', {
+          path: candidate,
+          error: (err as Error).message,
+        });
+        return null;
+      }
     }
   }
 
@@ -72,6 +82,14 @@ export async function verifyFirebaseIdToken(idToken: string): Promise<FirebaseUs
   }
 
   const decoded = await admin.auth().verifyIdToken(idToken, true);
+  // Defensive max-age check: Firebase ID tokens are valid for 1 hour. We
+  // require iat within the last 1h + small skew so an old token that somehow
+  // slipped past Google's checks is still rejected app-side.
+  const nowSec = Math.floor(Date.now() / 1000);
+  const tokenAgeSec = nowSec - (decoded.iat || 0);
+  if (tokenAgeSec > 3600 + 300) {
+    throw new Error('Firebase ID token is too old');
+  }
   const provider = decoded.firebase?.sign_in_provider || 'unknown';
 
   return {

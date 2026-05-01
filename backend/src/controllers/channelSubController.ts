@@ -283,7 +283,18 @@ export async function handleChannelSubCheckoutCompleted(session: any) {
   let periodEnd: Date | null = null;
   if (s) {
     try {
-      stripeSub = await s.subscriptions.retrieve(session.subscription);
+      // session.subscription is normally a string id, but in some Stripe API
+      // configurations (with `expand: ['subscription']`) it can come through
+      // as the full object — passing that to subscriptions.retrieve throws.
+      const subId =
+        typeof session.subscription === 'string'
+          ? session.subscription
+          : session.subscription?.id;
+      if (!subId) {
+        logger.warn('channel_subscription session has no subscription id', { sessionId: session.id });
+        return;
+      }
+      stripeSub = await s.subscriptions.retrieve(subId);
       amountCents = stripeSub.items?.data?.[0]?.price?.unit_amount || 0;
       if (typeof stripeSub.current_period_start === 'number') {
         periodStart = new Date(stripeSub.current_period_start * 1000);
@@ -410,8 +421,16 @@ export async function handleChannelSubInvoicePaid(invoice: any): Promise<void> {
       data: { status: 'ACTIVE' },
     });
   }
-  const amountCents: number =
-    typeof invoice.amount_paid === 'number' ? invoice.amount_paid : sub.amountCents;
+  // Reject the webhook outright if Stripe didn't include amount_paid — the
+  // previous fallback to sub.amountCents over/under-credited the referrer
+  // when the price changed mid-subscription.
+  if (typeof invoice.amount_paid !== 'number') {
+    logger.warn('channel_subscription invoice missing amount_paid; skipping credit', {
+      invoiceId: invoice.id,
+    });
+    return;
+  }
+  const amountCents = invoice.amount_paid;
   if (amountCents <= 0) return;
   const netCents = Math.floor((amountCents * (10000 - sub.platformFeeBps)) / 10000);
   if (netCents <= 0) return;

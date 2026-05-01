@@ -46,10 +46,13 @@ export const createApiKey = async (req: RequestWithUser, res: Response) => {
         prefix,
         keyHash: hash,
         scopes: Array.isArray(scopes)
-          ? scopes
-              .filter((s: unknown): s is string => typeof s === 'string')
-              .filter((s) => (ALLOWED_SCOPES as readonly string[]).includes(s))
-              .slice(0, ALLOWED_SCOPES.length)
+          ? Array.from(
+              new Set(
+                scopes
+                  .filter((s: unknown): s is string => typeof s === 'string')
+                  .filter((s) => (ALLOWED_SCOPES as readonly string[]).includes(s)),
+              ),
+            )
           : [],
       },
       select: { id: true, name: true, prefix: true, scopes: true, createdAt: true },

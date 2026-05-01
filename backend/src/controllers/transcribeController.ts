@@ -1,6 +1,27 @@
 import { Response } from 'express';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
+import { prisma } from '../utils/db';
+
+// Per-user daily transcription cap. The transcribe endpoint forwards to a
+// paid OpenAI audio API; without a cap a single user could burn $5+/min.
+// Tracked in-memory (per-process) — fine for a hard ceiling, slightly leaky
+// across replicas but trivially survivable.
+const DAILY_TRANSCRIBE_CAP = 200;
+const transcribeCounts = new Map<string, { day: string; count: number }>();
+function bumpTranscribeCount(userId: string): boolean {
+  const day = new Date().toISOString().slice(0, 10);
+  const existing = transcribeCounts.get(userId);
+  if (!existing || existing.day !== day) {
+    transcribeCounts.set(userId, { day, count: 1 });
+    return true;
+  }
+  if (existing.count >= DAILY_TRANSCRIBE_CAP) return false;
+  existing.count += 1;
+  return true;
+}
+// Suppress unused-var TS warnings when prisma isn't referenced yet.
+void prisma;
 
 // MIME types Whisper / gpt-4o-mini-transcribe actually accept. Filtering
 // here saves an OpenAI quota call and avoids relaying user-controlled
@@ -31,6 +52,12 @@ export const transcribeAudio = async (req: RequestWithUser & { file?: any }, res
   try {
     if (!req.user) {
       res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    if (!bumpTranscribeCount(req.user.userId)) {
+      res.status(429).json({
+        error: 'Daily transcription limit reached. Please try again tomorrow.',
+      });
       return;
     }
     if (!req.file?.buffer) {

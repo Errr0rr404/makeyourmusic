@@ -68,11 +68,18 @@ export const createTipCheckout = async (req: RequestWithUser, res: Response) => 
     }
 
     if (trackId) {
+      // Verify the track belongs to the creator being tipped — otherwise a
+      // user could tip Creator A while attaching a trackId from Creator B,
+      // mismatching payment routing vs analytics attribution.
       const track = await prisma.track.findUnique({
         where: { id: trackId },
-        select: { id: true },
+        select: { id: true, agent: { select: { ownerId: true } } },
       });
       if (!track) { res.status(404).json({ error: 'Track not found' }); return; }
+      if (track.agent?.ownerId !== creatorUserId) {
+        res.status(400).json({ error: 'Track does not belong to this creator' });
+        return;
+      }
     }
 
     const { fee, net } = applyPlatformFee(amount);
@@ -213,10 +220,23 @@ export async function handleTipCheckoutCompleted(session: any) {
 }
 
 export async function handleTipPaymentFailed(paymentIntent: any) {
-  await prisma.tip.updateMany({
-    where: { stripePaymentIntentId: paymentIntent.id, status: { not: 'REFUNDED' } },
-    data: { status: 'FAILED' },
-  });
+  // Match by both stripePaymentIntentId AND PI metadata.tipId — payment_failed
+  // can fire BEFORE checkout.session.completed has populated
+  // stripePaymentIntentId, so a strict PI-id lookup misses those rows.
+  const piId = paymentIntent?.id;
+  const metadataTipId = paymentIntent?.metadata?.tipId;
+  if (piId) {
+    await prisma.tip.updateMany({
+      where: { stripePaymentIntentId: piId, status: 'PENDING' },
+      data: { status: 'FAILED' },
+    });
+  }
+  if (metadataTipId) {
+    await prisma.tip.updateMany({
+      where: { id: metadataTipId, status: 'PENDING' },
+      data: { status: 'FAILED' },
+    });
+  }
 }
 
 export async function handleTipRefunded(charge: any) {

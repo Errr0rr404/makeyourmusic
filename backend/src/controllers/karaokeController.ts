@@ -76,13 +76,19 @@ export const karaokeLyrics = async (req: RequestWithUser, res: Response) => {
     const trackId = req.params.trackId as string;
     const track = await prisma.track.findUnique({
       where: { id: trackId },
-      select: { id: true, lyrics: true, duration: true, isPublic: true, status: true },
+      select: {
+        id: true, lyrics: true, duration: true, isPublic: true, status: true,
+        agent: { select: { ownerId: true } },
+      },
     });
     if (!track) {
       res.status(404).json({ error: 'Track not found' });
       return;
     }
-    if (!track.isPublic || track.status !== 'ACTIVE') {
+    // Allow the track owner to view karaoke for their own private/non-active
+    // tracks — gating only applies to non-owners.
+    const isOwner = !!req.user && track.agent?.ownerId === req.user.userId;
+    if (!isOwner && (!track.isPublic || track.status !== 'ACTIVE')) {
       res.status(403).json({ error: 'Track is not public' });
       return;
     }

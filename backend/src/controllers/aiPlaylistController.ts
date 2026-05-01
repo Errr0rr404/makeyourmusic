@@ -101,7 +101,10 @@ async function llmExtract(prompt: string, allGenres: { slug: string; name: strin
       genres: Array.isArray(parsed.genres) ? parsed.genres.filter((s: any) => typeof s === 'string' && validSlugs.has(s)) : [],
       moods: Array.isArray(parsed.moods) ? parsed.moods.filter((s: any) => typeof s === 'string').slice(0, 6) : [],
       keywords: Array.isArray(parsed.keywords) ? parsed.keywords.filter((s: any) => typeof s === 'string').slice(0, 10) : [],
-      tempo: ['slow', 'medium', 'fast'].includes(parsed.tempo) ? parsed.tempo : null,
+      tempo:
+        typeof parsed.tempo === 'string' && ['slow', 'medium', 'fast'].includes(parsed.tempo)
+          ? parsed.tempo
+          : null,
       instrumental: typeof parsed.instrumental === 'boolean' ? parsed.instrumental : undefined,
     };
   } catch (e) {
@@ -208,22 +211,44 @@ export const playlistFromPrompt = async (req: RequestWithUser, res: Response) =>
         .replace(/[^\w\s-]/g, '')
         .replace(/[\s_-]+/g, '-')
         .replace(/^-+|-+$/g, '') || 'vibe';
-      let slug = baseSlug;
-      if (await prisma.playlist.findUnique({ where: { slug } })) {
-        slug = `${baseSlug}-${Date.now().toString(36)}`;
-      }
-      const created = await prisma.playlist.create({
-        data: {
-          title: filters.title,
-          slug,
-          description: prompt.slice(0, 280),
-          isPublic: false,
-          userId: req.user.userId,
-          tracks: {
-            create: picked.map((t, i) => ({ trackId: t.id, position: i })),
+      // TOCTOU race: two concurrent requests with the same baseSlug both pass
+      // the findUnique check, then one P2002s on create. Append a short
+      // disambiguator unconditionally on the first try; on P2002, append a
+      // longer one.
+      let slug = `${baseSlug}-${Date.now().toString(36)}`;
+      let created;
+      try {
+        created = await prisma.playlist.create({
+          data: {
+            title: filters.title,
+            slug,
+            description: prompt.slice(0, 280),
+            isPublic: false,
+            userId: req.user.userId,
+            tracks: {
+              create: picked.map((t, i) => ({ trackId: t.id, position: i })),
+            },
           },
-        },
-      });
+        });
+      } catch (err: any) {
+        if (err?.code === 'P2002') {
+          slug = `${baseSlug}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+          created = await prisma.playlist.create({
+            data: {
+              title: filters.title,
+              slug,
+              description: prompt.slice(0, 280),
+              isPublic: false,
+              userId: req.user.userId,
+              tracks: {
+                create: picked.map((t, i) => ({ trackId: t.id, position: i })),
+              },
+            },
+          });
+        } else {
+          throw err;
+        }
+      }
       savedPlaylist = { id: created.id, slug: created.slug, title: created.title };
     }
 

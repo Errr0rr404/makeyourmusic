@@ -75,8 +75,31 @@ export function startCron(): void {
   }
   started = true;
 
+  // Self-rescheduling timers instead of setInterval. With setInterval, when a
+  // tick takes longer than the interval, the next fires while the previous is
+  // still in `await` — even though withLock prevents overlap, the closure
+  // still consumes a connection and stacks up. Self-rescheduling guarantees
+  // exactly one tick at a time and avoids any backlog.
+  const scheduledTimers: Array<ReturnType<typeof setTimeout>> = [];
+  function schedule(intervalMs: number, name: string, run: () => Promise<void>) {
+    const tick = async () => {
+      try {
+        await run();
+      } catch (err) {
+        logger.warn(`cron: ${name} unexpected error`, { error: (err as Error).message });
+      } finally {
+        const t = setTimeout(tick, intervalMs);
+        if (typeof (t as any).unref === 'function') (t as any).unref();
+        scheduledTimers.push(t);
+      }
+    };
+    const t = setTimeout(tick, intervalMs);
+    if (typeof (t as any).unref === 'function') (t as any).unref();
+    scheduledTimers.push(t);
+  }
+
   // Trending — every 15 minutes.
-  const trendingT = setInterval(async () => {
+  schedule(15 * 60 * 1000, 'trending', async () => {
     await withLock(LOCK_TRENDING, async () => {
       try {
         const n = await refreshTrendingScores();
@@ -85,10 +108,10 @@ export function startCron(): void {
         logger.warn('cron: trending failed', { error: (err as Error).message });
       }
     });
-  }, 15 * 60 * 1000);
+  });
 
   // Feature recompute — every hour.
-  const featuresT = setInterval(async () => {
+  schedule(60 * 60 * 1000, 'features', async () => {
     await withLock(LOCK_FEATURES, async () => {
       try {
         const n = await recomputeAllFeatures();
@@ -97,10 +120,10 @@ export function startCron(): void {
         logger.warn('cron: features failed', { error: (err as Error).message });
       }
     });
-  }, 60 * 60 * 1000);
+  });
 
   // Auto-preview video poller — every 5 min. Cheap when no jobs are pending.
-  const previewT = setInterval(async () => {
+  schedule(5 * 60 * 1000, 'preview', async () => {
     await withLock(LOCK_PREVIEW, async () => {
       try {
         const r = await pollPreviewVideos();
@@ -109,10 +132,10 @@ export function startCron(): void {
         logger.warn('cron: preview poll failed', { error: (err as Error).message });
       }
     });
-  }, 5 * 60 * 1000);
+  });
 
   // Weekly mixtapes — checked hourly, only fires inside the Sunday-night window.
-  const mixtapeT = setInterval(async () => {
+  schedule(60 * 60 * 1000, 'mixtape', async () => {
     if (!shouldRunMixtape(new Date())) return;
     await withLock(LOCK_MIXTAPE, async () => {
       try {
@@ -122,11 +145,11 @@ export function startCron(): void {
         logger.warn('cron: mixtape job failed', { error: (err as Error).message });
       }
     });
-  }, 60 * 60 * 1000);
+  });
 
   // Stuck-generation sweep — every 5 min, fails timed-out PROCESSING rows so
   // users aren't permanently locked out by a crashed process.
-  const sweepT = setInterval(async () => {
+  schedule(5 * 60 * 1000, 'stuck-gen-sweep', async () => {
     await withLock(LOCK_STUCK_GEN_SWEEP, async () => {
       try {
         const r = await sweepStuckGenerations();
@@ -135,12 +158,10 @@ export function startCron(): void {
         logger.warn('cron: stuck-gen sweep failed', { error: (err as Error).message });
       }
     });
-  }, 5 * 60 * 1000);
+  });
 
-  // Referral payouts — once per hour. Issues Stripe Connect transfers for
-  // accumulated referral earnings; rows below the min-payout threshold or
-  // for referrers without an active Connect account stay pending.
-  const referralT = setInterval(async () => {
+  // Referral payouts — once per hour.
+  schedule(60 * 60 * 1000, 'referral-payouts', async () => {
     await withLock(LOCK_REFERRAL_PAYOUT, async () => {
       try {
         const r = await payReferrals();
@@ -149,12 +170,10 @@ export function startCron(): void {
         logger.warn('cron: referral payout failed', { error: (err as Error).message });
       }
     });
-  }, 60 * 60 * 1000);
+  });
 
-  // Collab payout retry — every 15 minutes. Picks up any PENDING transfers
-  // that failed at webhook time (transient Stripe error, recipient not yet
-  // onboarded, etc.) and tries again until success or max attempts.
-  const collabT = setInterval(async () => {
+  // Collab payout retry — every 15 minutes.
+  schedule(15 * 60 * 1000, 'collab-payouts', async () => {
     await withLock(LOCK_COLLAB_PAYOUT, async () => {
       try {
         const r = await processPendingCollabPayouts();
@@ -163,12 +182,7 @@ export function startCron(): void {
         logger.warn('cron: collab payout failed', { error: (err as Error).message });
       }
     });
-  }, 15 * 60 * 1000);
-
-  // unref so the timers don't keep the process alive on graceful shutdown.
-  for (const t of [trendingT, featuresT, previewT, mixtapeT, sweepT, referralT, collabT]) {
-    if (typeof (t as any).unref === 'function') (t as any).unref();
-  }
+  });
 
   logger.info('Cron started');
 }

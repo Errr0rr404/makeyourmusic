@@ -137,9 +137,17 @@ export async function syncConnectAccount(stripeAccountId: string) {
   if (!s) return;
 
   const acct = await s.accounts.retrieve(stripeAccountId);
-  const requirementsDisabled = Boolean(
-    acct.requirements?.disabled_reason && acct.requirements.disabled_reason !== 'requirements.past_due'
-  );
+  // Treat only TERMINAL disabled_reasons as RESTRICTED. The previous logic
+  // mapped `under_review` (Stripe's normal initial-review state) to
+  // RESTRICTED, so brand-new accounts spent their onboarding period flagged.
+  const TRANSIENT_DISABLED_REASONS = new Set([
+    'requirements.past_due',
+    'requirements.pending_verification',
+    'under_review',
+    'pending_verification',
+  ]);
+  const reason = acct.requirements?.disabled_reason;
+  const requirementsDisabled = Boolean(reason && !TRANSIENT_DISABLED_REASONS.has(reason));
   const status = mapStatus(
     Boolean(acct.payouts_enabled),
     Boolean(acct.details_submitted),

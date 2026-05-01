@@ -14,8 +14,12 @@ if (!ENCRYPTION_KEY && process.env.NODE_ENV === 'production') {
 if (ENCRYPTION_KEY && !/^[0-9a-fA-F]{64}$/.test(ENCRYPTION_KEY)) {
   throw new Error('ENCRYPTION_KEY must be exactly 64 hex characters (32 bytes) for AES-256');
 }
-// Fallback for development only - generates a new key each time (data will not persist)
-const FALLBACK_KEY = ENCRYPTION_KEY || crypto.randomBytes(32).toString('hex');
+// Fallback for development only. Pin to a constant dev seed so encrypted
+// data round-trips across forked workers, test runners, and reloads. The
+// previous random-per-process key caused flaky decryption every time the
+// dev server restarted.
+const DEV_FALLBACK_KEY = '0000000000000000000000000000000000000000000000000000000000000000';
+const FALLBACK_KEY = ENCRYPTION_KEY || DEV_FALLBACK_KEY;
 if (!ENCRYPTION_KEY && process.env.NODE_ENV !== 'production') {
   logger.warn('ENCRYPTION_KEY not set - using temporary key. Encrypted data will not persist across restarts.');
 }

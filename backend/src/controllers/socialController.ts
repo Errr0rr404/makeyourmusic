@@ -30,12 +30,12 @@ export const toggleLike = async (req: RequestWithUser, res: Response) => {
         const deleted = await tx.like.deleteMany({ where: { userId, trackId } });
         if (deleted.count > 0) {
           await tx.track.update({ where: { id: trackId }, data: { likeCount: { decrement: 1 } } });
-          await tx.aiAgent.update({ where: { id: track.agentId }, data: { totalLikes: { decrement: 1 } } });
+          await tx.aiAgent.updateMany({ where: { id: track.agentId }, data: { totalLikes: { decrement: 1 } } });
           return false;
         }
         await tx.like.create({ data: { userId, trackId } });
         await tx.track.update({ where: { id: trackId }, data: { likeCount: { increment: 1 } } });
-        await tx.aiAgent.update({ where: { id: track.agentId }, data: { totalLikes: { increment: 1 } } });
+        await tx.aiAgent.updateMany({ where: { id: track.agentId }, data: { totalLikes: { increment: 1 } } });
         return true;
       });
     } catch (e) {
@@ -277,7 +277,7 @@ export const createComment = async (req: RequestWithUser, res: Response) => {
     }
 
     const comment = await prisma.comment.create({
-      data: { content: trimmed, userId: req.user.userId, trackId, parentId },
+      data: { content: trimmed, userId: req.user.userId, trackId, parentId: parentId ?? null },
       include: { user: { select: { id: true, username: true, displayName: true, avatar: true } } },
     });
 
@@ -399,7 +399,11 @@ export const createPlaylist = async (req: RequestWithUser, res: Response) => {
           slug,
           description,
           isPublic: isPublic !== false,
-          accessTier: isPublic === false ? 'PRIVATE' : 'PUBLIC',
+          // Treat any non-true value as PRIVATE (the previous strict
+          // `=== false` check let `isPublic: 'no'` fall through to PUBLIC,
+          // because 'no' is neither false nor truthy in the boolean sense
+          // we wanted).
+          accessTier: isPublic === true ? 'PUBLIC' : 'PRIVATE',
           userId: req.user!.userId,
         },
       })
@@ -415,11 +419,24 @@ export const createPlaylist = async (req: RequestWithUser, res: Response) => {
 export const getPlaylist = async (req: RequestWithUser, res: Response) => {
   try {
     const idOrSlug = req.params.idOrSlug as string;
+    // Bound the embedded tracks. Long playlists can have hundreds of tracks
+    // and inflating every getPlaylist response with the full list created
+    // multi-MB payloads. UIs that need the rest can paginate via a separate
+    // /playlists/:id/tracks endpoint.
+    const TRACK_PAGE_SIZE = 200;
     const playlist = await prisma.playlist.findFirst({
       where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
       include: {
         user: { select: { id: true, username: true, displayName: true, avatar: true } },
         tracks: {
+          // Filter taken-down / non-active tracks at the DB level so the
+          // response stays consistent with /tracks/:id which 404s those.
+          where: {
+            track: {
+              status: 'ACTIVE',
+              takedownStatus: null,
+            },
+          },
           include: {
             track: {
               include: {
@@ -429,6 +446,7 @@ export const getPlaylist = async (req: RequestWithUser, res: Response) => {
             },
           },
           orderBy: { position: 'asc' },
+          take: TRACK_PAGE_SIZE,
         },
       },
     });
@@ -565,18 +583,17 @@ export const addToPlaylist = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Cap playlist size — without this a single playlist row can grow
-    // unboundedly large; getPlaylist returns all tracks via Prisma include
-    // with no `take` limit, so a 100k-track playlist would crash the API.
+    // Cap playlist size. Move the count INSIDE the transaction so concurrent
+    // adds can't both pass the check (read-then-write race let two requests
+    // both see currentCount=499 and push the playlist to 501).
     const MAX_TRACKS_PER_PLAYLIST = 500;
-    const currentCount = await prisma.playlistTrack.count({ where: { playlistId } });
-    if (currentCount >= MAX_TRACKS_PER_PLAYLIST) {
-      res.status(409).json({ error: `Playlist is full (max ${MAX_TRACKS_PER_PLAYLIST} tracks)` });
-      return;
-    }
 
     try {
       const playlistTrack = await prisma.$transaction(async (tx) => {
+        const currentCount = await tx.playlistTrack.count({ where: { playlistId } });
+        if (currentCount >= MAX_TRACKS_PER_PLAYLIST) {
+          throw new Error('PLAYLIST_FULL');
+        }
         const maxPosition = await tx.playlistTrack.aggregate({
           where: { playlistId },
           _max: { position: true },
@@ -587,6 +604,10 @@ export const addToPlaylist = async (req: RequestWithUser, res: Response) => {
       });
       res.status(201).json({ playlistTrack });
     } catch (e) {
+      if ((e as Error).message === 'PLAYLIST_FULL') {
+        res.status(409).json({ error: `Playlist is full (max ${MAX_TRACKS_PER_PLAYLIST} tracks)` });
+        return;
+      }
       if ((e as { code?: string }).code === 'P2002') {
         res.status(409).json({ error: 'Track is already in this playlist' });
         return;
@@ -739,7 +760,7 @@ export const shareTrack = async (req: RequestWithUser, res: Response) => {
     const shouldCount = !isSelfShare && !isDuplicate;
 
     const ops: any[] = [
-      prisma.share.create({ data: { trackId, userId: req.user?.userId, platform: normalizedPlatform } }),
+      prisma.share.create({ data: { trackId, userId: req.user?.userId ?? null, platform: normalizedPlatform } }),
     ];
     if (shouldCount) {
       ops.push(

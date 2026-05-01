@@ -528,10 +528,10 @@ export const recordPlay = async (req: RequestWithUser, res: Response) => {
           where: { id: trackId },
           data: { playCount: { increment: 1 } },
         }),
-        prisma.aiAgent.update({
+        prisma.aiAgent.updateMany({
           where: { id: track.agentId },
           data: { totalPlays: { increment: 1 } },
-        })
+        }),
       );
     }
     await prisma.$transaction(ops);
@@ -605,15 +605,14 @@ export const deleteTrack = async (req: RequestWithUser, res: Response) => {
     }
 
     // Decrement the agent's denormalized counters by this track's contribution
-    // before deleting. Otherwise totalPlays/totalLikes drift permanently up.
+    // before deleting. Use raw SQL with GREATEST so a drifted/negative counter
+    // can't go below zero — Prisma's `decrement` blindly subtracts, so any
+    // earlier counter drift would push these into the negatives forever.
     await prisma.$transaction([
-      prisma.aiAgent.update({
-        where: { id: track.agentId },
-        data: {
-          totalPlays: { decrement: track.playCount },
-          totalLikes: { decrement: track.likeCount },
-        },
-      }),
+      prisma.$executeRaw`UPDATE "ai_agents"
+        SET "total_plays" = GREATEST("total_plays" - ${track.playCount}, 0),
+            "total_likes" = GREATEST("total_likes" - ${track.likeCount}, 0)
+        WHERE "id" = ${track.agentId}`,
       prisma.track.delete({ where: { id } }),
     ]);
     res.json({ message: 'Track deleted' });
@@ -634,7 +633,9 @@ export const getTrending = async (req: RequestWithUser, res: Response) => {
       where: { createdAt: { gte: sevenDaysAgo } },
       _count: { trackId: true },
       orderBy: { _count: { trackId: 'desc' } },
-      take: limit * 2,
+      // Take *5 (was *2) so the post-filter for public/active/non-takedown
+      // doesn't leave us with too few rows when private tracks rank highly.
+      take: limit * 5,
     });
 
     if (grouped.length === 0) {
@@ -738,12 +739,17 @@ export const getSimilarTracks = async (req: RequestWithUser, res: Response) => {
 
     const source = await prisma.track.findFirst({
       where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }], status: 'ACTIVE' },
-      select: { id: true, genreId: true, agentId: true, mood: true, isPublic: true },
+      select: {
+        id: true, genreId: true, agentId: true, mood: true, isPublic: true,
+        agent: { select: { ownerId: true } },
+      },
     });
 
     // Return identical 404 for both "doesn't exist" and "private/taken-down"
-    // so unauthenticated callers can't enumerate IDs.
-    if (!source || !source.isPublic) {
+    // so unauthenticated callers can't enumerate IDs. Allow the owner to
+    // view similar tracks for their own private songs.
+    const isOwner = !!req.user && source?.agent?.ownerId === req.user.userId;
+    if (!source || (!source.isPublic && !isOwner)) {
       res.status(404).json({ error: 'Track not found' });
       return;
     }

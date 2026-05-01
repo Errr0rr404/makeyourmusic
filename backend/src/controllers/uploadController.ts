@@ -63,12 +63,34 @@ export const handleVideoUpload = async (req: RequestWithUser, res: Response) => 
   }
 };
 
+// Per-user daily upload byte quota — caps Cloudinary cost-DoS by a
+// single account. Tracked in-memory; fine as a hard ceiling.
+const DAILY_UPLOAD_BYTES_CAP = 2 * 1024 * 1024 * 1024; // 2 GB / user / day
+const uploadBytesByUser = new Map<string, { day: string; bytes: number }>();
+function tryReserveUploadBudget(userId: string, bytes: number): boolean {
+  const day = new Date().toISOString().slice(0, 10);
+  const existing = uploadBytesByUser.get(userId);
+  if (!existing || existing.day !== day) {
+    if (bytes > DAILY_UPLOAD_BYTES_CAP) return false;
+    uploadBytesByUser.set(userId, { day, bytes });
+    return true;
+  }
+  if (existing.bytes + bytes > DAILY_UPLOAD_BYTES_CAP) return false;
+  existing.bytes += bytes;
+  return true;
+}
+
 export const handleUpload = async (req: RequestWithUser, res: Response) => {
   try {
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
 
     const file = req.file;
     if (!file) { res.status(400).json({ error: 'No file provided' }); return; }
+
+    if (!tryReserveUploadBudget(req.user.userId, file.size || file.buffer?.length || 0)) {
+      res.status(429).json({ error: 'Daily upload quota exceeded.' });
+      return;
+    }
 
     let folder = 'general';
     let resourceType: 'image' | 'video' | 'raw' | 'auto' = 'auto';

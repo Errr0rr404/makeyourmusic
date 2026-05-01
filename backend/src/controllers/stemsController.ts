@@ -231,6 +231,14 @@ export async function handleStemsGenerationCheckoutCompleted(session: any) {
   }
 }
 
+// Throttle in-line Replicate polling. Without this, every public GET on
+// /tracks/:id/stems would fire an outbound paid Replicate request — a
+// reflective DoS amplifier (anonymous attacker triggers our paid API).
+// Each providerJobId is polled at most once per 10 seconds in-process; other
+// concurrent callers see the cached row without poking Replicate.
+const stemsPollCooldownMs = 10_000;
+const stemsLastPolledAt = new Map<string, number>();
+
 // Poll status and, when the upstream is done, persist the four stem URLs.
 export const getStems = async (req: RequestWithUser, res: Response) => {
   try {
@@ -241,6 +249,13 @@ export const getStems = async (req: RequestWithUser, res: Response) => {
       return;
     }
     if (stems.status === 'PROCESSING' && stems.providerJobId) {
+      const lastPolled = stemsLastPolledAt.get(stems.providerJobId) || 0;
+      const now = Date.now();
+      if (now - lastPolled < stemsPollCooldownMs) {
+        res.json({ stems });
+        return;
+      }
+      stemsLastPolledAt.set(stems.providerJobId, now);
       try {
         const result = await pollStemsJob(stems.providerJobId);
         if (result.status === 'succeeded' && result.output) {
