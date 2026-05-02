@@ -52,6 +52,7 @@ export function TrackRow({ track, queue, index, showAgent = true, showLike = tru
       setLiked(Boolean(res.data?.liked));
     } catch {
       setLiked(wasLiked);
+      Alert.alert('Like failed', 'Could not update this track right now.');
     } finally {
       setLikeBusy(false);
     }

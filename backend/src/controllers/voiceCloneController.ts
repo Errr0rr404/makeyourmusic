@@ -11,9 +11,8 @@
 //   4. The clone can then be selected on /create as the singing voice for any
 //      generation (sets MusicGeneration.voiceCloneId).
 //
-// When no provider is configured (env unset) we still accept the upload + payment
-// and persist a clone row in PENDING; ops can manually mark READY once the real
-// provider integration lands.
+// Until a concrete provider integration is implemented, checkout is disabled
+// so users are never charged for a clone that cannot be provisioned.
 
 import { Response } from 'express';
 import { prisma } from '../utils/db';
@@ -25,14 +24,14 @@ const VOICE_CLONE_PRICE_CENTS = parseInt(process.env.VOICE_CLONE_PRICE_CENTS || 
 const VOICE_CLONE_CURRENCY = (process.env.VOICE_CLONE_CURRENCY || 'usd').toLowerCase();
 
 function hasProvider(): boolean {
-  return Boolean(process.env.ELEVENLABS_API_KEY || process.env.VOICE_CLONE_PROVIDER_API_KEY);
+  return false;
 }
 
 async function provisionWithProvider(referenceUrl: string, name: string): Promise<string | null> {
   // Real provider call goes here — different per vendor (ElevenLabs PVC,
   // Coqui XTTS, etc.). The shape we care about is "give me back a stable
-  // voice id that future generation calls can reference". Until a provider
-  // is configured we no-op and let ops mark the row READY manually.
+  // voice id that future generation calls can reference". Until that code is
+  // implemented, hasProvider() keeps checkout/create disabled.
   if (!hasProvider()) return null;
 
   // ElevenLabs reference-shape — we'd POST { name, files: [referenceUrl] } to
@@ -53,6 +52,10 @@ export const startVoiceCloneCheckout = async (req: RequestWithUser, res: Respons
     const stripe = getStripe();
     if (!stripe) {
       res.status(503).json({ error: 'Payments not configured' });
+      return;
+    }
+    if (!hasProvider()) {
+      res.status(503).json({ error: 'Voice cloning is not configured yet' });
       return;
     }
 
@@ -91,8 +94,8 @@ export const startVoiceCloneCheckout = async (req: RequestWithUser, res: Respons
         kind: 'voice_clone',
         userId: req.user.userId,
       },
-      success_url: `${frontendUrl()}/settings/voice-clones?paid=1&session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${frontendUrl()}/settings/voice-clones?canceled=1`,
+      success_url: `${frontendUrl()}/settings?voiceClone=paid&session_id={CHECKOUT_SESSION_ID}`,
+      cancel_url: `${frontendUrl()}/settings?voiceClone=canceled`,
     });
 
     res.json({ checkoutUrl: session.url, sessionId: session.id });
@@ -114,6 +117,10 @@ export const createVoiceClone = async (req: RequestWithUser, res: Response) => {
       return;
     }
     const { name, referenceUrl, sessionId } = req.body || {};
+    if (!hasProvider()) {
+      res.status(503).json({ error: 'Voice cloning is not configured yet' });
+      return;
+    }
     if (typeof name !== 'string' || !name.trim()) {
       res.status(400).json({ error: 'name is required' });
       return;

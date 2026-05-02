@@ -60,7 +60,7 @@ export function RemixButton({ trackSlug, trackTitle }: { trackSlug: string; trac
       });
       toast.success('Remix queued — find it under your studio drafts.');
       setOpen(false);
-      router.push('/studio');
+      router.push('/studio/generations');
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } };
       toast.error(e?.response?.data?.error || 'Failed to start remix');

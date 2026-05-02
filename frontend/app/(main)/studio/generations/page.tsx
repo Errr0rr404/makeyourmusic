@@ -75,6 +75,9 @@ export default function GenerationsPage() {
   const [usage, setUsage] = useState<Usage | null>(null);
   const [publishGen, setPublishGen] = useState<Gen | null>(null);
   const [extendGen, setExtendGen] = useState<Gen | null>(null);
+  const [targetGenerationId, setTargetGenerationId] = useState<string | null>(null);
+  const [targetAction, setTargetAction] = useState<string | null>(null);
+  const [handledTargetAction, setHandledTargetAction] = useState(false);
 
   const load = useCallback(async () => {
     if (!isAuthenticated) {
@@ -105,6 +108,37 @@ export default function GenerationsPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const generationId = params.get('generation');
+    if (!generationId) return;
+    setTargetGenerationId(generationId);
+    setTargetAction(params.get('action'));
+  }, []);
+
+  useEffect(() => {
+    if (!targetGenerationId || loading) return;
+    document
+      .getElementById(`generation-${targetGenerationId}`)
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+
+    if (handledTargetAction) return;
+    const target = generations.find((gen) => gen.id === targetGenerationId);
+    if (!target || !targetAction) return;
+
+    const isReady = target.status === 'COMPLETED' && Boolean(target.audioUrl);
+    if (targetAction === 'regenerate-section') {
+      if (isReady) {
+        setExtendGen(target);
+        setHandledTargetAction(true);
+      } else if (target.status === 'FAILED') {
+        toast.error('This generation failed and cannot be extended.');
+        setHandledTargetAction(true);
+      }
+    }
+  }, [generations, handledTargetAction, loading, targetAction, targetGenerationId]);
 
   // Poll while any generations are in progress. Depending on `generations`
   // (the array reference) caused this effect to tear down + restart the
@@ -229,11 +263,16 @@ export default function GenerationsPage() {
         </div>
       ) : (
         <ul className="space-y-3">
-          {generations.map((gen) => (
-            <li
-              key={gen.id}
-              className="p-4 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))]"
-            >
+          {generations.map((gen) => {
+            const isTarget = gen.id === targetGenerationId;
+            return (
+              <li
+                key={gen.id}
+                id={`generation-${gen.id}`}
+                className={`p-4 rounded-xl bg-[hsl(var(--card))] border ${
+                  isTarget ? 'border-purple-400/70 ring-1 ring-purple-400/30' : 'border-[hsl(var(--border))]'
+                }`}
+              >
               <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1 flex-wrap">
@@ -319,8 +358,9 @@ export default function GenerationsPage() {
                   </button>
                 </div>
               </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
 

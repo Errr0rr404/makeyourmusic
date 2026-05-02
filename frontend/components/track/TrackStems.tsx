@@ -18,6 +18,7 @@ interface Stems {
   forSaleCents?: number | null;
   errorMessage?: string | null;
   paidAt?: string | null;
+  hasAccess?: boolean;
 }
 
 interface Props {
@@ -158,24 +159,49 @@ export function TrackStems({ trackId, trackSlug, isOwner }: Props) {
 
   // Non-owner: show only if for sale
   if (!isOwner) {
-    if (!stems || stems.status !== 'READY' || !stems.forSaleCents) return null;
+    if (!stems || stems.status !== 'READY' || (!stems.forSaleCents && !stems.hasAccess)) return null;
     return (
       <div className="bg-[hsl(var(--card))] rounded-xl p-5 mb-8 border border-[hsl(var(--border))]">
         <h3 className="text-sm font-semibold text-white mb-3 flex items-center gap-2">
           <Sparkles className="w-4 h-4 text-[hsl(var(--accent))]" />
-          Stems available
+          {stems.hasAccess ? 'Stems purchased' : 'Stems available'}
         </h3>
         <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">
-          Get the isolated drums, bass, vocals, and other tracks for remixing or production.
+          {stems.hasAccess
+            ? 'Download the isolated drums, bass, vocals, and other tracks.'
+            : 'Get the isolated drums, bass, vocals, and other tracks for remixing or production.'}
         </p>
-        <button
-          onClick={buyStems}
-          disabled={buying}
-          className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-amber-500/90 hover:bg-amber-500 text-white text-sm font-semibold disabled:opacity-50 transition-colors"
-        >
-          {buying ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
-          Buy stems · ${(stems.forSaleCents / 100).toFixed(2)}
-        </button>
+        {stems.hasAccess ? (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {STEM_PARTS.map(({ key, label, Icon }) => {
+              const url = (stems as unknown as Record<string, unknown>)[`${key}Url`] as string | null;
+              if (!url) return null;
+              return (
+                <a
+                  key={key}
+                  href={url}
+                  download={`${label.toLowerCase()}.mp3`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-col items-center gap-2 p-3 rounded-lg border border-[hsl(var(--border))] hover:bg-[hsl(var(--accent))]/10 text-white transition-colors"
+                >
+                  <Icon className="w-5 h-5" />
+                  <span className="text-xs font-medium">{label}</span>
+                  <Download className="w-3 h-3 opacity-60" />
+                </a>
+              );
+            })}
+          </div>
+        ) : (
+          <button
+            onClick={buyStems}
+            disabled={buying}
+            className="inline-flex items-center gap-2 h-10 px-5 rounded-full bg-amber-500/90 hover:bg-amber-500 text-white text-sm font-semibold disabled:opacity-50 transition-colors"
+          >
+            {buying ? <Loader2 className="w-4 h-4 animate-spin" /> : <DollarSign className="w-4 h-4" />}
+            Buy stems · ${((stems.forSaleCents || 0) / 100).toFixed(2)}
+          </button>
+        )}
       </div>
     );
   }

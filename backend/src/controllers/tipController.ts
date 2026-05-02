@@ -85,45 +85,7 @@ export const createTipCheckout = async (req: RequestWithUser, res: Response) => 
     const { fee, net } = applyPlatformFee(amount);
     const fe = frontendUrl();
 
-    const session = await s.checkout.sessions.create({
-      mode: 'payment',
-      payment_method_types: ['card'],
-      line_items: [
-        {
-          price_data: {
-            currency: 'usd',
-            unit_amount: amount,
-            product_data: {
-              name: `Tip for ${creator.displayName || creator.username}`,
-              description: trimmedMessage || undefined,
-            },
-          },
-          quantity: 1,
-        },
-      ],
-      payment_intent_data: {
-        application_fee_amount: fee,
-        transfer_data: { destination: creator.connectAccount.stripeAccountId },
-        metadata: {
-          kind: 'tip',
-          fromUserId: req.user.userId,
-          toUserId: creator.id,
-          trackId: trackId || '',
-        },
-      },
-      success_url: `${fe}/u/${creator.username}?tip=success`,
-      cancel_url: `${fe}/u/${creator.username}?tip=cancelled`,
-      metadata: {
-        kind: 'tip',
-        fromUserId: req.user.userId,
-        toUserId: creator.id,
-        trackId: trackId || '',
-        message: trimmedMessage || '',
-      },
-    });
-
-    // Pre-record the tip as PENDING so we can reconcile via webhook.
-    await prisma.tip.create({
+    const tip = await prisma.tip.create({
       data: {
         amountCents: amount,
         platformFeeCents: fee,
@@ -131,14 +93,74 @@ export const createTipCheckout = async (req: RequestWithUser, res: Response) => 
         currency: 'usd',
         message: trimmedMessage,
         status: 'PENDING',
-        stripeCheckoutSessionId: session.id,
         fromUserId: req.user.userId,
         toUserId: creator.id,
         trackId: trackId || null,
       },
     });
 
-    res.json({ url: session.url, sessionId: session.id });
+    let session;
+    try {
+      session = await s.checkout.sessions.create({
+        mode: 'payment',
+        payment_method_types: ['card'],
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              unit_amount: amount,
+              product_data: {
+                name: `Tip for ${creator.displayName || creator.username}`,
+                description: trimmedMessage || undefined,
+              },
+            },
+            quantity: 1,
+          },
+        ],
+        payment_intent_data: {
+          application_fee_amount: fee,
+          transfer_data: { destination: creator.connectAccount.stripeAccountId },
+          metadata: {
+            kind: 'tip',
+            tipId: tip.id,
+            fromUserId: req.user.userId,
+            toUserId: creator.id,
+            trackId: trackId || '',
+          },
+        },
+        metadata: {
+          kind: 'tip',
+          tipId: tip.id,
+          fromUserId: req.user.userId,
+          toUserId: creator.id,
+          trackId: trackId || '',
+          message: trimmedMessage || '',
+        },
+        success_url: `${fe}/profile/${creator.username}?tip=success`,
+        cancel_url: `${fe}/profile/${creator.username}?tip=cancelled`,
+      });
+    } catch (err) {
+      await prisma.tip.update({
+        where: { id: tip.id },
+        data: { status: 'FAILED' },
+      }).catch(() => undefined);
+      logger.error('Stripe tip checkout creation failed', { error: (err as Error).message });
+      res.status(502).json({ error: 'Failed to create tip checkout' });
+      return;
+    }
+
+    await prisma.tip.update({
+      where: { id: tip.id },
+      data: { stripeCheckoutSessionId: session.id },
+    }).catch((err) => {
+      logger.warn('Failed to attach checkout session id to tip', {
+        tipId: tip.id,
+        sessionId: session.id,
+        error: (err as Error).message,
+      });
+    });
+
+    res.json({ url: session.url, sessionId: session.id, tipId: tip.id });
   } catch (error) {
     logger.error('Create tip checkout error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to create tip checkout' });
@@ -148,20 +170,28 @@ export const createTipCheckout = async (req: RequestWithUser, res: Response) => 
 /** Mark tip as succeeded. Called by webhook on checkout.session.completed (mode=payment, kind=tip). */
 export async function handleTipCheckoutCompleted(session: any) {
   const sessionId: string = session.id;
-  const tip = await prisma.tip.findUnique({
-    where: { stripeCheckoutSessionId: sessionId },
-  });
+  const metadataTipId = session.metadata?.tipId;
+  const tip = metadataTipId
+    ? await prisma.tip.findUnique({ where: { id: metadataTipId } })
+    : await prisma.tip.findUnique({
+        where: { stripeCheckoutSessionId: sessionId },
+      });
   if (!tip) {
-    logger.warn('Tip checkout completed but no Tip record found', { sessionId });
+    logger.warn('Tip checkout completed but no Tip record found', { sessionId, metadataTipId });
     return;
   }
   if (tip.status === 'SUCCEEDED') return;
+  const paymentIntentId =
+    typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : session.payment_intent?.id || null;
 
   await prisma.tip.update({
     where: { id: tip.id },
     data: {
       status: 'SUCCEEDED',
-      stripePaymentIntentId: session.payment_intent || null,
+      stripeCheckoutSessionId: sessionId,
+      stripePaymentIntentId: paymentIntentId,
     },
   });
 

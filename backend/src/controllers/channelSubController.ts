@@ -278,6 +278,22 @@ export async function handleChannelSubCheckoutCompleted(session: any) {
 
   const s = getStripe();
   let stripeSub: any = null;
+  const stripeSubscriptionId =
+    typeof session.subscription === 'string'
+      ? session.subscription
+      : session.subscription?.id;
+  const stripeCustomerId =
+    typeof session.customer === 'string'
+      ? session.customer
+      : session.customer?.id;
+  if (!stripeSubscriptionId || !stripeCustomerId) {
+    logger.warn('channel_subscription session missing required Stripe ids', {
+      sessionId: session.id,
+      hasSubscription: Boolean(stripeSubscriptionId),
+      hasCustomer: Boolean(stripeCustomerId),
+    });
+    return;
+  }
   let amountCents = 0;
   let periodStart: Date | null = null;
   let periodEnd: Date | null = null;
@@ -286,15 +302,7 @@ export async function handleChannelSubCheckoutCompleted(session: any) {
       // session.subscription is normally a string id, but in some Stripe API
       // configurations (with `expand: ['subscription']`) it can come through
       // as the full object — passing that to subscriptions.retrieve throws.
-      const subId =
-        typeof session.subscription === 'string'
-          ? session.subscription
-          : session.subscription?.id;
-      if (!subId) {
-        logger.warn('channel_subscription session has no subscription id', { sessionId: session.id });
-        return;
-      }
-      stripeSub = await s.subscriptions.retrieve(subId);
+      stripeSub = await s.subscriptions.retrieve(stripeSubscriptionId);
       amountCents = stripeSub.items?.data?.[0]?.price?.unit_amount || 0;
       if (typeof stripeSub.current_period_start === 'number') {
         periodStart = new Date(stripeSub.current_period_start * 1000);
@@ -304,7 +312,7 @@ export async function handleChannelSubCheckoutCompleted(session: any) {
       }
     } catch (err) {
       logger.warn('Failed to retrieve Stripe channel subscription', {
-        subId: session.subscription,
+        subId: stripeSubscriptionId,
         error: (err as Error).message,
       });
     }
@@ -316,8 +324,8 @@ export async function handleChannelSubCheckoutCompleted(session: any) {
     },
     update: {
       status: 'ACTIVE',
-      stripeSubscriptionId: session.subscription,
-      stripeCustomerId: session.customer,
+      stripeSubscriptionId,
+      stripeCustomerId,
       currentPeriodStart: periodStart,
       currentPeriodEnd: periodEnd,
       cancelAtPeriodEnd: false,
@@ -330,8 +338,8 @@ export async function handleChannelSubCheckoutCompleted(session: any) {
       platformFeeBps: platformFeeBps(),
       currency: 'usd',
       status: 'ACTIVE',
-      stripeSubscriptionId: session.subscription,
-      stripeCustomerId: session.customer,
+      stripeSubscriptionId,
+      stripeCustomerId,
       currentPeriodStart: periodStart,
       currentPeriodEnd: periodEnd,
     },

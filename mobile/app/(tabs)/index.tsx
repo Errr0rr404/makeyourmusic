@@ -40,6 +40,11 @@ export default function HomeScreen() {
   }, []);
   const displayName = user?.displayName || user?.username || 'there';
   const hasDiscoveryContent = trending.length > 0 || latest.length > 0 || genres.length > 0 || agents.length > 0;
+  const discoveryStats = [
+    { label: 'Trending', value: trending.length, params: { sort: 'popular' } },
+    { label: 'New', value: latest.length, params: { sort: 'newest' } },
+    { label: 'Agents', value: agents.length, params: { tab: 'agents' } },
+  ];
 
   const fetchData = useCallback(async () => {
     try {
@@ -247,6 +252,42 @@ export default function HomeScreen() {
             </TouchableOpacity>
           ))}
         </View>
+        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
+          {discoveryStats.map((stat) => (
+            <TouchableOpacity
+              key={stat.label}
+              onPress={() => router.push({ pathname: '/(tabs)/search', params: stat.params })}
+              style={{
+                flex: 1,
+                minHeight: 54,
+                paddingHorizontal: 10,
+                paddingVertical: 9,
+                borderRadius: tokens.radiusLg,
+                backgroundColor: tokens.card,
+                borderWidth: 1,
+                borderColor: tokens.border,
+              }}
+              activeOpacity={0.75}
+              accessibilityRole="button"
+              accessibilityLabel={`${stat.value} ${stat.label}`}
+            >
+              <Text
+                style={{
+                  color: tokens.text,
+                  fontSize: 17,
+                  fontWeight: '800',
+                  fontFamily: isVintage ? tokens.fontDisplay : undefined,
+                  letterSpacing: isVintage ? 0.6 : 0,
+                }}
+              >
+                {stat.value}
+              </Text>
+              <Text style={{ color: tokens.textMute, fontSize: 11, fontWeight: '600' }} numberOfLines={1}>
+                {stat.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* Error state */}
@@ -279,7 +320,11 @@ export default function HomeScreen() {
       {/* Trending */}
       {trending.length > 0 && (
         <View className="mb-6">
-          <SectionHeader title="Trending Now" />
+          <SectionHeader
+            title="Trending Now"
+            subtitle="What listeners are replaying"
+            onSeeAll={() => router.push('/search?sort=popular')}
+          />
           <FlatList
             data={trending}
             keyExtractor={(item) => item.id}
@@ -294,7 +339,11 @@ export default function HomeScreen() {
       {/* Popular Agents */}
       {agents.length > 0 && (
         <View className="mb-6">
-          <SectionHeader title="Popular AI Agents" />
+          <SectionHeader
+            title="Popular AI Agents"
+            subtitle="Creators with active catalogs"
+            onSeeAll={() => router.push('/search?tab=agents')}
+          />
           <FlatList
             data={agents}
             keyExtractor={(item) => item.id}
@@ -309,7 +358,7 @@ export default function HomeScreen() {
       {/* Browse by Genre */}
       {genres.length > 0 && (
         <View className="mb-6">
-          <SectionHeader title="Browse by Genre" />
+          <SectionHeader title="Browse by Genre" subtitle="Jump into a sound" />
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -356,7 +405,11 @@ export default function HomeScreen() {
       {/* Latest Releases */}
       {latest.length > 0 && (
         <View className="mb-6">
-          <SectionHeader title="Latest Releases" />
+          <SectionHeader
+            title="Latest Releases"
+            subtitle="Freshly published tracks"
+            onSeeAll={() => router.push('/search?sort=newest')}
+          />
           {latest.map((track, i) => (
             <TrackRow key={track.id} track={track} queue={latest} index={i} />
           ))}

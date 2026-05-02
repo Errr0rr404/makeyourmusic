@@ -17,6 +17,17 @@ import { applyPlatformFee, frontendUrl, getStripe } from '../utils/stripeClient'
 
 const VALID_TYPES = ['SAMPLE_PACK', 'PROMPT_PRESET'] as const;
 
+function parseMarketplacePriceCents(value: unknown): number | null {
+  const cents =
+    typeof value === 'number' && Number.isInteger(value)
+      ? value
+      : typeof value === 'string' && /^\d+$/.test(value)
+        ? Number(value)
+        : NaN;
+  if (!Number.isFinite(cents) || cents < 99 || cents > 99999) return null;
+  return cents;
+}
+
 // POST /api/marketplace/listings — create a draft listing.
 export const createListing = async (req: RequestWithUser, res: Response) => {
   try {
@@ -33,9 +44,9 @@ export const createListing = async (req: RequestWithUser, res: Response) => {
       res.status(400).json({ error: 'title is required' });
       return;
     }
-    const cents = Math.max(99, Math.min(99999, parseInt(priceCents, 10) || 0));
-    if (!cents) {
-      res.status(400).json({ error: 'priceCents must be a positive integer (min 99 cents)' });
+    const cents = parseMarketplacePriceCents(priceCents);
+    if (cents === null) {
+      res.status(400).json({ error: 'priceCents must be an integer between 99 and 99999' });
       return;
     }
     const baseSlug = slugify(title) || 'listing';
@@ -90,8 +101,12 @@ export const updateListing = async (req: RequestWithUser, res: Response) => {
     const { title, description, priceCents, coverArt, sampleAudioUrl, assetUrls, presetData, status } = req.body || {};
     if (typeof title === 'string' && title.trim().length > 0) updates.title = title.slice(0, 200);
     if (typeof description === 'string') updates.description = description.slice(0, 5000);
-    if (typeof priceCents === 'number') {
-      const cents = Math.max(99, Math.min(99999, Math.floor(priceCents)));
+    if (priceCents !== undefined) {
+      const cents = parseMarketplacePriceCents(priceCents);
+      if (cents === null) {
+        res.status(400).json({ error: 'priceCents must be an integer between 99 and 99999' });
+        return;
+      }
       updates.priceCents = cents;
     }
     if (typeof coverArt === 'string') updates.coverArt = coverArt.slice(0, 500);
@@ -175,11 +190,32 @@ export const getListing = async (req: RequestWithUser, res: Response) => {
       res.status(404).json({ error: 'Listing not found' });
       return;
     }
+    const isSeller = listing.sellerUserId === req.user?.userId;
+    const purchase = !isSeller && req.user
+      ? await prisma.marketplacePurchase.findFirst({
+          where: {
+            listingId: listing.id,
+            buyerUserId: req.user.userId,
+            status: 'SUCCEEDED',
+          },
+          select: { id: true },
+        })
+      : null;
+    const canAccessPaidPayload = isSeller || Boolean(purchase);
+
     // Best-effort viewCount bump; ignore concurrency races.
     prisma.marketplaceListing
       .update({ where: { id: listing.id }, data: { viewCount: { increment: 1 } } })
       .catch(() => undefined);
-    res.json({ listing });
+    const { assetUrls, presetData, ...safeListing } = listing;
+    res.json({
+      listing: {
+        ...safeListing,
+        assetUrls: canAccessPaidPayload ? assetUrls : [],
+        presetData: canAccessPaidPayload ? presetData : null,
+        hasPurchased: Boolean(purchase),
+      },
+    });
   } catch (error) {
     logger.error('getListing error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to load listing' });
@@ -242,6 +278,18 @@ export const startCheckout = async (req: RequestWithUser, res: Response) => {
     const { fee, net } = applyPlatformFee(listing.priceCents);
     const currency = listing.currency || 'usd';
 
+    const purchase = await prisma.marketplacePurchase.create({
+      data: {
+        listingId: listing.id,
+        buyerUserId: req.user.userId,
+        amountCents: listing.priceCents,
+        platformFeeCents: fee,
+        netCents: net,
+        currency,
+        status: 'PENDING',
+      },
+    });
+
     let session;
     try {
       session = await stripe.checkout.sessions.create({
@@ -265,44 +313,39 @@ export const startCheckout = async (req: RequestWithUser, res: Response) => {
           metadata: {
             kind: 'marketplace_purchase',
             listingId: listing.id,
+            purchaseId: purchase.id,
           },
         },
         metadata: {
           kind: 'marketplace_purchase',
           listingId: listing.id,
+          purchaseId: purchase.id,
         },
-        success_url: `${frontendUrl()}/marketplace/${listing.slug}?purchase=pending`,
+        success_url: `${frontendUrl()}/marketplace/${listing.slug}?purchase=pending&purchaseId=${purchase.id}`,
         cancel_url: `${frontendUrl()}/marketplace/${listing.slug}?canceled=1`,
       });
     } catch (err) {
+      await prisma.marketplacePurchase.update({
+        where: { id: purchase.id },
+        data: { status: 'FAILED' },
+      }).catch(() => undefined);
       logger.error('Marketplace checkout creation failed', { error: (err as Error).message });
       res.status(502).json({ error: 'Failed to create checkout session' });
       return;
     }
 
-    const purchase = await prisma.marketplacePurchase.create({
-      data: {
-        listingId: listing.id,
-        buyerUserId: req.user.userId,
-        amountCents: listing.priceCents,
-        platformFeeCents: fee,
-        netCents: net,
-        currency,
-        status: 'PENDING',
-        stripeCheckoutSessionId: session.id,
-      },
-    });
-
+    // The webhook can use metadata.purchaseId even if this recovery field fails
+    // to persist, so keep the checkout URL usable.
     try {
-      await stripe.checkout.sessions.update(session.id, {
-        metadata: {
-          kind: 'marketplace_purchase',
-          listingId: listing.id,
-          purchaseId: purchase.id,
+      await prisma.marketplacePurchase.update({
+        where: { id: purchase.id },
+        data: {
+          stripeCheckoutSessionId: session.id,
         },
       });
     } catch (err) {
-      logger.warn('Failed to patch marketplace session metadata', {
+      logger.warn('Failed to attach marketplace session id', {
+        purchaseId: purchase.id,
         sessionId: session.id,
         error: (err as Error).message,
       });
@@ -381,15 +424,16 @@ export const downloadPurchase = async (req: RequestWithUser, res: Response) => {
 export async function handleMarketplacePurchaseCompleted(session: any): Promise<void> {
   const sessionId: string = session.id;
   const purchaseId: string | undefined = session.metadata?.purchaseId;
-  if (!purchaseId) {
-    logger.warn('marketplace_purchase webhook missing purchaseId', { sessionId });
-    return;
-  }
-  const purchase = await prisma.marketplacePurchase.findUnique({
-    where: { id: purchaseId },
-    include: { listing: true },
-  });
-  if (!purchase || purchase.stripeCheckoutSessionId !== sessionId) {
+  const purchase = purchaseId
+    ? await prisma.marketplacePurchase.findUnique({
+        where: { id: purchaseId },
+        include: { listing: true },
+      })
+    : await prisma.marketplacePurchase.findUnique({
+        where: { stripeCheckoutSessionId: sessionId },
+        include: { listing: true },
+      });
+  if (!purchase) {
     logger.warn('marketplace_purchase webhook: no matching row', { sessionId, purchaseId });
     return;
   }
@@ -397,13 +441,18 @@ export async function handleMarketplacePurchaseCompleted(session: any): Promise<
 
   const downloadToken = crypto.randomBytes(24).toString('hex');
   const downloadExpiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+  const paymentIntentId =
+    typeof session.payment_intent === 'string'
+      ? session.payment_intent
+      : session.payment_intent?.id || undefined;
 
   await prisma.$transaction(async (tx) => {
     await tx.marketplacePurchase.update({
       where: { id: purchase.id },
       data: {
         status: 'SUCCEEDED',
-        stripePaymentIntentId: session.payment_intent || undefined,
+        stripeCheckoutSessionId: sessionId,
+        stripePaymentIntentId: paymentIntentId,
         downloadToken,
         downloadExpiresAt,
       },

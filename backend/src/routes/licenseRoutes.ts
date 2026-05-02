@@ -3,6 +3,7 @@ import {
   enableLicensing,
   disableLicensing,
   startCheckout,
+  getLicense,
   downloadLicensedFiles,
   browseLicenseable,
 } from '../controllers/licenseController';
@@ -22,6 +23,7 @@ router.put('/tracks/:trackId/enable', authenticate as any, enableLicensing as an
 router.put('/tracks/:trackId/disable', authenticate as any, disableLicensing as any);
 router.post('/checkout', authenticate as any, startCheckout as any);
 router.get('/download/:token', downloadLicensedFiles as any);
+router.get('/:id', authenticate as any, getLicense as any);
 
 // Stems
 // /stems/checkout — owner pays the flat generation fee (Stripe Checkout); the

@@ -19,11 +19,16 @@ const nextConfig = {
   // cross-site Set-Cookie from the api would be dropped, and middleware on the
   // frontend domain could never read the refreshToken cookie).
   async rewrites() {
-    const backendUrl = process.env.INTERNAL_API_URL || 'http://localhost:3001/api';
+    const backendUrl = (process.env.INTERNAL_API_URL || 'http://localhost:3001/api').replace(/\/$/, '');
+    const backendOrigin = backendUrl.replace(/\/api$/, '');
     return [
       {
         source: '/api/:path*',
         destination: `${backendUrl}/:path*`,
+      },
+      {
+        source: '/embed/:path*',
+        destination: `${backendOrigin}/embed/:path*`,
       },
     ];
   },

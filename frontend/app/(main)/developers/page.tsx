@@ -42,7 +42,7 @@ export default function DevelopersHome() {
           </p>
         </Link>
         <Link
-          href="/settings/api-keys"
+          href="/settings/developers"
           className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 hover:border-purple-400/40 transition-colors sm:col-span-2"
         >
           <Key className="w-5 h-5 text-purple-300 mb-2" />

@@ -389,7 +389,6 @@ export default function GenerationsScreen() {
                     <TouchableOpacity
                       onPress={() => {
                         const genId = item.id;
-                        console.log('Publishing generation:', genId);
                         if (!genId) {
                           Alert.alert('Error', 'Invalid generation ID');
                           return;

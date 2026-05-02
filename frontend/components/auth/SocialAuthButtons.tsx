@@ -37,12 +37,13 @@ export function SocialAuthButtons({
         onSuccess();
         return;
       }
-      // Read ?next= from window.location to avoid useSearchParams() —
+      // Read ?next= / ?redirect= from window.location to avoid useSearchParams() —
       // calling it here forces the entire auth route to bail out of static
       // generation, which has been failing the production build.
       let next: string | null = null;
       try {
-        next = new URLSearchParams(window.location.search).get('next');
+        const params = new URLSearchParams(window.location.search);
+        next = params.get('next') || params.get('redirect');
       } catch {}
       // Resolve `next` against the current origin and require the resolved
       // origin to match. Catches `/\\evil.com`, `/[some]:evil.com`,

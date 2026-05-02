@@ -134,7 +134,6 @@ export default function ProfileScreen() {
       return;
     }
     const next = !track.isPublic;
-    console.log('Toggle visibility:', track.id, 'from', track.isPublic, 'to', next);
     setMyTracks((ts) => ts.map((t) => (t.id === track.id ? { ...t, isPublic: next } : t)));
     try {
       await getApi().patch(`/tracks/${track.id}/visibility`, { isPublic: next });

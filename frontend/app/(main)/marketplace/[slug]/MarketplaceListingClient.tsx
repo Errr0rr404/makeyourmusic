@@ -7,7 +7,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { validatePaymentRedirect } from '@/lib/utils';
 import { toast } from '@/lib/store/toastStore';
-import { Music2, Wand2, ShoppingBag, Loader2, AlertCircle } from 'lucide-react';
+import { Music2, Wand2, ShoppingBag, Loader2, AlertCircle, Download } from 'lucide-react';
 
 type ListingType = 'SAMPLE_PACK' | 'PROMPT_PRESET';
 interface Listing {
@@ -23,17 +23,26 @@ interface Listing {
   status: 'DRAFT' | 'ACTIVE' | 'REMOVED';
   presetData?: Record<string, unknown> | null;
   purchaseCount: number;
+  hasPurchased?: boolean;
   sellerUserId: string;
   seller?: { id: string; username: string; displayName?: string | null; avatar?: string | null; bio?: string | null } | null;
 }
 
+type PurchaseDownload = {
+  assetUrls?: string[];
+  presetData?: Record<string, unknown>;
+};
+
 export function MarketplaceListingClient({ slug }: { slug: string }) {
   const router = useRouter();
-  const { isAuthenticated } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const [listing, setListing] = useState<Listing | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [buying, setBuying] = useState(false);
+  const [purchaseDownload, setPurchaseDownload] = useState<PurchaseDownload | null>(null);
+  const [purchaseLoading, setPurchaseLoading] = useState(false);
+  const [purchaseError, setPurchaseError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -57,6 +66,48 @@ export function MarketplaceListingClient({ slug }: { slug: string }) {
       cancelled = true;
     };
   }, [slug]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const purchaseId = params.get('purchaseId');
+    const purchaseState = params.get('purchase');
+    if (!purchaseId || purchaseState !== 'pending') return;
+
+    let cancelled = false;
+    let timer: number | null = null;
+    let attempts = 0;
+
+    const loadPurchase = async () => {
+      setPurchaseLoading(true);
+      try {
+        const r = await api.get<PurchaseDownload>(`/marketplace/purchases/${purchaseId}/download`);
+        if (cancelled) return;
+        setPurchaseDownload(r.data);
+        setPurchaseError(null);
+      } catch (err) {
+        if (cancelled) return;
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 409 && attempts < 40) {
+          attempts += 1;
+          timer = window.setTimeout(loadPurchase, 3000);
+        } else {
+          setPurchaseError(
+            (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+              'Could not load purchase'
+          );
+        }
+      } finally {
+        if (!cancelled) setPurchaseLoading(false);
+      }
+    };
+
+    void loadPurchase();
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, []);
 
   const buy = async () => {
     if (!listing) return;
@@ -107,6 +158,53 @@ export function MarketplaceListingClient({ slug }: { slug: string }) {
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
+      {(purchaseDownload || purchaseLoading || purchaseError) && (
+        <div className="mb-6 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-4">
+          <div className="flex items-start gap-3">
+            {purchaseLoading && !purchaseDownload ? (
+              <Loader2 className="w-5 h-5 text-emerald-200 animate-spin mt-0.5" />
+            ) : (
+              <Download className="w-5 h-5 text-emerald-200 mt-0.5" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white">
+                {purchaseDownload ? 'Purchase complete' : 'Confirming purchase'}
+              </p>
+              {purchaseError ? (
+                <p className="mt-1 text-sm text-rose-200">{purchaseError}</p>
+              ) : purchaseDownload?.assetUrls?.length ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {purchaseDownload.assetUrls.map((href, index) => (
+                    <a
+                      key={`${href}-${index}`}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-emerald-400 text-black text-sm font-semibold hover:bg-emerald-300"
+                    >
+                      <Download className="w-4 h-4" />
+                      Asset {index + 1}
+                    </a>
+                  ))}
+                </div>
+              ) : purchaseDownload?.presetData ? (
+                <button
+                  onClick={() => listing && router.push(`/create?preset=${listing.slug}`)}
+                  disabled={!listing}
+                  className="mt-3 inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-emerald-400 text-black text-sm font-semibold hover:bg-emerald-300 disabled:opacity-50"
+                >
+                  <Wand2 className="w-4 h-4" />
+                  Open preset
+                </button>
+              ) : (
+                <p className="mt-1 text-sm text-emerald-100/80">
+                  Keep this page open while payment is confirmed. Your purchase will appear here.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className="aspect-square rounded-2xl overflow-hidden bg-[hsl(var(--secondary))]">
           {listing.coverArt ? (
@@ -162,13 +260,13 @@ export function MarketplaceListingClient({ slug }: { slug: string }) {
                 {buying ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShoppingBag className="w-4 h-4" />}
                 Buy now
               </button>
-              {listing.type === 'PROMPT_PRESET' && (
+              {listing.type === 'PROMPT_PRESET' && (listing.hasPurchased || listing.sellerUserId === user?.id) && (
                 <button
                   onClick={usePreset}
                   className="inline-flex items-center gap-2 h-11 px-5 rounded-full border border-[hsl(var(--border))] text-white text-sm font-medium hover:bg-[hsl(var(--accent))]/20"
                 >
                   <Wand2 className="w-4 h-4" />
-                  Try preview
+                  Use preset
                 </button>
               )}
             </div>

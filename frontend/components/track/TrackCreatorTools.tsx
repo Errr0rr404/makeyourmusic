@@ -70,7 +70,7 @@ export function TrackCreatorTools({
       toast.success('Variation queued — find it under your studio drafts.');
       // Send the user straight to the studio so they can watch it complete
       // and publish it once ready.
-      router.push(`/studio?generation=${r.data?.generation?.id || ''}`);
+      router.push(`/studio/generations?generation=${r.data?.generation?.id || ''}`);
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } };
       toast.error(e?.response?.data?.error || 'Failed to create variation');
@@ -87,7 +87,7 @@ export function TrackCreatorTools({
         {}
       );
       toast.success('Extension queued — your track will get a longer cut shortly.');
-      router.push(`/studio?generation=${r.data?.generation?.id || ''}`);
+      router.push(`/studio/generations?generation=${r.data?.generation?.id || ''}`);
     } catch (err) {
       const e = err as { response?: { data?: { error?: string } } };
       toast.error(e?.response?.data?.error || 'Failed to extend track');
@@ -139,7 +139,7 @@ export function TrackCreatorTools({
           </div>
         </button>
         <a
-          href={`/studio?generation=${generation.id}&action=regenerate-section`}
+          href={`/studio/generations?generation=${generation.id}&action=regenerate-section`}
           className="flex items-start gap-3 rounded-lg border border-[hsl(var(--border))] hover:border-[hsl(var(--accent))]/40 bg-[color:var(--bg-elev-2)] p-3 text-left transition-colors"
         >
           <RefreshCw className="w-4 h-4 mt-0.5 text-pink-400" />

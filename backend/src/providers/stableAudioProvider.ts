@@ -14,7 +14,9 @@ export class StableAudioProvider implements MusicProvider {
   readonly id = 'stableAudio';
 
   isConfigured(): boolean {
-    return Boolean(process.env.STABILITY_API_KEY);
+    // Keep this provider out of selection until the REST integration below is
+    // implemented. Env vars alone should not make the registry pick a stub.
+    return false;
   }
 
   defaultModel(): string {

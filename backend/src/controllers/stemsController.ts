@@ -9,9 +9,39 @@ import { buildStemsMixUrl, publicIdFromCloudinaryUrl, uploadAudio } from '../uti
 // Flat platform fee the owner pays before we run a stem job. Covers Replicate
 // compute (~$0.02/track on htdemucs) plus margin.
 export const STEM_GENERATION_FEE_CENTS = 299;
+const MIN_STEMS_RESALE_PRICE_CENTS = 99;
+const MAX_STEMS_RESALE_PRICE_CENTS = 100_000;
 
 const STEM_PARTS = ['drums', 'bass', 'vocals', 'other'] as const;
 type StemPart = typeof STEM_PARTS[number];
+
+function serializeStemsForViewer(
+  stems: {
+    id: string;
+    status: string;
+    drumsUrl: string | null;
+    bassUrl: string | null;
+    vocalsUrl: string | null;
+    otherUrl: string | null;
+    forSaleCents: number | null;
+    errorMessage: string | null;
+    paidAt: Date | null;
+  },
+  options: { canAccessFiles: boolean; canSeeOwnerState: boolean },
+) {
+  return {
+    id: stems.id,
+    status: stems.status,
+    drumsUrl: options.canAccessFiles ? stems.drumsUrl : null,
+    bassUrl: options.canAccessFiles ? stems.bassUrl : null,
+    vocalsUrl: options.canAccessFiles ? stems.vocalsUrl : null,
+    otherUrl: options.canAccessFiles ? stems.otherUrl : null,
+    forSaleCents: stems.forSaleCents,
+    errorMessage: options.canSeeOwnerState ? stems.errorMessage : null,
+    paidAt: options.canSeeOwnerState ? stems.paidAt : null,
+    hasAccess: options.canAccessFiles,
+  };
+}
 type StemOutput = Partial<Record<StemPart, string>>;
 
 function hasCloudinaryCredentials(): boolean {
@@ -339,11 +369,45 @@ export const getStems = async (req: RequestWithUser, res: Response) => {
       res.status(404).json({ error: 'No stems for this track' });
       return;
     }
-    if (stems.status === 'PROCESSING' && stems.providerJobId) {
+
+    const track = await prisma.track.findUnique({
+      where: { id: trackId },
+      select: { agent: { select: { ownerId: true } } },
+    });
+    if (!track) {
+      res.status(404).json({ error: 'Track not found' });
+      return;
+    }
+
+    const isOwner = track.agent?.ownerId === req.user?.userId;
+    const isAdmin = req.user?.role === 'ADMIN';
+    let canAccessFiles = Boolean(isOwner || isAdmin);
+    if (!canAccessFiles && req.user) {
+      const purchase = await prisma.syncLicense.findFirst({
+        where: {
+          trackId,
+          buyerId: req.user.userId,
+          licenseTier: 'stems',
+          status: 'PAID',
+          OR: [
+            { downloadExpiresAt: null },
+            { downloadExpiresAt: { gt: new Date() } },
+          ],
+        },
+        select: { id: true },
+      });
+      canAccessFiles = Boolean(purchase);
+    }
+    const canSeeOwnerState = Boolean(isOwner || isAdmin);
+
+    // Only owners/admins trigger provider polling. Public callers only need
+    // enough metadata to know whether stems are for sale, and should not be
+    // able to drive paid provider/status requests.
+    if (canSeeOwnerState && stems.status === 'PROCESSING' && stems.providerJobId) {
       const lastPolled = stemsLastPolledAt.get(stems.providerJobId) || 0;
       const now = Date.now();
       if (now - lastPolled < stemsPollCooldownMs) {
-        res.json({ stems });
+        res.json({ stems: serializeStemsForViewer(stems, { canAccessFiles, canSeeOwnerState }) });
         return;
       }
       stemsLastPolledAt.set(stems.providerJobId, now);
@@ -367,17 +431,24 @@ export const getStems = async (req: RequestWithUser, res: Response) => {
               errorMessage: null,
             },
           });
-          res.json({ stems: updated });
+          res.json({
+            stems: serializeStemsForViewer(updated, {
+              canAccessFiles: true,
+              canSeeOwnerState,
+            }),
+          });
           return;
         }
         if (result.status === 'failed' || result.status === 'canceled') {
-          await prisma.trackStems.update({
+          const failed = await prisma.trackStems.update({
             where: { trackId },
             data: {
               status: 'FAILED',
               errorMessage: result.error || 'Stem job failed',
             },
           });
+          res.json({ stems: serializeStemsForViewer(failed, { canAccessFiles, canSeeOwnerState }) });
+          return;
         }
       } catch (err) {
         const message = (err as Error).message;
@@ -387,12 +458,12 @@ export const getStems = async (req: RequestWithUser, res: Response) => {
             where: { trackId },
             data: { status: 'FAILED', errorMessage: message },
           });
-          res.json({ stems: failed });
+          res.json({ stems: serializeStemsForViewer(failed, { canAccessFiles, canSeeOwnerState }) });
           return;
         }
       }
     }
-    res.json({ stems });
+    res.json({ stems: serializeStemsForViewer(stems, { canAccessFiles, canSeeOwnerState }) });
   } catch (error) {
     logger.error('getStems error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get stems' });
@@ -509,11 +580,30 @@ export const setStemsPrice = async (req: RequestWithUser, res: Response) => {
       res.status(403).json({ error: 'Only the track owner can set stems price' });
       return;
     }
-    const cents = typeof priceCents === 'number' && priceCents > 0 ? Math.floor(priceCents) : null;
-    const stems = await prisma.trackStems.upsert({
+    const existing = await prisma.trackStems.findUnique({ where: { trackId } });
+    if (!existing || existing.status !== 'READY') {
+      res.status(409).json({ error: 'Stems must be ready before setting a resale price' });
+      return;
+    }
+
+    let cents: number | null = null;
+    if (priceCents !== null && priceCents !== undefined && priceCents !== 0) {
+      if (!Number.isInteger(priceCents)) {
+        res.status(400).json({ error: 'priceCents must be an integer number of cents' });
+        return;
+      }
+      if (priceCents < MIN_STEMS_RESALE_PRICE_CENTS || priceCents > MAX_STEMS_RESALE_PRICE_CENTS) {
+        res.status(400).json({
+          error: `priceCents must be between ${MIN_STEMS_RESALE_PRICE_CENTS} and ${MAX_STEMS_RESALE_PRICE_CENTS}`,
+        });
+        return;
+      }
+      cents = priceCents;
+    }
+
+    const stems = await prisma.trackStems.update({
       where: { trackId },
-      create: { trackId, status: 'PENDING', forSaleCents: cents },
-      update: { forSaleCents: cents },
+      data: { forSaleCents: cents },
     });
     res.json({ stems });
   } catch (error) {

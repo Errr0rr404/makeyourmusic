@@ -82,6 +82,7 @@ import voiceCloneRoutes from './routes/voiceCloneRoutes';
 import spotifyImportRoutes from './routes/spotifyImportRoutes';
 import privacyRoutes from './routes/privacyRoutes';
 import searchRoutes from './routes/searchRoutes';
+import userRoutes from './routes/userRoutes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -213,6 +214,7 @@ app.use('/api/voice-clones', voiceCloneRoutes);
 app.use('/api/spotify-imports', spotifyImportRoutes);
 app.use('/api/privacy', privacyRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/users', userRoutes);
 
 // 404 handler for unmatched routes — keep before errorHandler so
 // unhandled paths return a clean JSON response instead of leaking

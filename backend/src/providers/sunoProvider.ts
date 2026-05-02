@@ -20,7 +20,10 @@ export class SunoProvider implements MusicProvider {
   readonly id = 'suno';
 
   isConfigured(): boolean {
-    return Boolean(process.env.SUNO_API_KEY && process.env.SUNO_API_BASE);
+    // Keep this provider out of selection until a concrete Suno gateway is
+    // implemented. Treating API env vars as "configured" made fallbackChain()
+    // choose a provider whose generate() path cannot yet produce audio.
+    return false;
   }
 
   defaultModel(): string {

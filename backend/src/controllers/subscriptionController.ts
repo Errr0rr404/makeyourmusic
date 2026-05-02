@@ -26,10 +26,12 @@ import { handleVoiceCloneCheckoutCompleted } from './voiceCloneController';
 
 const stripe = () => getStripe();
 
-const PRICE_IDS: Record<'CREATOR' | 'PREMIUM', string> = {
-  CREATOR: process.env.STRIPE_CREATOR_PRICE_ID || 'price_creator_placeholder',
-  PREMIUM: process.env.STRIPE_PREMIUM_PRICE_ID || 'price_premium_placeholder',
-};
+function subscriptionPriceId(tier: 'CREATOR' | 'PREMIUM'): string | null {
+  const envKey = tier === 'CREATOR' ? 'STRIPE_CREATOR_PRICE_ID' : 'STRIPE_PREMIUM_PRICE_ID';
+  const priceId = process.env[envKey];
+  if (!priceId || priceId.includes('placeholder')) return null;
+  return priceId;
+}
 
 export const getSubscription = async (req: RequestWithUser, res: Response) => {
   try {
@@ -59,7 +61,11 @@ export const createCheckout = async (req: RequestWithUser, res: Response) => {
       return;
     }
     const tier = requested as 'CREATOR' | 'PREMIUM';
-    const priceId = PRICE_IDS[tier];
+    const priceId = subscriptionPriceId(tier);
+    if (!priceId) {
+      res.status(503).json({ error: `${tier} subscription checkout is not configured` });
+      return;
+    }
 
     let subscription = await prisma.subscription.findUnique({
       where: { userId: req.user.userId },
@@ -426,9 +432,21 @@ async function handlePlatformCheckoutCompleted(session: any) {
   const s = getStripe();
   let periodStart: Date | null = null;
   let periodEnd: Date | null = null;
-  if (session.subscription && s) {
+  const stripeSubId =
+    typeof session.subscription === 'string'
+      ? session.subscription
+      : session.subscription?.id || null;
+  const stripeCustomerId =
+    typeof session.customer === 'string'
+      ? session.customer
+      : session.customer?.id || null;
+  if (!stripeSubId) {
+    logger.warn('platform checkout completed without subscription id', { sessionId: session.id });
+    return;
+  }
+  if (stripeSubId && s) {
     try {
-      const sub = await s.subscriptions.retrieve(session.subscription);
+      const sub = await s.subscriptions.retrieve(stripeSubId);
       if (typeof sub.current_period_start === 'number') {
         periodStart = new Date(sub.current_period_start * 1000);
       }
@@ -438,7 +456,7 @@ async function handlePlatformCheckoutCompleted(session: any) {
     } catch (err) {
       logger.warn('Failed to retrieve Stripe subscription for period dates', {
         sessionId: session.id,
-        subId: session.subscription,
+        subId: stripeSubId,
         error: (err as Error).message,
       });
     }
@@ -449,7 +467,7 @@ async function handlePlatformCheckoutCompleted(session: any) {
     update: {
       tier,
       status: 'ACTIVE',
-      stripeSubId: session.subscription,
+      stripeSubId,
       currentPeriodStart: periodStart,
       currentPeriodEnd: periodEnd,
     },
@@ -457,8 +475,8 @@ async function handlePlatformCheckoutCompleted(session: any) {
       userId,
       tier,
       status: 'ACTIVE',
-      stripeSubId: session.subscription,
-      stripeCustomerId: session.customer,
+      stripeSubId,
+      stripeCustomerId,
       currentPeriodStart: periodStart,
       currentPeriodEnd: periodEnd,
     },

@@ -242,7 +242,7 @@ export function ConsentClient() {
         </div>
 
         <p className="text-[11px] text-[hsl(var(--muted-foreground))] text-center mt-3">
-          You can revoke this access any time in <Link href="/settings/connected-apps" className="text-purple-300 hover:underline">settings</Link>.
+          You can revoke this access any time in <Link href="/settings" className="text-purple-300 hover:underline">settings</Link>.
         </p>
       </div>
     </div>

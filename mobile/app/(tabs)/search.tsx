@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect, useMemo } from 'react';
 import { View, Text, TextInput, FlatList, ActivityIndicator, TouchableOpacity } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useLocalSearchParams } from 'expo-router';
 import { getApi, debounce } from '@makeyourmusic/shared';
 import type { TrackItem, Genre } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
@@ -28,9 +29,16 @@ const SORT_OPTIONS: Array<{ value: Sort; label: string }> = [
 export default function SearchScreen() {
   const tokens = useTokens();
   const insets = useSafeAreaInsets();
-  const [query, setQuery] = useState('');
-  const [tab, setTab] = useState<Tab>('tracks');
-  const [sort, setSort] = useState<Sort>('newest');
+  const params = useLocalSearchParams<{ q?: string | string[]; tab?: string | string[]; sort?: string | string[] }>();
+  const initialQuery = Array.isArray(params.q) ? params.q[0] : params.q;
+  const initialTab = (Array.isArray(params.tab) ? params.tab[0] : params.tab) === 'agents' ? 'agents' : 'tracks';
+  const rawInitialSort = Array.isArray(params.sort) ? params.sort[0] : params.sort;
+  const initialSort = SORT_OPTIONS.some((option) => option.value === rawInitialSort)
+    ? (rawInitialSort as Sort)
+    : 'newest';
+  const [query, setQuery] = useState(initialQuery || '');
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [sort, setSort] = useState<Sort>(initialSort);
   const [tracks, setTracks] = useState<TrackItem[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
   const [genres, setGenres] = useState<Genre[]>([]);
@@ -43,7 +51,7 @@ export default function SearchScreen() {
     [genres, activeGenre],
   );
   const hasFilters = !!activeGenre || sort !== 'newest';
-  const canShowAgents = query.trim().length > 0;
+  const canShowAgents = true;
 
   // Fetch genres once for the filter row.
   useEffect(() => {
@@ -53,14 +61,19 @@ export default function SearchScreen() {
       .catch(() => setGenres([]));
   }, []);
 
+  useEffect(() => {
+    if (tab !== 'agents' || query.trim() || agents.length > 0 || loading) return;
+    setLoading(true);
+    setSearched(true);
+    getApi()
+      .get('/agents?limit=20')
+      .then((r) => setAgents(r.data.agents || []))
+      .catch(() => setAgents([]))
+      .finally(() => setLoading(false));
+  }, [agents.length, loading, query, tab]);
+
   const doSearch = useCallback(
     debounce(async (q: string, genreSlug: string, sortValue: Sort) => {
-      if (!q.trim() && !genreSlug) {
-        setTracks([]);
-        setAgents([]);
-        setSearched(false);
-        return;
-      }
       setLoading(true);
       setSearched(true);
       try {
@@ -86,9 +99,16 @@ export default function SearchScreen() {
     [],
   );
 
+  useEffect(() => {
+    if (initialTab === 'agents' && !initialQuery) return;
+    if (!initialQuery && initialSort === 'newest') return;
+    doSearch(initialQuery || '', '', initialSort);
+    // Run once for deep-link params on mount.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleQueryChange = (text: string) => {
     setQuery(text);
-    if (!text.trim()) setTab('tracks');
     doSearch(text, activeGenre, sort);
   };
 
@@ -448,8 +468,12 @@ export default function SearchScreen() {
           numColumns={2}
           ListHeaderComponent={
             <ResultHeader
-              title="Agent results"
-              subtitle={`${agents.length} agent${agents.length === 1 ? '' : 's'} matching your search`}
+              title={query ? 'Agent results' : 'Popular agents'}
+              subtitle={
+                query
+                  ? `${agents.length} agent${agents.length === 1 ? '' : 's'} matching your search`
+                  : `${agents.length} agent${agents.length === 1 ? '' : 's'} to follow`
+              }
               tokens={tokens}
             />
           }

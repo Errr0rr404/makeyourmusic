@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { validatePaymentRedirect } from '@/lib/utils';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio, Code, DollarSign, Film, Users, Send } from 'lucide-react';
+import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio, Code, DollarSign, Film, Users, Send, Download, Loader2 } from 'lucide-react';
 import { ClipGrid } from '@/components/clip/ClipGrid';
 import { formatDuration } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';
@@ -21,6 +21,20 @@ import { TrackCreatorTools } from '@/components/track/TrackCreatorTools';
 import { TrackRemixes } from '@/components/track/TrackRemixes';
 import { RemixButton } from '@/components/track/RemixButton';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
+
+type CheckoutLicense = {
+  id: string;
+  status: 'PENDING' | 'PAID' | 'REVOKED' | 'REFUNDED' | string;
+  kind: 'sync' | 'stems';
+  amountCents: number;
+  currency: string;
+  downloadExpiresAt?: string | null;
+  downloadExpired?: boolean;
+  download?: null | (
+    | { kind: 'sync'; audioUrl?: string | null; licensePdfUrl?: string | null }
+    | { kind: 'stems'; files?: Record<'drums' | 'bass' | 'vocals' | 'other', string | null | undefined> }
+  );
+};
 
 export function TrackDetailClient({ slug }: { slug: string }) {
   const confirm = useConfirm();
@@ -40,6 +54,9 @@ export function TrackDetailClient({ slug }: { slug: string }) {
   const [showReport, setShowReport] = useState(false);
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState('');
+  const [checkoutLicense, setCheckoutLicense] = useState<CheckoutLicense | null>(null);
+  const [checkoutLicenseLoading, setCheckoutLicenseLoading] = useState(false);
+  const [checkoutLicenseError, setCheckoutLicenseError] = useState<string | null>(null);
   const { currentTrack, isPlaying, playTrack, togglePlay, startRadio } = usePlayerStore();
   const { isAuthenticated } = useAuthStore();
 
@@ -90,6 +107,55 @@ export function TrackDetailClient({ slug }: { slug: string }) {
     load();
     return () => { cancelled = true; };
   }, [slug]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const licenseId = params.get('licenseId');
+    const licenseState = params.get('license');
+    if (!licenseId || licenseState !== 'pending') return;
+
+    let cancelled = false;
+    let timer: number | null = null;
+    let attempts = 0;
+
+    const loadLicense = async () => {
+      setCheckoutLicenseLoading(true);
+      try {
+        const res = await api.get<{ license: CheckoutLicense }>(`/licenses/${licenseId}`);
+        if (cancelled) return;
+        const next = res.data.license;
+        setCheckoutLicense(next);
+        setCheckoutLicenseError(null);
+
+        const waitingForPayment = next.status === 'PENDING';
+        const waitingForStemFiles =
+          next.status === 'PAID' &&
+          next.kind === 'stems' &&
+          !next.download &&
+          !next.downloadExpired;
+        if ((waitingForPayment || waitingForStemFiles) && attempts < 40) {
+          attempts += 1;
+          timer = window.setTimeout(loadLicense, 3000);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setCheckoutLicenseError(
+            (err as { response?: { data?: { error?: string } } })?.response?.data?.error ||
+              'Could not load purchase status'
+          );
+        }
+      } finally {
+        if (!cancelled) setCheckoutLicenseLoading(false);
+      }
+    };
+
+    void loadLicense();
+    return () => {
+      cancelled = true;
+      if (timer !== null) window.clearTimeout(timer);
+    };
+  }, []);
 
   const handlePlay = () => {
     if (!track) return;
@@ -196,6 +262,80 @@ export function TrackDetailClient({ slug }: { slug: string }) {
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
       <JustPublishedBanner trackUrl={`/track/${track.slug}`} />
+      {(checkoutLicense || checkoutLicenseLoading || checkoutLicenseError) && (
+        <div className="mb-6 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
+          <div className="flex items-start gap-3">
+            {checkoutLicenseLoading && !checkoutLicense ? (
+              <Loader2 className="w-5 h-5 text-amber-200 animate-spin mt-0.5" />
+            ) : (
+              <Download className="w-5 h-5 text-amber-200 mt-0.5" />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-white">
+                {checkoutLicense?.status === 'PAID'
+                  ? 'Purchase complete'
+                  : checkoutLicense?.status === 'REVOKED' || checkoutLicense?.status === 'REFUNDED'
+                    ? 'Purchase was not completed'
+                    : 'Confirming purchase'}
+              </p>
+              {checkoutLicenseError ? (
+                <p className="mt-1 text-sm text-rose-200">{checkoutLicenseError}</p>
+              ) : checkoutLicense?.downloadExpired ? (
+                <p className="mt-1 text-sm text-amber-100/80">This download window has expired.</p>
+              ) : checkoutLicense?.download?.kind === 'sync' ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {checkoutLicense.download.audioUrl && (
+                    <a
+                      href={checkoutLicense.download.audioUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-amber-400 text-black text-sm font-semibold hover:bg-amber-300"
+                    >
+                      <Download className="w-4 h-4" />
+                      Download master
+                    </a>
+                  )}
+                  {checkoutLicense.download.licensePdfUrl && (
+                    <a
+                      href={checkoutLicense.download.licensePdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-amber-300/40 text-amber-100 text-sm font-medium hover:bg-amber-300/10"
+                    >
+                      License PDF
+                    </a>
+                  )}
+                </div>
+              ) : checkoutLicense?.download?.kind === 'stems' ? (
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {(['drums', 'bass', 'vocals', 'other'] as const).map((part) => {
+                    const href = checkoutLicense.download?.kind === 'stems'
+                      ? checkoutLicense.download.files?.[part]
+                      : null;
+                    if (!href) return null;
+                    return (
+                      <a
+                        key={part}
+                        href={href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-amber-400 text-black text-sm font-semibold capitalize hover:bg-amber-300"
+                      >
+                        <Download className="w-4 h-4" />
+                        {part}
+                      </a>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="mt-1 text-sm text-amber-100/80">
+                  Keep this page open while payment is confirmed. Downloads will appear here.
+                </p>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
       {/* Track Header */}
       <div className="flex flex-col md:flex-row gap-6 mb-8">
         <div className="w-full md:w-64 aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-[hsl(var(--secondary))] flex-shrink-0 max-w-[300px] mx-auto md:mx-0">

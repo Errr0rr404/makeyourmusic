@@ -70,14 +70,15 @@ export default function RegisterPage() {
         referralCode || undefined,
       );
       try { sessionStorage.removeItem('mym_ref'); } catch {}
-      // Forward `?next=` so verify-email can route the user back where
+      // Forward `?next=` / `?redirect=` so verify-email can route the user back where
       // they started (e.g. /create with a half-finished draft). Resolve
       // against the current origin and require the resolved origin to match —
       // catches `/\\evil.com` and other open-redirect bypasses that simple
       // prefix checks miss.
       let next: string | null = null;
       try {
-        next = new URLSearchParams(window.location.search).get('next');
+        const params = new URLSearchParams(window.location.search);
+        next = params.get('next') || params.get('redirect');
       } catch {}
       let safeNext = '';
       if (next) {

@@ -85,7 +85,7 @@ export function JustPublishedBanner({ trackUrl }: { trackUrl: string }) {
             <Share2 className="h-4 w-4" /> Share track
           </button>
           <Link
-            href="/referrals"
+            href="/settings/referrals"
             onClick={() => track('referral_nudge_clicked', { source: 'just_published' })}
             className="mym-cta"
           >

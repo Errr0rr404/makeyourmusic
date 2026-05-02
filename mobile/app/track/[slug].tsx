@@ -180,7 +180,7 @@ export default function TrackDetailScreen() {
       // Roll back on failure
       setLiked(wasLiked);
       setLikeCount((c) => (wasLiked ? c + 1 : Math.max(0, c - 1)));
-      console.error('Like error:', err);
+      Alert.alert('Like failed', 'Could not update this track right now.');
     }
   };
 
@@ -192,8 +192,8 @@ export default function TrackDetailScreen() {
       const res = await api.post(`/social/comments/${track.id}`, { content: newComment.trim() });
       setComments((prev) => [res.data.comment, ...prev]);
       setNewComment('');
-    } catch (err) {
-      console.error('Comment error:', err);
+    } catch (err: any) {
+      Alert.alert('Comment failed', err?.response?.data?.error || 'Could not post your comment right now.');
     } finally {
       setSubmitting(false);
     }

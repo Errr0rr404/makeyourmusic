@@ -78,7 +78,7 @@ function Spectrum({ live, bars = 42, className = '' }: { live: boolean; bars?: n
           <span
             key={i}
             className="flex-1 min-w-[2px] rounded-t-[2px] opacity-85 transition-[height] duration-[120ms] ease-out"
-            style={{ height: `${10 + v * 0.8}%`, background: color }}
+            style={{ height: `${(10 + v * 0.8).toFixed(3)}%`, background: color }}
           />
         );
       })}
@@ -112,7 +112,7 @@ function SpectrumLarge({ live }: { live: boolean }) {
           <span
             key={i}
             className="flex-1 min-w-[2px] rounded-t-[4px] opacity-90 transition-[height] duration-[120ms] ease-out"
-            style={{ height: `${h}%`, background: color, boxShadow: `0 0 20px ${color}` }}
+            style={{ height: `${h.toFixed(3)}%`, background: color, boxShadow: `0 0 20px ${color}` }}
           />
         );
       })}

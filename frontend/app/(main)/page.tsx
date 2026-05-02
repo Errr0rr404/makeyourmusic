@@ -12,7 +12,7 @@ import { LandingPage } from '@/components/landing/LandingPage';
 import { useAuthStore } from '@/lib/store/authStore';
 import {
   TrendingUp, Sparkles, Clock, ChevronRight, AlertCircle,
-  Music2, Radio,
+  Music2, Radio, Library, Store, Video,
 } from 'lucide-react';
 import { motion } from 'motion/react';
 
@@ -61,6 +61,62 @@ function CardSkeleton() {
       <div className="aspect-square rounded-lg bg-white/5 mb-3 shimmer" />
       <div className="h-3.5 w-3/4 rounded bg-white/5 mb-2 shimmer" />
       <div className="h-3 w-1/2 rounded bg-white/5 shimmer" />
+    </div>
+  );
+}
+
+function QuickActions() {
+  const actions = [
+    {
+      href: '/create',
+      title: 'Create',
+      subtitle: 'Start from a prompt',
+      Icon: Sparkles,
+      tone: 'from-fuchsia-500/18 to-violet-500/10',
+    },
+    {
+      href: '/studio/generations',
+      title: 'Studio',
+      subtitle: 'Review drafts',
+      Icon: Video,
+      tone: 'from-sky-500/16 to-cyan-500/10',
+    },
+    {
+      href: '/library',
+      title: 'Library',
+      subtitle: 'Saved tracks',
+      Icon: Library,
+      tone: 'from-emerald-500/16 to-teal-500/10',
+    },
+    {
+      href: '/marketplace',
+      title: 'Marketplace',
+      subtitle: 'Samples & presets',
+      Icon: Store,
+      tone: 'from-amber-500/18 to-orange-500/10',
+    },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {actions.map(({ href, title, subtitle, Icon, tone }) => (
+        <Link
+          key={href}
+          href={href}
+          className={`group min-w-0 rounded-xl border border-[color:var(--stroke)] bg-gradient-to-br ${tone} p-3 transition-colors hover:border-[color:var(--stroke-strong)]`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white/8 text-white">
+              <Icon className="h-4 w-4" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-bold text-[color:var(--text)] truncate">{title}</span>
+              <span className="block text-xs text-[color:var(--text-mute)] truncate">{subtitle}</span>
+            </span>
+            <ChevronRight className="ml-auto h-4 w-4 shrink-0 text-[color:var(--text-faint)] transition-transform group-hover:translate-x-0.5 group-hover:text-[color:var(--text-soft)]" />
+          </div>
+        </Link>
+      ))}
     </div>
   );
 }
@@ -131,6 +187,8 @@ function AuthenticatedHome({ user }: { user: ReturnType<typeof useAuthStore.getS
     setGreeting(h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening');
   }, []);
   const displayName = user?.displayName || user?.username || 'there';
+  const hasDiscoveryContent =
+    history.length > 0 || forYou.length > 0 || trending.length > 0 || latest.length > 0 || genres.length > 0;
 
   return (
     <div className="space-y-8 sm:space-y-12 pb-12">
@@ -181,6 +239,8 @@ function AuthenticatedHome({ user }: { user: ReturnType<typeof useAuthStore.getS
           </div>
         </div>
       </section>
+
+      <QuickActions />
 
       <OnboardingBanner />
 
@@ -290,6 +350,19 @@ function AuthenticatedHome({ user }: { user: ReturnType<typeof useAuthStore.getS
                   );
                 })}
               </div>
+            </section>
+          )}
+
+          {!hasDiscoveryContent && (
+            <section className="rounded-2xl border border-[color:var(--stroke)] bg-[color:var(--bg-elev-2)] p-6 text-center">
+              <Music2 className="mx-auto mb-3 h-8 w-8 text-[color:var(--brand)]" />
+              <h2 className="text-lg font-bold text-[color:var(--text)]">Your feed is warming up</h2>
+              <p className="mx-auto mt-1 max-w-md text-sm text-[color:var(--text-mute)]">
+                Create or like a few tracks and this page will fill with personalized music, agents, and genres.
+              </p>
+              <Link href="/create" className="mym-cta mym-cta-sm mt-4">
+                Create a track
+              </Link>
             </section>
           )}
         </>

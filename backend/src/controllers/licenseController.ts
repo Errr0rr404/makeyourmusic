@@ -165,10 +165,21 @@ export const startCheckout = async (req: RequestWithUser, res: Response) => {
     const { fee, net } = applyPlatformFee(priceCents);
     const currency = track.licenseCurrency || 'usd';
 
-    // Note: downloadToken is now issued in the webhook on PAID — never
-    // before payment. The success_url returns the licenseId only; the
-    // frontend should call a token-protected endpoint to retrieve the
-    // download URL after polling for status === 'PAID'.
+    const license = await prisma.syncLicense.create({
+      data: {
+        trackId: track.id,
+        amountCents: priceCents,
+        platformFeeCents: fee,
+        netCents: net,
+        currency,
+        licenseTier: kind === 'stems' ? 'stems' : 'standard',
+        buyerId: req.user.userId,
+        buyerEmail: typeof buyerEmail === 'string' ? buyerEmail.slice(0, 200) : null,
+        buyerName: typeof buyerName === 'string' ? buyerName.slice(0, 200) : null,
+        intendedUse: typeof intendedUse === 'string' ? intendedUse.slice(0, 1000) : null,
+      },
+    });
+
     let session;
     try {
       session = await stripe.checkout.sessions.create({
@@ -191,50 +202,40 @@ export const startCheckout = async (req: RequestWithUser, res: Response) => {
           metadata: {
             kind: kind === 'stems' ? 'stem_purchase' : 'sync_license',
             trackId: track.id,
+            licenseId: license.id,
           },
         },
         metadata: {
           kind: kind === 'stems' ? 'stem_purchase' : 'sync_license',
           trackId: track.id,
-          // licenseId added below after row creation.
+          licenseId: license.id,
         },
-        success_url: `${frontendUrl()}/track/${track.slug}?license=pending`,
+        success_url: `${frontendUrl()}/track/${track.slug}?license=pending&licenseId=${license.id}`,
         cancel_url: `${frontendUrl()}/track/${track.slug}?canceled=1`,
       });
     } catch (err) {
+      await prisma.syncLicense.update({
+        where: { id: license.id },
+        data: { status: 'REVOKED' },
+      }).catch(() => undefined);
       logger.error('Stripe checkout creation failed', { error: (err as Error).message });
       res.status(502).json({ error: 'Failed to create checkout session' });
       return;
     }
 
-    const license = await prisma.syncLicense.create({
-      data: {
-        trackId: track.id,
-        amountCents: priceCents,
-        platformFeeCents: fee,
-        netCents: net,
-        currency,
-        licenseTier: kind === 'stems' ? 'stems' : 'standard',
-        buyerId: req.user.userId,
-        buyerEmail: typeof buyerEmail === 'string' ? buyerEmail.slice(0, 200) : null,
-        buyerName: typeof buyerName === 'string' ? buyerName.slice(0, 200) : null,
-        intendedUse: typeof intendedUse === 'string' ? intendedUse.slice(0, 1000) : null,
-        stripeCheckoutSessionId: session.id,
-      },
-    });
-
-    // Patch the metadata to include the licenseId so the webhook can find it.
+    // Persist the session id for recovery paths and admin tooling. The webhook
+    // can still use metadata.licenseId if this update fails after Stripe
+    // created the session, so do not strand the buyer by hiding the URL.
     try {
-      await stripe.checkout.sessions.update(session.id, {
-        metadata: {
-          kind: kind === 'stems' ? 'stem_purchase' : 'sync_license',
-          trackId: track.id,
-          licenseId: license.id,
+      await prisma.syncLicense.update({
+        where: { id: license.id },
+        data: {
+          stripeCheckoutSessionId: session.id,
         },
       });
     } catch (err) {
-      // Non-fatal — the webhook can still find the row by stripeCheckoutSessionId.
-      logger.warn('Failed to patch license session metadata', {
+      logger.warn('Failed to attach checkout session id to license', {
+        licenseId: license.id,
         sessionId: session.id,
         error: (err as Error).message,
       });
@@ -244,6 +245,87 @@ export const startCheckout = async (req: RequestWithUser, res: Response) => {
   } catch (error) {
     logger.error('startCheckout error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to start checkout' });
+  }
+};
+
+// Authenticated buyer/seller status endpoint used after Stripe redirects back
+// to the track page. Paid downloads are returned directly from canonical DB
+// state instead of requiring the UI to know an internal download token.
+export const getLicense = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    const license = await prisma.syncLicense.findUnique({
+      where: { id: req.params.id as string },
+      include: {
+        track: {
+          include: {
+            stems: true,
+            agent: { select: { ownerId: true } },
+          },
+        },
+      },
+    });
+    if (!license) {
+      res.status(404).json({ error: 'License not found' });
+      return;
+    }
+
+    const isBuyer = license.buyerId === req.user.userId;
+    const isOwner = license.track.agent?.ownerId === req.user.userId;
+    const isAdmin = req.user.role === 'ADMIN';
+    if (!isBuyer && !isOwner && !isAdmin) {
+      res.status(403).json({ error: 'Not allowed to view this license' });
+      return;
+    }
+
+    const isPaid = license.status === 'PAID';
+    const isExpired = Boolean(
+      license.downloadExpiresAt && license.downloadExpiresAt.getTime() < Date.now()
+    );
+    let download: unknown = null;
+    if (isPaid && !isExpired) {
+      if (license.licenseTier === 'stems' && license.track.stems?.status === 'READY') {
+        download = {
+          kind: 'stems',
+          files: {
+            drums: license.track.stems.drumsUrl,
+            bass: license.track.stems.bassUrl,
+            vocals: license.track.stems.vocalsUrl,
+            other: license.track.stems.otherUrl,
+          },
+        };
+      } else if (license.licenseTier !== 'stems') {
+        download = {
+          kind: 'sync',
+          audioUrl: license.track.audioUrl,
+          licensePdfUrl: license.licensePdfUrl,
+        };
+      }
+    }
+
+    res.json({
+      license: {
+        id: license.id,
+        status: license.status,
+        kind: license.licenseTier === 'stems' ? 'stems' : 'sync',
+        amountCents: license.amountCents,
+        currency: license.currency,
+        downloadExpiresAt: license.downloadExpiresAt,
+        downloadExpired: isExpired,
+        track: {
+          id: license.track.id,
+          title: license.track.title,
+          slug: license.track.slug,
+        },
+        download,
+      },
+    });
+  } catch (error) {
+    logger.error('getLicense error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to load license' });
   }
 };
 

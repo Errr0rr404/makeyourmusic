@@ -8,19 +8,24 @@ import crypto from 'crypto';
 // canonical files, and queue any referral earnings owed.
 export async function handleSyncLicenseCheckoutCompleted(session: any): Promise<void> {
   const licenseId: string | undefined = session.metadata?.licenseId;
-  if (!licenseId) {
-    logger.warn('sync_license checkout missing metadata.licenseId', { sessionId: session.id });
-    return;
-  }
 
-  const license = await prisma.syncLicense.findUnique({
-    where: { id: licenseId },
-    include: {
-      track: { include: { agent: { select: { ownerId: true } } } },
-    },
-  });
+  const include = {
+    track: { include: { agent: { select: { ownerId: true } } } },
+  } as const;
+  const license = licenseId
+    ? await prisma.syncLicense.findUnique({
+        where: { id: licenseId },
+        include,
+      })
+    : await prisma.syncLicense.findUnique({
+        where: { stripeCheckoutSessionId: session.id },
+        include,
+      });
   if (!license) {
-    logger.warn('sync_license not found for completed checkout', { licenseId });
+    logger.warn('sync_license not found for completed checkout', {
+      licenseId,
+      sessionId: session.id,
+    });
     return;
   }
   if (license.status === 'PAID') return; // idempotent
@@ -32,10 +37,11 @@ export async function handleSyncLicenseCheckoutCompleted(session: any): Promise<
   const downloadExpiresAt = new Date(Date.now() + 24 * 3_600_000);
 
   await prisma.syncLicense.update({
-    where: { id: licenseId },
+    where: { id: license.id },
     data: {
       status: 'PAID',
       stripePaymentIntentId: typeof session.payment_intent === 'string' ? session.payment_intent : null,
+      stripeCheckoutSessionId: session.id,
       downloadToken,
       downloadExpiresAt,
     },
@@ -85,6 +91,14 @@ export async function handleSyncLicenseCheckoutCompleted(session: any): Promise<
 // — including the buyer's downloadToken.
 export async function handleSyncLicensePaymentFailed(paymentIntent: any): Promise<void> {
   if (!paymentIntent?.id) return;
+  const licenseId = paymentIntent.metadata?.licenseId;
+  if (typeof licenseId === 'string' && licenseId.length > 0) {
+    await prisma.syncLicense.updateMany({
+      where: { id: licenseId, status: 'PENDING' },
+      data: { status: 'REVOKED', stripePaymentIntentId: paymentIntent.id },
+    });
+    return;
+  }
   await prisma.syncLicense.updateMany({
     where: { stripePaymentIntentId: paymentIntent.id, status: 'PENDING' },
     data: { status: 'REVOKED' },

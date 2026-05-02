@@ -30,7 +30,7 @@ function LoginForm() {
     setError('');
     try {
       await login(email, password);
-      const next = searchParams.get('next');
+      const next = searchParams.get('next') || searchParams.get('redirect');
       // Only honor relative paths to avoid open-redirect. Reject anything
       // starting with `//` or `/\` (some browsers parse the latter as a
       // protocol-relative URL pointing to an attacker's host) and anything
