@@ -46,6 +46,10 @@ export function AuthGateModal({
   const [mode, setMode] = useState<Mode>('login');
   const [error, setError] = useState('');
   const [pending, setPending] = useState(false);
+  // Server-driven feature flag for magic-link. We probe `/auth/config` once
+  // per modal-open so a deploy that flips email config on/off propagates
+  // without a full page reload, but we don't refetch on every keystroke.
+  const [magicLinkEnabled, setMagicLinkEnabled] = useState(false);
 
   // Reset transient state every time the modal re-opens so a stale error
   // from a previous attempt doesn't leak into a new session.
@@ -54,6 +58,14 @@ export function AuthGateModal({
       setError('');
       setPending(false);
       setMode('login');
+      // Optimistic default: hide the magic-link affordance until the
+      // server confirms it's available. Avoids a flash-then-hide if the
+      // feature is off.
+      setMagicLinkEnabled(false);
+      api
+        .get<{ magicLinkEnabled?: boolean }>('/auth/config')
+        .then((r) => setMagicLinkEnabled(Boolean(r.data?.magicLinkEnabled)))
+        .catch(() => setMagicLinkEnabled(false));
     }
   }, [open]);
 
@@ -113,7 +125,7 @@ export function AuthGateModal({
           />
         )}
 
-        {mode === 'login' && (
+        {mode === 'login' && magicLinkEnabled && (
           <button
             type="button"
             onClick={() => { setError(''); setMode('magic'); }}

@@ -31,6 +31,30 @@ function getProvider(): EmailProvider {
   return 'console';
 }
 
+/**
+ * True when at least one real (non-console) email provider is configured.
+ * Used to gate user-visible flows like magic-link sign-in: if we'd just be
+ * console-logging, we shouldn't tell the user to "check their inbox".
+ */
+export function hasEmailProvider(): boolean {
+  return getProvider() !== 'console';
+}
+
+/**
+ * Master switch for the magic-link feature. Off by default until email
+ * delivery is wired up. Three ways to be on:
+ *   - MAGIC_LINK_ENABLED=1 (explicit force-on, e.g. for local dev with the
+ *     console provider)
+ *   - A real email provider configured AND MAGIC_LINK_ENABLED!=0
+ * The "explicit off" wins so an op can disable the feature without yanking
+ * the email creds.
+ */
+export function isMagicLinkEnabled(): boolean {
+  if (process.env.MAGIC_LINK_ENABLED === '0') return false;
+  if (process.env.MAGIC_LINK_ENABLED === '1') return true;
+  return hasEmailProvider();
+}
+
 function getFromAddress(): string {
   return process.env.EMAIL_FROM || 'MakeYourMusic <no-reply@makeyourmusic.ai>';
 }

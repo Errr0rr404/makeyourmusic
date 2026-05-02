@@ -5,7 +5,7 @@ import { prisma } from '../utils/db';
 import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
-import { sendEmail, buildVerificationEmail, buildPasswordResetEmail, buildMagicLinkEmail } from '../utils/email';
+import { sendEmail, buildVerificationEmail, buildPasswordResetEmail, buildMagicLinkEmail, isMagicLinkEnabled } from '../utils/email';
 import { verifyFirebaseIdToken } from '../utils/firebaseAdmin';
 import { invalidateTokenVersionCache } from '../middleware/auth';
 
@@ -644,6 +644,17 @@ export const verifyEmail = async (req: RequestWithUser, res: Response) => {
   }
 };
 
+// Public, unauthenticated config endpoint. Returns the auth-feature
+// surface so the frontend can hide UI for features that aren't wired up
+// (e.g. magic-link without an email provider). Cached briefly because the
+// answer doesn't change without an env-var flip + redeploy.
+export const getAuthConfig = async (_req: RequestWithUser, res: Response) => {
+  res.set('Cache-Control', 'public, max-age=60');
+  res.json({
+    magicLinkEnabled: isMagicLinkEnabled(),
+  });
+};
+
 // ─── Magic Link (passwordless) ────────────────────────────
 //
 // Two-step flow:
@@ -658,6 +669,13 @@ export const verifyEmail = async (req: RequestWithUser, res: Response) => {
 
 export const requestMagicLink = async (req: RequestWithUser, res: Response) => {
   try {
+    if (!isMagicLinkEnabled()) {
+      // Feature is gated off (no email provider configured, or explicitly
+      // disabled). Use 503 so the frontend can distinguish this from a
+      // bad-input 400 and hide the UI affordance for future visits.
+      res.status(503).json({ error: 'Magic-link sign-in is not available right now', code: 'MAGIC_LINK_DISABLED' });
+      return;
+    }
     const { email, referralCode } = req.body || {};
     if (typeof email !== 'string' || !email.includes('@') || email.length > 254) {
       res.status(400).json({ error: 'Valid email is required' });
@@ -758,6 +776,8 @@ export const requestMagicLink = async (req: RequestWithUser, res: Response) => {
 
 export const verifyMagicLink = async (req: RequestWithUser, res: Response) => {
   try {
+    // Verify stays available even if the feature was disabled mid-flight,
+    // so already-issued tokens can still complete. Block at request time only.
     const { token } = req.body || {};
     if (typeof token !== 'string' || token.length < 16) {
       res.status(400).json({ error: 'Invalid token' });

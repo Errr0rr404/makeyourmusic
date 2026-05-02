@@ -17,6 +17,7 @@ import {
   firebaseExchange,
   requestMagicLink,
   verifyMagicLink,
+  getAuthConfig,
 } from '../controllers/authController';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import {
@@ -63,6 +64,11 @@ router.post('/resend-verification', emailDispatchLimiter, resendVerificationRule
 // uses the write-auth limiter so a stolen token can't be brute-forced.
 router.post('/magic-link/request', emailDispatchLimiter, requestMagicLink as any);
 router.post('/magic-link/verify', writeAuthLimiter, verifyMagicLink as any);
+
+// Public auth-feature config — used by the frontend to hide UI for
+// features that aren't fully wired up server-side (e.g. magic-link
+// without an email provider).
+router.get('/config', getAuthConfig as any);
 
 // Account management (authenticated)
 router.post('/change-password', authenticate as any, writeAuthLimiter, changePasswordRules, validateRequest, changePassword as any);
