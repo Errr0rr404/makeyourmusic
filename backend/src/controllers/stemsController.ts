@@ -4,6 +4,7 @@ import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 import { pollStemsJob, startStemsJob, StemProviderUnavailable, STEM_PROVIDER_ID } from '../utils/stems';
 import { getStripe, frontendUrl } from '../utils/stripeClient';
+import { buildStemsMixUrl, publicIdFromCloudinaryUrl } from '../utils/cloudinary';
 
 // Flat platform fee the owner pays before we run a stem job. Covers Replicate
 // compute (~$0.02/track on htdemucs) plus margin.
@@ -289,6 +290,97 @@ export const getStems = async (req: RequestWithUser, res: Response) => {
   } catch (error) {
     logger.error('getStems error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to get stems' });
+  }
+};
+
+// POST /api/licenses/tracks/:trackId/stems/mix-export
+// Server-side mix render. Body: { levels: { drums, bass, vocals, other }, mutes, solos }.
+// Returns a Cloudinary URL (mp3) the client can stream or download. Owners
+// always allowed; non-owners require a successful stems purchase (TODO once
+// the buyer flow lands — for now we allow any authenticated track owner).
+//
+// We don't queue or persist anything: Cloudinary materializes the derived
+// asset on first hit and CDN-caches it.
+export const exportStemsMix = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    const trackId = req.params.trackId as string;
+    const { levels = {}, mutes = [], solos = [] } = (req.body || {}) as {
+      levels?: { drums?: number; bass?: number; vocals?: number; other?: number };
+      mutes?: string[];
+      solos?: string[];
+    };
+
+    const track = await prisma.track.findUnique({
+      where: { id: trackId },
+      include: { agent: { select: { ownerId: true } }, stems: true },
+    });
+    if (!track) {
+      res.status(404).json({ error: 'Track not found' });
+      return;
+    }
+    const isOwner = track.agent?.ownerId === req.user.userId;
+    if (!isOwner) {
+      // TODO: also allow buyers when the marketplace stems-purchase flow lands.
+      res.status(403).json({ error: 'Only the track owner can export a mix' });
+      return;
+    }
+    if (!track.stems || track.stems.status !== 'READY') {
+      res.status(409).json({ error: 'Stems are not ready yet' });
+      return;
+    }
+
+    // Apply mute/solo logic before sending to the URL builder. If any solo
+    // is set, only solo'd stems play (regardless of mutes); otherwise mutes
+    // zero out the level.
+    const partKeys: Array<'drums' | 'bass' | 'vocals' | 'other'> = ['drums', 'bass', 'vocals', 'other'];
+    const soloSet = new Set(solos.filter((s) => partKeys.includes(s as 'drums')));
+    const muteSet = new Set(mutes.filter((m) => partKeys.includes(m as 'drums')));
+    const effectiveLevel = (key: 'drums' | 'bass' | 'vocals' | 'other'): number => {
+      const raw = typeof levels[key] === 'number' ? Math.max(0, Math.min(150, levels[key]!)) : 100;
+      if (soloSet.size > 0 && !soloSet.has(key)) return 0;
+      if (muteSet.has(key)) return 0;
+      return raw;
+    };
+
+    const drumsId = track.stems.drumsUrl ? publicIdFromCloudinaryUrl(track.stems.drumsUrl) : '';
+    const bassId = track.stems.bassUrl ? publicIdFromCloudinaryUrl(track.stems.bassUrl) : '';
+    const vocalsId = track.stems.vocalsUrl ? publicIdFromCloudinaryUrl(track.stems.vocalsUrl) : '';
+    const otherId = track.stems.otherUrl ? publicIdFromCloudinaryUrl(track.stems.otherUrl) : '';
+
+    if (!drumsId && !bassId && !vocalsId && !otherId) {
+      res.status(409).json({
+        error: 'Stems are stored on a non-Cloudinary host; server-side mix is unavailable. Use the in-browser exporter.',
+      });
+      return;
+    }
+
+    let mixUrl: string;
+    try {
+      mixUrl = buildStemsMixUrl({
+        drumsPublicId: drumsId || undefined,
+        bassPublicId: bassId || undefined,
+        vocalsPublicId: vocalsId || undefined,
+        otherPublicId: otherId || undefined,
+        levels: {
+          drums: effectiveLevel('drums'),
+          bass: effectiveLevel('bass'),
+          vocals: effectiveLevel('vocals'),
+          other: effectiveLevel('other'),
+        },
+      });
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+      return;
+    }
+
+    res.json({ url: mixUrl });
+  } catch (error) {
+    logger.error('exportStemsMix error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to export stems mix' });
   }
 };
 

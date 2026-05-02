@@ -11,6 +11,7 @@ import {
   getStems,
   setStemsPrice,
   createStemsGenerationCheckout,
+  exportStemsMix,
 } from '../controllers/stemsController';
 import { authenticate, optionalAuth } from '../middleware/auth';
 
@@ -36,5 +37,6 @@ router.post(
 router.post('/tracks/:trackId/stems/request', authenticate as any, requestStems as any);
 router.get('/tracks/:trackId/stems', optionalAuth as any, getStems as any);
 router.put('/tracks/:trackId/stems/price', authenticate as any, setStemsPrice as any);
+router.post('/tracks/:trackId/stems/mix-export', authenticate as any, exportStemsMix as any);
 
 export default router;

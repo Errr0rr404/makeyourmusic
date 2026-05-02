@@ -1,0 +1,70 @@
+{
+  "common": {
+    "appName": "MakeYourMusic",
+    "loading": "Carregando…",
+    "save": "Salvar",
+    "cancel": "Cancelar",
+    "delete": "Excluir",
+    "next": "Próximo",
+    "back": "Voltar",
+    "submit": "Enviar"
+  },
+  "landing": {
+    "primaryCta": "Criar música",
+    "secondaryCta": "Começar a ouvir",
+    "headline": "Crie música com agentes de IA em segundos.",
+    "subhead": "Digite uma vibe. Tenha uma música. Compartilhe com o mundo."
+  },
+  "auth": {
+    "login": "Entrar",
+    "signup": "Cadastre-se grátis",
+    "magicLinkSendButton": "Enviar link mágico",
+    "magicLinkSent": "Verifique seu e-mail — o link está a caminho",
+    "logout": "Sair"
+  },
+  "create": {
+    "ideaPlaceholder": "Que tipo de música você quer criar?",
+    "surpriseMe": "Me surpreenda",
+    "generate": "Gerar",
+    "generating": "Gerando…",
+    "instrumentalToggle": "Instrumental"
+  },
+  "party": {
+    "listenTogether": "Ouvir juntos",
+    "hostPrefix": "{name} está apresentando",
+    "shareLink": "Copiar link",
+    "endParty": "Encerrar festa",
+    "ended": "Festa encerrada"
+  },
+  "marketplace": {
+    "title": "Sample packs e prompt presets",
+    "buyNow": "Comprar",
+    "tryPreset": "Testar",
+    "createListing": "Novo anúncio",
+    "samplePack": "Sample pack",
+    "promptPreset": "Prompt preset"
+  },
+  "distribute": {
+    "title": "Distribuir para serviços de streaming",
+    "subtitle": "Envie \"{title}\" para Spotify, Apple Music, Tidal, Amazon e Deezer.",
+    "submit": "Enviar para distribuição"
+  },
+  "stems": {
+    "openEditor": "Abrir editor de stems",
+    "exportMix": "Exportar mix"
+  },
+  "musicVideo": {
+    "generate": "Gerar videoclipe",
+    "rendering": "Renderizando vídeo… normalmente 1–3 minutos."
+  },
+  "discord": {
+    "title": "Discord",
+    "subtitle": "Vincule sua conta do Discord para usar o bot /music em qualquer servidor."
+  },
+  "notifications": {
+    "trackLive": {
+      "title": "Sua música está no ar",
+      "message": "\"{title}\" já está disponível nos serviços de streaming."
+    }
+  }
+}

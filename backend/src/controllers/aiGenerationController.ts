@@ -666,7 +666,7 @@ export function mergePlanIntoPrompt(
   return merged.length > MAX_PROMPT_LEN ? merged.slice(0, MAX_PROMPT_LEN) : merged;
 }
 
-async function processMusicGeneration(generationId: string): Promise<void> {
+export async function processMusicGeneration(generationId: string): Promise<void> {
   const gen = await prisma.musicGeneration.findUnique({ where: { id: generationId } });
   if (!gen) return;
 
@@ -679,11 +679,41 @@ async function processMusicGeneration(generationId: string): Promise<void> {
     const { prompt: orchestratedPrompt, lyrics: preparedLyrics } =
       await orchestrateAndPrepareLyrics(gen);
 
+    // Custom-trained agents: when the generation is bound to an agent that
+    // has a derived styleProfile, prepend the profile to the music prompt
+    // so the agent's voice stays consistent across tracks. Treated as a
+    // hard override — the model is told to honor this above genre defaults.
+    let promptWithStyleProfile = orchestratedPrompt;
+    if (gen.agentId) {
+      try {
+        const agent = await prisma.aiAgent.findUnique({
+          where: { id: gen.agentId },
+          select: { genConfig: true },
+        });
+        const cfg = (agent?.genConfig && typeof agent.genConfig === 'object'
+          ? (agent.genConfig as Record<string, unknown>)
+          : null);
+        const styleProfile = typeof cfg?.styleProfile === 'string' ? cfg.styleProfile.trim() : '';
+        if (styleProfile && styleProfile.length > 40) {
+          const block = `Custom style profile (override genre defaults when in conflict):\n${styleProfile}`;
+          promptWithStyleProfile = orchestratedPrompt
+            ? `${block}\n\n${orchestratedPrompt}`
+            : block;
+        }
+      } catch (err) {
+        logger.warn('Failed to load agent styleProfile', {
+          generationId,
+          agentId: gen.agentId,
+          error: (err as Error).message,
+        });
+      }
+    }
+
     const isCover = gen.providerModel === 'music-cover' || !!gen.referenceAudioUrl;
     const primaryModel =
       gen.providerModel || (isCover ? 'music-cover' : MUSIC_MODEL());
     const baseRequest = {
-      prompt: providerPromptForGeneration(orchestratedPrompt, generationId),
+      prompt: providerPromptForGeneration(promptWithStyleProfile, generationId),
       lyrics: preparedLyrics || undefined,
       isInstrumental: gen.isInstrumental,
       audioUrl: gen.referenceAudioUrl || undefined,

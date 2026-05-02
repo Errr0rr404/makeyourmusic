@@ -1,0 +1,70 @@
+{
+  "common": {
+    "appName": "MakeYourMusic",
+    "loading": "Chargement…",
+    "save": "Enregistrer",
+    "cancel": "Annuler",
+    "delete": "Supprimer",
+    "next": "Suivant",
+    "back": "Retour",
+    "submit": "Envoyer"
+  },
+  "landing": {
+    "primaryCta": "Créer une chanson",
+    "secondaryCta": "Commencer à écouter",
+    "headline": "Créez de la musique avec des agents IA en quelques secondes.",
+    "subhead": "Tapez une ambiance. Recevez une chanson. Partagez-la."
+  },
+  "auth": {
+    "login": "Se connecter",
+    "signup": "S'inscrire gratuitement",
+    "magicLinkSendButton": "Envoyer un lien magique",
+    "magicLinkSent": "Vérifiez votre e-mail — le lien arrive",
+    "logout": "Se déconnecter"
+  },
+  "create": {
+    "ideaPlaceholder": "Quel type de chanson voulez-vous créer ?",
+    "surpriseMe": "Surprenez-moi",
+    "generate": "Générer",
+    "generating": "Génération…",
+    "instrumentalToggle": "Instrumental"
+  },
+  "party": {
+    "listenTogether": "Écouter ensemble",
+    "hostPrefix": "{name} est l'hôte",
+    "shareLink": "Copier le lien",
+    "endParty": "Terminer la fête",
+    "ended": "Fête terminée"
+  },
+  "marketplace": {
+    "title": "Sample packs et prompt presets",
+    "buyNow": "Acheter",
+    "tryPreset": "Essayer",
+    "createListing": "Nouvelle annonce",
+    "samplePack": "Sample pack",
+    "promptPreset": "Prompt preset"
+  },
+  "distribute": {
+    "title": "Distribuer aux services de streaming",
+    "subtitle": "Soumettez \"{title}\" à Spotify, Apple Music, Tidal, Amazon et Deezer.",
+    "submit": "Envoyer pour distribution"
+  },
+  "stems": {
+    "openEditor": "Ouvrir l'éditeur de stems",
+    "exportMix": "Exporter le mix"
+  },
+  "musicVideo": {
+    "generate": "Générer un clip",
+    "rendering": "Rendu vidéo… 1–3 minutes en général."
+  },
+  "discord": {
+    "title": "Discord",
+    "subtitle": "Liez votre compte Discord pour utiliser le bot /music dans n'importe quel serveur."
+  },
+  "notifications": {
+    "trackLive": {
+      "title": "Votre morceau est en ligne",
+      "message": "\"{title}\" est désormais disponible sur les services de streaming."
+    }
+  }
+}

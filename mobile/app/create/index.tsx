@@ -18,6 +18,7 @@ import {
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Button } from '../../components/ui/Button';
 import { AuthGateModal } from '../../components/auth/AuthGateModal';
+import { VoiceQuickCreate } from '../../components/create/VoiceQuickCreate';
 import { pickAndUploadImage } from '../../lib/uploadImage';
 import { track, trackGeneration } from '../../lib/analytics';
 import { hapticSelection, hapticSuccess } from '../../services/hapticService';
@@ -788,6 +789,11 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
             ))}
           </View>
         )}
+
+        <View className="mt-4 pt-4 border-t border-mym-border">
+          <VoiceQuickCreate />
+        </View>
+
 
         <Text className="text-mym-text text-sm font-semibold mb-2 mt-4">
           Working title <Text className="text-mym-muted font-normal">(optional)</Text>

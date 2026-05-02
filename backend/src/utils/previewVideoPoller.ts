@@ -3,6 +3,12 @@
 // Queueing → Preparing → Processing → Success / Fail. We only call the file
 // retrieve endpoint on Success.
 //
+// Also handles owner-initiated full music videos (purpose='user' with a
+// trackId). Those write to Track.musicVideoUrl when complete instead of
+// previewVideoUrl, and the inline poller in aiGenerationController is
+// authoritative for the videoGeneration row itself; this poller is the
+// backstop that fires the Track-side update.
+//
 // Called from the cron tick (every 5 minutes is plenty — these jobs take
 // 30-90s upstream). Idempotent: a job that has already been resolved is
 // skipped because its row is no longer in PROCESSING.
@@ -31,15 +37,25 @@ export async function pollPreviewVideos(): Promise<{ processed: number; resolved
   const stuckCutoff = new Date(Date.now() - STUCK_AFTER_MS);
   await prisma.videoGeneration.updateMany({
     where: {
-      purpose: 'preview',
+      // Both auto-preview clips and owner-initiated music videos timeout the
+      // same way; covering both with one updateMany.
+      purpose: { in: ['preview', 'user'] },
       status: 'PROCESSING',
       createdAt: { lt: stuckCutoff },
     },
-    data: { status: 'FAILED', errorMessage: 'Preview video timed out' },
+    data: { status: 'FAILED', errorMessage: 'Video generation timed out' },
   });
 
   const pending = await prisma.videoGeneration.findMany({
-    where: { purpose: 'preview', status: 'PROCESSING', providerJobId: { not: null } },
+    where: {
+      // Poll preview jobs always; user-purpose jobs only when they're tied to
+      // a track (so we know where to write musicVideoUrl). Standalone studio
+      // videos are polled inline by aiGenerationController.pollVideoGeneration.
+      OR: [
+        { purpose: 'preview', status: 'PROCESSING', providerJobId: { not: null } },
+        { purpose: 'user', status: 'PROCESSING', providerJobId: { not: null }, trackId: { not: null } },
+      ],
+    },
     take: MAX_PER_TICK,
     orderBy: { createdAt: 'asc' },
   });
@@ -59,9 +75,16 @@ export async function pollPreviewVideos(): Promise<{ processed: number; resolved
             },
           });
           if (job.trackId) {
+            // preview → previewVideoUrl, user-music-video → musicVideoUrl.
+            // The two surfaces don't overlap: previewVideoUrl drives the
+            // 6-15s share clip; musicVideoUrl is the long-form hero on the
+            // track page. An owner-initiated music video does NOT overwrite
+            // the auto preview.
             await tx.track.update({
               where: { id: job.trackId },
-              data: { previewVideoUrl: downloadUrl },
+              data: job.purpose === 'user'
+                ? { musicVideoUrl: downloadUrl }
+                : { previewVideoUrl: downloadUrl },
             });
           }
         });

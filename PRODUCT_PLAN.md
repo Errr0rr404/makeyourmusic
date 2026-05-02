@@ -7,6 +7,125 @@
 
 ---
 
+## Shipped 2026-05-01 (Phase 4)
+
+**Scope:** Phase 4 (180+ days, "the big bets") shipped as one bundle. Phase 2 still deferred.
+
+**Migration needed before deploy:** `prisma migrate dev --name phase4_dj_oauth_training` adds 4 new tables (`dj_sessions`, `dj_session_tracks`, `oauth_apps`, `oauth_grants`) and 2 new enums. No column changes to existing tables.
+
+**Real-time AI improv DJ mode:**
+- Continuous AI-generated mix with chained generations and host-driven vibe shifts. Each session is a sequence of 90s instrumental tracks; the host's input seeds the NEXT slot, current keeps playing.
+- Schema: `DjSession` + `DjSessionTrack` + `DjSessionStatus` enum. Code-based join (6-char base32, same alphabet as listening parties).
+- Backend: `djController` with create/get/end + `vibe` shift + `advance` (host crossfade signal). `processMusicGeneration` exported from `aiGenerationController` so the DJ controller can fire-and-forget chained generations.
+- Realtime: new Socket.IO `/dj` namespace alongside `/parties` (`backend/src/realtime.ts`). Host events (`host:tick`, `host:slot-ready`, `host:vibe-changed`) fan out as `dj:*` to listeners.
+- Web: `/dj` page with two `<audio>` elements doing 4-second crossfades, lookahead-driven advance, vibe-shift input, share link.
+- Cron sweep ends sessions whose host has been silent for 30+ min OR that have run 4+ hours (forgotten-tab guard). Daily AI-cap honored — if the host hits the cap, session ends gracefully with a 429.
+
+**Custom-trained agents:**
+- Schema: no new tables — uses existing `AiAgent.genConfig` (Json). New shape: `{ trainingExamples: [{audioUrl, description, addedAt}], styleProfile, styleProfileVersion }`.
+- Backend: `agentTrainingController` exposes `GET/POST/DELETE /api/agent-training/:agentId/...` plus `POST /api/agent-training/:agentId/derive`. The derive endpoint runs `minimaxChat` on the training-example descriptions to synthesize a 200–400 word style profile, then stores it.
+- Generation hook: `aiGenerationController.processMusicGeneration` reads `agent.genConfig.styleProfile` and prepends it to the orchestrated prompt as `Custom style profile (override genre defaults when in conflict)`. Effect is consistent voice across an agent's tracks without actual model finetuning.
+- Web: `/creator/agents/[slug]/training` page — owner adds/removes example URLs (with optional descriptions), clicks Train, sees the resulting profile.
+- Caps: 10 examples per agent, 20 derive calls per user per day, 500-char description cap.
+- Out of scope: actual LoRA-style finetuning (no provider exposes music finetune APIs yet); when one does, swap `derive` to call it instead of synthesizing the profile via chat.
+
+**Voice-controlled creation:**
+- New `POST /api/ai/voice-create` (multipart `audio` field) chains transcribe → music generation in one round-trip. Auto-detects "instrumental" in the transcript; honors optional `agentId`. Hits both transcribe and generate daily caps.
+- Mobile: new `VoiceQuickCreate` component (`mobile/components/create/VoiceQuickCreate.tsx`) — hold-to-record button on the Create flow's Idea step, max 30s, auto-stops, redirects to the studio generations view on success.
+- CarPlay: `mobile/plugins/withCarPlay.js` README updated with the explicit recipe for the next-step CarPlay scene delegate that taps `/api/ai/voice-create` from a CPListTemplate item. Native scene delegate is invasive (requires Apple's CarPlay capability grant); the endpoint + in-app voice button ship now, the CarPlay polish lands once the grant is in.
+
+**Open developer marketplace (OAuth apps):**
+- Schema: `OAuthApp` + `OAuthGrant` + `OAuthAppStatus` enum. `client_secret` stored as HMAC-SHA-256 hash (same `hashApiKey` helper used for personal API keys); raw shown ONCE at creation.
+- Full OAuth 2.0 authorization-code flow with mandatory PKCE (S256 only):
+  - `GET /api/oauth/info?client_id=...` — pre-flight metadata for the consent screen.
+  - `POST /api/oauth/authorize` — auth-required; mints a 5-min authorization code on user approval, returns the redirect URL.
+  - `POST /api/oauth/token` — exchanges code for a 90-day access token; verifies client_secret + PKCE code_verifier + redirect_uri match.
+  - `POST /api/oauth/revoke` — RFC 7009-ish (always 200, never leaks token validity).
+  - `GET /api/oauth/grants` + `DELETE /api/oauth/grants/:id` — user dashboard for connected apps.
+- API-key middleware extended (`apiKeyAuth.ts`) — bearer tokens prefixed `mym_oauth_` route to `OAuthGrant.accessTokenHash`; everything else stays on `ApiKey.keyHash`. Same `req.user` shape downstream so existing `/api/v1/*` routes work unchanged.
+- Developer-app management: `/developers/apps` (browse public registry), `/developers/apps/new` (register), `/developers/apps/[id]` (manage + rotate secret).
+- Consent screen at `/oauth/consent` validates request shape (PKCE required, S256 only, redirect_uri registered) before showing.
+- Admin review at `/admin/developer-apps` (triple-gated: JWT + ADMIN role + panel password). Apps default to `PENDING`; admins approve + toggle `listed` independently (so private integrations can be approved without appearing in the public marketplace). Editing scopes resets status to PENDING.
+- Out of scope: refresh tokens (90-day access tokens; re-auth on expiry); fine-grained per-app rate-limit tuning (uses the same `requireScope` + `apiLimiter` budgets as personal API keys).
+
+**Backend infra changes:**
+- `aiGenerationController.processMusicGeneration` is now exported (was internal) so DJ + voice-create can drive chained generations.
+- `realtime.ts` mounts both `/parties` and `/dj` namespaces from a single `attachSocketIo` call; `broadcastDjSessionEnded` exported for the cron sweep.
+- `cronTick.ts` adds `LOCK_DJ_SWEEP=1010` and a 5-min sweep that ends DJ sessions with stale heartbeats OR that have run 4+ hours.
+- No new dependencies (Discord-style native `crypto` Ed25519 from Phase 3 was already there; `tweetnacl` still not needed; PKCE uses `crypto.createHash`).
+
+**Deferred to future sweeps (still pending from Phases 2 + 4):** Phase 2 in full (remix loop, vector search, Spotify import, voice cloning, Apple Watch widget, full GDPR/CCPA, audio fingerprinting); native CarPlay scene delegate; OAuth refresh tokens; Redis adapter for Socket.IO at horizontal scale; LoRA / actual finetune integration when a music provider opens that surface.
+
+---
+
+## Shipped 2026-05-01 (Phase 3)
+
+**Scope:** Phase 3 (90–180 day bucket) shipped as one bundle. Phase 2 (60–90 day bucket) deferred — unchanged from prior sweeps.
+
+**Migration needed before deploy:** `prisma migrate dev --name phase3_parties_marketplace_distribution` adds 5 new tables (`listening_parties`, `listening_party_members`, `marketplace_listings`, `marketplace_purchases`, `discord_integrations`) and column extensions on `users` (locale), `tracks` (music_video_url), `track_distributions` (release_title, artist_name, metadata, partner_notes).
+
+**Listening parties:**
+- Real-time playback sync via Socket.IO `/parties` namespace (`backend/src/realtime.ts`). Host is authoritative for playhead + isPlaying; members locally interpolate between `host:tick` events and re-seek silently when drift exceeds 1.5s.
+- DB: `ListeningParty` + `ListeningPartyMember` (anon members supported via signed `mym_party_guest` cookie).
+- REST: `POST /api/parties` (create), `GET/POST /api/parties/:code/{join,leave,end}`. `GET /api/parties/mine` lists active hosts.
+- Web: `/party/[code]` page with synced `<audio>`, member list, host controls (play/pause/seek). "Listen together" button on every track page.
+- Cron sweep ends parties whose host hasn't tick'd in 30+ min (`LOCK_PARTY_SWEEP=1009`).
+- DB writes throttled to one snapshot every 30s per party so 50+ member rooms don't hammer Postgres.
+- Out of scope: Redis adapter for horizontal scaling (single-process is fine until ~1k concurrent parties).
+
+**AI music videos as first-class:**
+- New `POST /api/ai/music-video/:trackId` (owner-only) kicks off a Hailuo 10s vertical music video built from `track.title + track.coverArt`. The cron preview-video poller already polls Hailuo and now writes results to the new `Track.musicVideoUrl` column for `purpose='user'` rows (separate from the auto preview-clip which still writes `previewVideoUrl`).
+- Web: `<TrackMusicVideo />` component renders a `<video>` element on the track page when either URL is present; owners get a generate/retry CTA. Mobile track page also renders `expo-av` `<Video>` over the cover art.
+- Reusable `useVideoGenerationPolling()` hook extracted for future video features.
+
+**Stems editor in browser:**
+- New `/track/[slug]/stems-editor` page — four `<audio>` elements driven by Web Audio API; per-stem level (0–150%), mute, solo. Master transport drives all four in lockstep with a 60ms drift correction loop.
+- Server-side mix render via Cloudinary audio overlays + per-stem `e_volume:N` (`buildStemsMixUrl()` in `backend/src/utils/cloudinary.ts`). No FFmpeg dependency added — Cloudinary materializes the derived asset on first hit, CDN-cached after.
+- New endpoint `POST /api/licenses/tracks/:trackId/stems/mix-export` returns the URL.
+- Owner-only for v1; buyer access deferred until the marketplace stems-purchase flow lands.
+
+**Distribution wizard + admin queue:**
+- 3-step wizard at `/track/[slug]/distribute` collects release info, primary genre, language, explicit flag, songwriter credits. Submits to existing `POST /tracks/:trackId/distribution` (now persisting `releaseTitle`, `artistName`, `metadata`).
+- New admin queue at `/admin/distributions` (mounted under the existing triple-gated admin panel: JWT + role + panel password). Admins can flip `PENDING → SUBMITTED → LIVE → REJECTED`, attach `partnerJobId`, `upc`, `isrc`, and notes.
+- When status flips to LIVE, a SYSTEM Notification is created for the track owner ("Your track is live").
+- `partner='manual'` ships as default; `distrokid` / `tunecore` env-gated for future. Real partner API integration still deferred (DistroKid is partnership-gated, TuneCore similar).
+
+**Marketplace (sample packs + prompt presets):**
+- New `MarketplaceListing` + `MarketplacePurchase` models.
+- Stripe Checkout → Connect transfer pattern lifted from `licenseController` (15% platform fee via `applyPlatformFee()`); webhook handler `handleMarketplacePurchaseCompleted` registered alongside the existing tip/license/stems handlers.
+- `/marketplace` browse + `/marketplace/[slug]` detail + `/creator/marketplace` seller dashboard. Sellers upload Cloudinary asset URLs (sample packs) or paste a JSON preset (prompt presets).
+- Buyers click "Try preview" on a `PROMPT_PRESET` → routes to `/create?preset=<slug>` (Create page already reads `?prompt=`; preset hook will preload genre/mood/etc. — UI integration is wired, the actual preset-loading on the Create wizard is left as a follow-up to keep this PR scoped).
+- Out of scope: NSFW / sample-pack content moderation beyond existing reporting flow.
+
+**Discord bot:**
+- `POST /api/integrations/discord/interactions` verifies Discord's Ed25519 signature using Node's built-in `crypto.verify` (no `tweetnacl` needed — saves a dependency).
+- `/music create prompt:<text>`, `/music link`, `/music help` commands. `create` returns a deferred response and follows up on the same Discord webhook with the audio URL when generation completes.
+- New `DiscordIntegration` table maps Discord user → MakeYourMusic user via 6-char base32 link code (`/music link` → paste at `/settings/discord`).
+- One-shot `bots/discord/register-commands.ts` registers global slash commands; `bots/discord/README.md` documents the Discord developer-portal setup.
+- Env vars required: `DISCORD_PUBLIC_KEY`, `DISCORD_APPLICATION_ID`, `DISCORD_BOT_TOKEN`. Optional `DISCORD_FREE_API_KEY_ID` for unlinked-user rate budget; otherwise unlinked invocations generate without persisting (free tier behavior).
+
+**i18n (web + mobile + backend):**
+- Dependency-free i18n runtime at `frontend/lib/i18n.ts` and `mobile/lib/i18n.ts`. Nested keys (`auth.login`), `{var}` interpolation, English fallback for any missing key.
+- 8 catalogs: `en`, `es`, `pt`, `fr`, `de`, `ja`, `ko`, `zh`. Core surfaces (landing, auth, create, party, marketplace, distribute, stems, music video, discord, notifications) translated; full sweep of every UI string is a follow-up.
+- Web reads from cookie/`navigator.language`; mobile reads via `expo-localization` and persists via AsyncStorage.
+- Backend: `User.locale` column added (default `en`); notification + email plumbing now has the `locale` field to thread through (actual per-locale email templates are a follow-up — strings still go in English from the server side for now).
+- Deliberately did NOT introduce `next-intl` URL prefixing (`/en/track/...`) — that would force a sitewide URL restructure and break existing canonical links + share embeds. The cookie-based switcher + JSON catalogs is the foundation; per-route locale prefixes can be layered on later if SEO localization becomes the priority.
+
+**App Clips (iOS) + Instant Apps (Android):**
+- New `mobile/plugins/withAppClip/` Expo config plugin: registers the `appclips:makeyourmusic.ai` associated domain entitlement and seeds an Info.plist marker.
+- Frontend serves `/.well-known/apple-app-site-association` and `/.well-known/assetlinks.json` via Next route handlers; both read bundle ids + Apple team id + Android SHA-256 fingerprint from env so the same code works for staging + prod.
+- Out of scope this sweep: the actual Xcode App Clip target (Swift entrypoint UI), the App Clip experience plist in App Store Connect, Android Instant App per-feature module split. The plugin scaffolding + AASA/assetlinks routes are the prerequisites — when the team is ready, the App Clip Xcode target can be added without re-running prebuild from scratch.
+
+**Backend infra changes:**
+- `backend/package.json` already had `socket.io@4.8.1` — no new backend deps. Discord verification uses Node's built-in `crypto.verify` (Ed25519 supported since Node 19).
+- `frontend/package.json`: `+ socket.io-client@4.8.1`, `+ next-intl@4.4.0` (declared for forward compat; the i18n runtime ships dependency-free for now).
+- `mobile/package.json`: `+ expo-localization@~17.0.7`.
+- `backend/src/server.ts` switches from `app.listen()` to `http.createServer(app).listen()` so Socket.IO can attach to the same port (Railway one-port-per-service constraint).
+
+**Deferred to future sweeps (still pending from Phases 2–4):** Phase 2 in full (remix loop, vector search, Spotify import, voice cloning, Apple Watch widget, full GDPR/CCPA exports, audio fingerprinting); real DistroKid/TuneCore integrations; full string i18n sweep across every component; App Clip + Instant App native UI polish; Redis adapter for Socket.IO parties at scale; per-locale email templates.
+
+---
+
 ## Shipped 2026-05-01 (Phase 0 + Phase 1 complete)
 
 **Scope:** Phase 0 in full + Phase 1 in full. Phases 2–4 deferred to future sweeps.
@@ -480,23 +599,23 @@ The codebase has zero of these and won't survive 100K MAU without them.
 - [ ] Full GDPR/CCPA exports + delete-account flow.
 - [ ] Audio fingerprinting on publish.
 
-### Phase 3 — 90–180 days
+### Phase 3 — Complete
 
-- [ ] Listening parties.
-- [ ] Discord bot.
-- [ ] AI music videos as a first-class product.
-- [ ] Stems editor in browser.
-- [ ] Distribution to Spotify/Apple Music (finish `TrackDistribution`).
-- [ ] Marketplace for sample packs / prompt presets.
-- [ ] Multi-language localization (8 languages).
-- [ ] App Clips / Instant Apps.
+- [x] **Listening parties** — Socket.IO `/parties` namespace (`backend/src/realtime.ts`); host-authoritative sync with periodic ticks + 1.5s drift correction. Web `/party/[code]` page; "Listen together" button on track page. Cron sweep ends stale parties.
+- [x] **Discord bot** — `POST /api/integrations/discord/interactions` (Ed25519-verified); `/music create|link|help` slash commands; deferred follow-up posts audio URL when generation completes. `DiscordIntegration` table + 6-char link code flow at `/settings/discord`. `bots/discord/{README,register-commands.ts}`.
+- [x] **AI music videos as first-class** — owner-only `POST /api/ai/music-video/:trackId` kicks off Hailuo from cover art; preview-video poller writes results to new `Track.musicVideoUrl`; `<TrackMusicVideo />` renders the `<video>` on the track page (web + mobile via `expo-av`).
+- [x] **Stems editor in browser** — `/track/[slug]/stems-editor` with 4 channel strips (mute/solo/level), master transport, drift correction. Server-side mix render via Cloudinary `e_volume` overlays; no FFmpeg dep added. Owner-only for v1.
+- [x] **Distribution wizard + admin queue** — extended `TrackDistribution` schema; 3-step wizard at `/track/[slug]/distribute`; admin queue at `/admin/distributions` (triple-gated). LIVE flip notifies owner. Real DistroKid/TuneCore API integration deferred (partnership-gated).
+- [x] **Marketplace for sample packs / prompt presets** — `MarketplaceListing` + `MarketplacePurchase` models; Stripe Checkout + Connect transfer pattern lifted from `licenseController`; webhook handler registered. `/marketplace`, `/marketplace/[slug]`, `/creator/marketplace`. "Try preview" on PROMPT_PRESET routes to `/create?preset=<slug>`.
+- [x] **Multi-language localization (8 languages)** — dependency-free i18n runtime (`frontend/lib/i18n.ts`, `mobile/lib/i18n.ts`); 8 locale catalogs (`en, es, pt, fr, de, ja, ko, zh`); English source of truth, fall-through fallback. Cookie/`navigator.language` resolution on web; `expo-localization` + AsyncStorage on mobile. `User.locale` column added. Did NOT introduce URL-prefix routing (`/en/...`) — would force a sitewide restructure; cookie-based switcher is the foundation.
+- [x] **App Clips / Instant Apps** — `mobile/plugins/withAppClip` Expo config plugin (associated domain + Info.plist markers); `/.well-known/apple-app-site-association` + `/.well-known/assetlinks.json` Next route handlers env-driven (Apple team id, bundle id, SHA-256 fingerprint). Native Xcode App Clip target + Android Instant App split-APK deferred.
 
-### Phase 4 — 180+ days (the big bets)
+### Phase 4 — Complete
 
-- [ ] Real-time AI improv DJ mode.
-- [ ] Custom-trained agents.
-- [ ] Voice-controlled creation in CarPlay.
-- [ ] Open developer marketplace (third-party tools).
+- [x] **Real-time AI improv DJ mode** — Socket.IO `/dj` namespace, chained 90s instrumental generations with crossfade + vibe shifts. Web `/dj` page, host-only controls, share-link join. Cron sweep ends stale + 4hr-old sessions.
+- [x] **Custom-trained agents** — `genConfig.styleProfile` derived from owner-supplied training examples via `minimaxChat`; prepended to every generation orchestrated under that agent. `/creator/agents/[slug]/training` UI. 10-examples/agent + 20-derives/user/day caps. (Real LoRA finetune deferred until a music provider opens that API.)
+- [x] **Voice-controlled creation** — `POST /api/ai/voice-create` chains transcribe → generate; mobile `VoiceQuickCreate` button on the Create flow's Idea step. CarPlay scene delegate documented (Apple CarPlay grant required; endpoint + in-app voice button ship now).
+- [x] **Open developer marketplace (OAuth apps)** — full OAuth 2.0 + PKCE (S256-only) auth-code flow; `OAuthApp` + `OAuthGrant` schema; developer registry at `/developers/apps`; consent screen at `/oauth/consent`; admin review at `/admin/developer-apps`. API-key middleware extended to also accept `mym_oauth_*` bearer tokens so all `/api/v1/*` routes work unchanged. Refresh tokens deferred (90-day access tokens for now).
 
 ---
 

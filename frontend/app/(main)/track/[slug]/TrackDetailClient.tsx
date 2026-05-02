@@ -6,13 +6,14 @@ import api from '@/lib/api';
 import { validatePaymentRedirect } from '@/lib/utils';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio, Code, DollarSign, Film } from 'lucide-react';
+import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio, Code, DollarSign, Film, Users, Wand2, Send } from 'lucide-react';
 import { ClipGrid } from '@/components/clip/ClipGrid';
 import { formatDuration } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';
 import { Lyrics } from '@/components/track/Lyrics';
 import { TrackCard } from '@/components/track/TrackCard';
 import { TrackStems } from '@/components/track/TrackStems';
+import { TrackMusicVideo } from '@/components/track/TrackMusicVideo';
 import { AddToPlaylistDialog } from '@/components/track/AddToPlaylistDialog';
 import { ReportDialog } from '@/components/track/ReportDialog';
 import { JustPublishedBanner } from '@/components/track/JustPublishedBanner';
@@ -144,6 +145,25 @@ export function TrackDetailClient({ slug }: { slug: string }) {
     }
   };
 
+  const handleStartParty = async () => {
+    if (!track) return;
+    if (!isAuthenticated) {
+      toast.warning('Log in to host a listening party');
+      return;
+    }
+    try {
+      const r = await api.post('/parties', { trackId: track.id });
+      const code = r.data?.party?.code;
+      if (code) {
+        window.location.href = `/party/${code}`;
+      } else {
+        toast.error('Could not start a party');
+      }
+    } catch (err) {
+      toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Could not start a party');
+    }
+  };
+
   if (loading) {
     return (
       <div className="max-w-4xl mx-auto animate-fade-in">
@@ -221,6 +241,15 @@ export function TrackDetailClient({ slug }: { slug: string }) {
               <Share2 className="w-5 h-5" />
             </button>
             <button
+              onClick={handleStartParty}
+              title="Listen together"
+              aria-label="Start a listening party"
+              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-purple-400/40 text-purple-200 hover:bg-purple-400/10 text-sm font-medium transition-colors"
+            >
+              <Users className="w-4 h-4" />
+              Listen together
+            </button>
+            <button
               onClick={async () => {
                 // Validate the slug shape before embedding into a snippet
                 // that gets pasted onto third-party sites. An attacker-
@@ -284,6 +313,16 @@ export function TrackDetailClient({ slug }: { slug: string }) {
                 </button>
               </>
             )}
+            {user?.id && track.agent?.ownerId === user.id && (
+              <Link
+                href={`/track/${track.slug}/distribute`}
+                title="Distribute to streaming services"
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full border border-emerald-400/40 text-emerald-200 hover:bg-emerald-400/10 text-sm font-medium transition-colors"
+              >
+                <Send className="w-4 h-4" />
+                Distribute
+              </Link>
+            )}
           </div>
         </div>
       </div>
@@ -324,6 +363,12 @@ export function TrackDetailClient({ slug }: { slug: string }) {
           {track.aiPrompt && <p className="text-sm text-[hsl(var(--muted-foreground))] mt-1"><span className="text-white">Prompt:</span> {track.aiPrompt}</p>}
         </div>
       )}
+
+      <TrackMusicVideo
+        trackId={track.id}
+        isOwner={Boolean(user?.id && track.agent?.ownerId === user.id)}
+        initialVideoUrl={track.musicVideoUrl}
+      />
 
       <TrackStems
         trackId={track.id}

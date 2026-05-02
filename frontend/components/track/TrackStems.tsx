@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import api from '@/lib/api';
 import { validatePaymentRedirect } from '@/lib/utils';
 import { toast } from '@/lib/store/toastStore';
-import { Music, Mic, Drum, Volume2, Loader2, Sparkles, DollarSign, Download, AlertCircle } from 'lucide-react';
+import { Music, Mic, Drum, Volume2, Loader2, Sparkles, DollarSign, Download, AlertCircle, Sliders } from 'lucide-react';
 
 type StemStatus = 'PENDING' | 'PROCESSING' | 'READY' | 'FAILED';
 interface Stems {
@@ -32,7 +33,7 @@ const STEM_PARTS: Array<{ key: 'drums' | 'bass' | 'vocals' | 'other'; label: str
   { key: 'other', label: 'Other', Icon: Volume2 },
 ];
 
-export function TrackStems({ trackId, isOwner }: Props) {
+export function TrackStems({ trackId, trackSlug, isOwner }: Props) {
   const [stems, setStems] = useState<Stems | null>(null);
   const [loading, setLoading] = useState(true);
   const [requesting, setRequesting] = useState(false);
@@ -260,6 +261,16 @@ export function TrackStems({ trackId, isOwner }: Props) {
               );
             })}
           </div>
+
+          {isOwner && (
+            <Link
+              href={`/track/${trackSlug}/stems-editor`}
+              className="inline-flex items-center gap-2 h-9 px-4 rounded-full border border-purple-400/40 text-sm font-medium text-purple-200 hover:bg-purple-400/10 mb-4"
+            >
+              <Sliders className="w-4 h-4" />
+              Open stems editor
+            </Link>
+          )}
 
           <div className="border-t border-[hsl(var(--border))] pt-4">
             <p className="text-xs font-medium text-white mb-2">Sell stems as a paid bundle</p>

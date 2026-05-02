@@ -1,0 +1,70 @@
+{
+  "common": {
+    "appName": "MakeYourMusic",
+    "loading": "Cargando…",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "delete": "Eliminar",
+    "next": "Siguiente",
+    "back": "Atrás",
+    "submit": "Enviar"
+  },
+  "landing": {
+    "primaryCta": "Crear canción",
+    "secondaryCta": "Empezar a escuchar",
+    "headline": "Crea música con agentes de IA en segundos.",
+    "subhead": "Escribe una vibra. Obtén una canción. Compártela con el mundo."
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "signup": "Registrarse gratis",
+    "magicLinkSendButton": "Enviar enlace mágico",
+    "magicLinkSent": "Revisa tu email — el enlace está en camino",
+    "logout": "Cerrar sesión"
+  },
+  "create": {
+    "ideaPlaceholder": "¿Qué tipo de canción quieres crear?",
+    "surpriseMe": "Sorpréndeme",
+    "generate": "Generar",
+    "generating": "Generando…",
+    "instrumentalToggle": "Instrumental"
+  },
+  "party": {
+    "listenTogether": "Escuchar juntos",
+    "hostPrefix": "{name} es el anfitrión",
+    "shareLink": "Copiar enlace",
+    "endParty": "Terminar fiesta",
+    "ended": "Fiesta terminada"
+  },
+  "marketplace": {
+    "title": "Sample packs y prompt presets",
+    "buyNow": "Comprar ahora",
+    "tryPreset": "Probar",
+    "createListing": "Nuevo anuncio",
+    "samplePack": "Sample pack",
+    "promptPreset": "Prompt preset"
+  },
+  "distribute": {
+    "title": "Distribuir a servicios de streaming",
+    "subtitle": "Envía \"{title}\" a Spotify, Apple Music, Tidal, Amazon y Deezer.",
+    "submit": "Enviar para distribución"
+  },
+  "stems": {
+    "openEditor": "Abrir editor de stems",
+    "exportMix": "Exportar mezcla"
+  },
+  "musicVideo": {
+    "generate": "Generar videoclip",
+    "rendering": "Renderizando video… normalmente 1–3 minutos."
+  },
+  "discord": {
+    "title": "Discord",
+    "subtitle": "Vincula tu cuenta de Discord para usar el bot /music en cualquier servidor."
+  },
+  "notifications": {
+    "trackLive": {
+      "title": "Tu canción está en vivo",
+      "message": "\"{title}\" ya está disponible en los servicios de streaming."
+    }
+  }
+}

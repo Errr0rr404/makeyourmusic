@@ -114,7 +114,9 @@
         }
       ],
       "./plugins/withAndroidAuto",
-      "./plugins/withShareExtension"
+      "./plugins/withShareExtension",
+      "./plugins/withAppClip",
+      "expo-localization"
     ],
     "experiments": {
       "typedRoutes": true

@@ -36,6 +36,8 @@ const LOCK_STUCK_GEN_SWEEP = 1005;
 const LOCK_REFERRAL_PAYOUT = 1006;
 const LOCK_COLLAB_PAYOUT = 1007;
 const LOCK_AUTOCLIP_BACKFILL = 1008;
+const LOCK_PARTY_SWEEP = 1009;
+const LOCK_DJ_SWEEP = 1010;
 
 async function withLock(lockId: number, fn: () => Promise<void>): Promise<boolean> {
   const rows = await prisma.$queryRawUnsafe<Array<{ pg_try_advisory_lock: boolean }>>(
@@ -117,6 +119,62 @@ async function backfillAutoClips(): Promise<{ scheduled: number }> {
     }
   }
   return { scheduled };
+}
+
+// End DJ sessions abandoned by the host. Same heartbeat logic as parties:
+// no host:tick in 30+ min ⇒ session ENDED. Also imposes a hard 4-hour cap
+// so a forgotten browser tab can't burn through the host's daily generation
+// budget. The cron worker also broadcasts dj:ended so any stranded
+// listeners disconnect cleanly.
+async function sweepStaleDjSessions(): Promise<{ ended: number }> {
+  const heartbeatCutoff = new Date(Date.now() - 30 * 60 * 1000);
+  const ageCutoff = new Date(Date.now() - 4 * 60 * 60 * 1000);
+  const stale = await prisma.djSession.findMany({
+    where: {
+      status: { in: ['LIVE', 'PAUSED'] },
+      OR: [{ lastTickAt: { lt: heartbeatCutoff } }, { startedAt: { lt: ageCutoff } }],
+    },
+    select: { id: true },
+    take: 200,
+  });
+  if (stale.length === 0) return { ended: 0 };
+  await prisma.djSession.updateMany({
+    where: { id: { in: stale.map((s) => s.id) } },
+    data: { status: 'ENDED', endedAt: new Date() },
+  });
+  try {
+    const { broadcastDjSessionEnded } = await import('../realtime');
+    for (const s of stale) broadcastDjSessionEnded(s.id);
+  } catch {
+    // realtime not attached in tests — fine.
+  }
+  return { ended: stale.length };
+}
+
+// End ListeningParty rows whose host has been silent for >30min. Without
+// this, sockets reconnecting to abandoned parties will keep ticking against
+// a stale row and the room appears "live" forever. Pairs with the realtime
+// layer's PERSIST_INTERVAL_MS — every host:tick refreshes lastTickAt.
+async function sweepStaleParties(): Promise<{ ended: number }> {
+  const cutoff = new Date(Date.now() - 30 * 60 * 1000);
+  const stale = await prisma.listeningParty.findMany({
+    where: { status: 'ACTIVE', lastTickAt: { lt: cutoff } },
+    select: { id: true },
+    take: 200,
+  });
+  if (stale.length === 0) return { ended: 0 };
+  await prisma.listeningParty.updateMany({
+    where: { id: { in: stale.map((p) => p.id) } },
+    data: { status: 'ENDED', endedAt: new Date() },
+  });
+  // Best-effort socket cleanup; safe no-op if Socket.IO isn't attached.
+  try {
+    const { broadcastPartyEnded } = await import('../realtime');
+    for (const p of stale) broadcastPartyEnded(p.id);
+  } catch {
+    // realtime not attached — fine, sockets will time out via pingTimeout.
+  }
+  return { ended: stale.length };
 }
 
 // Sweep MusicGeneration / VideoGeneration rows that are stuck in
@@ -271,6 +329,32 @@ export function startCron(): void {
         if (r.attempted > 0) logger.info('cron: collab payouts processed', r);
       } catch (err) {
         logger.warn('cron: collab payout failed', { error: (err as Error).message });
+      }
+    });
+  });
+
+  // Listening-party sweep — every 5 min. Ends parties whose host stopped
+  // sending host:tick events (process crash, browser closed, network drop).
+  schedule(5 * 60 * 1000, 'party-sweep', async () => {
+    await withLock(LOCK_PARTY_SWEEP, async () => {
+      try {
+        const r = await sweepStaleParties();
+        if (r.ended > 0) logger.info('cron: stale parties ended', r);
+      } catch (err) {
+        logger.warn('cron: party sweep failed', { error: (err as Error).message });
+      }
+    });
+  });
+
+  // DJ session sweep — every 5 min. Same heartbeat logic plus a 4-hour
+  // hard cap (forgotten browser tab protection).
+  schedule(5 * 60 * 1000, 'dj-sweep', async () => {
+    await withLock(LOCK_DJ_SWEEP, async () => {
+      try {
+        const r = await sweepStaleDjSessions();
+        if (r.ended > 0) logger.info('cron: stale dj sessions ended', r);
+      } catch (err) {
+        logger.warn('cron: dj sweep failed', { error: (err as Error).message });
       }
     });
   });

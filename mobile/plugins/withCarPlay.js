@@ -19,6 +19,21 @@
 //   - For a custom CarPlay UI (browse/search), implement a CPTemplateApplicationSceneDelegate
 //     in mobile/ios/<App>/SceneDelegate. We're not doing that here because
 //     the simple now-playing template covers 95% of music app needs.
+//
+// Phase 4 — voice-controlled creation in CarPlay:
+//   The backend already has POST /api/ai/voice-create which transcribes +
+//   generates in one shot. To wire this to a CarPlay button:
+//     1. Add a CPListTemplate item "🎙 Make a song with my voice" to the
+//        CarPlay scene delegate.
+//     2. On tap, present a CPListItem → Siri intent that records ~10s and
+//        POSTs the audio multipart to /api/ai/voice-create with the user's
+//        bearer token (already on file via SecureStore).
+//     3. When the response arrives, enqueue the resulting MusicGeneration
+//        audioUrl onto react-native-track-player's queue and start playback.
+//   The native CPListTemplate scene delegate is invasive and gated on
+//   Apple's CarPlay capability grant (apply at the URL above). The
+//   endpoint + the in-app voice button are shipped; CarPlay polish is a
+//   follow-up that needs the Apple grant.
 
 const { withEntitlementsPlist, withInfoPlist } = require('@expo/config-plugins');
 

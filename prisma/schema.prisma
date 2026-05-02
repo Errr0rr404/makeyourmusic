@@ -154,6 +154,42 @@ enum ClipStatus {
   FLAGGED
 }
 
+enum ListeningPartyStatus {
+  ACTIVE
+  ENDED
+}
+
+enum MarketplaceListingType {
+  SAMPLE_PACK
+  PROMPT_PRESET
+}
+
+enum MarketplaceListingStatus {
+  DRAFT
+  ACTIVE
+  REMOVED
+}
+
+enum MarketplacePurchaseStatus {
+  PENDING
+  SUCCEEDED
+  FAILED
+  REFUNDED
+}
+
+enum DjSessionStatus {
+  LIVE
+  PAUSED
+  ENDED
+}
+
+enum OAuthAppStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  REMOVED
+}
+
 // ─── Core Models ─────────────────────────────────────────
 
 model User {
@@ -191,6 +227,11 @@ model User {
   emailCommentAlert  Boolean @default(true) @map("email_comment_alert")
   emailDigestWeekly  Boolean @default(true) @map("email_digest_weekly")
   emailMarketing     Boolean @default(false) @map("email_marketing")
+
+  // Preferred locale for emails / notifications / push (BCP-47 short, e.g. "en", "es", "ja").
+  // Frontend mirrors via the locale-prefixed URL; this is the source of truth for
+  // server-rendered content the user receives outside the SPA.
+  locale String? @default("en")
 
   // Bumped on logout / password change to invalidate all outstanding refresh tokens
   tokenVersion Int @default(0) @map("token_version")
@@ -238,6 +279,14 @@ model User {
   mixtapes                   UserMixtape[]
   collabPayoutsFrom          CollabPayout[]        @relation("CollabPayoutsFrom")
   collabPayoutsTo            CollabPayout[]        @relation("CollabPayoutsTo")
+  partiesHosted              ListeningParty[]      @relation("PartiesHosted")
+  partyMemberships           ListeningPartyMember[] @relation("PartyMembers")
+  marketplaceListings        MarketplaceListing[]  @relation("MarketplaceListings")
+  marketplacePurchases       MarketplacePurchase[] @relation("MarketplacePurchases")
+  discordIntegrations        DiscordIntegration[]  @relation("DiscordIntegrations")
+  djSessionsHosted           DjSession[]           @relation("DjSessionsHosted")
+  oauthAppsOwned             OAuthApp[]            @relation("OAuthAppsOwned")
+  oauthGrantsAuthorized      OAuthGrant[]          @relation("OAuthGrantsAuthorized")
 
   @@index([role])
   @@index([createdAt(sort: Desc)])
@@ -388,6 +437,11 @@ model Track {
   // 15s vertical preview video used for TikTok/Reels share + embed previews.
   previewVideoUrl String? @map("preview_video_url")
 
+  // Owner-published full music video. Distinct from previewVideoUrl (auto-generated 6s
+  // clip) — this is the long-form music video the owner kicked off via the
+  // /api/ai/music-video/:trackId endpoint. Surfaced as the hero on the track page.
+  musicVideoUrl String? @map("music_video_url")
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -417,6 +471,7 @@ model Track {
   tips              Tip[]
   videoGenerations  VideoGeneration[]   @relation("TrackVideoGenerations")
   collabPayouts     CollabPayout[]
+  partiesPlaying    ListeningParty[]    @relation("PartyCurrentTrack")
 
   @@index([agentId])
   @@index([genreId])
@@ -1179,6 +1234,19 @@ model TrackDistribution {
   takedownAt   DateTime?          @map("takedown_at")
   errorMessage String?            @map("error_message") @db.Text
 
+  // Wizard fields persisted from the creator-facing distribute form. Required
+  // by every partner API; we collect them up-front so an admin / partner job
+  // doesn't have to chase the creator for missing metadata.
+  releaseTitle  String?  @map("release_title")
+  artistName    String?  @map("artist_name")
+  // Free-form metadata: { primaryGenre, language, explicit, songwriters[], contributors[] }.
+  // Partner APIs disagree on the exact shape, so we store the wizard payload
+  // as-is and translate at submission time.
+  metadata      Json?
+  // Admin notes attached during the manual-partner flow (e.g. "submitted via
+  // DistroKid web UI, ETA 48h"). Visible to admins only.
+  partnerNotes  String?  @map("partner_notes") @db.Text
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -1309,4 +1377,314 @@ model UserMixtape {
   @@unique([userId, period])
   @@index([playlistId])
   @@map("user_mixtapes")
+}
+
+// ─── Listening parties ──────────────────────────────────
+//
+// Real-time synchronized playback room. Host writes are authoritative and
+// broadcast over Socket.IO `/parties` namespace; members receive `state`
+// events and locally interpolate playhead. Server only persists snapshot
+// every ~30s to avoid hammering the DB.
+
+model ListeningParty {
+  id         String               @id @default(cuid())
+  // Short shareable code (6-char base32). The party URL is /party/<code>.
+  code       String               @unique
+  status     ListeningPartyStatus @default(ACTIVE)
+  // Last-known playhead and play state. Members trust the latest broadcast
+  // tick; this row is a snapshot for joiners arriving mid-session.
+  positionMs Int                  @default(0) @map("position_ms")
+  isPlaying  Boolean              @default(false) @map("is_playing")
+  // Last time we saw a host:tick. The cron sweep ends parties whose host
+  // has been silent for 30+ min.
+  lastTickAt DateTime             @default(now()) @map("last_tick_at")
+  startedAt  DateTime             @default(now()) @map("started_at")
+  endedAt    DateTime?            @map("ended_at")
+
+  hostUserId String @map("host_user_id")
+  host       User   @relation("PartiesHosted", fields: [hostUserId], references: [id], onDelete: Cascade)
+
+  trackId String? @map("track_id")
+  track   Track?  @relation("PartyCurrentTrack", fields: [trackId], references: [id], onDelete: SetNull)
+
+  members ListeningPartyMember[]
+
+  @@index([code])
+  @@index([hostUserId, status])
+  @@index([status, lastTickAt])
+  @@map("listening_parties")
+}
+
+model ListeningPartyMember {
+  id       String         @id @default(cuid())
+  partyId  String         @map("party_id")
+  party    ListeningParty @relation(fields: [partyId], references: [id], onDelete: Cascade)
+
+  // Either userId (logged-in joiner) or guestKey (anon visitor identified
+  // by signed cookie). Exactly one will be non-null. Composite unique
+  // constraints below enforce one row per (party, user) and one per
+  // (party, guest cookie).
+  userId   String? @map("user_id")
+  user     User?   @relation("PartyMembers", fields: [userId], references: [id], onDelete: SetNull)
+  guestKey String? @map("guest_key")
+
+  joinedAt DateTime  @default(now()) @map("joined_at")
+  leftAt   DateTime? @map("left_at")
+
+  @@unique([partyId, userId])
+  @@unique([partyId, guestKey])
+  @@index([partyId])
+  @@map("listening_party_members")
+}
+
+// ─── Marketplace ────────────────────────────────────────
+//
+// Sample packs (audio bundles) and prompt presets (saved generation
+// configurations) sold by creators. Stripe Connect transfer to seller's
+// account on purchase, idempotent on WebhookEvent. Pattern lifted from
+// SyncLicense.
+
+model MarketplaceListing {
+  id          String                   @id @default(cuid())
+  type        MarketplaceListingType
+  status      MarketplaceListingStatus @default(DRAFT)
+  slug        String                   @unique
+  title       String
+  description String?                  @db.Text
+  coverArt    String?                  @map("cover_art")
+
+  priceCents Int    @map("price_cents")
+  currency   String @default("usd")
+
+  // Sample-pack assets: array of Cloudinary URLs pointing at audio files
+  // (or a single zip URL). Empty for PROMPT_PRESET listings.
+  assetUrls      String[] @default([]) @map("asset_urls")
+  // Optional 30s preview snippet — public, used for the listing page.
+  sampleAudioUrl String?  @map("sample_audio_url")
+
+  // Prompt-preset payload: { idea, genre, mood, energy, era, vocalStyle,
+  // vibeReference, isInstrumental, ... } — whatever the create wizard reads.
+  // Empty for SAMPLE_PACK listings.
+  presetData Json? @map("preset_data")
+
+  // Stripe — created lazily on first checkout (mirrors Playlist channel-sub
+  // pattern).
+  stripeProductId String? @unique @map("stripe_product_id")
+  stripePriceId   String? @unique @map("stripe_price_id")
+
+  // Denormalized stats
+  purchaseCount Int @default(0) @map("purchase_count")
+  viewCount     Int @default(0) @map("view_count")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  sellerUserId String @map("seller_user_id")
+  seller       User   @relation("MarketplaceListings", fields: [sellerUserId], references: [id], onDelete: Cascade)
+
+  purchases MarketplacePurchase[]
+
+  @@index([type, status])
+  @@index([sellerUserId])
+  @@index([status, createdAt(sort: Desc)])
+  @@map("marketplace_listings")
+}
+
+model MarketplacePurchase {
+  id               String                    @id @default(cuid())
+  status           MarketplacePurchaseStatus @default(PENDING)
+  amountCents      Int                       @map("amount_cents")
+  platformFeeCents Int                       @map("platform_fee_cents")
+  netCents         Int                       @map("net_cents")
+  currency         String                    @default("usd")
+
+  stripeCheckoutSessionId String? @unique @map("stripe_checkout_session_id")
+  stripePaymentIntentId   String? @unique @map("stripe_payment_intent_id")
+  stripeTransferId        String? @unique @map("stripe_transfer_id")
+
+  // Time-limited download token mirroring SyncLicense pattern.
+  downloadToken     String?   @unique @map("download_token")
+  downloadExpiresAt DateTime? @map("download_expires_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  listingId String             @map("listing_id")
+  listing   MarketplaceListing @relation(fields: [listingId], references: [id], onDelete: Restrict)
+
+  buyerUserId String @map("buyer_user_id")
+  buyer       User   @relation("MarketplacePurchases", fields: [buyerUserId], references: [id], onDelete: Cascade)
+
+  @@index([buyerUserId])
+  @@index([listingId])
+  @@index([status])
+  @@map("marketplace_purchases")
+}
+
+// ─── DJ sessions (real-time AI improv mix) ─────────────
+//
+// A DjSession is a continuous, host-driven AI mix. The host's vibe input
+// seeds the next generation; as the current track approaches end, the
+// server promotes the queued track and kicks off the generation for the
+// slot after that. Members listen via the /dj Socket.IO namespace.
+
+model DjSession {
+  id          String          @id @default(cuid())
+  // Shareable 6-char code (same alphabet as ListeningParty).
+  code        String          @unique
+  status      DjSessionStatus @default(LIVE)
+  // Free-form vibe direction, e.g. "deep house, 122bpm, peak time energy".
+  // The next generation seeds from this. Hosts can update it mid-session
+  // and the change shows up on the NEXT generation, not the current one.
+  currentVibe String?         @db.Text @map("current_vibe")
+  // Position pointers into the dj_session_tracks table. currentTrackId is the
+  // playing slot; nextTrackId is the buffered slot. Both nullable while a
+  // session is just starting.
+  currentTrackId String?      @map("current_track_id")
+  nextTrackId    String?      @map("next_track_id")
+  startedAt      DateTime     @default(now()) @map("started_at")
+  endedAt        DateTime?    @map("ended_at")
+  // Heartbeat: cron sweep ends sessions whose host has been silent for
+  // 30+ min. Mirrors the listening-party pattern.
+  lastTickAt     DateTime     @default(now()) @map("last_tick_at")
+
+  hostUserId String @map("host_user_id")
+  host       User   @relation("DjSessionsHosted", fields: [hostUserId], references: [id], onDelete: Cascade)
+
+  tracks DjSessionTrack[]
+
+  @@index([code])
+  @@index([hostUserId, status])
+  @@index([status, lastTickAt])
+  @@map("dj_sessions")
+}
+
+model DjSessionTrack {
+  id        String    @id @default(cuid())
+  sessionId String    @map("session_id")
+  session   DjSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  // Each slot eventually points at a MusicGeneration row whose audio plays
+  // for that slot. Nullable while the generation is pending — we record the
+  // slot before audio finishes so position math stays stable.
+  generationId String? @map("generation_id")
+  // The vibe that seeded this slot. Captured at slot-creation time so a
+  // mid-session vibe change doesn't rewrite history.
+  vibePrompt String   @db.Text @map("vibe_prompt")
+  position   Int
+  playedAt   DateTime? @map("played_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@unique([sessionId, position])
+  @@index([sessionId, position])
+  @@map("dj_session_tracks")
+}
+
+// ─── OAuth apps (developer marketplace) ──────────────────
+//
+// Third-party developers register an OAuth app. End users grant the app
+// scoped access via /oauth/authorize → /oauth/token (PKCE auth-code flow).
+// The resulting OAuthGrant carries an access token that downstream
+// /api/v1/* endpoints accept alongside the existing ApiKey bearer.
+
+model OAuthApp {
+  id           String         @id @default(cuid())
+  // Public client identifier — appears in OAuth requests.
+  clientId     String         @unique @map("client_id")
+  // SHA-256 hash of the raw client secret. Raw shown ONCE at creation,
+  // never persisted or echoed.
+  clientSecretHash String     @unique @map("client_secret_hash")
+
+  name         String
+  slug         String         @unique
+  description  String?        @db.Text
+  iconUrl      String?        @map("icon_url")
+  homepage     String?
+
+  // Redirect URIs the app can specify in /oauth/authorize. Strict match.
+  redirectUris String[]       @default([]) @map("redirect_uris")
+
+  // Scopes the app is allowed to request from users. Subset of
+  // ALLOWED_SCOPES from apiKeyController. Editing this resets status to
+  // PENDING.
+  scopes       String[]       @default([])
+
+  status       OAuthAppStatus @default(PENDING)
+  // Whether the app shows in the public /developers/apps registry. Admin
+  // sets this independently of status — an APPROVED app may still be
+  // unlisted (private integration).
+  listed       Boolean        @default(false)
+
+  ownerUserId  String         @map("owner_user_id")
+  owner        User           @relation("OAuthAppsOwned", fields: [ownerUserId], references: [id], onDelete: Cascade)
+
+  grants       OAuthGrant[]
+
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  @@index([ownerUserId])
+  @@index([status, listed])
+  @@map("oauth_apps")
+}
+
+model OAuthGrant {
+  id     String   @id @default(cuid())
+  appId  String   @map("app_id")
+  app    OAuthApp @relation(fields: [appId], references: [id], onDelete: Cascade)
+  userId String   @map("user_id")
+  user   User     @relation("OAuthGrantsAuthorized", fields: [userId], references: [id], onDelete: Cascade)
+
+  scopes String[] @default([])
+
+  // Authorization code (short-lived, single-use). Stored hashed; raw
+  // delivered to the redirect URI. Cleared on token exchange.
+  codeHash      String?   @unique @map("code_hash")
+  codeExpiresAt DateTime? @map("code_expires_at")
+  // PKCE: validated against code_verifier on token exchange. S256 only
+  // (we reject `plain`).
+  codeChallenge       String? @map("code_challenge")
+  codeChallengeMethod String? @map("code_challenge_method")
+  // The redirect_uri the app sent at /authorize — must match at /token.
+  redirectUri         String? @map("redirect_uri")
+
+  // Long-lived (90-day) access token, hashed at rest.
+  accessTokenHash      String?   @unique @map("access_token_hash")
+  accessTokenExpiresAt DateTime? @map("access_token_expires_at")
+
+  revokedAt DateTime? @map("revoked_at")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+
+  // One grant per (app, user) — re-authorizing replaces the prior grant
+  // rather than stacking duplicates.
+  @@unique([appId, userId])
+  @@index([userId])
+  @@map("oauth_grants")
+}
+
+// ─── Discord integration ────────────────────────────────
+//
+// Maps a Discord user to their MakeYourMusic account. Until linked, the
+// bot serves /music commands using a shared low-rate-limit ApiKey
+// (DISCORD_FREE_API_KEY_ID). Once linked, generations bill the linked
+// user via their personal API key.
+model DiscordIntegration {
+  id            String  @id @default(cuid())
+  discordUserId String  @unique @map("discord_user_id")
+  // 6-char base32 link code shown in Discord; the user pastes this into
+  // /settings/discord to bind. Cleared once bound (userId set).
+  linkCode      String? @unique @map("link_code")
+  linkExpires   DateTime? @map("link_expires")
+
+  userId String? @map("user_id")
+  user   User?   @relation("DiscordIntegrations", fields: [userId], references: [id], onDelete: SetNull)
+
+  apiKeyId String? @map("api_key_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([linkCode])
+  @@map("discord_integrations")
 }

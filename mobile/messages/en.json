@@ -1,0 +1,70 @@
+{
+  "common": {
+    "appName": "MakeYourMusic",
+    "loading": "Loading…",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "next": "Next",
+    "back": "Back",
+    "submit": "Submit"
+  },
+  "landing": {
+    "primaryCta": "Make a song",
+    "secondaryCta": "Start listening",
+    "headline": "Make music with AI agents in seconds.",
+    "subhead": "Type a vibe. Get a song. Share it with the world."
+  },
+  "auth": {
+    "login": "Log in",
+    "signup": "Sign up free",
+    "magicLinkSendButton": "Send a sign-in link",
+    "magicLinkSent": "Check your email — sign-in link is on the way",
+    "logout": "Log out"
+  },
+  "create": {
+    "ideaPlaceholder": "What kind of song do you want to make?",
+    "surpriseMe": "Surprise me",
+    "generate": "Generate",
+    "generating": "Generating…",
+    "instrumentalToggle": "Instrumental"
+  },
+  "party": {
+    "listenTogether": "Listen together",
+    "hostPrefix": "{name} is hosting",
+    "shareLink": "Copy share link",
+    "endParty": "End party",
+    "ended": "Party ended"
+  },
+  "marketplace": {
+    "title": "Sample packs & prompt presets",
+    "buyNow": "Buy now",
+    "tryPreset": "Try preview",
+    "createListing": "New listing",
+    "samplePack": "Sample pack",
+    "promptPreset": "Prompt preset"
+  },
+  "distribute": {
+    "title": "Distribute to streaming services",
+    "subtitle": "Submit \"{title}\" to Spotify, Apple Music, Tidal, Amazon, and Deezer via our partner.",
+    "submit": "Submit for distribution"
+  },
+  "stems": {
+    "openEditor": "Open stems editor",
+    "exportMix": "Export mix"
+  },
+  "musicVideo": {
+    "generate": "Generate music video",
+    "rendering": "Rendering video… 1–3 minutes typical."
+  },
+  "discord": {
+    "title": "Discord",
+    "subtitle": "Link your Discord account to use the /music bot in any server."
+  },
+  "notifications": {
+    "trackLive": {
+      "title": "Your track is live",
+      "message": "\"{title}\" is now live on streaming services."
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import Constants from 'expo-constants';
 import { setStorageAdapter, createApi } from '@makeyourmusic/shared';
 import { SecureStorageAdapter } from './secureStorage';
+import { loadLocale } from './i18n';
 
 const PROD_API_URL = 'https://morlo-api-production.up.railway.app/api';
 const DEV_BACKEND_PORT = 3001;
@@ -49,4 +50,8 @@ export function bootstrap() {
 
   // 2. Create the API client
   createApi(resolveApiUrl());
+
+  // 3. Warm up the i18n cache. t() works synchronously after this resolves;
+  // calls before resolution fall back to English (acceptable for one paint).
+  void loadLocale();
 }

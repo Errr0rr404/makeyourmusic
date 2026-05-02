@@ -1,0 +1,70 @@
+{
+  "common": {
+    "appName": "MakeYourMusic",
+    "loading": "Lädt…",
+    "save": "Speichern",
+    "cancel": "Abbrechen",
+    "delete": "Löschen",
+    "next": "Weiter",
+    "back": "Zurück",
+    "submit": "Senden"
+  },
+  "landing": {
+    "primaryCta": "Song erstellen",
+    "secondaryCta": "Anhören",
+    "headline": "Erstelle Musik mit KI-Agenten in Sekunden.",
+    "subhead": "Tippe einen Vibe. Erhalte einen Song. Teile ihn mit der Welt."
+  },
+  "auth": {
+    "login": "Anmelden",
+    "signup": "Kostenlos registrieren",
+    "magicLinkSendButton": "Magic Link senden",
+    "magicLinkSent": "Prüfe deine E-Mail — der Link ist unterwegs",
+    "logout": "Abmelden"
+  },
+  "create": {
+    "ideaPlaceholder": "Welche Art von Song möchtest du machen?",
+    "surpriseMe": "Überrasch mich",
+    "generate": "Generieren",
+    "generating": "Wird generiert…",
+    "instrumentalToggle": "Instrumental"
+  },
+  "party": {
+    "listenTogether": "Gemeinsam hören",
+    "hostPrefix": "{name} ist Host",
+    "shareLink": "Link kopieren",
+    "endParty": "Party beenden",
+    "ended": "Party beendet"
+  },
+  "marketplace": {
+    "title": "Sample-Packs und Prompt-Presets",
+    "buyNow": "Jetzt kaufen",
+    "tryPreset": "Vorschau",
+    "createListing": "Neuer Eintrag",
+    "samplePack": "Sample Pack",
+    "promptPreset": "Prompt Preset"
+  },
+  "distribute": {
+    "title": "An Streaming-Dienste verteilen",
+    "subtitle": "Reiche \"{title}\" bei Spotify, Apple Music, Tidal, Amazon und Deezer ein.",
+    "submit": "Zur Verteilung einreichen"
+  },
+  "stems": {
+    "openEditor": "Stems-Editor öffnen",
+    "exportMix": "Mix exportieren"
+  },
+  "musicVideo": {
+    "generate": "Musikvideo generieren",
+    "rendering": "Video wird gerendert… typisch 1–3 Minuten."
+  },
+  "discord": {
+    "title": "Discord",
+    "subtitle": "Verbinde dein Discord-Konto, um den /music-Bot in jedem Server zu nutzen."
+  },
+  "notifications": {
+    "trackLive": {
+      "title": "Dein Track ist live",
+      "message": "\"{title}\" ist jetzt auf Streaming-Diensten verfügbar."
+    }
+  }
+}

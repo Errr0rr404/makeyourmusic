@@ -367,6 +367,79 @@ export function buildAudioDownloadUrl(audioPublicId: string, opts: { withOutro: 
 }
 
 /**
+ * Build a Cloudinary delivery URL that mixes four stems at user-supplied
+ * levels. The first stem becomes the base; the other three are overlaid
+ * with `e_volume` set per-stem. Cloudinary's `layer_apply` flag is what
+ * actually emits a single mixed track instead of stacking them visually.
+ *
+ * Levels are 0..150 (matches the editor's slider range — slight gain above
+ * 100 is allowed because stem separation tends to drop a few dB on each
+ * channel). 0 means muted.
+ */
+export interface StemsMixOptions {
+  /** Cloudinary public IDs for the four stems, in any order. The first one with non-zero level is used as the base. */
+  drumsPublicId?: string;
+  bassPublicId?: string;
+  vocalsPublicId?: string;
+  otherPublicId?: string;
+  levels: { drums: number; bass: number; vocals: number; other: number };
+  /** Output format. Defaults to mp3. */
+  format?: 'mp3' | 'wav';
+}
+
+export function buildStemsMixUrl(opts: StemsMixOptions): string {
+  checkCredentials();
+  const { levels } = opts;
+
+  const stems = [
+    { id: opts.drumsPublicId, level: levels.drums, name: 'drums' },
+    { id: opts.bassPublicId, level: levels.bass, name: 'bass' },
+    { id: opts.vocalsPublicId, level: levels.vocals, name: 'vocals' },
+    { id: opts.otherPublicId, level: levels.other, name: 'other' },
+  ].filter((s): s is { id: string; level: number; name: string } => !!s.id);
+
+  // Filter out muted stems entirely — no point overlaying silence and it
+  // saves transformation budget.
+  const active = stems.filter((s) => s.level > 0);
+  if (active.length === 0) {
+    throw new Error('All stems are muted');
+  }
+
+  // Pick the highest-level stem as the base so we never start from a near-
+  // silent layer (which would pin the master gain).
+  active.sort((a, b) => b.level - a.level);
+  const base = active[0]!;
+  const overlays = active.slice(1);
+
+  const clamp = (v: number) => Math.max(0, Math.min(400, Math.round(v)));
+
+  const transformation: Record<string, unknown>[] = [
+    // Apply the base stem's level via effect:volume on the root track. e_volume
+    // takes a percentage delta (100 = unchanged); we map our 0..150 to
+    // 0..150 directly.
+    { effect: `volume:${clamp(base.level)}` },
+  ];
+
+  for (const o of overlays) {
+    transformation.push({
+      overlay: {
+        resource_type: 'video',
+        public_id: o.id,
+        transformation: [{ effect: `volume:${clamp(o.level)}` }],
+      },
+    });
+    transformation.push({ flags: 'layer_apply' });
+  }
+
+  return cloudinary.url(base.id, {
+    resource_type: 'video',
+    format: opts.format || 'mp3',
+    secure: true,
+    transformation,
+  });
+}
+
+/**
  * Build a thumbnail URL for a clip — single frame from the trimmed window,
  * centered horizontally, JPEG.
  */

@@ -1,0 +1,70 @@
+{
+  "common": {
+    "appName": "MakeYourMusic",
+    "loading": "読み込み中…",
+    "save": "保存",
+    "cancel": "キャンセル",
+    "delete": "削除",
+    "next": "次へ",
+    "back": "戻る",
+    "submit": "送信"
+  },
+  "landing": {
+    "primaryCta": "曲を作る",
+    "secondaryCta": "聴いてみる",
+    "headline": "AIエージェントで数秒で音楽を作ろう。",
+    "subhead": "雰囲気を入力。曲ができる。世界とシェアしよう。"
+  },
+  "auth": {
+    "login": "ログイン",
+    "signup": "無料登録",
+    "magicLinkSendButton": "マジックリンクを送信",
+    "magicLinkSent": "メールを確認してください — リンクをお送りしました",
+    "logout": "ログアウト"
+  },
+  "create": {
+    "ideaPlaceholder": "どんな曲を作りたいですか？",
+    "surpriseMe": "おまかせ",
+    "generate": "生成",
+    "generating": "生成中…",
+    "instrumentalToggle": "インストゥルメンタル"
+  },
+  "party": {
+    "listenTogether": "一緒に聴く",
+    "hostPrefix": "{name} さんがホストです",
+    "shareLink": "リンクをコピー",
+    "endParty": "パーティー終了",
+    "ended": "パーティー終了"
+  },
+  "marketplace": {
+    "title": "サンプルパック & プロンプトプリセット",
+    "buyNow": "購入",
+    "tryPreset": "試す",
+    "createListing": "新規出品",
+    "samplePack": "サンプルパック",
+    "promptPreset": "プロンプトプリセット"
+  },
+  "distribute": {
+    "title": "ストリーミングサービスへ配信",
+    "subtitle": "\"{title}\" を Spotify、Apple Music、Tidal、Amazon、Deezer に配信。",
+    "submit": "配信申請"
+  },
+  "stems": {
+    "openEditor": "ステムエディターを開く",
+    "exportMix": "ミックスを書き出し"
+  },
+  "musicVideo": {
+    "generate": "MVを生成",
+    "rendering": "動画レンダリング中… 通常1〜3分。"
+  },
+  "discord": {
+    "title": "Discord",
+    "subtitle": "Discordアカウントを連携すると、どのサーバーでも /music ボットが使えます。"
+  },
+  "notifications": {
+    "trackLive": {
+      "title": "曲が公開されました",
+      "message": "\"{title}\" がストリーミングサービスで配信開始されました。"
+    }
+  }
+}

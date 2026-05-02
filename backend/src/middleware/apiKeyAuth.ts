@@ -3,16 +3,20 @@ import { prisma } from '../utils/db';
 import { hashApiKey } from '../utils/apiKey';
 import logger from '../utils/logger';
 
-// Public-API authentication. Looks up an Authorization: Bearer <raw_key>
-// header, hashes it, and matches against ApiKey.keyHash. Sets
-// req.apiKey + req.user (synthetic from key.userId) so downstream handlers
-// can use the standard userId surface.
+// Public-API authentication. Accepts either:
+//   1. A personal API key (mym_<random>) → matches ApiKey.keyHash.
+//   2. An OAuth access token (mym_oauth_<random>) → matches OAuthGrant.accessTokenHash
+//      (issued via /api/oauth/token after end-user consent).
+// Sets req.apiKey OR req.oauthGrant, plus req.user (synthetic) so downstream
+// handlers can use the standard userId surface either way.
 
 // Throttle lastUsedAt updates to once per minute per key — without this,
 // a torrent of requests would write to the same row on every call.
 const lastUsedTouchedAt = new Map<string, number>();
 const TOUCH_INTERVAL_MS = 60_000;
 const TOUCH_MAP_MAX = 10_000;
+
+const OAUTH_TOKEN_PREFIX = 'mym_oauth_';
 
 export const requireApiKey = async (req: any, res: Response, next: NextFunction) => {
   const auth = req.headers.authorization || '';
@@ -23,6 +27,43 @@ export const requireApiKey = async (req: any, res: Response, next: NextFunction)
   }
   const raw = m[1];
   const hash = hashApiKey(raw);
+
+  // OAuth access tokens have a distinct prefix; route them to the OAuthGrant
+  // table to avoid an unnecessary ApiKey lookup.
+  if (raw.startsWith(OAUTH_TOKEN_PREFIX)) {
+    const grant = await prisma.oAuthGrant.findUnique({
+      where: { accessTokenHash: hash },
+      include: {
+        app: { select: { id: true, status: true, scopes: true } },
+        user: { select: { id: true, role: true, email: true, tokenVersion: true } },
+      },
+    });
+    if (!grant || grant.revokedAt) {
+      res.status(401).json({ error: 'Invalid or revoked access token' });
+      return;
+    }
+    if (grant.accessTokenExpiresAt && grant.accessTokenExpiresAt.getTime() < Date.now()) {
+      res.status(401).json({ error: 'Access token expired' });
+      return;
+    }
+    if (grant.app.status !== 'APPROVED') {
+      res.status(401).json({ error: 'OAuth app is no longer approved' });
+      return;
+    }
+    req.oauthGrant = grant;
+    // Synthetic apiKey shape so downstream `requireScope` works unchanged —
+    // it just reads req.apiKey?.scopes.
+    req.apiKey = { id: `oauth:${grant.id}`, scopes: grant.scopes };
+    req.user = {
+      userId: grant.user.id,
+      role: grant.user.role,
+      email: grant.user.email,
+      tv: grant.user.tokenVersion,
+    };
+    next();
+    return;
+  }
+
   const key = await prisma.apiKey.findUnique({
     where: { keyHash: hash },
     include: { user: { select: { id: true, role: true, email: true, tokenVersion: true } } },

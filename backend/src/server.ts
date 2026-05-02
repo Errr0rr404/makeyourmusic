@@ -8,6 +8,7 @@ import { initSentry, captureException } from './utils/sentry';
 initSentry();
 
 import express from 'express';
+import http from 'http';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import { errorHandler } from './middleware/errorHandler';
@@ -66,6 +67,16 @@ import publicApiRoutes from './routes/publicApiRoutes';
 import publicEmbedRoutes from './routes/publicEmbedRoutes';
 import nicheRoutes from './routes/nicheRoutes';
 import clipRoutes from './routes/clipRoutes';
+import partyRoutes from './routes/partyRoutes';
+import marketplaceRoutes from './routes/marketplaceRoutes';
+import discordRoutes from './routes/discordRoutes';
+import distributionRoutes from './routes/distributionRoutes';
+import musicVideoRoutes from './routes/musicVideoRoutes';
+import djRoutes from './routes/djRoutes';
+import agentTrainingRoutes from './routes/agentTrainingRoutes';
+import voiceCreateRoutes from './routes/voiceCreateRoutes';
+import oauthRoutes from './routes/oauthRoutes';
+import developerAppRoutes from './routes/developerAppRoutes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -182,6 +193,16 @@ app.use('/api/v1', publicApiRoutes);
 app.use('/embed', publicEmbedRoutes);
 app.use('/api/niches', nicheRoutes);
 app.use('/api/clips', clipRoutes);
+app.use('/api/parties', partyRoutes);
+app.use('/api/marketplace', marketplaceRoutes);
+app.use('/api/integrations/discord', discordRoutes);
+app.use('/api/admin/distributions', distributionRoutes);
+app.use('/api/ai/music-video', musicVideoRoutes);
+app.use('/api/dj', djRoutes);
+app.use('/api/agent-training', agentTrainingRoutes);
+app.use('/api/ai/voice-create', voiceCreateRoutes);
+app.use('/api/oauth', oauthRoutes);
+app.use('/api/developers', developerAppRoutes);
 
 // 404 handler for unmatched routes — keep before errorHandler so
 // unhandled paths return a clean JSON response instead of leaking
@@ -204,7 +225,16 @@ if (process.env.NODE_ENV !== 'test') {
     process.exit(1);
   }
 
-  const server = app.listen(PORT, '0.0.0.0', () => {
+  // Wrap Express in an http.Server so Socket.IO can attach to the same port.
+  // Socket.IO sets its own listeners on the upgrade event; without this it
+  // would need a separate port (which Railway one-port deploys can't expose).
+  const server = http.createServer(app);
+  // Lazy-import the realtime layer so tests / scripts that import server.ts
+  // for the express app don't pay the socket.io startup cost.
+  void import('./realtime').then(({ attachSocketIo }) => attachSocketIo(server)).catch((err) => {
+    logger.warn('Failed to attach Socket.IO', { error: (err as Error).message });
+  });
+  server.listen(PORT, '0.0.0.0', () => {
     logger.info('MakeYourMusic API started', {
       port: PORT,
       environment: process.env.NODE_ENV || 'development',

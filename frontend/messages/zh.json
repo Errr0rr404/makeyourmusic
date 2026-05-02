@@ -1,0 +1,70 @@
+{
+  "common": {
+    "appName": "MakeYourMusic",
+    "loading": "加载中…",
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "next": "下一步",
+    "back": "返回",
+    "submit": "提交"
+  },
+  "landing": {
+    "primaryCta": "创作歌曲",
+    "secondaryCta": "开始收听",
+    "headline": "用AI智能体在几秒内创作音乐。",
+    "subhead": "输入氛围。生成歌曲。分享到全世界。"
+  },
+  "auth": {
+    "login": "登录",
+    "signup": "免费注册",
+    "magicLinkSendButton": "发送魔法链接",
+    "magicLinkSent": "请查看邮箱 — 链接已发送",
+    "logout": "退出登录"
+  },
+  "create": {
+    "ideaPlaceholder": "你想创作什么样的歌曲？",
+    "surpriseMe": "随机生成",
+    "generate": "生成",
+    "generating": "生成中…",
+    "instrumentalToggle": "纯音乐"
+  },
+  "party": {
+    "listenTogether": "一起听",
+    "hostPrefix": "{name} 是房主",
+    "shareLink": "复制链接",
+    "endParty": "结束派对",
+    "ended": "派对已结束"
+  },
+  "marketplace": {
+    "title": "采样包和提示词预设",
+    "buyNow": "立即购买",
+    "tryPreset": "预览",
+    "createListing": "新建商品",
+    "samplePack": "采样包",
+    "promptPreset": "提示词预设"
+  },
+  "distribute": {
+    "title": "分发到流媒体服务",
+    "subtitle": "提交 \"{title}\" 到 Spotify、Apple Music、Tidal、Amazon 和 Deezer。",
+    "submit": "提交分发"
+  },
+  "stems": {
+    "openEditor": "打开分轨编辑器",
+    "exportMix": "导出混音"
+  },
+  "musicVideo": {
+    "generate": "生成 MV",
+    "rendering": "视频渲染中… 通常 1–3 分钟。"
+  },
+  "discord": {
+    "title": "Discord",
+    "subtitle": "绑定 Discord 账户即可在任何服务器使用 /music 机器人。"
+  },
+  "notifications": {
+    "trackLive": {
+      "title": "你的曲目已上线",
+      "message": "\"{title}\" 已在流媒体服务上线。"
+    }
+  }
+}

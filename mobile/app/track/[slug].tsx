@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
+import { Video, ResizeMode } from 'expo-av';
 import { getApi, usePlayerStore, useAuthStore, formatDuration, formatCount, formatDate } from '@makeyourmusic/shared';
 import type { Track, Comment } from '@makeyourmusic/shared';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
@@ -262,7 +263,19 @@ export default function TrackDetailScreen() {
                 elevation: 10,
               }}
             >
-              {track.coverArt ? (
+              {((track as Track & { musicVideoUrl?: string | null; previewVideoUrl?: string | null }).musicVideoUrl
+                || (track as Track & { previewVideoUrl?: string | null }).previewVideoUrl) ? (
+                <Video
+                  source={{ uri: ((track as Track & { musicVideoUrl?: string | null }).musicVideoUrl as string)
+                    || ((track as Track & { previewVideoUrl?: string | null }).previewVideoUrl as string) }}
+                  posterSource={track.coverArt ? { uri: track.coverArt } : undefined}
+                  usePoster
+                  style={{ width: 256, height: 256 }}
+                  resizeMode={ResizeMode.COVER}
+                  useNativeControls
+                  isMuted
+                />
+              ) : track.coverArt ? (
                 <Image
                   source={{ uri: track.coverArt }}
                   style={{ width: 256, height: 256 }}
