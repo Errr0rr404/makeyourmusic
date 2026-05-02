@@ -181,7 +181,7 @@ const PROVIDER_HOST_ALLOWLIST = [
   /\.minimaxi\.com$/i,
   /\.minimax\.chat$/i,
   /^minimax-(?:public|cdn|prod)[a-z0-9-]*\.oss-[a-z0-9-]+\.aliyuncs\.com$/i,
-  /^minimax-algeng-chat-tts\.oss-[a-z0-9-]+\.aliyuncs\.com$/i,
+  /^minimax-algeng-chat-tts(?:-[a-z0-9]+)?\.oss-[a-z0-9-]+\.aliyuncs\.com$/i,
   /\.cloudinary\.com$/i,      // some flows may already go through Cloudinary
 ];
 
