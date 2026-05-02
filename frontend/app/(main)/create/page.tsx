@@ -40,9 +40,33 @@ const SEED_PROMPTS = [
   'ambient folk with cassette tape hiss',
   'garage rock about losing your apartment keys',
 ];
+
+const IDEA_CHECKS = [
+  { label: 'Scene', test: (value: string) => value.trim().split(/\s+/).filter(Boolean).length >= 8 },
+  { label: 'Mood', test: (value: string) => /\b(moody|happy|sad|dark|bright|warm|cold|nostalgic|angry|calm|romantic|lonely|dreamy|tense|uplifting)\b/i.test(value) },
+  { label: 'Sound', test: (value: string) => /\b(lo-?fi|jazz|rock|pop|folk|trap|drill|house|techno|ambient|synth|piano|guitar|drums|bass|vocal|choir|strings|cassette)\b/i.test(value) },
+  { label: 'Detail', test: (value: string) => /\b(with|about|for|at|in|through|while|like)\b|,/.test(value.toLowerCase()) },
+] as const;
+
+type UsageTier = 'FREE' | 'CREATOR' | 'PREMIUM';
 type PendingAction = 'generate' | 'lyrics' | null;
 
 type Step = 'idea' | 'style' | 'lyrics' | 'generate' | 'publish';
+
+function usageTierLabel(tier: UsageTier): string {
+  if (tier === 'PREMIUM') return 'Premium';
+  if (tier === 'CREATOR') return 'Creator';
+  return 'Free tier';
+}
+
+function briefStrength(idea: string): { score: number; label: string; percent: number } {
+  const score = IDEA_CHECKS.filter((check) => check.test(idea)).length;
+  return {
+    score,
+    label: score >= 4 ? 'Strong' : score >= 2 ? 'Good' : 'Thin',
+    percent: Math.max(12, (score / IDEA_CHECKS.length) * 100),
+  };
+}
 
 interface Agent {
   id: string;
@@ -83,7 +107,7 @@ interface Usage {
   limit: number;
   remaining: number;
   resetsAt: string;
-  tier: 'FREE' | 'PREMIUM';
+  tier: UsageTier;
 }
 
 export default function CreatePage() {
@@ -729,7 +753,7 @@ function Header({ usage, step }: { usage: Usage | null; step: Step }) {
               {usage.used}<span className="text-white/40">/{usage.limit}</span>
             </p>
             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-              {usage.tier === 'PREMIUM' ? 'Premium' : 'Free tier'}
+              {usageTierLabel(usage.tier)} · {usage.remaining} left
             </p>
           </div>
         </div>
@@ -822,6 +846,7 @@ function IdeaStep({
   title: string; setTitle: (v: string) => void;
   onNext: () => void;
 }) {
+  const strength = briefStrength(idea);
   return (
     <div className="space-y-4 p-5 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
       <div>
@@ -840,6 +865,38 @@ function IdeaStep({
         <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
           {idea.length}/1000 — the more vivid, the better
         </p>
+        {!!idea.trim() && (
+          <div className="mt-3 space-y-2">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-xs font-semibold text-white/75">Brief strength</span>
+              <span className="text-xs font-semibold text-[hsl(var(--accent))]">{strength.label}</span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-purple-400 transition-[width]"
+                style={{ width: `${strength.percent}%` }}
+              />
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {IDEA_CHECKS.map((check) => {
+                const passed = check.test(idea);
+                return (
+                  <span
+                    key={check.label}
+                    className={`inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium ${
+                      passed
+                        ? 'bg-emerald-500/10 text-emerald-300'
+                        : 'bg-white/5 text-[hsl(var(--muted-foreground))]'
+                    }`}
+                  >
+                    {passed ? <CheckCircle2 className="h-3 w-3" /> : <span className="h-1.5 w-1.5 rounded-full bg-current opacity-50" />}
+                    {check.label}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
         {!idea && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {SEED_PROMPTS.map((p) => (

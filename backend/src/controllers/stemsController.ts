@@ -4,11 +4,99 @@ import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 import { pollStemsJob, startStemsJob, StemProviderUnavailable, STEM_PROVIDER_ID } from '../utils/stems';
 import { getStripe, frontendUrl } from '../utils/stripeClient';
-import { buildStemsMixUrl, publicIdFromCloudinaryUrl } from '../utils/cloudinary';
+import { buildStemsMixUrl, publicIdFromCloudinaryUrl, uploadAudio } from '../utils/cloudinary';
 
 // Flat platform fee the owner pays before we run a stem job. Covers Replicate
 // compute (~$0.02/track on htdemucs) plus margin.
 export const STEM_GENERATION_FEE_CENTS = 299;
+
+const STEM_PARTS = ['drums', 'bass', 'vocals', 'other'] as const;
+type StemPart = typeof STEM_PARTS[number];
+type StemOutput = Partial<Record<StemPart, string>>;
+
+function hasCloudinaryCredentials(): boolean {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+      process.env.CLOUDINARY_API_KEY &&
+      process.env.CLOUDINARY_API_SECRET
+  );
+}
+
+function assertSafeStemOutputUrl(rawUrl: string): URL {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    throw new Error('stem provider returned a malformed URL');
+  }
+  if (url.protocol !== 'https:') {
+    throw new Error('stem output URL must use https');
+  }
+  if (url.username || url.password) {
+    throw new Error('stem output URL must not contain credentials');
+  }
+  const hostname = url.hostname.toLowerCase();
+  if (
+    hostname === 'localhost' ||
+    hostname === '0.0.0.0' ||
+    hostname === '169.254.169.254' ||
+    hostname.endsWith('.local') ||
+    /^127\./.test(hostname) ||
+    /^10\./.test(hostname) ||
+    /^192\.168\./.test(hostname) ||
+    /^172\.(1[6-9]|2\d|3[01])\./.test(hostname)
+  ) {
+    throw new Error(`refusing to fetch stem output from non-public host: ${hostname}`);
+  }
+  if (
+    hostname !== 'replicate.delivery' &&
+    !hostname.endsWith('.replicate.delivery') &&
+    !hostname.endsWith('.cloudinary.com')
+  ) {
+    throw new Error(`refusing to fetch stem output from unapproved host: ${hostname}`);
+  }
+  return url;
+}
+
+async function downloadStemOutput(rawUrl: string): Promise<Buffer> {
+  const safeUrl = assertSafeStemOutputUrl(rawUrl);
+  const res = await fetch(safeUrl.toString(), {
+    redirect: 'error',
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!res.ok) {
+    throw new Error(`failed to download stem output (${res.status})`);
+  }
+  const audio = Buffer.from(await res.arrayBuffer());
+  if (audio.length === 0) throw new Error('stem output download was empty');
+  if (audio.length > 100 * 1024 * 1024) {
+    throw new Error('stem output exceeds 100MB cap');
+  }
+  return audio;
+}
+
+async function persistStemOutputs(trackId: string, providerJobId: string, output: StemOutput): Promise<Record<StemPart, string>> {
+  if (!hasCloudinaryCredentials()) {
+    throw new Error('Cloudinary credentials are required to persist stems');
+  }
+
+  const missing = STEM_PARTS.filter((part) => !output[part]);
+  if (missing.length > 0) {
+    throw new Error(`stem provider output missing: ${missing.join(', ')}`);
+  }
+
+  const persisted = {} as Record<StemPart, string>;
+  for (const part of STEM_PARTS) {
+    const sourceUrl = output[part]!;
+    const audio = await downloadStemOutput(sourceUrl);
+    const uploaded = await uploadAudio(
+      audio,
+      `stem-${trackId}-${providerJobId}-${part}-${Date.now()}`
+    );
+    persisted[part] = uploaded.secure_url;
+  }
+  return persisted;
+}
 
 // Owner-initiated retry for a previously paid generation that ended FAILED.
 // New generations must go through createStemsGenerationCheckout — we never
@@ -240,7 +328,9 @@ export async function handleStemsGenerationCheckoutCompleted(session: any) {
 const stemsPollCooldownMs = 10_000;
 const stemsLastPolledAt = new Map<string, number>();
 
-// Poll status and, when the upstream is done, persist the four stem URLs.
+// Poll status and, when the upstream is done, persist the four stem files to
+// Cloudinary before exposing them. Replicate output URLs are temporary; marking
+// READY with those URLs would make future paid downloads fail.
 export const getStems = async (req: RequestWithUser, res: Response) => {
   try {
     const trackId = req.params.trackId as string;
@@ -260,14 +350,21 @@ export const getStems = async (req: RequestWithUser, res: Response) => {
       try {
         const result = await pollStemsJob(stems.providerJobId);
         if (result.status === 'succeeded' && result.output) {
+          let persisted: Record<StemPart, string>;
+          try {
+            persisted = await persistStemOutputs(trackId, stems.providerJobId, result.output);
+          } catch (err) {
+            throw new Error(`stem persistence failed: ${(err as Error).message}`);
+          }
           const updated = await prisma.trackStems.update({
             where: { trackId },
             data: {
               status: 'READY',
-              drumsUrl: result.output.drums || null,
-              bassUrl: result.output.bass || null,
-              vocalsUrl: result.output.vocals || null,
-              otherUrl: result.output.other || null,
+              drumsUrl: persisted.drums,
+              bassUrl: persisted.bass,
+              vocalsUrl: persisted.vocals,
+              otherUrl: persisted.other,
+              errorMessage: null,
             },
           });
           res.json({ stems: updated });
@@ -283,7 +380,16 @@ export const getStems = async (req: RequestWithUser, res: Response) => {
           });
         }
       } catch (err) {
-        logger.warn('Stems poll failed', { trackId, error: (err as Error).message });
+        const message = (err as Error).message;
+        logger.warn('Stems poll or persistence failed', { trackId, error: message });
+        if (message.startsWith('stem persistence failed:')) {
+          const failed = await prisma.trackStems.update({
+            where: { trackId },
+            data: { status: 'FAILED', errorMessage: message },
+          });
+          res.json({ stems: failed });
+          return;
+        }
       }
     }
     res.json({ stems });

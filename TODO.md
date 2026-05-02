@@ -70,16 +70,9 @@ hash and I'll update Railway.
 
 ---
 
-## Known limitation worth flagging
+## Resolved limitation
 
-Replicate output URLs **expire after ~1 hour**. Right now we store those URLs
-directly on `TrackStems` rows and serve them to buyers. So:
-
-- ✅ Owner downloads stems immediately after generation: fine
-- ⚠️ Owner generates stems, lists them for sale, buyer purchases >1h later:
-  buyer hits dead links
-
-Fix when ready: re-host the four stem files to Cloudinary inside the polling
-handler (`backend/src/controllers/stemsController.ts:79-90`) before marking
-`status = 'READY'`. Cloudinary creds are already configured on Railway. I can
-do this in a follow-up — say the word.
+Replicate output URLs expire quickly, so the polling handler now downloads the
+four approved Replicate outputs and re-hosts them on Cloudinary before marking
+`TrackStems.status = READY`. If Cloudinary is not configured or an upload fails,
+the paid row becomes `FAILED` and can be retried without another charge.

@@ -33,7 +33,13 @@ interface Usage {
   limit: number;
   remaining: number;
   resetsAt: string;
-  tier: 'FREE' | 'PREMIUM';
+  tier: 'FREE' | 'CREATOR' | 'PREMIUM';
+}
+
+function usageTierLabel(tier: Usage['tier']): string {
+  if (tier === 'PREMIUM') return 'Premium';
+  if (tier === 'CREATOR') return 'Creator';
+  return 'Free';
 }
 
 function timeAgo(iso: string): string {
@@ -174,7 +180,7 @@ export default function GenerationsPage() {
         <div className="flex w-full items-center gap-3 sm:w-auto">
           {usage && (
             <div className="mr-auto sm:mr-0 sm:text-right">
-              <p className="text-xs text-[hsl(var(--muted-foreground))] uppercase">Today</p>
+              <p className="text-xs text-[hsl(var(--muted-foreground))] uppercase">{usageTierLabel(usage.tier)} today</p>
               <p className="text-lg font-bold text-white">
                 {usage.used}<span className="text-white/40">/{usage.limit}</span>
               </p>

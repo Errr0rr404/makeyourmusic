@@ -53,7 +53,7 @@ function nextUtcDay(now: Date = new Date()): Date {
 
 function limitForTier(tier: Tier): number {
   if (tier === 'PREMIUM') {
-    return parseInt(process.env.AI_GEN_DAILY_PREMIUM_LIMIT || '100', 10);
+    return parseInt(process.env.AI_GEN_DAILY_PREMIUM_LIMIT || '500', 10);
   }
   if (tier === 'CREATOR') {
     return parseInt(process.env.AI_GEN_DAILY_CREATOR_LIMIT || '50', 10);

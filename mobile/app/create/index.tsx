@@ -39,6 +39,29 @@ const SEED_PROMPTS = [
 ];
 
 type Step = 'idea' | 'style' | 'lyrics' | 'generate' | 'publish';
+type UsageTier = 'FREE' | 'CREATOR' | 'PREMIUM';
+
+const IDEA_CHECKS = [
+  { label: 'Scene', test: (value: string) => value.trim().split(/\s+/).filter(Boolean).length >= 8 },
+  { label: 'Mood', test: (value: string) => /\b(moody|happy|sad|dark|bright|warm|cold|nostalgic|angry|calm|romantic|lonely|dreamy|tense|uplifting)\b/i.test(value) },
+  { label: 'Sound', test: (value: string) => /\b(lo-?fi|jazz|rock|pop|folk|trap|drill|house|techno|ambient|synth|piano|guitar|drums|bass|vocal|choir|strings|cassette)\b/i.test(value) },
+  { label: 'Detail', test: (value: string) => /\b(with|about|for|at|in|through|while|like)\b|,/.test(value.toLowerCase()) },
+] as const;
+
+function usageTierLabel(tier: UsageTier): string {
+  if (tier === 'PREMIUM') return 'Premium';
+  if (tier === 'CREATOR') return 'Creator';
+  return 'Free';
+}
+
+function briefStrength(idea: string): { score: number; label: string; percent: number } {
+  const score = IDEA_CHECKS.filter((check) => check.test(idea)).length;
+  return {
+    score,
+    label: score >= 4 ? 'Strong' : score >= 2 ? 'Good' : 'Thin',
+    percent: Math.max(12, (score / IDEA_CHECKS.length) * 100),
+  };
+}
 
 const TEMPO_OPTIONS = [80, 100, 120, 140, 160, 180];
 const MUSICAL_KEY_OPTIONS = ['C major', 'G major', 'D major', 'A minor', 'E minor', 'F minor'];
@@ -71,7 +94,7 @@ interface Usage {
   limit: number;
   remaining: number;
   resetsAt: string;
-  tier: 'FREE' | 'PREMIUM';
+  tier: UsageTier;
 }
 
 export default function CreateScreen() {
@@ -708,7 +731,7 @@ function Header({ usage, step }: { usage: Usage | null; step: Step }) {
       </View>
       {usage && (
         <View className="rounded-full bg-mym-card border border-mym-border px-3 py-1.5 items-end">
-          <Text className="text-mym-muted text-[9px] uppercase tracking-wider">{usage.tier === 'PREMIUM' ? 'Premium' : 'Free'}</Text>
+          <Text className="text-mym-muted text-[9px] uppercase tracking-wider">{usageTierLabel(usage.tier)}</Text>
           <Text className="text-mym-text text-sm font-bold">
             {usage.remaining}<Text className="text-mym-muted text-xs"> left</Text>
           </Text>
@@ -759,6 +782,8 @@ function Stepper({ current }: { current: Step }) {
 function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
   const tokens = useTokens();
   const mutedHex = tokens.textMute;
+  const strength = briefStrength(idea);
+  const hasIdea = !!idea.trim();
   return (
     <View className="px-4 pt-1">
       <View className="bg-mym-card rounded-xl border border-mym-border p-4">
@@ -775,6 +800,47 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
           style={{ minHeight: 100, textAlignVertical: 'top' }}
         />
         <Text className="text-mym-muted text-xs mt-1">{idea.length}/1000 — more vivid = better</Text>
+
+        {hasIdea && (
+          <View className="mt-3">
+            <View className="flex-row items-center justify-between mb-1.5">
+              <Text className="text-mym-muted text-[11px] font-semibold">Brief strength</Text>
+              <Text style={{ color: tokens.accent, fontSize: 11, fontWeight: '700' }}>{strength.label}</Text>
+            </View>
+            <View className="h-1.5 rounded-full bg-mym-surface overflow-hidden">
+              <View
+                style={{
+                  height: '100%',
+                  width: `${strength.percent}%`,
+                  borderRadius: 999,
+                  backgroundColor: strength.score >= 2 ? tokens.accent : tokens.textMute,
+                }}
+              />
+            </View>
+            <View className="flex-row flex-wrap gap-1.5 mt-2">
+              {IDEA_CHECKS.map((check) => {
+                const passed = check.test(idea);
+                return (
+                  <View
+                    key={check.label}
+                    className={`flex-row items-center gap-1 rounded-full px-2 py-1 ${
+                      passed ? 'bg-mym-accent/15' : 'bg-mym-surface'
+                    }`}
+                  >
+                    {passed ? (
+                      <CheckCircle2 size={10} color={tokens.accent} />
+                    ) : (
+                      <View style={{ width: 5, height: 5, borderRadius: 999, backgroundColor: tokens.textMute }} />
+                    )}
+                    <Text style={{ color: passed ? tokens.text : tokens.textMute, fontSize: 10, fontWeight: '600' }}>
+                      {check.label}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </View>
+        )}
 
         {!idea && (
           <View className="flex-row flex-wrap gap-2 mt-3">

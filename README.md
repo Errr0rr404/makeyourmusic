@@ -288,7 +288,7 @@ STRIPE_SECRET_KEY=sk_test_...
 STRIPE_WEBHOOK_SECRET=whsec_...
 STRIPE_CREATOR_PRICE_ID=price_...
 STRIPE_PREMIUM_PRICE_ID=price_...
-PRICE_CREATOR_USD=9.99
+PRICE_CREATOR_USD=3.99
 PRICE_PREMIUM_USD=14.99
 PLATFORM_FEE_BPS=1500               # 15% — applied to tips, channel subs, sync licenses
 ```
@@ -320,7 +320,7 @@ CLOUDINARY_API_SECRET=
 
 ```env
 # Daily AI generation quotas
-AI_GEN_DAILY_FREE_LIMIT=3
+AI_GEN_DAILY_FREE_LIMIT=5
 AI_GEN_DAILY_CREATOR_LIMIT=50
 AI_GEN_DAILY_PREMIUM_LIMIT=500
 AI_GEN_UNLIMITED_USER_IDS=          # comma-separated user IDs
@@ -751,7 +751,7 @@ Update `mobile/app.json` and `mobile/eas.json` with your project IDs before buil
 4. Stuck-generation sweep marks `>10 min` processing rows as `FAILED`
 
 ### Monetization model
-- **Subscriptions** — Stripe with two tiers (Creator $9.99, Premium $14.99); webhooks update `Subscription` rows
+- **Subscriptions** — Stripe with two tiers (Creator $3.99, Premium $14.99); webhooks update `Subscription` rows
 - **Tips** — Stripe Checkout with destination charge to the creator's Connect account; platform takes `PLATFORM_FEE_BPS`
 - **Channel subscriptions** — Recurring monthly Stripe subscription on a paid playlist; on-behalf-of transfer to creator
 - **Sync licensing** — Buyer pays platform; on success `SyncLicense` row is created and a download token issued

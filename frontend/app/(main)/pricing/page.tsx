@@ -62,12 +62,13 @@ const PLANS: PlanCard[] = [
   {
     tier: 'PREMIUM',
     name: 'Premium',
-    price: 'Custom',
-    blurb: 'For power users who need more.',
+    price: '$14.99',
+    blurb: 'For power users releasing at scale.',
     features: [
-      '100 generations per day',
+      '500 generations per day',
       'All Creator features',
       'Priority generation queue',
+      'Stems and sync workflows',
     ],
     cta: 'Go Premium',
     icon: <Crown className="w-5 h-5" />,
@@ -122,6 +123,22 @@ export default function PricingPage() {
         <p className="text-[color:var(--text-mute)] max-w-2xl mx-auto">
           Generate more music — and start earning when fans love what you make.
         </p>
+      </div>
+
+      <div className="mb-8 grid gap-3 sm:grid-cols-3">
+        {[
+          ['5 / 50 / 500', 'Daily generation limits by tier'],
+          ['85%', 'Creator share on tips and paid access'],
+          ['$2.99', 'One-time stem separation for finished tracks'],
+        ].map(([value, label]) => (
+          <div
+            key={label}
+            className="rounded-lg border border-[color:var(--stroke)] bg-[color:var(--card)] px-4 py-3 text-center modern-only"
+          >
+            <p className="text-lg font-bold text-[color:var(--text)]">{value}</p>
+            <p className="mt-1 text-xs text-[color:var(--text-mute)]">{label}</p>
+          </div>
+        ))}
       </div>
 
       <div className="grid md:grid-cols-3 gap-5">

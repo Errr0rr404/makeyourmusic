@@ -14,6 +14,12 @@ import { Bell, Play, Wand2 } from 'lucide-react-native';
 import { useTokens, useIsVintage } from '../../lib/theme';
 import { ThemeQuickMenu } from '../../components/ThemeQuickMenu';
 
+const QUICK_CREATE_PROMPTS = [
+  'lo-fi focus track with warm vinyl texture',
+  'cinematic synthwave for a night drive',
+  'short pop hook about starting over',
+];
+
 export default function HomeScreen() {
   const router = useRouter();
   const { isAuthenticated, user } = useAuthStore();
@@ -33,6 +39,7 @@ export default function HomeScreen() {
     return h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
   }, []);
   const displayName = user?.displayName || user?.username || 'there';
+  const hasDiscoveryContent = trending.length > 0 || latest.length > 0 || genres.length > 0 || agents.length > 0;
 
   const fetchData = useCallback(async () => {
     try {
@@ -210,14 +217,36 @@ export default function HomeScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={{ color: tokens.text, fontWeight: '700', fontSize: 14 }}>
-              {isVintage ? 'Cut a new track' : 'Tell us a vibe'}
+              {isAuthenticated ? (isVintage ? 'Cut a new track' : 'Generate your next track') : 'Start with a prompt'}
             </Text>
             <Text style={{ color: tokens.textMute, fontSize: 12, marginTop: 2 }}>
-              Generate a song with AI in 60 seconds.
+              Write, speak, or remix a prompt into a finished song.
             </Text>
           </View>
           <Play size={18} color={tokens.brand} fill={tokens.brand} />
         </TouchableOpacity>
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+          {QUICK_CREATE_PROMPTS.map((prompt) => (
+            <TouchableOpacity
+              key={prompt}
+              onPress={() => router.push(`/create?prompt=${encodeURIComponent(prompt)}`)}
+              style={{
+                maxWidth: '100%',
+                paddingHorizontal: 12,
+                paddingVertical: 7,
+                borderRadius: 999,
+                backgroundColor: tokens.card,
+                borderWidth: 1,
+                borderColor: tokens.border,
+              }}
+              activeOpacity={0.75}
+            >
+              <Text style={{ color: tokens.textSoft, fontSize: 11, fontWeight: '600' }} numberOfLines={1}>
+                {prompt}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       {/* Error state */}
@@ -226,6 +255,23 @@ export default function HomeScreen() {
           <Text className="text-rose-400 text-sm text-center">{error}</Text>
           <TouchableOpacity onPress={fetchData} className="mt-2 items-center">
             <Text style={{ color: tokens.brand, fontWeight: '600', fontSize: 14 }}>Tap to retry</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {!error && !hasDiscoveryContent && (
+        <View className="mx-4 mb-6 p-5 rounded-xl border border-mym-border bg-mym-card">
+          <Text className="text-mym-text text-base font-bold text-center">Start your library</Text>
+          <Text className="text-mym-muted text-sm text-center mt-1">
+            Generate a first track, then come back here for new releases, agents, and genres.
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/create')}
+            className="mt-4 h-11 rounded-xl items-center justify-center bg-mym-accent"
+            accessibilityRole="button"
+            accessibilityLabel="Create a track"
+          >
+            <Text className="text-white text-sm font-semibold">Create a track</Text>
           </TouchableOpacity>
         </View>
       )}

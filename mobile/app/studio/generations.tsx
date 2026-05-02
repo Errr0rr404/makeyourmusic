@@ -36,7 +36,13 @@ interface Usage {
   limit: number;
   remaining: number;
   resetsAt: string;
-  tier: 'FREE' | 'PREMIUM';
+  tier: 'FREE' | 'CREATOR' | 'PREMIUM';
+}
+
+function usageTierLabel(tier: Usage['tier']): string {
+  if (tier === 'PREMIUM') return 'Premium';
+  if (tier === 'CREATOR') return 'Creator';
+  return 'Free';
 }
 
 function timeAgo(iso: string): string {
@@ -241,7 +247,7 @@ export default function GenerationsScreen() {
         <View className="flex-row items-center gap-2">
           {usage && (
             <View className="items-end mr-1">
-              <Text className="text-mym-muted text-[10px] uppercase">Today</Text>
+              <Text className="text-mym-muted text-[10px] uppercase">{usageTierLabel(usage.tier)}</Text>
               <Text className="text-mym-text text-sm font-bold">
                 {usage.used}/{usage.limit}
               </Text>

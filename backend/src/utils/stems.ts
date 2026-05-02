@@ -4,7 +4,7 @@
 //   1. POST /v1/predictions to start a Demucs run with the track audio URL
 //   2. Poll the prediction id until status=succeeded
 //   3. Download the four output URLs (drums, bass, vocals, other)
-//   4. (optionally) re-host them on Cloudinary and persist URLs to TrackStems
+//   4. Re-host them on Cloudinary before persisting READY TrackStems
 //
 // Without the key set, the request endpoint returns a "stems unavailable"
 // error and TrackStems stays in PENDING. This keeps the feature visible in

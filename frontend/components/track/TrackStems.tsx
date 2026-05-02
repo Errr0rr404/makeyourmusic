@@ -192,7 +192,7 @@ export function TrackStems({ trackId, trackSlug, isOwner }: Props) {
         <>
           <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">
             Split this track into drums, bass, vocals, and other parts.
-            One-time fee of $2.99. Takes 1–3 minutes after payment.
+            One-time fee of $2.99. Takes 1–3 minutes after payment, then files stay available for download and resale.
           </p>
           <button
             onClick={startCheckout}
@@ -245,7 +245,7 @@ export function TrackStems({ trackId, trackSlug, isOwner }: Props) {
                 <a
                   key={key}
                   href={url || '#'}
-                  download={url ? `${label.toLowerCase()}.wav` : undefined}
+                  download={url ? `${label.toLowerCase()}.mp3` : undefined}
                   target="_blank"
                   rel="noopener noreferrer"
                   className={`flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors ${
