@@ -1,7 +1,11 @@
 import logger from './logger';
 
 const DEFAULT_BASE = 'https://api.minimax.io/v1';
-const DEFAULT_TIMEOUT_MS = 120_000;
+// 240s — generous enough for MiniMax's instrumental generation status query
+// (regularly >120s for long-form post-rock / math-rock / doom instrumentals)
+// while still bounding the worst-case worker hang well below the OS TCP
+// timeout. 120s was too tight and reliably failed multi-minute instrumentals.
+const DEFAULT_TIMEOUT_MS = 240_000;
 
 // Wrap fetch with a default abort timeout. Without this, a stuck MiniMax
 // endpoint hangs the worker until the OS-level TCP timeout (60s+ to 30min),
