@@ -14,6 +14,7 @@ import { toast } from 'sonner';
 import Link from 'next/link';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { useTheme } from '@/components/ThemeProvider';
+import { LocaleSwitcher } from '@/components/LocaleSwitcher';
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -309,6 +310,14 @@ export default function SettingsPage() {
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${autoplay ? 'translate-x-5' : ''}`} />
             </button>
           </div>
+        </div>
+      </section>
+
+      {/* Language */}
+      <section className="mb-6">
+        <h2 className="text-sm font-semibold uppercase text-[hsl(var(--muted-foreground))] mb-3 px-1">Language</h2>
+        <div className="bg-[hsl(var(--card))] rounded-xl border border-[hsl(var(--border))] p-4">
+          <LocaleSwitcher />
         </div>
       </section>
 

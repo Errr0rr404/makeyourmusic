@@ -131,7 +131,7 @@ export function StemsEditorClient({ slug }: { slug: string }) {
       try {
         await Promise.all(playable.map((el) => el.play()));
         setIsPlaying(true);
-      } catch (err) {
+      } catch {
         toast.error('Could not start playback. Click play again or check audio permissions.');
         for (const el of playable) el.pause();
       }

@@ -10,7 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { TouchableOpacity, Text, View, Alert, ActivityIndicator } from 'react-native';
 import { Audio } from 'expo-av';
-import { Mic, MicOff, Loader2 } from 'lucide-react-native';
+import { Mic, MicOff } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
 import { getApi } from '@makeyourmusic/shared';
 import { hapticSelection } from '../../services/hapticService';

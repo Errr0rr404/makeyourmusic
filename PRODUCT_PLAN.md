@@ -7,6 +7,21 @@
 
 ---
 
+## Shipped 2026-05-02 (Audit pass)
+
+End-to-end review of every prior shipped claim. All 50 schema models + 26 enums verified, all 29 API routes mounted, Socket.IO `/parties` + `/dj` namespaces wired, cron sweeps in place (LOCK_PARTY_SWEEP=1009, LOCK_DJ_SWEEP=1010), marketplace webhook handler registered, OAuth bearer middleware live, mobile track video, AASA + assetlinks endpoints, magic-link auth, Sentry on every surface. Backend + frontend `tsc --noEmit` both pass.
+
+Substantive gaps found and fixed:
+
+- **i18n was dead code.** Phase 3 shipped runtime + 8 catalogs (frontend + mobile, 16 JSON files) but no UI imported `t()`. Fixed by wiring `t('landing.primaryCta')` / `t('landing.secondaryCta')` into the three landing CTAs (`HeroDeckLayout`, `HeroSpectrum`, `CTABand`) and adding a `<LocaleSwitcher />` to `/settings` so users can actually change language. Hard reload after pick so server-rendered surfaces re-resolve. Full per-component sweep is still a follow-up; the runtime is now provably exercised.
+- **`/create?preset=<slug>` was a dead link.** Marketplace listing page's "Try preview" pointed there but the create page only read `?prompt=`. Added a `?preset=` effect that fetches the marketplace listing, validates it's a `PROMPT_PRESET`, and applies the preset's `idea/genre/subGenre/mood/energy/era/vocalStyle/vibeReference/style/isInstrumental` into empty form fields (non-destructive — never clobbers user-typed values). Fires `preset_applied` analytics event.
+- **`env.example` files were missing several vars** introduced across Phases 0–4. Backend gained: `REPLICATE_API_TOKEN`, `REPLICATE_DEMUCS_VERSION`, `AUTO_PREVIEW_VIDEO`, `AUTOCLIP_BACKFILL_PER_TICK`, `MYM_OUTRO_AUDIO_PUBLIC_ID`, `RUN_CRON`, `PLATFORM_FEE_BPS`, `API_KEY_HMAC_SECRET`, `ADMIN_PANEL_PASSWORD`, `JWT_ISSUER`, `JWT_AUDIENCE`, `SENTRY_DSN`, `DISCORD_PUBLIC_KEY`, `DISCORD_APPLICATION_ID`, `DISCORD_BOT_TOKEN`, `DISCORD_FREE_API_KEY_ID`, `FIREBASE_SERVICE_ACCOUNT`, `DISTROKID_API_KEY`, `TUNECORE_API_KEY`. Frontend gained: `NEXT_PUBLIC_POSTHOG_KEY`, `NEXT_PUBLIC_POSTHOG_HOST`, `APPLE_TEAM_ID`, `IOS_BUNDLE_ID`, `IOS_APPCLIP_BUNDLE_ID`, `ANDROID_PACKAGE_NAME`, `ANDROID_SHA256_FINGERPRINT`. Each documented inline with what's required vs optional and what happens when absent.
+- **Lint nits**: removed unused `Loader2` import in `mobile/components/create/VoiceQuickCreate.tsx`; dropped unused `err` catch binding in stems-editor. Other stylistic warnings left as-is — they don't break the build and are baseline noise across Phase 0 code already.
+
+Still deferred (unchanged from prior sweeps): Phase 2 in full; native CarPlay scene delegate; OAuth refresh tokens; full per-component i18n sweep; Redis adapter for Socket.IO at horizontal scale; real DistroKid/TuneCore API integrations; LoRA finetune integration when a music provider opens that surface.
+
+---
+
 ## Shipped 2026-05-01 (Phase 4)
 
 **Scope:** Phase 4 (180+ days, "the big bets") shipped as one bundle. Phase 2 still deferred.

@@ -9,6 +9,7 @@ import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuthStore } from '@/lib/store/authStore';
 import { track } from '@/lib/analytics';
 import api from '@/lib/api';
+import { t } from '@/lib/i18n';
 
 const PROMPT_CYCLE = [
   'rainy tokyo lo-fi for late-night coding',
@@ -399,10 +400,10 @@ function HeroSpectrum({ tracks }: { tracks: TrackItem[] }) {
           </p>
           <div className="flex flex-wrap justify-center gap-3">
             <button onClick={makeSong} className="mym-cta">
-              <Wand2 className="w-4 h-4" /> Make a song
+              <Wand2 className="w-4 h-4" /> {t('landing.primaryCta')}
             </button>
             <button onClick={startListening} className="mym-ghost">
-              <PlayGlyph /> Start listening
+              <PlayGlyph /> {t('landing.secondaryCta')}
             </button>
             <Link href="#how" className="mym-ghost" style={{ opacity: 0.7 }}>
               See how it works
@@ -1208,10 +1209,10 @@ function CTABand({ tracks }: { tracks: TrackItem[] }) {
         </p>
         <div className="flex flex-wrap justify-center gap-3">
           <Link href="/create" className="mym-cta">
-            <Wand2 className="w-4 h-4" /> Make a song — free
+            <Wand2 className="w-4 h-4" /> {t('landing.primaryCta')} — free
           </Link>
           <button onClick={start} className="mym-ghost">
-            <PlayGlyph /> Start listening
+            <PlayGlyph /> {t('landing.secondaryCta')}
           </button>
         </div>
         <SpectrumLarge live={isPlaying} />
@@ -1373,13 +1374,13 @@ function HeroDeckLayout({ tracks }: { tracks: TrackItem[] }) {
               }}
             />
             <button type="submit" className="mym-cta shrink-0">
-              <Wand2 className="w-4 h-4" /> Make a song
+              <Wand2 className="w-4 h-4" /> {t('landing.primaryCta')}
             </button>
           </form>
 
           <div className="flex flex-wrap gap-3">
             <button onClick={start} className="mym-ghost">
-              <PlayGlyph /> Start listening
+              <PlayGlyph /> {t('landing.secondaryCta')}
             </button>
             <Link href="#discover" className="mym-ghost" style={{ opacity: 0.7 }}>
               Browse the catalog

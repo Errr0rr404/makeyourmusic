@@ -185,6 +185,44 @@ export default function CreatePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Pre-fill the form from a marketplace prompt-preset (`?preset=<slug>`).
+  // The marketplace listing page sends users here after a "Try preview" tap;
+  // we fetch the listing's preset payload and apply each field non-destructively
+  // (only fills empty fields so we don't clobber user-typed values).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const presetSlug = new URLSearchParams(window.location.search).get('preset');
+    if (!presetSlug) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const r = await api.get(`/marketplace/listings/${encodeURIComponent(presetSlug)}`);
+        if (cancelled) return;
+        const listing = r.data?.listing as { presetData?: Record<string, unknown> | null; type?: string } | undefined;
+        if (!listing || listing.type !== 'PROMPT_PRESET' || !listing.presetData) return;
+        const p = listing.presetData;
+        const str = (k: string) => (typeof p[k] === 'string' ? (p[k] as string) : '');
+        // Apply only into empty fields; the user is free to edit.
+        if (!idea && (str('idea') || str('prompt'))) setIdea(str('idea') || str('prompt'));
+        if (!genre && str('genre')) setGenre(str('genre'));
+        if (!subGenre && str('subGenre')) setSubGenre(str('subGenre'));
+        if (!mood && str('mood')) setMood(str('mood'));
+        if (!energy && str('energy')) setEnergy(str('energy'));
+        if (!era && str('era')) setEra(str('era'));
+        if (!vocalStyle && str('vocalStyle')) setVocalStyle(str('vocalStyle'));
+        if (!vibeReference && str('vibeReference')) setVibeReference(str('vibeReference'));
+        if (!style && str('style')) setStyle(str('style'));
+        if (typeof p.isInstrumental === 'boolean') setIsInstrumental(p.isInstrumental);
+        track('preset_applied', { slug: presetSlug });
+      } catch {
+        /* listing not found / unavailable — silent */
+      }
+    })();
+    return () => { cancelled = true; };
+    // Run once on mount; don't re-trigger when the user edits fields below.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated || typeof window === 'undefined') return;
 
