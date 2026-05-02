@@ -247,7 +247,6 @@ function UserRow({
         <Link href={`/admin/users/${u.id}`} className="flex items-center gap-3 group">
           <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[hsl(var(--accent))] to-blue-500 flex items-center justify-center text-xs font-bold text-white overflow-hidden flex-shrink-0">
             {u.avatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={u.avatar} alt="" className="w-full h-full object-cover" />
             ) : (
               (u.displayName || u.username).slice(0, 2).toUpperCase()

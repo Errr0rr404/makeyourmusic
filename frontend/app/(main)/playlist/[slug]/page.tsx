@@ -71,12 +71,13 @@ export default function PlaylistPage() {
     const playlistTracks = playlist?.tracks ?? [];
     if (playlistTracks.length > 0) {
       const tracks = playlistTracks.map(toTrackItem);
-      playTrack(tracks[0], tracks);
+      const firstTrack = tracks[0];
+      if (firstTrack) playTrack(firstTrack, tracks);
     }
   };
 
   const handleSaveTitle = async () => {
-    if (!editTitle.trim()) return;
+    if (!playlist || !editTitle.trim()) return;
     setSaving(true);
     try {
       await api.put(`/social/playlists/${playlist.id}`, { title: editTitle.trim() });
@@ -91,6 +92,7 @@ export default function PlaylistPage() {
   };
 
   const handleDelete = async () => {
+    if (!playlist) return;
     const ok = await confirm({
       title: `Delete "${playlist?.title}"?`,
       message: 'This will permanently delete the playlist. Tracks in it will not be deleted.',
@@ -110,6 +112,7 @@ export default function PlaylistPage() {
   };
 
   const handleRemoveTrack = async (trackId: string) => {
+    if (!playlist) return;
     try {
       await api.delete(`/social/playlists/${playlist.id}/tracks/${trackId}`);
       // Filter strictly on the embedded track id (pt.track.id). Falling back
@@ -262,7 +265,7 @@ export default function PlaylistPage() {
               Subscribe
             </button>
             {playlist.user?.id && (
-              <TipButton creatorUserId={playlist.user.id} creatorName={playlist.user.displayName || playlist.user.username} />
+              <TipButton creatorUserId={playlist.user.id} creatorName={playlist.user.displayName || playlist.user.username || 'creator'} />
             )}
           </div>
         </div>

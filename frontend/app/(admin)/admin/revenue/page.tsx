@@ -177,7 +177,6 @@ export default function AdminRevenuePage() {
                       <Link href={`/admin/users/${s.user.id}`} className="inline-flex items-center gap-2 hover:text-[hsl(var(--accent))]">
                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[hsl(var(--accent))] to-blue-500 flex items-center justify-center text-[10px] font-bold overflow-hidden">
                           {s.user.avatar ? (
-                            // eslint-disable-next-line @next/next/no-img-element
                             <img src={s.user.avatar} alt="" className="w-full h-full object-cover" />
                           ) : (
                             s.user.username.slice(0, 2).toUpperCase()

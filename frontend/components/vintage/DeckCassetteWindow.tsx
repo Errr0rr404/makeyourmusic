@@ -111,7 +111,6 @@ export function DeckCassetteWindow({
                   borderRight: '1px solid #2b1d10',
                 }}
               >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={coverArt}
                   alt=""

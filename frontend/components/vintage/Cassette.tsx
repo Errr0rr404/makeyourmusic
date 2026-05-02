@@ -136,7 +136,6 @@ export function Cassette({
           }}
         >
           {/* Use img instead of Next/Image so the component can render statically. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={coverArt} alt="" className="w-full h-full object-cover" />
         </div>
       )}

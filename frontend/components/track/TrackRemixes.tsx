@@ -67,7 +67,6 @@ export function TrackRemixes({ trackSlug }: { trackSlug: string }) {
             className="flex items-center gap-3 rounded-lg border border-[hsl(var(--border))] p-3 hover:border-emerald-400/40 transition-colors"
           >
             {r.track.coverArt ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img
                 src={r.track.coverArt}
                 alt={r.track.title}

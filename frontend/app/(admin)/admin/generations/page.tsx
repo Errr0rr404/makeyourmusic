@@ -241,7 +241,6 @@ function UserCell({ u }: { u: { id: string; username: string; email: string; dis
     <Link href={`/admin/users/${u.id}`} className="inline-flex items-center gap-2 group">
       <div className="w-7 h-7 rounded-full bg-gradient-to-br from-[hsl(var(--accent))] to-blue-500 flex items-center justify-center text-[10px] font-bold text-white overflow-hidden flex-shrink-0">
         {u.avatar ? (
-          // eslint-disable-next-line @next/next/no-img-element
           <img src={u.avatar} alt="" className="w-full h-full object-cover" />
         ) : (
           (u.displayName || u.username).slice(0, 2).toUpperCase()

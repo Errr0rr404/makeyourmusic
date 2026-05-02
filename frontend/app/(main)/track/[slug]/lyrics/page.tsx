@@ -117,7 +117,6 @@ export default async function TrackLyricsPage(props: { params: Promise<{ slug: s
       <header className="mb-8 flex items-start gap-5">
         <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl overflow-hidden shrink-0 bg-[hsl(var(--secondary))]">
           {track.coverArt ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={track.coverArt} alt={track.title} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center">

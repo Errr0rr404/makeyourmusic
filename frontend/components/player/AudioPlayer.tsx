@@ -893,7 +893,6 @@ function VintageDeckChrome({
             }}
           >
             {currentTrack.coverArt ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={currentTrack.coverArt} alt={currentTrack.title} className="w-full h-full object-cover" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[var(--text-mute)]">

@@ -78,7 +78,6 @@ export default function PublicProfilePage({
       <div className="flex items-center gap-4 mb-8">
         <div className="w-20 h-20 rounded-full bg-[hsl(var(--secondary))] flex items-center justify-center overflow-hidden">
           {u.avatar ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img src={u.avatar} alt="" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           ) : (
             <span className="text-xl font-bold">{(u.displayName || u.username).slice(0, 2).toUpperCase()}</span>
