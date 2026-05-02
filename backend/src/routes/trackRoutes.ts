@@ -15,10 +15,12 @@ import {
   getRecommendations,
   getSimilarTracks,
   reportTrack,
+  getTrackGeneration,
 } from '../controllers/trackController';
 import { setCollaborators, getCollaborators } from '../controllers/collabController';
 import { requestDistribution, getDistribution } from '../controllers/distributionController';
 import { karaokeLyrics } from '../controllers/karaokeController';
+import { createRemix, listRemixesOfTrack } from '../controllers/remixController';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import { createTrackRules, paginationRules, validateRequest } from '../middleware/validation';
 import { socialPumpLimiter } from '../middleware/rateLimiter';
@@ -57,5 +59,14 @@ router.get('/:trackId/distribution', authenticate as any, getDistribution as any
 
 // Karaoke synced lyrics
 router.get('/:trackId/karaoke', karaokeLyrics as any);
+
+// Remix loop — kick off a new generation seeded from this track + list children
+router.post('/:idOrSlug/remix', authenticate as any, createRemix as any);
+router.get('/:idOrSlug/remixes', listRemixesOfTrack as any);
+
+// Owner-only — returns the MusicGeneration that produced this track so the
+// frontend can drive the existing /variation, /extend, /regenerate-section
+// endpoints with a generation id. Avoids redundant track-level wrappers.
+router.get('/:idOrSlug/generation', authenticate as any, getTrackGeneration as any);
 
 export default router;

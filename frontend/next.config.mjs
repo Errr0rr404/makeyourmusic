@@ -67,6 +67,24 @@ const nextConfig = {
           { key: 'Content-Security-Policy', value: csp },
         ],
       },
+      // Public OG-image route is dynamic but heavily cached — surrogate caches
+      // (Cloudflare, Vercel) get a 1-day TTL with stale-while-revalidate so a
+      // viral share doesn't rebuild it on every fetch. Build outputs under
+      // _next/static/ already use immutable headers from Next.js itself.
+      {
+        source: '/track/:slug/opengraph-image',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=300, s-maxage=86400, stale-while-revalidate=604800' },
+        ],
+      },
+      // Embed routes are linked from third-party sites (Notion, blogs); cache
+      // aggressively at the edge to keep that fast for everyone.
+      {
+        source: '/embed/:path*',
+        headers: [
+          { key: 'Cache-Control', value: 'public, max-age=60, s-maxage=3600, stale-while-revalidate=86400' },
+        ],
+      },
     ];
   },
 

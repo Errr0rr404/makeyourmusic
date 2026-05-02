@@ -66,7 +66,7 @@ export function TrackCard({ track, queue, size = 'md' }: TrackCardProps) {
               position: 'absolute',
               top: 8,
               left: 8,
-              backgroundColor: tokens.brand,
+              backgroundColor: 'rgba(0,0,0,0.62)',
               paddingHorizontal: 8,
               paddingVertical: 3,
               borderRadius: 999,
@@ -75,8 +75,8 @@ export function TrackCard({ track, queue, size = 'md' }: TrackCardProps) {
               gap: 4,
             }}
           >
-            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: '#fff' }} />
-            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700', letterSpacing: 0.5 }}>
+            <View style={{ width: 6, height: 6, borderRadius: 3, backgroundColor: tokens.brand }} />
+            <Text style={{ color: '#fff', fontSize: 9, fontWeight: '700', letterSpacing: 0.6 }}>
               {isPlaying ? 'PLAYING' : 'PAUSED'}
             </Text>
           </View>
@@ -88,17 +88,17 @@ export function TrackCard({ track, queue, size = 'md' }: TrackCardProps) {
             position: 'absolute',
             bottom: 8,
             right: 8,
-            width: 36,
-            height: 36,
-            borderRadius: 18,
+            width: 40,
+            height: 40,
+            borderRadius: 20,
             backgroundColor: tokens.brand,
             alignItems: 'center',
             justifyContent: 'center',
-            shadowColor: '#000',
-            shadowOpacity: 0.3,
-            shadowRadius: 6,
-            shadowOffset: { width: 0, height: 2 },
-            elevation: 4,
+            shadowColor: tokens.brand,
+            shadowOpacity: 0.45,
+            shadowRadius: 10,
+            shadowOffset: { width: 0, height: 4 },
+            elevation: 5,
           }}
           activeOpacity={0.8}
           accessibilityLabel={isActive && isPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
@@ -106,9 +106,9 @@ export function TrackCard({ track, queue, size = 'md' }: TrackCardProps) {
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           {isActive && isPlaying ? (
-            <Pause size={16} color={tokens.brandText} fill={tokens.brandText} />
+            <Pause size={18} color={tokens.brandText} fill={tokens.brandText} />
           ) : (
-            <Play size={16} color={tokens.brandText} fill={tokens.brandText} />
+            <Play size={18} color={tokens.brandText} fill={tokens.brandText} style={{ marginLeft: 1 }} />
           )}
         </TouchableOpacity>
       </View>

@@ -38,6 +38,7 @@ const LOCK_COLLAB_PAYOUT = 1007;
 const LOCK_AUTOCLIP_BACKFILL = 1008;
 const LOCK_PARTY_SWEEP = 1009;
 const LOCK_DJ_SWEEP = 1010;
+const LOCK_ACCOUNT_PURGE = 1011;
 
 async function withLock(lockId: number, fn: () => Promise<void>): Promise<boolean> {
   const rows = await prisma.$queryRawUnsafe<Array<{ pg_try_advisory_lock: boolean }>>(
@@ -355,6 +356,21 @@ export function startCron(): void {
         if (r.ended > 0) logger.info('cron: stale dj sessions ended', r);
       } catch (err) {
         logger.warn('cron: dj sweep failed', { error: (err as Error).message });
+      }
+    });
+  });
+
+  // Account purge — every 6 hours. Hard-deletes users whose deletion grace
+  // window has elapsed. The grace itself is enforced inside the privacy
+  // controller; this cron is only the executor.
+  schedule(6 * 60 * 60 * 1000, 'account-purge', async () => {
+    await withLock(LOCK_ACCOUNT_PURGE, async () => {
+      try {
+        const { purgeExpiredAccountDeletions } = await import('../controllers/privacyController');
+        const n = await purgeExpiredAccountDeletions();
+        if (n > 0) logger.info('cron: purged expired account deletions', { count: n });
+      } catch (err) {
+        logger.warn('cron: account purge failed', { error: (err as Error).message });
       }
     });
   });

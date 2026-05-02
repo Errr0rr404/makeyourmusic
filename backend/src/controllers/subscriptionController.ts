@@ -22,6 +22,7 @@ import {
 } from './licenseWebhook';
 import { handleStemsGenerationCheckoutCompleted } from './stemsController';
 import { handleMarketplacePurchaseCompleted } from './marketplaceController';
+import { handleVoiceCloneCheckoutCompleted } from './voiceCloneController';
 
 const stripe = () => getStripe();
 
@@ -222,6 +223,10 @@ export const handleWebhook = async (req: RequestWithUser, res: Response) => {
         }
         if (kind === 'marketplace_purchase') {
           await handleMarketplacePurchaseCompleted(session);
+          break;
+        }
+        if (kind === 'voice_clone') {
+          await handleVoiceCloneCheckoutCompleted(session);
           break;
         }
         if (kind === 'platform_subscription') {

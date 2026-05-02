@@ -3,13 +3,14 @@
 // Endpoints:
 //   GET  /api/oauth/info?client_id=...    — pre-flight metadata for the consent screen
 //   POST /api/oauth/authorize             — user-action endpoint (called by the consent page)
-//   POST /api/oauth/token                 — exchange code for access token
-//   POST /api/oauth/revoke                — revoke an access token (RFC 7009-ish)
+//   POST /api/oauth/token                 — exchange code OR refresh token for access token
+//   POST /api/oauth/revoke                — revoke an access/refresh token (RFC 7009-ish)
 //
-// We deliberately keep this minimal: no refresh tokens (90-day access
-// tokens; re-auth on expiry); no bearer-token introspection endpoint
-// (use the existing /api/v1 endpoints to test). If a third-party app
-// needs longer-lived sessions we'll layer refresh tokens on top.
+// We support two grant types on /token: authorization_code (initial exchange)
+// and refresh_token (rotating renewal). Refresh tokens are 180-day rotated;
+// access tokens drop to 60 minutes once a refresh is issued so a leaked
+// access token isn't durable. No introspection endpoint — apps can verify
+// validity by hitting any /api/v1 endpoint.
 
 import crypto from 'crypto';
 import { Response } from 'express';
@@ -18,7 +19,12 @@ import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 import { hashApiKey } from '../utils/apiKey';
 
-const ACCESS_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000; // 90 days
+// Without a refresh token, access tokens are long-lived (90 days). Once a
+// refresh token is issued, the access token TTL drops to 60 min so leaks
+// auto-expire quickly; the refresh token (180 days) is the durable creds.
+const ACCESS_TOKEN_TTL_LONG_MS = 90 * 24 * 60 * 60 * 1000;
+const ACCESS_TOKEN_TTL_SHORT_MS = 60 * 60 * 1000;
+const REFRESH_TOKEN_TTL_MS = 180 * 24 * 60 * 60 * 1000;
 const CODE_TTL_MS = 5 * 60 * 1000; // 5 min
 
 function generateAuthorizationCode(): string {
@@ -27,6 +33,10 @@ function generateAuthorizationCode(): string {
 
 function generateAccessToken(): string {
   return `mym_oauth_${crypto.randomBytes(28).toString('base64url')}`;
+}
+
+function generateRefreshToken(): string {
+  return `mym_oauthrefresh_${crypto.randomBytes(32).toString('base64url')}`;
 }
 
 function verifyPkce(verifier: string, challenge: string, method: string | null | undefined): boolean {
@@ -179,36 +189,26 @@ export const authorize = async (req: RequestWithUser, res: Response) => {
   }
 };
 
-// POST /api/oauth/token — public (no auth). Validates client credentials
-// + PKCE and exchanges the code for an access token.
+// POST /api/oauth/token — public (no auth). Validates client credentials and
+// either (a) exchanges an authorization_code for access+refresh tokens, or
+// (b) rotates a refresh_token for new access+refresh tokens.
 //
-// Body: { grant_type: 'authorization_code', client_id, client_secret,
-//         code, redirect_uri, code_verifier }
-// Response: { access_token, token_type, expires_in, scope }
+// Body (authorization_code):
+//   { grant_type: 'authorization_code', client_id, client_secret,
+//     code, redirect_uri, code_verifier }
+// Body (refresh_token):
+//   { grant_type: 'refresh_token', client_id, client_secret, refresh_token }
+//
+// Response: { access_token, refresh_token, token_type, expires_in, scope }
 export const exchangeToken = async (req: RequestWithUser, res: Response) => {
   try {
-    const {
-      grant_type,
-      client_id,
-      client_secret,
-      code,
-      redirect_uri,
-      code_verifier,
-    } = req.body || {};
-    if (grant_type !== 'authorization_code') {
+    const { grant_type, client_id, client_secret } = req.body || {};
+    if (grant_type !== 'authorization_code' && grant_type !== 'refresh_token') {
       res.status(400).json({ error: 'unsupported_grant_type' });
       return;
     }
-    if (typeof client_id !== 'string' || typeof client_secret !== 'string' || typeof code !== 'string') {
+    if (typeof client_id !== 'string' || typeof client_secret !== 'string') {
       res.status(400).json({ error: 'invalid_request' });
-      return;
-    }
-    if (typeof code_verifier !== 'string' || code_verifier.length < 43) {
-      res.status(400).json({ error: 'invalid_request: code_verifier required (>= 43 chars)' });
-      return;
-    }
-    if (typeof redirect_uri !== 'string') {
-      res.status(400).json({ error: 'invalid_request: redirect_uri required' });
       return;
     }
 
@@ -228,6 +228,72 @@ export const exchangeToken = async (req: RequestWithUser, res: Response) => {
       crypto.timingSafeEqual(Buffer.from(candidate), Buffer.from(app.clientSecretHash));
     if (!match) {
       res.status(401).json({ error: 'invalid_client' });
+      return;
+    }
+
+    if (grant_type === 'refresh_token') {
+      const { refresh_token } = req.body || {};
+      if (typeof refresh_token !== 'string' || !refresh_token) {
+        res.status(400).json({ error: 'invalid_request: refresh_token required' });
+        return;
+      }
+      const refreshHash = hashApiKey(refresh_token);
+      const grant = await prisma.oAuthGrant.findUnique({ where: { refreshTokenHash: refreshHash } });
+      if (!grant || grant.appId !== app.id) {
+        res.status(400).json({ error: 'invalid_grant' });
+        return;
+      }
+      if (grant.revokedAt) {
+        res.status(400).json({ error: 'invalid_grant: revoked' });
+        return;
+      }
+      if (!grant.refreshTokenExpiresAt || grant.refreshTokenExpiresAt.getTime() < Date.now()) {
+        res.status(400).json({ error: 'invalid_grant: refresh token expired' });
+        return;
+      }
+
+      // Rotate: mint fresh access + refresh tokens, invalidate the prior
+      // refresh by overwriting its hash. If the old refresh ever shows up
+      // again it'll fail the lookup.
+      const newAccess = generateAccessToken();
+      const newAccessHash = hashApiKey(newAccess);
+      const newAccessExpiresAt = new Date(Date.now() + ACCESS_TOKEN_TTL_SHORT_MS);
+      const newRefresh = generateRefreshToken();
+      const newRefreshHash = hashApiKey(newRefresh);
+      const newRefreshExpiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
+
+      await prisma.oAuthGrant.update({
+        where: { id: grant.id },
+        data: {
+          accessTokenHash: newAccessHash,
+          accessTokenExpiresAt: newAccessExpiresAt,
+          refreshTokenHash: newRefreshHash,
+          refreshTokenExpiresAt: newRefreshExpiresAt,
+        },
+      });
+
+      res.json({
+        access_token: newAccess,
+        refresh_token: newRefresh,
+        token_type: 'Bearer',
+        expires_in: Math.floor(ACCESS_TOKEN_TTL_SHORT_MS / 1000),
+        scope: grant.scopes.join(' '),
+      });
+      return;
+    }
+
+    // grant_type === 'authorization_code' below.
+    const { code, redirect_uri, code_verifier } = req.body || {};
+    if (typeof code !== 'string') {
+      res.status(400).json({ error: 'invalid_request' });
+      return;
+    }
+    if (typeof code_verifier !== 'string' || code_verifier.length < 43) {
+      res.status(400).json({ error: 'invalid_request: code_verifier required (>= 43 chars)' });
+      return;
+    }
+    if (typeof redirect_uri !== 'string') {
+      res.status(400).json({ error: 'invalid_request: redirect_uri required' });
       return;
     }
 
@@ -252,10 +318,13 @@ export const exchangeToken = async (req: RequestWithUser, res: Response) => {
       return;
     }
 
-    // Mint access token; consume the code (one-shot).
+    // Mint access + refresh tokens; consume the code (one-shot).
     const rawAccessToken = generateAccessToken();
     const accessTokenHash = hashApiKey(rawAccessToken);
-    const accessTokenExpiresAt = new Date(Date.now() + ACCESS_TOKEN_TTL_MS);
+    const accessTokenExpiresAt = new Date(Date.now() + ACCESS_TOKEN_TTL_SHORT_MS);
+    const rawRefreshToken = generateRefreshToken();
+    const refreshTokenHash = hashApiKey(rawRefreshToken);
+    const refreshTokenExpiresAt = new Date(Date.now() + REFRESH_TOKEN_TTL_MS);
 
     await prisma.oAuthGrant.update({
       where: { id: grant.id },
@@ -266,14 +335,17 @@ export const exchangeToken = async (req: RequestWithUser, res: Response) => {
         codeChallengeMethod: null,
         accessTokenHash,
         accessTokenExpiresAt,
+        refreshTokenHash,
+        refreshTokenExpiresAt,
         revokedAt: null,
       },
     });
 
     res.json({
       access_token: rawAccessToken,
+      refresh_token: rawRefreshToken,
       token_type: 'Bearer',
-      expires_in: Math.floor(ACCESS_TOKEN_TTL_MS / 1000),
+      expires_in: Math.floor(ACCESS_TOKEN_TTL_SHORT_MS / 1000),
       scope: grant.scopes.join(' '),
     });
   } catch (error) {
@@ -282,8 +354,15 @@ export const exchangeToken = async (req: RequestWithUser, res: Response) => {
   }
 };
 
+// Reference for backward compat — keep the constant exported so any
+// external caller that imported ACCESS_TOKEN_TTL_MS still resolves. The
+// long-form value is the safer default here since unrefreshed apps must
+// still work.
+export const ACCESS_TOKEN_TTL_MS = ACCESS_TOKEN_TTL_LONG_MS;
+
 // POST /api/oauth/revoke — RFC 7009-ish. Body: { token } — pass either the
-// access_token. We don't reveal whether the token was valid (per spec).
+// access_token or refresh_token. We don't reveal whether the token was
+// valid (per spec).
 export const revokeToken = async (req: RequestWithUser, res: Response) => {
   try {
     const { token } = req.body || {};
@@ -294,7 +373,10 @@ export const revokeToken = async (req: RequestWithUser, res: Response) => {
     }
     const tokenHash = hashApiKey(token);
     await prisma.oAuthGrant.updateMany({
-      where: { accessTokenHash: tokenHash, revokedAt: null },
+      where: {
+        OR: [{ accessTokenHash: tokenHash }, { refreshTokenHash: tokenHash }],
+        revokedAt: null,
+      },
       data: { revokedAt: new Date() },
     });
     res.json({});

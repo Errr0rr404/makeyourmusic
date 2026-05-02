@@ -64,6 +64,14 @@ export function attachSocketIo(server: http.Server): void {
     pingTimeout: 30_000,
   });
 
+  // Optional Redis pub/sub adapter — when REDIS_URL is set + the optional
+  // packages are installed, fan-out across multiple Node instances. Without
+  // the adapter, Socket.IO defaults to in-memory which is fine up to ~1k
+  // concurrent rooms on a single process.
+  attachRedisAdapter(io).catch((err) => {
+    logger.warn('Socket.IO Redis adapter not attached', { error: (err as Error).message });
+  });
+
   const parties = io.of('/parties');
 
   parties.use(async (socket, next) => {
@@ -405,4 +413,48 @@ export function broadcastPartyEnded(partyId: string): void {
   // Disconnect all sockets in the room.
   parties()?.in(partyId).disconnectSockets(true);
   lastPersisted.delete(partyId);
+}
+
+// Attach @socket.io/redis-adapter so room broadcasts fan out across all
+// instances connected to the same Redis. Both `@socket.io/redis-adapter`
+// and `redis` packages are loaded via dynamic require so a deploy without
+// them just falls back to in-memory; the call site logs the reason so ops
+// can see why horizontal-scaling isn't engaged.
+async function attachRedisAdapter(server: Server): Promise<void> {
+  const url = process.env.REDIS_URL;
+  if (!url) {
+    logger.debug('Socket.IO: REDIS_URL not set, using in-memory adapter');
+    return;
+  }
+  // Dynamic require — keep these as optional deps so a build without Redis
+  // still compiles. The catch surfaces a concrete "package missing" error
+  // when REDIS_URL is intentionally set.
+  type CreateAdapter = (pub: unknown, sub: unknown) => unknown;
+  type RedisClient = {
+    connect: () => Promise<void>;
+    duplicate: () => RedisClient;
+    on: (e: string, cb: (err: Error) => void) => void;
+  };
+  type CreateClient = (opts: { url: string }) => RedisClient;
+  let createAdapter: CreateAdapter;
+  let createClient: CreateClient;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+    const adapterMod = require('@socket.io/redis-adapter') as { createAdapter: CreateAdapter };
+    // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+    const redisMod = require('redis') as { createClient: CreateClient };
+    createAdapter = adapterMod.createAdapter;
+    createClient = redisMod.createClient;
+  } catch (err) {
+    throw new Error(
+      `REDIS_URL is set but the optional packages are missing — install @socket.io/redis-adapter + redis. Underlying: ${(err as Error).message}`
+    );
+  }
+  const pub = createClient({ url });
+  const sub = pub.duplicate();
+  pub.on('error', (e: Error) => logger.warn('redis pub error', { error: e.message }));
+  sub.on('error', (e: Error) => logger.warn('redis sub error', { error: e.message }));
+  await Promise.all([pub.connect(), sub.connect()]);
+  server.adapter(createAdapter(pub, sub) as never);
+  logger.info('Socket.IO Redis adapter attached');
 }

@@ -928,3 +928,51 @@ export const getRecommendations = async (req: RequestWithUser, res: Response) =>
     res.status(500).json({ error: 'Failed to get recommendations' });
   }
 };
+
+// GET /api/tracks/:idOrSlug/generation — owner-only; returns the
+// MusicGeneration row that produced this track (so the UI can link to
+// the existing /variation, /extend, /regenerate-section endpoints).
+export const getTrackGeneration = async (req: import('../types').RequestWithUser, res: import('express').Response) => {
+  try {
+    if (!req.user) {
+      res.status(401).json({ error: 'Authentication required' });
+      return;
+    }
+    const idOrSlug = req.params.idOrSlug as string;
+    const track = await prisma.track.findFirst({
+      where: { OR: [{ id: idOrSlug }, { slug: idOrSlug }] },
+      select: { id: true, agent: { select: { ownerId: true } } },
+    });
+    if (!track) {
+      res.status(404).json({ error: 'Track not found' });
+      return;
+    }
+    if (track.agent?.ownerId !== req.user.userId) {
+      res.status(403).json({ error: 'Owner only' });
+      return;
+    }
+    const generation = await prisma.musicGeneration.findFirst({
+      where: { trackId: track.id },
+      select: {
+        id: true,
+        status: true,
+        title: true,
+        prompt: true,
+        lyrics: true,
+        genre: true,
+        mood: true,
+        durationSec: true,
+        isInstrumental: true,
+        audioUrl: true,
+      },
+    });
+    if (!generation) {
+      res.status(404).json({ error: 'No generation linked to this track' });
+      return;
+    }
+    res.json({ generation });
+  } catch (error) {
+    logger.error('getTrackGeneration error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to load generation' });
+  }
+};

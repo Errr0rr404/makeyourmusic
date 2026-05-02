@@ -5,13 +5,14 @@ import Link from 'next/link';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import {
   Play, Pause, SkipBack, SkipForward, Volume2, VolumeX,
-  Shuffle, Repeat, Repeat1, ListMusic, SlidersHorizontal, ListOrdered, Square,
+  Shuffle, Repeat, Repeat1, ListMusic, SlidersHorizontal, ListOrdered, Square, Mic2,
 } from 'lucide-react';
 import { AnimatePresence } from 'motion/react';
 import api from '@/lib/api';
 import { audioEngine } from '@/lib/audioEngine';
 import { PlayerSettings } from './PlayerSettings';
 import { QueuePanel } from './QueuePanel';
+import { KaraokeOverlay } from './KaraokeOverlay';
 import { useKeyboardShortcuts } from './useKeyboardShortcuts';
 import { KeyboardShortcutsDialog } from './KeyboardShortcutsDialog';
 import { useIsVintage, TransportButton, VUMeterStereo, Readout, LedDot, DeckCassetteWindow } from '@/components/vintage';
@@ -134,6 +135,7 @@ export function AudioPlayer() {
   }, [volume]);
 
   const [showShortcutsHelp, setShowShortcutsHelp] = useState(false);
+  const [karaokeOpen, setKaraokeOpen] = useState(false);
   useKeyboardShortcuts(audioARef, () => setShowShortcutsHelp(true));
 
   // Try to lazily init the engine once both elements are mounted and the
@@ -482,6 +484,7 @@ export function AudioPlayer() {
         {showQueue && <QueuePanel />}
       </AnimatePresence>
       <KeyboardShortcutsDialog open={showShortcutsHelp} onClose={() => setShowShortcutsHelp(false)} />
+      <KaraokeOverlay open={karaokeOpen} onClose={() => setKaraokeOpen(false)} />
 
       {/* Hidden audio elements (shared between skins). */}
       <audio
@@ -605,8 +608,8 @@ export function AudioPlayer() {
 
           <div className="flex items-center gap-2 w-full">
             <span className="hidden text-[11px] tabular-nums text-[color:var(--text-mute)] w-10 text-right sm:block">{formatTime(progress)}</span>
-            <div className="flex-1 relative group">
-              <div className="h-1 rounded-full bg-white/10">
+            <div className="flex-1 relative group py-1.5 sm:py-0">
+              <div className="h-1.5 sm:h-1 rounded-full bg-white/10">
                 <div
                   className="h-full rounded-full bg-white group-hover:bg-[color:var(--brand)] transition-colors"
                   style={{ width: `${progressPercent}%` }}
@@ -630,6 +633,14 @@ export function AudioPlayer() {
         </div>
 
         <div className="hidden sm:flex items-center gap-1.5 w-[200px] justify-end">
+          <button
+            onClick={() => setKaraokeOpen(true)}
+            aria-label="Karaoke mode"
+            className="p-2 rounded-md transition-colors text-[color:var(--text-mute)] hover:text-white hover:bg-white/[0.06]"
+            title="Karaoke (synced lyrics)"
+          >
+            <Mic2 className="w-4 h-4" />
+          </button>
           <button
             onClick={toggleQueue}
             aria-label="Queue"

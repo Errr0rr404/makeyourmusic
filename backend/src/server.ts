@@ -77,6 +77,11 @@ import agentTrainingRoutes from './routes/agentTrainingRoutes';
 import voiceCreateRoutes from './routes/voiceCreateRoutes';
 import oauthRoutes from './routes/oauthRoutes';
 import developerAppRoutes from './routes/developerAppRoutes';
+import remixRoutes from './routes/remixRoutes';
+import voiceCloneRoutes from './routes/voiceCloneRoutes';
+import spotifyImportRoutes from './routes/spotifyImportRoutes';
+import privacyRoutes from './routes/privacyRoutes';
+import searchRoutes from './routes/searchRoutes';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
@@ -203,6 +208,11 @@ app.use('/api/agent-training', agentTrainingRoutes);
 app.use('/api/ai/voice-create', voiceCreateRoutes);
 app.use('/api/oauth', oauthRoutes);
 app.use('/api/developers', developerAppRoutes);
+app.use('/api/remixes', remixRoutes);
+app.use('/api/voice-clones', voiceCloneRoutes);
+app.use('/api/spotify-imports', spotifyImportRoutes);
+app.use('/api/privacy', privacyRoutes);
+app.use('/api/search', searchRoutes);
 
 // 404 handler for unmatched routes — keep before errorHandler so
 // unhandled paths return a clean JSON response instead of leaking

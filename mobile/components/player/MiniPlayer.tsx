@@ -51,7 +51,7 @@ export function MiniPlayer() {
       {isVintage ? (
         <TapeProgress progress={progressPercent} height={3} />
       ) : (
-        <View style={{ height: 2, backgroundColor: tokens.border }}>
+        <View style={{ height: 3, backgroundColor: tokens.border }}>
           <View
             style={{ height: '100%', width: `${progressPercent * 100}%`, backgroundColor: tokens.accent }}
           />
@@ -59,7 +59,7 @@ export function MiniPlayer() {
       )}
 
       <TouchableOpacity
-        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 8 }}
+        style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10 }}
         onPress={() => router.push('/player')}
         activeOpacity={0.8}
         accessibilityRole="button"
@@ -68,9 +68,9 @@ export function MiniPlayer() {
         {/* Cover art / cassette window */}
         <View
           style={{
-            width: 44,
-            height: 44,
-            borderRadius: isVintage ? tokens.radiusSm : 8,
+            width: 48,
+            height: 48,
+            borderRadius: isVintage ? tokens.radiusSm : 10,
             overflow: 'hidden',
             backgroundColor: isVintage ? tokens.metalShadow : tokens.card,
             marginRight: 12,
@@ -81,7 +81,7 @@ export function MiniPlayer() {
           {currentTrack.coverArt ? (
             <Image
               source={{ uri: currentTrack.coverArt }}
-              style={{ width: 44, height: 44 }}
+              style={{ width: 48, height: 48 }}
               contentFit="cover"
               cachePolicy="memory-disk"
               recyclingKey={currentTrack.id}

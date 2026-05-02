@@ -89,11 +89,9 @@ export default function HomeScreen() {
     <ScreenContainer refreshing={refreshing} onRefresh={onRefresh}>
       {/* Header */}
       <View className="flex-row items-center justify-between px-4 pt-2 pb-2">
-        {!isAuthenticated && (
-          <View style={{ marginRight: 12 }}>
-            <Logo size={40} />
-          </View>
-        )}
+        <View style={{ marginRight: 12 }}>
+          <Logo size={isAuthenticated ? 32 : 40} />
+        </View>
         <View className="flex-1 pr-3">
           <Text
             style={{
@@ -111,13 +109,17 @@ export default function HomeScreen() {
           <Text
             style={{
               color: tokens.text,
-              fontSize: 28,
+              // Authenticated users get a slightly smaller name so long handles
+              // don't truncate aggressively next to the bell + theme buttons.
+              fontSize: isAuthenticated ? 24 : 26,
               fontWeight: '800',
               fontFamily: isVintage ? tokens.fontDisplay : undefined,
               textTransform: isVintage ? 'uppercase' : 'none',
               letterSpacing: isVintage ? 1 : -0.5,
             }}
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.85}
           >
             {isAuthenticated ? displayName : 'Sound that writes itself'}
           </Text>

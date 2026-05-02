@@ -17,6 +17,9 @@ import { TrackMusicVideo } from '@/components/track/TrackMusicVideo';
 import { AddToPlaylistDialog } from '@/components/track/AddToPlaylistDialog';
 import { ReportDialog } from '@/components/track/ReportDialog';
 import { JustPublishedBanner } from '@/components/track/JustPublishedBanner';
+import { TrackCreatorTools } from '@/components/track/TrackCreatorTools';
+import { TrackRemixes } from '@/components/track/TrackRemixes';
+import { RemixButton } from '@/components/track/RemixButton';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 export function TrackDetailClient({ slug }: { slug: string }) {
@@ -297,6 +300,7 @@ export function TrackDetailClient({ slug }: { slug: string }) {
             )}
             {isAuthenticated && (
               <>
+                <RemixButton trackSlug={track.slug} trackTitle={track.title} />
                 <button
                   onClick={() => setShowAddToPlaylist(true)}
                   aria-label="Add to playlist"
@@ -364,6 +368,12 @@ export function TrackDetailClient({ slug }: { slug: string }) {
         </div>
       )}
 
+      <TrackCreatorTools
+        trackId={track.id}
+        trackSlug={track.slug}
+        isOwner={Boolean(user?.id && track.agent?.ownerId === user.id)}
+      />
+
       <TrackMusicVideo
         trackId={track.id}
         isOwner={Boolean(user?.id && track.agent?.ownerId === user.id)}
@@ -375,6 +385,8 @@ export function TrackDetailClient({ slug }: { slug: string }) {
         trackSlug={track.slug}
         isOwner={Boolean(user?.id && track.agent?.ownerId === user.id)}
       />
+
+      <TrackRemixes trackSlug={track.slug} />
 
       {/* Clips with this sound */}
       <div className="mb-10">

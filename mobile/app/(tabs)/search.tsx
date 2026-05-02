@@ -115,12 +115,16 @@ export default function SearchScreen() {
   return (
     <ScreenContainer scrollable={false}>
       <View className="px-4 pt-2 pb-2">
-        <View style={{ marginBottom: 12 }}>
-          <Text style={{ color: tokens.text, fontSize: 28, fontWeight: '800' }}>Search</Text>
-          <Text style={{ color: tokens.textMute, fontSize: 13, marginTop: 2 }}>
-            Find tracks, agents, and moods.
-          </Text>
-        </View>
+        <Text
+          style={{
+            color: tokens.text,
+            fontSize: 22,
+            fontWeight: '800',
+            marginBottom: 10,
+          }}
+        >
+          Search
+        </Text>
 
         <View
           style={{
@@ -131,12 +135,13 @@ export default function SearchScreen() {
             borderColor: tokens.border,
             borderRadius: tokens.radiusLg,
             paddingHorizontal: 14,
+            minHeight: 46,
           }}
         >
           <SearchIcon size={18} color={tokens.textMute} />
           <TextInput
             style={{ flex: 1, marginLeft: 10, paddingVertical: 12, color: tokens.text, fontSize: 15 }}
-            placeholder="Search tracks, agents…"
+            placeholder="Tracks, agents, moods…"
             placeholderTextColor={tokens.textMute}
             value={query}
             onChangeText={handleQueryChange}
@@ -145,7 +150,12 @@ export default function SearchScreen() {
             returnKeyType="search"
           />
           {query.length > 0 && (
-            <TouchableOpacity onPress={() => handleQueryChange('')} accessibilityLabel="Clear search">
+            <TouchableOpacity
+              onPress={() => handleQueryChange('')}
+              accessibilityLabel="Clear search"
+              hitSlop={8}
+              style={{ paddingHorizontal: 4 }}
+            >
               <XIcon size={16} color={tokens.textMute} />
             </TouchableOpacity>
           )}

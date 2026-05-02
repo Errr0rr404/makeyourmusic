@@ -190,6 +190,26 @@ enum OAuthAppStatus {
   REMOVED
 }
 
+enum AudioFingerprintStatus {
+  PENDING
+  CLEAN
+  FLAGGED
+  FAILED
+}
+
+enum VoiceCloneStatus {
+  PENDING
+  READY
+  FAILED
+}
+
+enum SpotifyImportStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+}
+
 // ─── Core Models ─────────────────────────────────────────
 
 model User {
@@ -236,6 +256,17 @@ model User {
   // Bumped on logout / password change to invalidate all outstanding refresh tokens
   tokenVersion Int @default(0) @map("token_version")
 
+  // CCPA "Do Not Sell My Data" toggle. Surfaced on /settings/privacy. When
+  // true, downstream analytics + ad-network integrations are expected to
+  // exclude this user from any sold/shared cohort. We don't currently sell
+  // data, so the toggle is mainly a compliance affordance.
+  doNotSellData Boolean @default(false) @map("do_not_sell_data")
+
+  // Account deletion grace period. Set to now() + 30d when the user requests
+  // deletion via /privacy/delete; the cron sweep hard-deletes accounts whose
+  // window has elapsed. Cleared if the user logs back in (cancellation).
+  accountDeletionRequestedAt DateTime? @map("account_deletion_requested_at")
+
   // Referral program — each user gets a unique short code; signup with ?ref=
   // captures referredById. Referrer earns 10% of referee creator earnings for
   // 12 months from signup (window enforced in code).
@@ -263,30 +294,33 @@ model User {
   videoGenerations           VideoGeneration[]
   pushTokens                 PushToken[]
   connectAccount             ConnectAccount?
-  tipsSent                   Tip[]                 @relation("TipsSent")
-  tipsReceived               Tip[]                 @relation("TipsReceived")
-  channelSubsAsFan           ChannelSubscription[] @relation("ChannelSubsAsFan")
-  channelSubsAsCreator       ChannelSubscription[] @relation("ChannelSubsAsCreator")
-  syncLicensesPurchased      SyncLicense[]         @relation("SyncLicensePurchaser")
+  tipsSent                   Tip[]                  @relation("TipsSent")
+  tipsReceived               Tip[]                  @relation("TipsReceived")
+  channelSubsAsFan           ChannelSubscription[]  @relation("ChannelSubsAsFan")
+  channelSubsAsCreator       ChannelSubscription[]  @relation("ChannelSubsAsCreator")
+  syncLicensesPurchased      SyncLicense[]          @relation("SyncLicensePurchaser")
   takedownsFiled             Takedown[]
   apiKeys                    ApiKey[]
-  referralEarningsAsReferrer ReferralEarning[]     @relation("ReferralEarningReferrer")
-  referralEarningsAsSource   ReferralEarning[]     @relation("ReferralEarningSource")
+  referralEarningsAsReferrer ReferralEarning[]      @relation("ReferralEarningReferrer")
+  referralEarningsAsSource   ReferralEarning[]      @relation("ReferralEarningSource")
   clips                      Clip[]
   clipLikes                  ClipLike[]
   clipComments               ClipComment[]
   clipShares                 ClipShare[]
   mixtapes                   UserMixtape[]
-  collabPayoutsFrom          CollabPayout[]        @relation("CollabPayoutsFrom")
-  collabPayoutsTo            CollabPayout[]        @relation("CollabPayoutsTo")
-  partiesHosted              ListeningParty[]      @relation("PartiesHosted")
+  collabPayoutsFrom          CollabPayout[]         @relation("CollabPayoutsFrom")
+  collabPayoutsTo            CollabPayout[]         @relation("CollabPayoutsTo")
+  partiesHosted              ListeningParty[]       @relation("PartiesHosted")
   partyMemberships           ListeningPartyMember[] @relation("PartyMembers")
-  marketplaceListings        MarketplaceListing[]  @relation("MarketplaceListings")
-  marketplacePurchases       MarketplacePurchase[] @relation("MarketplacePurchases")
-  discordIntegrations        DiscordIntegration[]  @relation("DiscordIntegrations")
-  djSessionsHosted           DjSession[]           @relation("DjSessionsHosted")
-  oauthAppsOwned             OAuthApp[]            @relation("OAuthAppsOwned")
-  oauthGrantsAuthorized      OAuthGrant[]          @relation("OAuthGrantsAuthorized")
+  marketplaceListings        MarketplaceListing[]   @relation("MarketplaceListings")
+  marketplacePurchases       MarketplacePurchase[]  @relation("MarketplacePurchases")
+  discordIntegrations        DiscordIntegration[]   @relation("DiscordIntegrations")
+  djSessionsHosted           DjSession[]            @relation("DjSessionsHosted")
+  oauthAppsOwned             OAuthApp[]             @relation("OAuthAppsOwned")
+  oauthGrantsAuthorized      OAuthGrant[]           @relation("OAuthGrantsAuthorized")
+  trackRemixes               TrackRemix[]           @relation("UserTrackRemixes")
+  voiceClones                VoiceClone[]           @relation("UserVoiceClones")
+  spotifyImports             SpotifyImport[]        @relation("UserSpotifyImports")
 
   @@index([role])
   @@index([createdAt(sort: Desc)])
@@ -453,25 +487,28 @@ model Track {
   albumId String? @map("album_id")
   album   Album?  @relation(fields: [albumId], references: [id], onDelete: SetNull)
 
-  video             Video?
-  likes             Like[]
-  comments          Comment[]
-  plays             Play[]
-  shares            Share[]
-  downloads         Download[]
-  playlistTracks    PlaylistTrack[]
-  reports           Report[]
-  generations       MusicGeneration[]
-  collaborators     TrackCollaborator[]
-  stems             TrackStems?
-  takedowns         Takedown[]
-  syncLicenses      SyncLicense[]
-  distributions     TrackDistribution[]
-  clips             Clip[]
-  tips              Tip[]
-  videoGenerations  VideoGeneration[]   @relation("TrackVideoGenerations")
-  collabPayouts     CollabPayout[]
-  partiesPlaying    ListeningParty[]    @relation("PartyCurrentTrack")
+  video            Video?
+  likes            Like[]
+  comments         Comment[]
+  plays            Play[]
+  shares           Share[]
+  downloads        Download[]
+  playlistTracks   PlaylistTrack[]
+  reports          Report[]
+  generations      MusicGeneration[]
+  collaborators    TrackCollaborator[]
+  stems            TrackStems?
+  takedowns        Takedown[]
+  syncLicenses     SyncLicense[]
+  distributions    TrackDistribution[]
+  clips            Clip[]
+  tips             Tip[]
+  videoGenerations VideoGeneration[]   @relation("TrackVideoGenerations")
+  collabPayouts    CollabPayout[]
+  partiesPlaying   ListeningParty[]    @relation("PartyCurrentTrack")
+  remixesAsParent  TrackRemix[]        @relation("TrackRemixesParent")
+  remixAsChild     TrackRemix?         @relation("TrackRemixesChild")
+  audioFingerprint AudioFingerprint?
 
   @@index([agentId])
   @@index([genreId])
@@ -520,10 +557,10 @@ model Clip {
   // Source upload + processed output. rawVideoUrl/rawPublicId are the
   // user's original Cloudinary upload; videoUrl is the eager-transformed
   // URL with the Track audio overlaid + trimmed to ≤60s.
-  rawVideoUrl  String  @map("raw_video_url")
-  rawPublicId  String  @map("raw_public_id")
-  videoUrl     String  @map("video_url")
-  thumbnail    String?
+  rawVideoUrl String  @map("raw_video_url")
+  rawPublicId String  @map("raw_public_id")
+  videoUrl    String  @map("video_url")
+  thumbnail   String?
 
   // All durations in milliseconds. Server-enforced: trimEndMs - trimStartMs ≤ 60000.
   durationMs   Int @map("duration_ms")
@@ -837,10 +874,10 @@ model Subscription {
 // retries no-ops without burning provider quota or double-crediting
 // referral earnings.
 model WebhookEvent {
-  id           String   @id @default(cuid())
-  stripeEventId String  @unique @map("stripe_event_id")
-  eventType    String   @map("event_type")
-  processedAt  DateTime @default(now()) @map("processed_at")
+  id            String   @id @default(cuid())
+  stripeEventId String   @unique @map("stripe_event_id")
+  eventType     String   @map("event_type")
+  processedAt   DateTime @default(now()) @map("processed_at")
 
   @@index([processedAt(sort: Desc)])
   @@map("webhook_events")
@@ -924,9 +961,9 @@ model ChannelSubscription {
 }
 
 model AgentEarning {
-  id     String @id @default(cuid())
+  id     String  @id @default(cuid())
   amount Decimal @default(0) @db.Decimal(12, 2) // earnings in USD (TODO: migrate to Int cents to standardize across money tables)
-  plays  Int    @default(0) // plays in this period
+  plays  Int     @default(0) // plays in this period
   period String // e.g. "2026-02"
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -1017,7 +1054,7 @@ model MusicGeneration {
   errorMessage String? @map("error_message") @db.Text
 
   // Book-keeping
-  creditsUsed Int? @map("credits_used")
+  creditsUsed       Int? @map("credits_used")
   // Provider cost in USD cents. Stored at the row level so per-user / per-tier
   // gross-margin reporting doesn't require re-deriving cost from a moving
   // env-var pricing table. Populated when the generation transitions to
@@ -1037,20 +1074,32 @@ model MusicGeneration {
   trackId String? @unique @map("track_id")
   track   Track?  @relation(fields: [trackId], references: [id], onDelete: SetNull)
 
+  // Remix lineage — set when this generation was kicked off as a remix of an
+  // existing track. On publish we (a) carry parentTrackId onto the new Track
+  // for analytics lineage, and (b) create a TrackRemix row so the parent's
+  // /remixes feed can find the child.
+  parentTrackId String? @map("parent_track_id")
+  remixNote     String? @map("remix_note") @db.VarChar(280)
+
+  // Voice-clone reference — when set, the generation provider is asked to use
+  // this cloned voice as the singing voice (only valid when isInstrumental=false).
+  voiceCloneId String? @map("voice_clone_id")
+
   @@index([userId, createdAt(sort: Desc)])
   @@index([userId, status])
   @@index([status])
   @@index([providerJobId])
+  @@index([parentTrackId])
   @@map("music_generations")
 }
 
 model VideoGeneration {
-  id     String           @id @default(cuid())
-  status GenerationStatus @default(PENDING)
+  id      String           @id @default(cuid())
+  status  GenerationStatus @default(PENDING)
   // "preview" = auto-generated TikTok/Reels clip on publish; the cron
   // poller writes the result URL back to Track.previewVideoUrl. "user"
   // = regular user-initiated video.
-  purpose String @default("user")
+  purpose String           @default("user")
 
   // Input
   title       String?
@@ -1076,8 +1125,8 @@ model VideoGeneration {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Ownership
-  userId String @map("user_id")
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId  String  @map("user_id")
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
   // Optional link back to the track this video was generated FOR (used by
   // the auto-preview flow). Distinct from the Video model which is the
   // canonical "music video for this track" relation.
@@ -1228,8 +1277,8 @@ model TrackDistribution {
   status       DistributionStatus @default(PENDING)
   partner      String // "distrokid" | "tunecore" | "manual"
   partnerJobId String?            @map("partner_job_id")
-  upc          String? @unique // Universal Product Code if assigned
-  isrc         String? @unique // International Standard Recording Code
+  upc          String?            @unique // Universal Product Code if assigned
+  isrc         String?            @unique // International Standard Recording Code
   releaseDate  DateTime?          @map("release_date")
   takedownAt   DateTime?          @map("takedown_at")
   errorMessage String?            @map("error_message") @db.Text
@@ -1237,15 +1286,15 @@ model TrackDistribution {
   // Wizard fields persisted from the creator-facing distribute form. Required
   // by every partner API; we collect them up-front so an admin / partner job
   // doesn't have to chase the creator for missing metadata.
-  releaseTitle  String?  @map("release_title")
-  artistName    String?  @map("artist_name")
+  releaseTitle String? @map("release_title")
+  artistName   String? @map("artist_name")
   // Free-form metadata: { primaryGenre, language, explicit, songwriters[], contributors[] }.
   // Partner APIs disagree on the exact shape, so we store the wizard payload
   // as-is and translate at submission time.
-  metadata      Json?
+  metadata     Json?
   // Admin notes attached during the manual-partner flow (e.g. "submitted via
   // DistroKid web UI, ETA 48h"). Visible to admins only.
-  partnerNotes  String?  @map("partner_notes") @db.Text
+  partnerNotes String? @map("partner_notes") @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1416,9 +1465,9 @@ model ListeningParty {
 }
 
 model ListeningPartyMember {
-  id       String         @id @default(cuid())
-  partyId  String         @map("party_id")
-  party    ListeningParty @relation(fields: [partyId], references: [id], onDelete: Cascade)
+  id      String         @id @default(cuid())
+  partyId String         @map("party_id")
+  party   ListeningParty @relation(fields: [partyId], references: [id], onDelete: Cascade)
 
   // Either userId (logged-in joiner) or guestKey (anon visitor identified
   // by signed cookie). Exactly one will be non-null. Composite unique
@@ -1529,24 +1578,24 @@ model MarketplacePurchase {
 // slot after that. Members listen via the /dj Socket.IO namespace.
 
 model DjSession {
-  id          String          @id @default(cuid())
+  id             String          @id @default(cuid())
   // Shareable 6-char code (same alphabet as ListeningParty).
-  code        String          @unique
-  status      DjSessionStatus @default(LIVE)
+  code           String          @unique
+  status         DjSessionStatus @default(LIVE)
   // Free-form vibe direction, e.g. "deep house, 122bpm, peak time energy".
   // The next generation seeds from this. Hosts can update it mid-session
   // and the change shows up on the NEXT generation, not the current one.
-  currentVibe String?         @db.Text @map("current_vibe")
+  currentVibe    String?         @map("current_vibe") @db.Text
   // Position pointers into the dj_session_tracks table. currentTrackId is the
   // playing slot; nextTrackId is the buffered slot. Both nullable while a
   // session is just starting.
-  currentTrackId String?      @map("current_track_id")
-  nextTrackId    String?      @map("next_track_id")
-  startedAt      DateTime     @default(now()) @map("started_at")
-  endedAt        DateTime?    @map("ended_at")
+  currentTrackId String?         @map("current_track_id")
+  nextTrackId    String?         @map("next_track_id")
+  startedAt      DateTime        @default(now()) @map("started_at")
+  endedAt        DateTime?       @map("ended_at")
   // Heartbeat: cron sweep ends sessions whose host has been silent for
   // 30+ min. Mirrors the listening-party pattern.
-  lastTickAt     DateTime     @default(now()) @map("last_tick_at")
+  lastTickAt     DateTime        @default(now()) @map("last_tick_at")
 
   hostUserId String @map("host_user_id")
   host       User   @relation("DjSessionsHosted", fields: [hostUserId], references: [id], onDelete: Cascade)
@@ -1560,19 +1609,19 @@ model DjSession {
 }
 
 model DjSessionTrack {
-  id        String    @id @default(cuid())
-  sessionId String    @map("session_id")
-  session   DjSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id           String    @id @default(cuid())
+  sessionId    String    @map("session_id")
+  session      DjSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   // Each slot eventually points at a MusicGeneration row whose audio plays
   // for that slot. Nullable while the generation is pending — we record the
   // slot before audio finishes so position math stays stable.
-  generationId String? @map("generation_id")
+  generationId String?   @map("generation_id")
   // The vibe that seeded this slot. Captured at slot-creation time so a
   // mid-session vibe change doesn't rewrite history.
-  vibePrompt String   @db.Text @map("vibe_prompt")
-  position   Int
-  playedAt   DateTime? @map("played_at")
-  createdAt  DateTime  @default(now()) @map("created_at")
+  vibePrompt   String    @map("vibe_prompt") @db.Text
+  position     Int
+  playedAt     DateTime? @map("played_at")
+  createdAt    DateTime  @default(now()) @map("created_at")
 
   @@unique([sessionId, position])
   @@index([sessionId, position])
@@ -1587,40 +1636,40 @@ model DjSessionTrack {
 // /api/v1/* endpoints accept alongside the existing ApiKey bearer.
 
 model OAuthApp {
-  id           String         @id @default(cuid())
+  id               String @id @default(cuid())
   // Public client identifier — appears in OAuth requests.
-  clientId     String         @unique @map("client_id")
+  clientId         String @unique @map("client_id")
   // SHA-256 hash of the raw client secret. Raw shown ONCE at creation,
   // never persisted or echoed.
-  clientSecretHash String     @unique @map("client_secret_hash")
+  clientSecretHash String @unique @map("client_secret_hash")
 
-  name         String
-  slug         String         @unique
-  description  String?        @db.Text
-  iconUrl      String?        @map("icon_url")
-  homepage     String?
+  name        String
+  slug        String  @unique
+  description String? @db.Text
+  iconUrl     String? @map("icon_url")
+  homepage    String?
 
   // Redirect URIs the app can specify in /oauth/authorize. Strict match.
-  redirectUris String[]       @default([]) @map("redirect_uris")
+  redirectUris String[] @default([]) @map("redirect_uris")
 
   // Scopes the app is allowed to request from users. Subset of
   // ALLOWED_SCOPES from apiKeyController. Editing this resets status to
   // PENDING.
-  scopes       String[]       @default([])
+  scopes String[] @default([])
 
-  status       OAuthAppStatus @default(PENDING)
+  status OAuthAppStatus @default(PENDING)
   // Whether the app shows in the public /developers/apps registry. Admin
   // sets this independently of status — an APPROVED app may still be
   // unlisted (private integration).
-  listed       Boolean        @default(false)
+  listed Boolean        @default(false)
 
-  ownerUserId  String         @map("owner_user_id")
-  owner        User           @relation("OAuthAppsOwned", fields: [ownerUserId], references: [id], onDelete: Cascade)
+  ownerUserId String @map("owner_user_id")
+  owner       User   @relation("OAuthAppsOwned", fields: [ownerUserId], references: [id], onDelete: Cascade)
 
-  grants       OAuthGrant[]
+  grants OAuthGrant[]
 
-  createdAt    DateTime       @default(now()) @map("created_at")
-  updatedAt    DateTime       @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@index([ownerUserId])
   @@index([status, listed])
@@ -1638,22 +1687,28 @@ model OAuthGrant {
 
   // Authorization code (short-lived, single-use). Stored hashed; raw
   // delivered to the redirect URI. Cleared on token exchange.
-  codeHash      String?   @unique @map("code_hash")
-  codeExpiresAt DateTime? @map("code_expires_at")
+  codeHash            String?   @unique @map("code_hash")
+  codeExpiresAt       DateTime? @map("code_expires_at")
   // PKCE: validated against code_verifier on token exchange. S256 only
   // (we reject `plain`).
-  codeChallenge       String? @map("code_challenge")
-  codeChallengeMethod String? @map("code_challenge_method")
+  codeChallenge       String?   @map("code_challenge")
+  codeChallengeMethod String?   @map("code_challenge_method")
   // The redirect_uri the app sent at /authorize — must match at /token.
-  redirectUri         String? @map("redirect_uri")
+  redirectUri         String?   @map("redirect_uri")
 
   // Long-lived (90-day) access token, hashed at rest.
   accessTokenHash      String?   @unique @map("access_token_hash")
   accessTokenExpiresAt DateTime? @map("access_token_expires_at")
 
+  // Refresh token (180-day TTL, rotated on every /token grant_type=refresh_token).
+  // Hashed at rest. When refreshTokenHash is non-null, access_token TTL drops
+  // to 60 minutes — the refresh token is the durable credential.
+  refreshTokenHash      String?   @unique @map("refresh_token_hash")
+  refreshTokenExpiresAt DateTime? @map("refresh_token_expires_at")
+
   revokedAt DateTime? @map("revoked_at")
 
-  createdAt DateTime  @default(now()) @map("created_at")
+  createdAt DateTime @default(now()) @map("created_at")
 
   // One grant per (app, user) — re-authorizing replaces the prior grant
   // rather than stacking duplicates.
@@ -1669,11 +1724,11 @@ model OAuthGrant {
 // (DISCORD_FREE_API_KEY_ID). Once linked, generations bill the linked
 // user via their personal API key.
 model DiscordIntegration {
-  id            String  @id @default(cuid())
-  discordUserId String  @unique @map("discord_user_id")
+  id            String    @id @default(cuid())
+  discordUserId String    @unique @map("discord_user_id")
   // 6-char base32 link code shown in Discord; the user pastes this into
   // /settings/discord to bind. Cleared once bound (userId set).
-  linkCode      String? @unique @map("link_code")
+  linkCode      String?   @unique @map("link_code")
   linkExpires   DateTime? @map("link_expires")
 
   userId String? @map("user_id")
@@ -1687,4 +1742,121 @@ model DiscordIntegration {
   @@index([userId])
   @@index([linkCode])
   @@map("discord_integrations")
+}
+
+// ─── Remix loop ─────────────────────────────────────────
+//
+// One row per (parentTrack → remixTrack) edge. Distinct from the existing
+// Track.parentTrackId lineage which captures variation/extend lineage —
+// remixes are user-driven creative reuse and warrant their own surface.
+// The remix Track is itself a regular Track (owned by the remixer's agent),
+// so this is purely a metadata edge.
+model TrackRemix {
+  id            String   @id @default(cuid())
+  parentTrackId String   @map("parent_track_id")
+  parentTrack   Track    @relation("TrackRemixesParent", fields: [parentTrackId], references: [id], onDelete: Cascade)
+  remixTrackId  String   @unique @map("remix_track_id")
+  remixTrack    Track    @relation("TrackRemixesChild", fields: [remixTrackId], references: [id], onDelete: Cascade)
+  remixerUserId String   @map("remixer_user_id")
+  remixer       User     @relation("UserTrackRemixes", fields: [remixerUserId], references: [id], onDelete: Cascade)
+  // Free-text note the remixer added at creation time ("flipped to lofi").
+  note          String?  @db.VarChar(280)
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@index([parentTrackId, createdAt(sort: Desc)])
+  @@index([remixerUserId, createdAt(sort: Desc)])
+  @@map("track_remixes")
+}
+
+// ─── Voice cloning ──────────────────────────────────────
+//
+// User uploads ~30s of clean vocal reference; provider trains/registers a
+// voice id we can later use as the singing voice on a generated track.
+// Provider-agnostic: ElevenLabs is the default, others can slot in by
+// swapping the controller's `voiceCloneProvider` import.
+model VoiceClone {
+  id              String           @id @default(cuid())
+  status          VoiceCloneStatus @default(PENDING)
+  name            String
+  // Cloudinary URL of the uploaded reference audio.
+  referenceUrl    String           @map("reference_url")
+  // Provider-side voice id (e.g. ElevenLabs voice_id). Null until READY.
+  providerVoiceId String?          @map("provider_voice_id")
+  provider        String           @default("elevenlabs")
+  errorMessage    String?          @map("error_message") @db.Text
+
+  // One-time payment tracker so we don't double-charge on retries.
+  // Voice clone is a paid Premium feature; the price is taken in Stripe
+  // Checkout before the upload UI surfaces.
+  stripeCheckoutSessionId String?   @unique @map("stripe_checkout_session_id")
+  paidAmountCents         Int?      @map("paid_amount_cents")
+  paidAt                  DateTime? @map("paid_at")
+
+  userId String @map("user_id")
+  user   User   @relation("UserVoiceClones", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@map("voice_clones")
+}
+
+// ─── Audio fingerprinting ───────────────────────────────
+//
+// Generated on track publish; flags obvious matches against major-label
+// catalog so we can hold the track in admin moderation rather than letting
+// it ship publicly. Provider-agnostic; without a real provider configured
+// the controller hashes the audio into a deterministic signature and never
+// flags (CLEAN status) — keeping the publish path unblocked while making
+// future provider integration drop-in.
+model AudioFingerprint {
+  id           String                 @id @default(cuid())
+  trackId      String                 @unique @map("track_id")
+  track        Track                  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+  status       AudioFingerprintStatus @default(PENDING)
+  // Compact provider signature (hex/base64) for cross-track comparison.
+  signature    String?                @db.Text
+  provider     String                 @default("internal")
+  // Free-form match record: { matches: [{ title, artist, confidence }, ...] }
+  matchData    Json?                  @map("match_data")
+  errorMessage String?                @map("error_message") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("audio_fingerprints")
+}
+
+// ─── Spotify import ─────────────────────────────────────
+//
+// Kicks off N music generations seeded from a user's Spotify top tracks.
+// Provider-agnostic in the sense that without a real Spotify OAuth token
+// we still accept a manual list (user pastes track names) and run the
+// same orchestration. State is stored so the dashboard can surface progress.
+model SpotifyImport {
+  id            String              @id @default(cuid())
+  status        SpotifyImportStatus @default(PENDING)
+  spotifyUserId String?             @map("spotify_user_id")
+  // Source tracks fetched from Spotify (or user-pasted):
+  // [{ title, artist, genre?, mood?, era? }]
+  sourceTracks  Json                @default("[]") @map("source_tracks")
+  // Produced MusicGeneration row ids, one per source track.
+  generationIds String[]            @default([]) @map("generation_ids")
+  totalCount    Int                 @default(0) @map("total_count")
+  doneCount     Int                 @default(0) @map("done_count")
+  errorMessage  String?             @map("error_message") @db.Text
+
+  userId String @map("user_id")
+  user   User   @relation("UserSpotifyImports", fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([status])
+  @@map("spotify_imports")
 }

@@ -67,37 +67,46 @@ export default function TabLayout() {
                 hapticMedium();
                 router.push('/create');
               }}
-              style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
+              style={{
+                flex: 1,
+                alignItems: 'center',
+                // Match other tab buttons' inner padding so icon + label
+                // line up with the surrounding tabs.
+                paddingTop: 8,
+              }}
               activeOpacity={0.7}
               accessibilityRole="button"
               accessibilityLabel="Create new track"
             >
               <View
                 style={{
-                  width: 48,
-                  height: 48,
-                  borderRadius: isVintage ? tokens.radiusMd : 24,
+                  width: 44,
+                  height: 44,
+                  borderRadius: isVintage ? tokens.radiusMd : 22,
                   backgroundColor: tokens.brand,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  position: 'absolute',
-                  top: -20,
+                  // Lift the FAB slightly above the tab bar without using
+                  // absolute positioning — keeps the label flow predictable
+                  // on Android, where the tab bar height varies.
+                  marginTop: -18,
+                  marginBottom: 2,
                   shadowColor: tokens.brand,
                   shadowOpacity: 0.5,
                   shadowRadius: 10,
                   shadowOffset: { width: 0, height: 4 },
                   elevation: 8,
-                  borderWidth: isVintage ? 1 : 0,
-                  borderColor: tokens.brandStrong,
+                  borderWidth: isVintage ? 1 : 2,
+                  borderColor: isVintage ? tokens.brandStrong : tokens.surface,
                 }}
               >
                 <Wand2 size={20} color={tokens.brandText} />
               </View>
               <Text
                 style={{
-                  fontSize: 10,
+                  fontSize: 11,
                   fontWeight: '600',
-                  marginTop: 32,
+                  marginTop: 4,
                   color: tokens.brand,
                   fontFamily: isVintage ? tokens.fontDisplay : undefined,
                   textTransform: isVintage ? 'uppercase' : undefined,

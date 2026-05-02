@@ -205,6 +205,17 @@ export const login = async (req: RequestWithUser, res: Response) => {
 
     const { passwordHash: _, tokenVersion: _tv, ...safeUser } = user;
 
+    // Cancel any pending account-deletion request — successful login is the
+    // documented "I changed my mind" signal during the grace window. Best-effort
+    // updateMany so we can include the conditional in the WHERE without losing
+    // the unique-ID guarantee.
+    prisma.user
+      .updateMany({
+        where: { id: user.id, accountDeletionRequestedAt: { not: null } },
+        data: { accountDeletionRequestedAt: null },
+      })
+      .catch(() => undefined);
+
     const { accessToken, refreshToken } = await generateTokenPair({
       userId: user.id,
       email: user.email,

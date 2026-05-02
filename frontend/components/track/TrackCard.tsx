@@ -77,19 +77,19 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
           </div>
         )}
 
-        {/* Hover actions: Radio (smaller) + Play (signature) */}
+        {/* Mobile: always-visible play. Desktop: reveals on hover with the radio companion. */}
         <button
           onClick={handleRadio}
           aria-label={`Start radio from ${track.title}`}
           title="Start AI Radio"
-          className="absolute bottom-3 right-[68px] w-10 h-10 rounded-full bg-black/65 backdrop-blur text-white shadow-lg flex items-center justify-center opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all hover:bg-black/80"
+          className="hidden md:flex absolute bottom-3 right-[68px] w-10 h-10 rounded-full bg-black/65 backdrop-blur text-white shadow-lg items-center justify-center opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all hover:bg-black/80"
         >
           <Radio className="w-4 h-4" />
         </button>
         <button
           onClick={handlePlay}
           aria-label={isCurrentlyPlaying ? `Pause ${track.title}` : `Play ${track.title}`}
-          className="absolute bottom-3 right-3 mym-play-fab opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all"
+          className="absolute bottom-3 right-3 mym-play-fab opacity-100 md:opacity-0 md:translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all"
         >
           {isCurrentlyPlaying ? (
             <Pause className="w-5 h-5" fill="currentColor" />

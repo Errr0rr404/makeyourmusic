@@ -316,19 +316,25 @@ html.light input[type="range"]::-webkit-slider-runnable-track {
 }
 input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   background: var(--brand);
-  margin-top: -4px;
+  margin-top: -5px;
   box-shadow: 0 0 0 6px rgba(217, 70, 239, 0);
-  transition: box-shadow 0.15s ease;
-  opacity: 0;
-}
-input[type="range"]:hover::-webkit-slider-thumb,
-input[type="range"]:focus::-webkit-slider-thumb {
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  /* Visible by default on touch devices so the slider is grabbable.
+     Desktop reveals via hover/focus. */
   opacity: 1;
-  box-shadow: 0 0 0 6px var(--brand-soft);
+}
+@media (hover: hover) and (pointer: fine) {
+  input[type="range"]::-webkit-slider-thumb { opacity: 0; }
+  input[type="range"]:hover::-webkit-slider-thumb,
+  input[type="range"]:focus::-webkit-slider-thumb {
+    opacity: 1;
+    box-shadow: 0 0 0 6px var(--brand-soft);
+    transform: scale(1.05);
+  }
 }
 /* Vintage: slider thumb is a brushed-metal cap */
 html.skin-vintage input[type="range"]::-webkit-slider-runnable-track {

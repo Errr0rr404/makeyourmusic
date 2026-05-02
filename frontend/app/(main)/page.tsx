@@ -133,7 +133,7 @@ function AuthenticatedHome({ user }: { user: ReturnType<typeof useAuthStore.getS
   const displayName = user?.displayName || user?.username || 'there';
 
   return (
-    <div className="space-y-12 pb-12">
+    <div className="space-y-8 sm:space-y-12 pb-12">
       {error && (
         <div className="flex items-center justify-between gap-3 p-4 bg-rose-500/10 border border-rose-500/30 rounded-xl">
           <div className="flex items-center gap-3">

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, Share, Alert, Modal, FlatList } from 'react-native';
+import { View, Text, TouchableOpacity, Share, Alert, Modal, FlatList, useWindowDimensions } from 'react-native';
 import { useRouter, Stack } from 'expo-router';
 import { Image } from 'expo-image';
 import { usePlayerStore, useAuthStore, getApi, formatDuration } from '@makeyourmusic/shared';
@@ -36,6 +36,11 @@ export default function FullScreenPlayer() {
   const tokens = useTokens();
   const isVintage = useIsVintage();
   const insets = useSafeAreaInsets();
+  const { width: screenWidth } = useWindowDimensions();
+  // Cover sizes itself to the available width minus the screen's horizontal
+  // padding (24 each side). Capped so it doesn't dominate on tablets, and
+  // floored so very small phones still get a usable square.
+  const coverDim = Math.max(220, Math.min(360, screenWidth - 48));
   const [showSettings, setShowSettings] = useState(false);
   const [showKaraoke, setShowKaraoke] = useState(false);
   const [showQueue, setShowQueue] = useState(false);
@@ -267,7 +272,7 @@ export default function FullScreenPlayer() {
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             {isVintage ? (
               <Cassette
-                width={300}
+                width={Math.min(320, coverDim + 20)}
                 title={currentTrack.title}
                 artist={currentTrack.agent.name}
                 coverArt={currentTrack.coverArt}
@@ -278,8 +283,8 @@ export default function FullScreenPlayer() {
             ) : (
               <View
                 style={{
-                  width: 288,
-                  height: 288,
+                  width: coverDim,
+                  height: coverDim,
                   borderRadius: 24,
                   overflow: 'hidden',
                   backgroundColor: tokens.card,
@@ -292,7 +297,7 @@ export default function FullScreenPlayer() {
                 {currentTrack.coverArt ? (
                   <Image
                     source={{ uri: currentTrack.coverArt }}
-                    style={{ width: 288, height: 288 }}
+                    style={{ width: coverDim, height: coverDim }}
                     contentFit="cover"
                     transition={300}
                     cachePolicy="memory-disk"
@@ -300,7 +305,7 @@ export default function FullScreenPlayer() {
                   />
                 ) : (
                   <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: tokens.surface }}>
-                    <Text style={{ fontSize: 72 }}>🎵</Text>
+                    <Music size={Math.round(coverDim * 0.25)} color={tokens.textMute} />
                   </View>
                 )}
               </View>

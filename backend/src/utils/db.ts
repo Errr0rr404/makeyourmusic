@@ -20,6 +20,7 @@ import { PrismaClient } from '@prisma/client';
 
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
+  prismaReplica: PrismaClient | undefined;
 };
 
 // Pass DATABASE_URL through unchanged. Earlier versions rewrote sslmode=prefer
@@ -95,3 +96,44 @@ const getPrismaClient = (): PrismaClient => {
 };
 
 export const prisma = getPrismaClient();
+
+// Optional read replica — when DATABASE_REPLICA_URL is set, expose a second
+// PrismaClient configured against the replica's URL. Long-running read-heavy
+// endpoints (recommendations, trending, search) can route through this to
+// keep heavy queries off the writer. When unset, `prismaReadOnly` is the
+// same instance as `prisma` so callers don't need to branch.
+//
+// The Prisma datasource override pattern requires DATABASE_URL to be set at
+// PrismaClient construction time; we temporarily swap it before instantiation
+// so the binary picks up the replica DSN. Restored immediately after.
+const getReplicaClient = (): PrismaClient => {
+  const replicaUrl = process.env.DATABASE_REPLICA_URL;
+  if (!replicaUrl) return prisma;
+  if (globalForPrisma.prismaReplica) return globalForPrisma.prismaReplica;
+
+  const originalDsn = process.env.DATABASE_URL;
+  try {
+    process.env.DATABASE_URL = replicaUrl;
+    const replica = new PrismaClient({ log: ['error', 'warn'] });
+    if (process.env.NODE_ENV !== 'production') {
+      globalForPrisma.prismaReplica = replica;
+    }
+    logger.info('Postgres read replica wired', { hasReplica: true });
+    return replica;
+  } catch (err) {
+    logger.warn('Failed to initialize read replica, falling back to writer', {
+      error: (err as Error).message,
+    });
+    return prisma;
+  } finally {
+    if (originalDsn !== undefined) {
+      process.env.DATABASE_URL = originalDsn;
+    }
+  }
+};
+
+// Read-only routing client. Use this for heavy SELECT-only workloads
+// (recommendations, trending, niche browse, search). Falls back to the
+// primary client when no replica is configured, so callers never need to
+// know which they're talking to.
+export const prismaReadOnly = getReplicaClient();

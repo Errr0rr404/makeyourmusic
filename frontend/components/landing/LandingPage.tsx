@@ -498,8 +498,8 @@ function DiscoverGrid({ tracks }: { tracks: TrackItem[] }) {
   };
 
   return (
-    <section id="discover" className="max-w-[1240px] mx-auto px-6 py-24">
-      <div className="flex justify-between items-end gap-6 flex-wrap mb-14">
+    <section id="discover" className="max-w-[1240px] mx-auto px-5 sm:px-6 py-14 sm:py-20 md:py-24">
+      <div className="flex justify-between items-end gap-6 flex-wrap mb-9 sm:mb-12 md:mb-14">
         <div className="max-w-[720px]">
           <span
             className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border mb-5"
@@ -616,8 +616,8 @@ function HowItWorks() {
   };
 
   return (
-    <section id="how" className="max-w-[1240px] mx-auto px-6 py-24">
-      <div className="max-w-[720px] mb-14">
+    <section id="how" className="max-w-[1240px] mx-auto px-5 sm:px-6 py-14 sm:py-20 md:py-24">
+      <div className="max-w-[720px] mb-9 sm:mb-12 md:mb-14">
         <span
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border mb-5"
           style={{
@@ -762,8 +762,8 @@ function AgentOrbit() {
 // ────────────────────────────────────────────────────────────────────
 function Genres({ genres }: { genres: Array<{ name: string; count: string; hue: number; slug: string }> }) {
   return (
-    <section id="genres" className="max-w-[1240px] mx-auto px-6 py-24">
-      <div className="max-w-[720px] mb-14">
+    <section id="genres" className="max-w-[1240px] mx-auto px-5 sm:px-6 py-14 sm:py-20 md:py-24">
+      <div className="max-w-[720px] mb-9 sm:mb-12 md:mb-14">
         <span
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border mb-5"
           style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'var(--stroke)', color: 'var(--text-soft)' }}
@@ -820,7 +820,7 @@ function Genres({ genres }: { genres: Array<{ name: string; count: string; hue: 
 // ────────────────────────────────────────────────────────────────────
 function MobileSection({ tracks }: { tracks: TrackItem[] }) {
   return (
-    <section id="mobile" className="max-w-[1240px] mx-auto px-6 py-24">
+    <section id="mobile" className="max-w-[1240px] mx-auto px-5 sm:px-6 py-14 sm:py-20 md:py-24">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-14 lg:gap-20 items-center">
         <div className="max-w-[560px]">
           <span
@@ -894,10 +894,8 @@ function Phone({ tracks }: { tracks: TrackItem[] }) {
 
   return (
     <div
-      className="relative"
+      className="relative w-[260px] h-[520px] sm:w-[290px] sm:h-[580px] max-w-full"
       style={{
-        width: 290,
-        height: 580,
         background: 'linear-gradient(180deg, #1a1a22 0%, #0f0f15 100%)',
         borderRadius: 44,
         padding: 12,
@@ -1050,8 +1048,8 @@ function Pricing() {
   ];
 
   return (
-    <section id="pricing" className="max-w-[1240px] mx-auto px-6 py-24">
-      <div className="max-w-[720px] mb-14">
+    <section id="pricing" className="max-w-[1240px] mx-auto px-5 sm:px-6 py-14 sm:py-20 md:py-24">
+      <div className="max-w-[720px] mb-9 sm:mb-12 md:mb-14">
         <span
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border mb-5"
           style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'var(--stroke)', color: 'var(--text-soft)' }}
@@ -1129,8 +1127,8 @@ function Pricing() {
 function FAQ() {
   const [open, setOpen] = useState(0);
   return (
-    <section className="max-w-[1240px] mx-auto px-6 py-24">
-      <div className="max-w-[720px] mb-14">
+    <section className="max-w-[1240px] mx-auto px-5 sm:px-6 py-14 sm:py-20 md:py-24">
+      <div className="max-w-[720px] mb-9 sm:mb-12 md:mb-14">
         <span
           className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border mb-5"
           style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'var(--stroke)', color: 'var(--text-soft)' }}
@@ -1333,27 +1331,27 @@ function HeroDeckLayout({ tracks }: { tracks: TrackItem[] }) {
   };
 
   return (
-    <div className="relative isolate overflow-hidden" style={{ padding: '140px 0 90px' }}>
+    <div className="relative isolate overflow-hidden pt-16 pb-12 sm:pt-24 sm:pb-16 md:pt-[140px] md:pb-[90px]">
       <HeroBackdrop />
-      <div className="relative max-w-[1240px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,480px)] gap-12 lg:gap-16 items-center">
+      <div className="relative max-w-[1240px] mx-auto px-5 sm:px-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,480px)] gap-10 sm:gap-12 lg:gap-16 items-center">
         <div className="min-w-0">
           <span
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border mb-5"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold border mb-4 sm:mb-5"
             style={{ background: 'rgba(255,255,255,0.04)', borderColor: 'var(--stroke)', color: 'var(--text-soft)' }}
           >
             <span className="w-1.5 h-1.5 rounded-full" style={{ background: 'var(--brand)', boxShadow: '0 0 10px var(--brand-glow)' }} />
             Personal radio, infinite
           </span>
           <h1
-            className="font-display font-extrabold m-0 mb-5"
-            style={{ fontSize: 'clamp(2.6rem, 6.4vw, 4.8rem)', lineHeight: 1.02, letterSpacing: '-0.035em' }}
+            className="font-display font-extrabold m-0 mb-4 sm:mb-5"
+            style={{ fontSize: 'clamp(2.1rem, 8vw, 4.8rem)', lineHeight: 1.04, letterSpacing: '-0.035em', textWrap: 'balance' }}
           >
             Your station,<br />
             <span className="aurora-text">re-recorded daily.</span>
           </h1>
           <p
-            className="m-0 mb-7 max-w-[560px]"
-            style={{ fontSize: 'clamp(1.05rem, 1.4vw, 1.18rem)', color: 'var(--text-soft)', lineHeight: 1.55 }}
+            className="m-0 mb-6 sm:mb-7 max-w-[560px]"
+            style={{ fontSize: 'clamp(0.98rem, 1.4vw, 1.18rem)', color: 'var(--text-soft)', lineHeight: 1.55 }}
           >
             Hit play. AI agents keep the queue full of new music shaped by what you love — across moods, niches, and 4am
             detours.
@@ -1390,14 +1388,14 @@ function HeroDeckLayout({ tracks }: { tracks: TrackItem[] }) {
         <div className="relative">
           <HeroDeck tracks={tracks} />
           <div
-            className="absolute -top-4 -right-2 z-[5] px-3.5 py-2.5 rounded-2xl flex items-center gap-2.5 text-[11px] font-semibold text-white"
+            className="absolute -top-3 right-2 sm:-top-4 sm:-right-2 z-[5] px-3 py-2 sm:px-3.5 sm:py-2.5 rounded-2xl flex items-center gap-2 sm:gap-2.5 text-[10.5px] sm:text-[11px] font-semibold text-white max-w-[200px]"
             style={{
               background: 'var(--brand)',
               boxShadow: '0 16px 36px -12px var(--brand-glow)',
               transform: 'rotate(4deg)',
             }}
           >
-            <span className="font-display font-extrabold text-xl leading-none">∞</span>
+            <span className="font-display font-extrabold text-lg sm:text-xl leading-none">∞</span>
             <span className="leading-tight opacity-95">Endless queue<br />tuned to your taste</span>
           </div>
         </div>

@@ -1,50 +1,62 @@
 import { useRef, useState } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, ViewToken, StyleSheet,
+  View, Text, FlatList, TouchableOpacity, ViewToken,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Sparkles, Headphones, Wand2, ArrowRight } from 'lucide-react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useWindowDimensions } from 'react-native';
 import { useTokens, useIsVintage } from '../lib/theme';
 export const ONBOARDING_KEY = 'makeyourmusic-onboarded-v1';
 
+// Slide colors are RGB triplets so we can render the hero icon's tint and the
+// halo behind it through `rgba(...)`. Some Android devices render the
+// `#RRGGBBAA` short-form inconsistently for non-#RRGGBB sources, so we keep
+// alpha out-of-band and compose it at render time.
 const slides = [
   {
     icon: Wand2,
     title: 'Create your own with AI',
     description: 'Write lyrics or let AI generate them, pick a vibe, and get a full track in under a minute. Publish publicly or keep it private.',
-    color: '#ec4899',
+    rgb: '236, 72, 153',
   },
   {
     icon: Headphones,
     title: 'Stream AI-created music',
     description: 'Discover tracks from autonomous AI agents. Lock-screen controls, background playback, full-quality audio.',
-    color: '#8b5cf6',
+    rgb: '139, 92, 246',
   },
   {
     icon: Sparkles,
     title: 'Your library, everywhere',
     description: 'Like tracks, build playlists, follow agents. Everything syncs with your web account so your library is always with you.',
-    color: '#3b82f6',
+    rgb: '59, 130, 246',
   },
 ];
+
+function rgbToCss(rgb: string): string {
+  return `rgb(${rgb})`;
+}
+function rgbaToCss(rgb: string, alpha: number): string {
+  return `rgba(${rgb}, ${alpha})`;
+}
 
 export default function OnboardingScreen() {
   const router = useRouter();
   const tokens = useTokens();
   const isVintage = useIsVintage();
   const { width } = useWindowDimensions();
-  const insets = useSafeAreaInsets();
   const [index, setIndex] = useState(0);
   const listRef = useRef<FlatList>(null);
 
+  // Vintage skin tints the hero icons with the active palette so they stop
+  // looking like a different design system landed in the middle of the deck.
   const themedSlides = isVintage
-    ? slides.map((s, i) => ({
-        ...s,
-        color: [tokens.brand, tokens.accent, tokens.ledAmber][i] || s.color,
-      }))
+    ? slides.map((s, i) => {
+        const tints = ['232, 90, 60', '255, 179, 71', '91, 138, 58']; // brand / amber / green
+        return { ...s, rgb: tints[i] || s.rgb };
+      })
     : slides;
 
   const viewable = useRef(({ viewableItems }: { viewableItems: ViewToken[] }) => {
@@ -66,17 +78,22 @@ export default function OnboardingScreen() {
     }
   };
 
+  const isLast = index === slides.length - 1;
+
   return (
-    <SafeAreaView className="flex-1 bg-mym-bg">
-      <View className="flex-row justify-end px-4 pt-2">
-        <TouchableOpacity
-          onPress={handleComplete}
-          className="px-4 py-3"
-          accessibilityRole="button"
-          accessibilityLabel="Skip onboarding"
-        >
-          <Text className="text-mym-muted text-sm font-semibold">Skip</Text>
-        </TouchableOpacity>
+    <SafeAreaView style={{ flex: 1, backgroundColor: tokens.bg }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'flex-end', paddingHorizontal: 16, paddingTop: 8, height: 44 }}>
+        {!isLast && (
+          <TouchableOpacity
+            onPress={handleComplete}
+            hitSlop={8}
+            style={{ paddingHorizontal: 16, paddingVertical: 10 }}
+            accessibilityRole="button"
+            accessibilityLabel="Skip onboarding"
+          >
+            <Text style={{ color: tokens.textMute, fontSize: 14, fontWeight: '600' }}>Skip</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       <FlatList
@@ -91,37 +108,37 @@ export default function OnboardingScreen() {
         renderItem={({ item }) => {
           const Icon = item.icon;
           return (
-            <View style={{ width }} className="items-center justify-center px-10">
+            <View style={{ width, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 36 }}>
               <View
                 style={{
                   width: 128,
                   height: 128,
-                  borderRadius: isVintage ? tokens.radiusLg : 24,
+                  borderRadius: isVintage ? tokens.radiusLg : 28,
                   alignItems: 'center',
                   justifyContent: 'center',
                   marginBottom: 32,
-                  backgroundColor: `${item.color}20`,
+                  backgroundColor: rgbaToCss(item.rgb, 0.14),
                   borderWidth: 1,
-                  borderColor: `${item.color}40`,
+                  borderColor: rgbaToCss(item.rgb, 0.32),
                 }}
               >
-                <Icon size={56} color={item.color} />
+                <Icon size={56} color={rgbToCss(item.rgb)} />
               </View>
               <Text
                 style={{
                   color: tokens.text,
-                  fontSize: 28,
+                  fontSize: 26,
                   fontWeight: '700',
                   textAlign: 'center',
                   marginBottom: 12,
                   fontFamily: isVintage ? tokens.fontDisplay : undefined,
                   textTransform: isVintage ? 'uppercase' : undefined,
-                  letterSpacing: isVintage ? 1 : undefined,
+                  letterSpacing: isVintage ? 1 : -0.4,
                 }}
               >
                 {item.title}
               </Text>
-              <Text style={{ color: tokens.textMute, fontSize: 16, textAlign: 'center', lineHeight: 24 }}>
+              <Text style={{ color: tokens.textMute, fontSize: 15, textAlign: 'center', lineHeight: 22, maxWidth: 380 }}>
                 {item.description}
               </Text>
             </View>
@@ -129,21 +146,28 @@ export default function OnboardingScreen() {
         }}
       />
 
-      <View className="px-6 pb-10">
-        <View className="flex-row justify-center gap-2 mb-8">
-          {slides.map((_, i) => (
-            <View
-              key={i}
-              className={`h-1.5 rounded-full ${i === index ? 'bg-mym-accent' : 'bg-mym-border'}`}
-              style={{ width: i === index ? 24 : 8 }}
-            />
-          ))}
+      <View style={{ paddingHorizontal: 24, paddingBottom: 24 }}>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 8, marginBottom: 24 }}>
+          {slides.map((_, i) => {
+            const active = i === index;
+            return (
+              <View
+                key={i}
+                style={{
+                  height: 6,
+                  width: active ? 28 : 6,
+                  borderRadius: 999,
+                  backgroundColor: active ? tokens.accent : tokens.border,
+                }}
+              />
+            );
+          })}
         </View>
 
         <TouchableOpacity
           onPress={handleNext}
           accessibilityRole="button"
-          accessibilityLabel={index === slides.length - 1 ? 'Get started' : 'Next slide'}
+          accessibilityLabel={isLast ? 'Get started' : 'Next slide'}
           style={{
             backgroundColor: tokens.accent,
             borderRadius: 999,
@@ -153,6 +177,11 @@ export default function OnboardingScreen() {
             justifyContent: 'center',
             gap: 8,
             minHeight: 52,
+            shadowColor: tokens.accent,
+            shadowOpacity: 0.32,
+            shadowRadius: 14,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 6,
           }}
           activeOpacity={0.85}
         >
@@ -166,16 +195,10 @@ export default function OnboardingScreen() {
               textTransform: isVintage ? 'uppercase' : undefined,
             }}
           >
-            {index === slides.length - 1 ? 'Get started' : 'Next'}
+            {isLast ? 'Get started' : 'Next'}
           </Text>
           <ArrowRight size={18} color={tokens.brandText} />
         </TouchableOpacity>
-
-        {index < slides.length - 1 && (
-          <TouchableOpacity onPress={handleComplete} className="items-center mt-3 py-2">
-            <Text className="text-mym-muted text-sm">Skip intro</Text>
-          </TouchableOpacity>
-        )}
       </View>
     </SafeAreaView>
   );

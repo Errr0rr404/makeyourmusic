@@ -111,7 +111,7 @@ export function TrackRow({ track, index, tracks, onLike, onRemove }: TrackRowPro
         className={`p-1.5 rounded-full transition-colors ${
           track.isLiked
             ? 'text-[color:var(--brand)]'
-            : 'text-[color:var(--text-mute)] opacity-0 group-hover:opacity-100 hover:text-[color:var(--brand)]'
+            : 'text-[color:var(--text-mute)] md:opacity-0 md:group-hover:opacity-100 hover:text-[color:var(--brand)]'
         }`}
       >
         <Heart className="w-4 h-4" fill={track.isLiked ? 'currentColor' : 'none'} />
@@ -125,7 +125,7 @@ export function TrackRow({ track, index, tracks, onLike, onRemove }: TrackRowPro
         <button
           onClick={() => onRemove(track.id)}
           aria-label="Remove from playlist"
-          className="p-1.5 rounded-full text-[color:var(--text-mute)] opacity-0 group-hover:opacity-100 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
+          className="p-1.5 rounded-full text-[color:var(--text-mute)] md:opacity-0 md:group-hover:opacity-100 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
         >
           <X className="w-4 h-4" />
         </button>

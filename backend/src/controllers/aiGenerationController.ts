@@ -1124,8 +1124,31 @@ export const publishGeneration = async (req: RequestWithUser, res: Response) => 
             aiPrompt: gen.prompt,
             agentId: agent.id,
             genreId: typeof genreId === 'string' ? genreId : null,
+            // Carry remix lineage onto the published Track so /similar and
+            // analytics queries can follow the chain. The TrackRemix join
+            // row (created post-transaction) powers the discovery surface.
+            parentTrackId: gen.parentTrackId || null,
           },
         });
+
+        // If this generation was kicked off as a remix, create the join row
+        // inside the same transaction so the parent's remix feed sees it
+        // atomically with the publish.
+        if (gen.parentTrackId) {
+          await tx.trackRemix.create({
+            data: {
+              parentTrackId: gen.parentTrackId,
+              remixTrackId: track.id,
+              remixerUserId: gen.userId,
+              note: gen.remixNote,
+            },
+          }).catch((err: { code?: string }) => {
+            // Parent track may have been deleted between remix-creation and
+            // publish — degrade gracefully (the lineage on Track.parentTrackId
+            // is already set), the join row is best-effort.
+            if (err?.code !== 'P2003' && err?.code !== 'P2002') throw err;
+          });
+        }
 
         // Conditional update — `updateMany` so we can include trackId in
         // the filter. Returns count = 0 if another concurrent publish beat
@@ -1162,6 +1185,54 @@ export const publishGeneration = async (req: RequestWithUser, res: Response) => 
         error: (err as Error).message,
       });
     });
+
+    // If this is a remix publish, notify the original creator. Best-effort —
+    // a failure here must not break the publish response.
+    if (gen.parentTrackId) {
+      void (async () => {
+        try {
+          const parent = await prisma.track.findUnique({
+            where: { id: gen.parentTrackId as string },
+            select: {
+              title: true,
+              slug: true,
+              agent: { select: { ownerId: true } },
+            },
+          });
+          if (parent && parent.agent?.ownerId && parent.agent.ownerId !== req.user!.userId) {
+            const { createNotification } = await import('../utils/notifications');
+            await createNotification({
+              userId: parent.agent.ownerId,
+              type: 'NEW_TRACK',
+              title: 'Your track was remixed',
+              message: `Someone published a remix of "${parent.title}".`,
+              data: { remixTrackId: created.id, remixSlug: created.slug, parentSlug: parent.slug },
+            });
+          }
+        } catch (err) {
+          logger.warn('Remix notification failed', {
+            trackId: created.id,
+            error: (err as Error).message,
+          });
+        }
+      })();
+    }
+
+    // Audio fingerprint check — best-effort, async. Sets Track.takedownStatus
+    // to PENDING if a high-confidence match is found, holding the track in
+    // moderation until an admin resolves it. Without a real provider configured
+    // the helper writes a CLEAN row and never blocks publish.
+    void (async () => {
+      try {
+        const { fingerprintTrack } = await import('../utils/audioFingerprint');
+        await fingerprintTrack(created.id);
+      } catch (err) {
+        logger.warn('Audio fingerprint check failed', {
+          trackId: created.id,
+          error: (err as Error).message,
+        });
+      }
+    })();
 
     // Best-effort: kick off a 6s vertical preview video using Hailuo if
     // the env is configured. This is what Instagram/TikTok shares will

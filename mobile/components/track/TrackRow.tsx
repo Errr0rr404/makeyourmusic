@@ -1,28 +1,60 @@
-import { View, Text, TouchableOpacity } from 'react-native';
+import { useEffect, useState } from 'react';
+import { View, Text, TouchableOpacity, Alert } from 'react-native';
 import { Image } from 'expo-image';
-import { Music } from 'lucide-react-native';
+import { Music, Heart } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
-import { usePlayerStore, formatDuration } from '@makeyourmusic/shared';
+import { usePlayerStore, useAuthStore, getApi, formatDuration } from '@makeyourmusic/shared';
 import type { TrackItem } from '@makeyourmusic/shared';
 import { useTokens, useIsVintage } from '../../lib/theme';
 
 interface TrackRowProps {
-  track: TrackItem;
+  track: TrackItem & { isLiked?: boolean };
   queue?: TrackItem[];
   index?: number;
   showAgent?: boolean;
+  showLike?: boolean;
 }
 
-export function TrackRow({ track, queue, index, showAgent = true }: TrackRowProps) {
+export function TrackRow({ track, queue, index, showAgent = true, showLike = true }: TrackRowProps) {
   const router = useRouter();
   const tokens = useTokens();
   const isVintage = useIsVintage();
   const { playTrack, currentTrack, isPlaying, togglePlay } = usePlayerStore();
+  const { isAuthenticated } = useAuthStore();
   const isActive = currentTrack?.id === track.id;
+  const [liked, setLiked] = useState<boolean>(Boolean(track.isLiked));
+  const [likeBusy, setLikeBusy] = useState(false);
+
+  // Sync from prop changes (parent may update after a refetch).
+  useEffect(() => {
+    setLiked(Boolean(track.isLiked));
+  }, [track.isLiked, track.id]);
 
   const handlePlay = () => {
     if (isActive) togglePlay();
     else playTrack(track, queue);
+  };
+
+  const handleLike = async () => {
+    if (likeBusy) return;
+    if (!isAuthenticated) {
+      Alert.alert('Sign in to like', 'Create a free account to save tracks to your library.', [
+        { text: 'Not now', style: 'cancel' },
+        { text: 'Sign in', onPress: () => router.push('/(auth)/login') },
+      ]);
+      return;
+    }
+    const wasLiked = liked;
+    setLiked(!wasLiked);
+    setLikeBusy(true);
+    try {
+      const res = await getApi().post(`/social/likes/${track.id}`);
+      setLiked(Boolean(res.data?.liked));
+    } catch {
+      setLiked(wasLiked);
+    } finally {
+      setLikeBusy(false);
+    }
   };
 
   return (
@@ -115,6 +147,23 @@ export function TrackRow({ track, queue, index, showAgent = true }: TrackRowProp
           </TouchableOpacity>
         )}
       </View>
+
+      {showLike && (
+        <TouchableOpacity
+          onPress={handleLike}
+          disabled={likeBusy}
+          hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+          accessibilityRole="button"
+          accessibilityLabel={liked ? 'Unlike track' : 'Like track'}
+          style={{ paddingHorizontal: 6, paddingVertical: 4, marginRight: 4 }}
+        >
+          <Heart
+            size={18}
+            color={liked ? (isVintage ? tokens.brand : '#ef4444') : tokens.textMute}
+            fill={liked ? (isVintage ? tokens.brand : '#ef4444') : 'none'}
+          />
+        </TouchableOpacity>
+      )}
 
       <Text
         style={{
