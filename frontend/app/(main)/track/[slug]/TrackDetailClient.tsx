@@ -6,7 +6,7 @@ import api from '@/lib/api';
 import { validatePaymentRedirect } from '@/lib/utils';
 import { usePlayerStore } from '@/lib/store/playerStore';
 import { useAuthStore } from '@/lib/store/authStore';
-import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio, Code, DollarSign, Film, Users, Wand2, Send } from 'lucide-react';
+import { Play, Pause, Heart, Share2, Clock, Music, MessageSquare, Bot, AlertCircle, Sparkles, ListPlus, Pencil, Trash2, Check, X, Flag, Radio, Code, DollarSign, Film, Users, Send } from 'lucide-react';
 import { ClipGrid } from '@/components/clip/ClipGrid';
 import { formatDuration } from '@makeyourmusic/shared';
 import { toast } from '@/lib/store/toastStore';

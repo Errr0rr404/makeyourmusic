@@ -34,10 +34,10 @@ const SUBGENRE_HINTS: Record<string, string> = {
   'Garage Rock': 'fuzzy distorted guitars, raw production, primal drumming, gritty vocals',
   'Post-Rock': 'instrumental crescendos, layered ambient guitars, cinematic builds, no traditional chorus',
   'Math Rock': 'odd time signatures, intricate finger-tapping, angular riffs, clean guitar tone',
-  'Shoegaze': 'walls of distorted guitar, washed-out reverb vocals, dense fuzzy textures',
+  'Shoegaze': 'walls of distorted feedback guitar, washed-out reverb vocals, dense fuzzy layered textures, wall-of-sound immersion',
   'Hard Rock': 'driving riffs, powerful drums, big anthemic choruses, blues-pentatonic licks',
   'Prog Rock': 'long compositions, complex arrangements, virtuosic instrumentation, conceptual lyrics',
-  'Grunge': 'distorted guitars, slacker vibe, dynamic loud-quiet shifts, raw vocals',
+  'Grunge': 'heavy fuzz guitar with quiet verse/loud chorus contrast, sardonic raw vocals, murky analog production, flannel-era rawness',
   'Surf Rock': 'reverb-drenched twangy guitar, snappy drums, retro 60s coastal energy',
 
   // R&B
@@ -164,6 +164,42 @@ const SUBGENRE_HINTS: Record<string, string> = {
   'Western Score': 'whistles, twangy guitar, brass, sweeping desert vibes, Morricone-esque',
   'Sci-Fi Score': 'analog synths, otherworldly textures, pulsing rhythms, retrofuturistic',
   'Lo-Fi Cinematic': 'tape-saturated strings, simple piano motifs, cassette warmth, intimate scale',
+
+  // Hip Hop — extended
+  'Melodic Rap': 'melodic auto-tuned singing over trap beats, emotional vulnerability, 808 sub-bass, sung hooks, half-time feel',
+  'Emo Rap': 'confessional vulnerability over trap beats, melodic rap/singing blend, distorted 808s, lo-fi warmth, raw emotional delivery',
+  'UK Drill': 'sliding chromatic 808 basslines, offbeat stuttering hi-hats, ominous piano or string samples, UK street cadence, 140 BPM',
+  'Gospel Hip Hop': 'soulful gospel choir samples, uplifting bounce 808s, spiritual conviction, 90-100 BPM, organ accents',
+  'Grime': 'fast MC over 140 BPM syncopated skipbeat, dark metallic synths, hard-edged UK street energy, sparse percussion',
+
+  // Rock — extended
+  'Emo': 'crunchy/jangly dual-guitar blend, confessional emotional vocals, loud verse-chorus dynamic contrast, double-tracked chorus guitars',
+  'Post-Hardcore': 'angular urgent riffs, screamed/clean vocal dynamic, hard-hitting rhythm section, intense cathartic energy',
+  'Nu-Metal': 'drop-D downtuned riffs, hip-hop influenced drums, turntable scratches, alternating rap/scream vocal dynamics',
+  'Post-Punk': 'angular minimal guitar lines, bass-forward sparse mix, stark cold production, detached monotone-to-emotive vocal style',
+  'New Wave': 'bright shimmering synths, angular post-punk guitar, programmed drum machine rhythms, quirky melodic 80s energy',
+  'Darkwave': 'melancholic minor synths, post-punk clean guitar, deep reverb-heavy baritone vocals, cold atmospheric production',
+  'Trip-Hop': 'dark downtempo hip-hop breakbeats, chopped cinematic samples, brooding bass haze, 70-90 BPM',
+
+  // Electronic — extended
+  'Jungle': 'rapid amen breakbeat at 160-170 BPM, reggae bass drops, chopped MC samples, jungle percussion rush',
+  'Liquid DnB': 'smooth flowing breakbeats at 170 BPM, melodic liquid bass lines, soulful vocal samples, jazzy warm atmosphere',
+  'Electro House': 'driving electro filtered bassline, four-on-the-floor kick, distorted lead synth, big room drop, 128 BPM',
+  'Progressive House': 'evolving arpeggiated pads, sustained four-on-the-floor pulse, long melodic builds, euphoric peak drops, 128-132 BPM',
+  'Melodic Techno': 'driving 130 BPM minimal kick, hypnotic evolving minor-key melodic pads, industrial texture, emotional dark depth',
+  'Afro House': 'African polyrhythmic percussion, deep rolling bassline, soulful vocal chops, spiritual dance groove, 120-124 BPM',
+  'Psytrance': 'relentless 145 BPM kick, layered psychedelic arpeggiated synths, intense peak-time energy, no vocals',
+  'Chiptune': '8-bit chip synthesizer arpeggios, video-game sound design, upbeat fast BPM, retro digital pixelated energy',
+
+  // Jazz — extended
+  'Nu-Jazz': 'programmed electronic beats layered with live jazz improvisation, modern fusion harmony, atmospheric contemporary feel',
+  'Latin Jazz': 'Afro-Cuban clave rhythm, jazz chord extensions, piano montuno, brass solos, swung Latin feel',
+
+  // World — extended
+  'Samba': 'fast samba percussion (surdo, pandeiro), syncopated cavaquinho guitar, call-and-response, Brazilian jubilee energy, 110-130 BPM',
+  'Cumbia': 'accordion melody, guache and caja drum pattern, syncopated Colombian-Caribbean groove, danceable 90-100 BPM',
+  'Merengue': 'rapid 2/4 accordion and tambora rhythm, syncopated horn stabs, Dominican party energy, 120-150 BPM',
+  'Afropop': 'uptempo West African rhythms, bright synth hooks, autotuned modern vocals, danceable glossy pop production',
 };
 
 const ENERGY_HINTS: Record<string, string> = {
@@ -187,18 +223,26 @@ const VOCAL_STYLE_HINTS: Record<string, string> = {
   'Auto-tuned': 'melodic auto-tuned vocals, pitched delivery',
   'Spoken word': 'spoken-word delivery, conversational, poetic cadence',
   'Falsetto': 'falsetto/head-voice vocals, airy and high-register',
+  'Harmonized': 'stacked multi-part vocal harmonies, rich layered backing vocals, lush choral texture',
+  'Ad-libs heavy': 'frequent ad-libs woven throughout, improvisational vocal asides, energetic vocal reactions',
+  'Operatic': 'classically trained operatic delivery, expansive dynamic range, vibrato-rich resonant tone',
+  'Gravelly/Raspy': 'rough gravelly vocal texture, bluesy road-worn rasp, hoarse lived-in quality',
+  'Deep baritone': 'deep resonant baritone male vocal, commanding low register, warm chest resonance',
+  'Melodic rap': 'melodic rap delivery blending singing and rapping, auto-tuned pitch, emo-rap emotional inflection',
+  'Screamed': 'screamed or growled aggressive vocal delivery, hardcore/metal catharsis',
+  'Nasal/Twangy': 'distinctive nasal twang, country or indie folk flavor, regional character',
 };
 
 const ERA_HINTS: Record<string, string> = {
-  'Modern': 'modern 2020s production, contemporary mixing standards',
-  '2010s': '2010s production aesthetics, polished digital sheen',
-  '2000s': '2000s production, early-digital punchy mixes',
-  '90s': '90s production, mix of analog warmth and early-digital crispness',
-  '80s': '80s production: gated reverb, analog synths, big drum sounds',
-  '70s': '70s production: warm analog tape, live-room ambience, vintage tones',
-  '60s': '60s production: mono/early-stereo, plate reverb, vintage room sound',
-  'Vintage': 'pre-60s vintage feel, analog tape saturation, period-correct instrumentation',
-  'Timeless': 'genre-classic production that does not signal a specific decade',
+  'Modern': 'modern 2020s production, streaming-optimized loudness, clear digital transients, DSP clarity',
+  '2010s': '2010s production aesthetics, polished digital sheen, punchy low-end, trap-era clarity',
+  '2000s': '2000s production, early-digital punchy mixes, triggered drum replacements, radio-compressed loudness',
+  '90s': '90s production, 44.1kHz digital crispness, chunky sampled drums, vinyl-sourced warmth, bright brittle highs',
+  '80s': '80s production: gated reverb on snare, analog synths with digital delay, huge snare crack, neon production gloss',
+  '70s': '70s production: warm analog tape saturation, live-room mic placement, vintage tube compression, organic low-end weight',
+  '60s': '60s production: mono or narrow early-stereo, plate reverb, close-mic vintage room sound, tape-speed variation',
+  'Vintage': 'pre-60s vintage: mono mix, spring reverb, 78rpm tape hiss, period-correct instrumentation, lo-fi intimacy',
+  'Timeless': 'genre-classic production, timeless mix approach that avoids decade-specific artifacts',
 };
 
 // Primary-genre fallback hints. Only used when no subgenre is selected — gives
@@ -253,6 +297,18 @@ const MOOD_HINTS: Record<string, string> = {
   'Rebellious': 'distorted attack, defiant vocal energy, driving rhythm, anti-establishment edge',
   'Peaceful': 'gentle acoustic timbres, soft dynamics, tonal harmonic palette, breath-led pacing',
   'Uplifting': 'major key, bright lead instruments, lifting harmonic motion, optimistic vocal delivery',
+  'Longing': 'sustained unresolved harmonic tension, yearning melodic intervals, minor-key searching phrases, intimate plaintive vocal',
+  'Determined': 'driving rhythmic momentum, forward-pushing bass, building dynamics, resolute confident vocal delivery',
+  'Wonder': 'wide open harmonic space, unexpected chord colors, floating ethereal phrases, hushed awed breathy vocal',
+  'Tender': 'slow gentle harmonic movement, soft acoustic timbres, warm subtle low-end, close-mic intimate phrasing',
+  'Vulnerable': 'stripped sparse arrangement, exposed naked dynamics, raw unprocessed vocal tone, solo piano or guitar',
+  'Defiant': 'heavy-hitting transient attack, aggressive driving rhythm, bold harmonic friction, confrontational vocal stance',
+  'Frustrated': 'restless syncopated rhythms, harmonic tension without resolution, clipped staccato phrasing, tense vocal delivery',
+  'Intense': 'compressed dense arrangement, forward-pushing high-saturation dynamics, focused driving rhythm, present powerful vocal',
+  'Gentle': 'soft acoustic texture, open reverberant ambience, finger-picked or bowed sustained notes, breathy calm vocal',
+  'Wistful': 'slightly detuned analog warmth, bittersweet major-minor chord shifts, mid-tempo sway, daydreaming vocal tone',
+  'Desperate': 'accelerating tempo feel, fragmented rhythms, urgent harmonic motion, strained raw vocal delivery',
+  'Serene': 'very slow tempo, long sustained tones, tonal consonance, silence as part of the arrangement, minimal movement',
 };
 
 // Per-genre lyric conventions: rhyme scheme, line length, vocabulary register,
@@ -504,6 +560,244 @@ const SUBGENRE_LYRIC_HINTS: Record<string, LyricConvention> = {
     lengthHint: 'club-pop body — chorus and ad-libs do the heavy lifting',
     quality: 'hook-craft',
   },
+  // Rock — extended
+  'Emo': {
+    rhyme: 'AABB or ABAB, earnest meter, internal rhymes without studied cleverness',
+    voice: 'first-person raw confessional, hyper-specific personal imagery, teenage-to-young-adult emotional landscape',
+    structure: 'Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: 'verses are specific and confessional — real place, actual thing, specific shame or hope; chorus is the cathartic release that earns every setup line',
+    quality: 'literary',
+  },
+  'Post-Hardcore': {
+    rhyme: 'loose screamed-verse rhymes, clean sung chorus with emotional AABB payoff',
+    voice: 'first-person cathartic, alternating raw confrontation and vulnerable surrender, anguish-and-redemption imagery',
+    structure: 'Intro → Verse (scream) → Pre-Chorus → Chorus (clean) → Verse (scream) → Chorus → Breakdown → Bridge → Final Chorus',
+    lengthHint: 'screamed verses are catharsis, chorus is the resolution — both must mean something specific, not placeholder pain',
+    quality: 'literary',
+  },
+  'Nu-Metal': {
+    rhyme: 'AABB in verses, aggressive repeated chorus hook, rapped bridge or verse',
+    voice: 'first-person alienation and anger, suburban angst, explicit frustration, rap-rock vocabulary',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge (rap) → Breakdown → Final Chorus',
+    lengthHint: 'direct and punching — the catharsis is in the aggression, the specificity of the anger makes it land',
+    quality: 'narrative',
+  },
+  'Grunge': {
+    rhyme: 'loose slant rhymes, indifferent or sardonic meter, hard-hitting chorus hook',
+    voice: 'first-person alienated, sardonic anti-establishment imagery, apathetic-to-cathartic emotional arc',
+    structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: 'the indifferent verse is setup for the explosive chorus — laid-back verse word-choice IS the aesthetic, but the chorus must land',
+    quality: 'literary',
+  },
+  'Post-Punk': {
+    rhyme: 'minimal or absent rhyme, angular declarative statements, literary prose-poem delivery',
+    voice: 'first-person or observational, socially critical or alienated imagery, dry detached vocabulary',
+    structure: 'Verse → Chorus → Verse → Chorus → Bridge → Outro',
+    lengthHint: 'austere and purposeful — every line is a statement, no filler, literary without being showy',
+    quality: 'literary',
+  },
+  'New Wave': {
+    rhyme: 'ABAB or AABB with quirky off-kilter imagery, upbeat bouncy meter',
+    voice: 'first or second person, playful or ironic modern imagery, dance-pop vocabulary with character edge',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Bridge → Final Chorus',
+    lengthHint: 'pop body with edge — hook is central but verses have more personality than generic pop filler',
+    quality: 'hook-craft',
+  },
+  'Darkwave': {
+    rhyme: 'sparse rhyme, literary prose-poetry, slow deliberate meter',
+    voice: 'first-person brooding introspection, existential or romantic-gothic imagery, cold detached-to-yearning delivery',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Outro',
+    lengthHint: 'few lines, all weight — dark imagery is specific not generic; atmosphere over quantity',
+    quality: 'literary',
+  },
+  'Shoegaze': {
+    rhyme: 'soft near-inaudible half-rhymes, dreamlike meter, lyric as texture not content',
+    voice: 'first-person distant dreamy, abstract sensory impressionism, vocal buried in the mix as an instrument',
+    structure: 'Verse → Chorus → Verse → Chorus → Outro (often no bridge — the wall of sound IS the bridge)',
+    lengthHint: 'minimal, impressionistic — the words need to survive being drowned in reverb; consonants and texture over meaning',
+    quality: 'minimal',
+  },
+  'Garage Rock': {
+    rhyme: 'AABB raw loose rhymes, gritty primal imagery, unfussy direct vocabulary',
+    voice: 'first-person raw, street-grit or heartbreak, short declarative lines',
+    structure: 'Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: 'raw and direct — power is in the delivery not the poetry; short tight verses, hard-hitting chorus',
+    quality: 'narrative',
+  },
+  'Hard Rock': {
+    rhyme: 'AABB or ABAB, anthemic chorus, power and freedom imagery',
+    voice: 'first-person defiant, blue-collar or rebellious vocabulary, victorious or confrontational stance',
+    structure: 'Intro → Verse → Pre-Chorus → Chorus → Verse → Pre-Chorus → Chorus → Solo Section → Final Chorus',
+    lengthHint: 'anthemic and punching — both verses and chorus deliver weight; the solo speaks when words run out',
+    quality: 'literary',
+  },
+  'Prog Rock': {
+    rhyme: 'complex literary rhymes, conceptual ABCB or through-composed, multi-syllabic',
+    voice: 'conceptual narrator or first-person epic, mythic/cosmic/political imagery, literary vocabulary',
+    structure: 'Multi-movement through-composed: Intro → Theme A → Development → Theme B → Climax → Resolution → Coda',
+    lengthHint: 'epic length — multiple movements, conceptual arc; listeners come for the full journey, give them one',
+    quality: 'literary',
+  },
+  'Surf Rock': {
+    rhyme: 'AABB simple bright rhymes, beach/ocean imagery, fun carefree vocabulary',
+    voice: 'first or second person, summer/beach/road energy, simple joyful direct address',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Guitar Break → Final Chorus',
+    lengthHint: 'short fun verses, singalong chorus — this music is all energy and sun',
+    quality: 'narrative',
+  },
+
+  // Hip Hop — extended
+  'Melodic Rap': {
+    rhyme: 'melodic end-rhymes with auto-tune phrasing, AABB or AAAA bars with sung hook',
+    voice: 'first-person emotional vulnerability, modern trap imagery blended with romantic or heartbreak themes',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Bridge → Hook',
+    lengthHint: 'hook is the song — melodic and repeated; verse sets up the emotional context for the hook to pay off',
+    quality: 'hook-craft',
+  },
+  'Emo Rap': {
+    rhyme: 'soft end-rhymes, melodic trap flow, confessional imagery over sung delivery',
+    voice: 'first-person raw confessional, mixing hip-hop bravado with emotional vulnerability, late-night isolation imagery',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Bridge → Outro',
+    lengthHint: 'specific confessional detail matters most — the more specific the shame or longing, the more universal it feels; avoid abstract pain',
+    quality: 'literary',
+  },
+  'Phonk': {
+    rhyme: 'slow menacing AAAA bar rhymes, Memphis-style cadence, dark declarative hooks',
+    voice: 'first-person menacing, dark late-night Memphis street imagery, slow swagger, horror imagery',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Outro',
+    lengthHint: 'sparse and menacing — slow delivery with dark imagery; repetition is intentional, let it breathe',
+    quality: 'flow',
+  },
+  'UK Drill': {
+    rhyme: 'sliding cadence end-rhymes, UK slang and road vocabulary, repetitive tag refrains',
+    voice: 'first-person hard street imagery, UK vernacular, present-tense menace, postcode rivalry',
+    structure: 'Intro → Verse → Hook → Verse → Hook',
+    lengthHint: 'tight and compressed — UK slang specificity is the whole identity; every bar should feel like a reference only insiders catch',
+    quality: 'flow',
+  },
+  'Grime': {
+    rhyme: 'rapid-fire multisyllabic rhymes, skipbeat-locked cadence, aggressive UK wordplay',
+    voice: 'first-person MC swagger, UK street vocabulary, quick-fire wit and menace',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Outro',
+    lengthHint: 'fast and dense — every bar is a punchline or an image, no placeholder filler',
+    quality: 'flow',
+  },
+  'Gospel Hip Hop': {
+    rhyme: 'AABB with testimony structure, call-and-response chorus, uplifting declarative hooks',
+    voice: 'first-person spiritual testimony, community and faith imagery, grateful or determined stance',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Bridge (spoken testimony or choir) → Final Hook',
+    lengthHint: 'testimony-length verses with communal hook returns; specific spiritual experience beats generic faith declarations',
+    quality: 'narrative',
+  },
+
+  // Electronic — extended
+  'Trip-Hop': {
+    rhyme: 'sparse free verse or soft half-rhymes, introspective cool meter',
+    voice: 'first-person detached observational, noir-cinematic imagery, cool distance with underlying ache',
+    structure: 'Verse → Hook → Verse → Hook → Outro (often heavily instrumental)',
+    lengthHint: 'sparse — fewer denser lines; one haunting image per verse beats ten generic ones',
+    quality: 'literary',
+  },
+  'Chiptune': {
+    rhyme: 'simple AABB upbeat rhymes, video-game/digital/retro imagery',
+    voice: 'second-person direct or playful first-person, adventure/quest vocabulary, bright optimistic energy',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: 'short energetic verses, hooky chorus — this is celebratory and fun',
+    quality: 'hook-craft',
+  },
+
+  // Jazz — extended
+  'Smooth Jazz': {
+    rhyme: 'soft AABA or free verse, sophisticated understated meter',
+    voice: 'first-person romantic, sophisticated adult imagery, sensual intimacy without explicitness',
+    structure: 'AABA standard or Intro → Verse → Chorus → Verse → Chorus → Instrumental → Outro',
+    lengthHint: 'short elegant lyric — refinement over density; adult-contemporary poise',
+    quality: 'literary',
+  },
+  'Bebop': {
+    rhyme: 'scat-influenced or literary AABA, sophisticated jazz vocabulary, complex melodic wordplay',
+    voice: 'first-person jazz-cat delivery, sophisticated metaphors, blues-era phrasing, inside jazz vocabulary',
+    structure: 'Head (AABA 32-bar) → Solos → Head',
+    lengthHint: 'short, refined, sophisticated — the instrument is the star; the lyric frames it elegantly',
+    quality: 'literary',
+  },
+  'Jazz Fusion': {
+    rhyme: 'sparse or instrumental; if vocal: free-form jazz phrasing, sophisticated melodic delivery',
+    voice: 'first-person sophisticated or wordless/scat, voice as instrument more than narrator',
+    structure: 'Through-composed or Head → Solos → Closing Head',
+    lengthHint: 'mostly instrumental; when vocal the voice is an instrument — fewer words, more phrasing and color',
+    quality: 'cinematic',
+  },
+  'Big Band': {
+    rhyme: 'AABA standard rhyme, upbeat swing vocabulary, romantic or dance-floor imagery',
+    voice: 'first-person romantic or celebratory, mid-century swing vocabulary, charismatic delivery',
+    structure: 'Intro → Verse (AABA) → Chorus → Instrumental break → Verse → Outro',
+    lengthHint: 'short classic standard form — charm and swing over length',
+    quality: 'literary',
+  },
+  'Lounge Jazz': {
+    rhyme: 'AABA or AABB, sophisticated soft delivery, intimate romantic vocabulary',
+    voice: 'first-person intimate romantic, dinner-party sophistication, understated yearning',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Solo Section → Outro',
+    lengthHint: 'soft and intimate — restraint is the craft; less is more',
+    quality: 'literary',
+  },
+
+  // Soul / Funk — extended
+  'Disco-Funk': {
+    rhyme: 'AABB or simple repeated phrases, dance-floor chant hook',
+    voice: 'second-person direct address, celebratory body and dance imagery, 70s groove vocabulary',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Breakdown → Hook → Outro',
+    lengthHint: 'the groove IS the song — short verses serve the repeated hook; chant-able and physical',
+    quality: 'hook-craft',
+  },
+  'Afrobeats': {
+    rhyme: 'mixed-language ABAB, catch-phrase hook with ad-libs, pidgin welcome',
+    voice: 'first-person celebratory, body and dance imagery, West African energy, communal confidence',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Bridge → Hook',
+    lengthHint: 'hook-led with ad-libs woven through — chorus is repeated, energetic, chant-able with cultural flavor',
+    quality: 'hook-craft',
+  },
+  'Northern Soul': {
+    rhyme: 'AABB or ABAB, heartfelt hook, dance-driving emotional vocabulary',
+    voice: 'first-person heartfelt, love-lost-and-found imagery, 60s Northern soul vocabulary',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: 'full pop-soul body — every chorus return should feel like a payoff',
+    quality: 'hook-craft',
+  },
+
+  // Reggae — extended
+  'Dancehall': {
+    rhyme: 'Jamaican patois AABB, energetic chat flow, riddim-locked cadence',
+    voice: 'first-person confidence, dance-floor and street imagery, Jamaican cultural vocabulary',
+    structure: 'Intro → Verse → Hook → Verse → Hook → Verse → Hook',
+    lengthHint: 'riddim-locked phrasing — vocal melody and cadence carry the song, cultural specificity adds authenticity',
+    quality: 'flow',
+  },
+  'Ska': {
+    rhyme: 'AABB upbeat bouncy rhymes, cheerful social commentary or fun imagery',
+    voice: 'first-person community energy, danceable fun, horn-driven vocabulary',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Instrumental break → Final Chorus',
+    lengthHint: 'short fun verses, singalong chorus — this music wants to make people move and sing together',
+    quality: 'narrative',
+  },
+  'Dub': {
+    rhyme: 'sparse mantra-like phrases, echo-heavy repeating motifs, chant delivery',
+    voice: 'roots reggae spiritual vocabulary, echo and repetition as hypnotic device',
+    structure: 'mostly instrumental with sparse vocal phrases dropped in and echoed',
+    lengthHint: 'minimal — a single repeated phrase or invocation is enough; the echo and reverb ARE the lyrics',
+    quality: 'minimal',
+  },
+
+  // World — extended
+  'Afropop': {
+    rhyme: 'ABAB mix of English and local language, catchy pop hook, repeated chorus phrase',
+    voice: 'first-person celebratory, modern African urban energy, multilingual vocabulary',
+    structure: 'Intro → Verse → Chorus → Verse → Chorus → Bridge → Final Chorus',
+    lengthHint: 'pop structure with local flavor — hook is catchy and simple, language mixing adds cultural texture',
+    quality: 'hook-craft',
+  },
+
   // World
   'Bossa Nova': {
     rhyme: 'subtle slant rhymes, soft conversational meter',
@@ -511,13 +805,6 @@ const SUBGENRE_LYRIC_HINTS: Record<string, LyricConvention> = {
     structure: 'Verse → Chorus → Verse → Chorus → Instrumental → Final Chorus',
     lengthHint: 'short, breathy — quiet specificity, no shouting; a quiet song earned in a few perfect lines',
     quality: 'literary',
-  },
-  'Afrobeats': {
-    rhyme: 'mixed-language ABAB rhymes, repeated catch-phrase hook, ad-libs',
-    voice: 'first-person celebratory, body/dance imagery, communal direct address',
-    structure: 'Intro → Verse → Hook → Verse → Hook → Bridge → Hook',
-    lengthHint: 'hook-led with ad-libs woven through — chorus is repeated and chant-able',
-    quality: 'hook-craft',
   },
   // Cinematic — usually instrumental, but if vocal:
   'Choral': {

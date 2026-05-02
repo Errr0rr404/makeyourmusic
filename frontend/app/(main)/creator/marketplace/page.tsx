@@ -5,7 +5,7 @@ import Link from 'next/link';
 import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { toast } from '@/lib/store/toastStore';
-import { Loader2, Plus, ShoppingBag, Music2, Wand2, ArrowLeft, AlertCircle } from 'lucide-react';
+import { Loader2, Plus, Music2, Wand2, ArrowLeft, AlertCircle } from 'lucide-react';
 
 type ListingType = 'SAMPLE_PACK' | 'PROMPT_PRESET';
 interface Listing {
@@ -262,7 +262,7 @@ export default function CreatorMarketplacePage() {
                 className="w-full px-3 py-2 rounded-lg bg-[hsl(var(--background))] border border-[hsl(var(--border))] text-white text-sm font-mono resize-none"
               />
               <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                Loaded into the Create wizard when buyers click "Use this preset".
+                Loaded into the Create wizard when buyers click &quot;Use this preset&quot;.
               </p>
             </div>
           )}
@@ -292,7 +292,7 @@ export default function CreatorMarketplacePage() {
         </div>
       ) : listings.length === 0 ? (
         <div className="text-center py-12 text-sm text-[hsl(var(--muted-foreground))]">
-          No listings yet. Click "New listing" to create one.
+          No listings yet. Click &quot;New listing&quot; to create one.
         </div>
       ) : (
         <div className="space-y-3">

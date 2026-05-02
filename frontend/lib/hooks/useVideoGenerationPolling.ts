@@ -29,7 +29,7 @@ export function useVideoGenerationPolling(
   options: Options = {}
 ) {
   const intervalMs = options.intervalMs ?? 5000;
-  const pollUrl = options.pollUrl ?? ((id) => `/ai/video/${id}`);
+  const pollUrl = options.pollUrl;
 
   const [gen, setGen] = useState<VideoGen | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -51,10 +51,11 @@ export function useVideoGenerationPolling(
     }
     let active = true;
     cancelledRef.current = false;
+    const getPollUrl = pollUrl ?? ((id: string) => `/ai/video/${id}`);
     const tick = async () => {
       if (cancelledRef.current || !active) return;
       try {
-        const r = await api.get(pollUrl(generationId));
+        const r = await api.get(getPollUrl(generationId));
         if (cancelledRef.current || !active) return;
         const next: VideoGen | null = r.data.generation || null;
         setGen(next);

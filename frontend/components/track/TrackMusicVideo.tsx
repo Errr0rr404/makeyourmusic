@@ -106,7 +106,7 @@ export function TrackMusicVideo({ trackId, isOwner, initialVideoUrl }: Props) {
       {!gen && (
         <>
           <p className="text-sm text-[hsl(var(--muted-foreground))] mb-4">
-            Generate a vertical AI music video from this track's cover art and metadata.
+            Generate a vertical AI music video from this track&apos;s cover art and metadata.
             Counts against your daily generation limit.
           </p>
           <button

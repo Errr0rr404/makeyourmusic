@@ -172,7 +172,7 @@ export default function DeveloperAppsPage() {
         </p>
       ) : myApps.length === 0 ? (
         <p className="text-center py-10 text-sm text-[hsl(var(--muted-foreground))]">
-          You haven't registered any OAuth apps yet.
+          You haven&apos;t registered any OAuth apps yet.
         </p>
       ) : (
         <ul className="space-y-3">

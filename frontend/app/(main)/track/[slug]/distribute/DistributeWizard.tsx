@@ -176,7 +176,7 @@ export function DistributeWizard({ slug }: { slug: string }) {
           </p>
           {existing.status !== 'LIVE' && (
             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-4">
-              You'll get a notification when this track goes live on streaming services.
+              You&apos;ll get a notification when this track goes live on streaming services.
             </p>
           )}
         </div>
@@ -190,7 +190,7 @@ export function DistributeWizard({ slug }: { slug: string }) {
         <CheckCircle2 className="w-14 h-14 text-emerald-300 mx-auto mb-4" />
         <h1 className="text-2xl font-bold text-white mb-2">Submitted!</h1>
         <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6">
-          We received your distribution request. We'll email you once your track is live on Spotify, Apple Music, and other services. This usually takes 1–2 weeks.
+          We received your distribution request. We&apos;ll email you once your track is live on Spotify, Apple Music, and other services. This usually takes 1–2 weeks.
         </p>
         <Link href={`/track/${track.slug}`} className="text-purple-300 hover:underline">Back to track</Link>
       </div>
@@ -204,7 +204,7 @@ export function DistributeWizard({ slug }: { slug: string }) {
       </Link>
       <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Distribute to streaming services</h1>
       <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6">
-        Submit "{track.title}" to Spotify, Apple Music, Tidal, Amazon, and Deezer via our partner.
+        Submit &quot;{track.title}&quot; to Spotify, Apple Music, Tidal, Amazon, and Deezer via our partner.
       </p>
 
       <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 mb-6">
@@ -288,7 +288,7 @@ export function DistributeWizard({ slug }: { slug: string }) {
                 ))}
               </div>
               <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
-                "Manual" routes through our ops team — pick this if you don't have your own partner account.
+                &quot;Manual&quot; routes through our ops team — pick this if you don&apos;t have your own partner account.
               </p>
             </div>
           </div>

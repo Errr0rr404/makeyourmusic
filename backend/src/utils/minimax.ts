@@ -564,6 +564,17 @@ export interface OrchestrationInput {
   key?: string | null;
 }
 
+export interface SectionGuideEntry {
+  /** Section name — exact match from structure array (e.g. "Verse", "Chorus", "Bridge"). */
+  section: string;
+  /** Relative energy for this section. */
+  energy: 'low' | 'medium' | 'high' | 'peak';
+  /** One-word mood descriptor for the section (e.g. "vulnerable", "euphoric", "building"). */
+  mood: string;
+  /** Arrangement density for this section. */
+  density: 'sparse' | 'building' | 'full' | 'stripped';
+}
+
 export interface OrchestrationPlan {
   workingTitle: string;
   refinedConcept: string;
@@ -584,6 +595,8 @@ export interface OrchestrationPlan {
   hookLine?: string | null;
   /** Coarse arrangement arc, e.g. "soft intro → builds at chorus → stripped bridge → big final chorus". */
   arrangementArc?: string | null;
+  /** Per-section energy/mood/density guide — shapes dynamics across the song arc. */
+  sectionGuide?: SectionGuideEntry[] | null;
 }
 
 function parseOrchestrationJson(text: string): OrchestrationPlan {
@@ -626,6 +639,23 @@ function parseOrchestrationJson(text: string): OrchestrationPlan {
     lyricsBrief: stringOr(parsed.lyricsBrief),
     hookLine: stringOrNull(parsed.hookLine),
     arrangementArc: stringOrNull(parsed.arrangementArc),
+    sectionGuide: (() => {
+      if (!Array.isArray(parsed.sectionGuide)) return null;
+      const valid = parsed.sectionGuide
+        .filter((s: unknown) => s && typeof s === 'object')
+        .map((s: Record<string, unknown>) => ({
+          section: typeof s.section === 'string' ? s.section : '',
+          energy: (['low', 'medium', 'high', 'peak'] as const).includes(s.energy as any)
+            ? (s.energy as SectionGuideEntry['energy'])
+            : 'medium',
+          mood: typeof s.mood === 'string' ? s.mood : '',
+          density: (['sparse', 'building', 'full', 'stripped'] as const).includes(s.density as any)
+            ? (s.density as SectionGuideEntry['density'])
+            : 'full',
+        }))
+        .filter((s: SectionGuideEntry) => s.section && s.mood);
+      return valid.length > 0 ? valid : null;
+    })(),
   };
 }
 
@@ -637,9 +667,17 @@ const ORCHESTRATION_GENRE_PRIORS = `
 GENRE PRIORS (use as defaults — override only if the user concept clearly demands otherwise):
 - Pop: 90-128 BPM, major or minor, 4/4. Verse-PreChorus-Chorus form, hook-forward chorus, 5-8 instruments. Vocals: clean modern pop topline.
 - Hip Hop: 70-95 BPM (boom-bap, conscious) or 130-160 BPM (trap half-time = 70-80 perceived). 4/4. 16-bar verse + 8-bar hook. 4-7 instruments centered on 808/drums. Vocals: rap cadence.
+- Trap: 130-160 BPM written (70-80 felt at half-time). 808 sub, hi-hat triplets, dark melodic synths. Hook-driven.
+- Melodic Rap / Emo Rap: 70-90 BPM (half-time). Sung melodic hook over trap beats. 4-6 instruments. Vocals: melodic auto-tuned.
+- Drill: 140 BPM. Sliding 808 basslines, syncopated hats, ominous piano/strings. Verse-Hook.
 - Rock: 90-150 BPM, 4/4. Verse-Chorus-Verse-Chorus-Bridge form, anthemic chorus. 4-6 instruments (guitar/bass/drums/vocals + optional keys/synth).
+- Emo: 120-160 BPM, 4/4. Verse-PreChorus-Chorus form, loud quiet dynamic. 4-6 instruments. Vocals: confessional clean.
+- Post-Hardcore: 120-170 BPM, 4/4. Verse-Chorus with screamed/clean contrast. 4-6 instruments. Vocals: alternating scream/clean.
+- Nu-Metal: 80-140 BPM, 4/4. Verse-Chorus with breakdown. 5-7 instruments. Vocals: rap/scream/clean alternating.
 - R&B: 70-105 BPM, often 6/8 or 4/4 with swung 16ths. Verse-PreChorus-Chorus form. 5-8 instruments. Vocals: melismatic, expressive.
 - Electronic / Dance: 118-130 BPM (house/disco), 130-145 BPM (techno/trance), 140-180 BPM (drum & bass). 4/4. Build-Drop form, sparse vocals if any. 4-8 sound-design layers.
+- Trip-Hop: 70-90 BPM. Downtempo breakbeats, atmospheric bass, cinematic samples. 4-6 layers. Vocals: sparse, detached.
+- Darkwave / Post-Punk: 100-140 BPM. Synths + minimal guitar, cold production. 4-6 instruments. Vocals: brooding baritone or detached.
 - Indie: 95-130 BPM, 4/4. Verse-Chorus form. 4-6 instruments centered on guitars + lo-fi sheen.
 - Folk: 70-110 BPM, 4/4 or 6/8. Strophic Verse-Refrain form. 2-5 instruments centered on acoustic guitar.
 - Jazz: 60-220 BPM (genre-dependent: ballad → bebop). Often 4/4 swung or 3/4. AABA standard or head-solos-head form. 3-6 instruments.
@@ -653,6 +691,15 @@ GENRE PRIORS (use as defaults — override only if the user concept clearly dema
 - Cinematic: through-composed build-and-release. No pop chorus required. Tempo set by emotion (60-140 BPM). 5-12+ orchestral/hybrid layers.
 
 INSTRUMENTATION COUNT: pick from the genre's range above. Cinematic/orchestral: 8-14. Pop/Rock/R&B: 5-8. Folk/Lo-Fi/Singer-songwriter: 2-5. Ambient/Drone: 2-4.
+
+ERA-BASED PRODUCTION TEXTURE (add to musicPrompt when era is specified):
+- Vintage / pre-60s: mono mix, spring reverb, 78rpm tape hiss, primitive room sound, intimate lo-fi.
+- 60s: early-stereo or mono, plate reverb, close-mic vintage rooms, tambourine and handclap transients.
+- 70s: warm analog tape saturation, live-room mic placement, vintage tube compression, thick organic low-end.
+- 80s: gated reverb on snare, big digital reverb tails, analog synths + early digital hybrid, neon production gloss.
+- 90s: 44.1kHz digital crispness, sample-based dusty drums, chunky compressed mixes, early digital brightness.
+- 2000s: polished digital loudness, triggered drum replacements, punchy radio-compressed mixes.
+- Modern / 2010s+: streaming-optimized loudness, heavy low-end, trap transient clarity, DSP detail.
 `;
 
 // Pre-music orchestration: turn raw user inputs into a coherent production
@@ -706,8 +753,9 @@ export async function minimaxOrchestrate(
     `\n(8) "instrumentation" is a list of short instrument/sound descriptors (e.g. "fingerpicked acoustic", "warm Rhodes", "brushed snare"). Choose count from the genre's range in the priors table — typically 5-8 for pop/rock/R&B, 2-5 for folk/lo-fi, 8-14 for cinematic/orchestral, 2-4 for ambient. ` +
     `\n(9) "structure" is an array of section names matching the genre. Allowed canonical names: "Intro", "Verse", "Verse 2", "Pre-Chorus", "Chorus", "Post-Chorus", "Hook", "Refrain", "Bridge", "Final Chorus", "Drop", "Build", "Breakdown", "Outro", "Vamp", "Head", "Solo Section". Do NOT use "Guitar Solo" / "Instrumental" — instrumental moments are conveyed through "Solo Section" or "Breakdown" labels. ` +
     `\n(10) "arrangementArc" is one short sentence describing the energy/density progression (e.g. "sparse intro → builds at chorus → stripped bridge → fullest final chorus"). ` +
-    `\n(11) "vocalDirection" ${isInstrumental ? 'must be null (instrumental track)' : 'should describe gender/timbre, vocal range register, delivery (belted/whispered/rap/etc.), use of harmonies/ad-libs, and any post-processing (auto-tune, doubled, etc.)'}. ` +
-    `\n(12) Output ONLY valid JSON. No commentary, no markdown fences.\n` +
+    `\n(11) "vocalDirection" ${isInstrumental ? 'must be null (instrumental track)' : 'should describe: gender/timbre, vocal range register, delivery style (belted/whispered/rap/melodic-rap/falsetto/etc.), use of harmonies or ad-libs, and any post-processing (auto-tune, doubled, reverb character). Be specific — "warm lower-register female vocal with occasional falsetto, sparse harmonies, close-mic intimate" is useful; "female vocals" is not.'}` +
+    `\n(12) "sectionGuide" is an array of per-section production cues, one entry per section in the structure array. For each section specify: section (exact name from structure), energy ("low"/"medium"/"high"/"peak"), mood (one descriptive word e.g. "vulnerable", "euphoric", "building", "release"), density ("sparse"/"building"/"full"/"stripped"). This shapes the dynamic arc — e.g. Intro: low+sparse, Verse: medium+building, Chorus: peak+full, Bridge: stripped+reflective, Final Chorus: peak+full. Omit for ambient/drone/fully-atmospheric tracks.` +
+    `\n(13) Output ONLY valid JSON. No commentary, no markdown fences.\n` +
     ORCHESTRATION_GENRE_PRIORS;
 
   const schema =
@@ -728,7 +776,8 @@ export async function minimaxOrchestrate(
     `"vibeDescriptors": string (comma-separated, no artist names), ` +
     `"musicPrompt": string (dense production brief, no lyrics), ` +
     `"lyricsBrief": ${isInstrumental ? 'string (empty since instrumental)' : 'string'}, ` +
-    `"hookLine": ${isInstrumental ? 'null' : 'string'}` +
+    `"hookLine": ${isInstrumental ? 'null' : 'string'}, ` +
+    `"sectionGuide": Array<{section: string, energy: "low"|"medium"|"high"|"peak", mood: string, density: "sparse"|"building"|"full"|"stripped"}> | null` +
     `}`;
 
   const user =

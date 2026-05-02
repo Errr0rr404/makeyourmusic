@@ -100,6 +100,25 @@ async function buildMusicPrompt(input: MusicPromptInput): Promise<BuiltMusicProm
     parts.push(`Era: ${input.era}${eraHint ? ` (${eraHint})` : ''}`);
   }
 
+  // Production texture — explicit material cue that Suno research shows is the
+  // highest-impact underused category. Derived from era when available, so the
+  // model gets concrete texture language (tape saturation, gated reverb, etc.)
+  // rather than just a decade label. Only injected when era hint is non-trivial.
+  if (input.era && input.era !== 'Timeless') {
+    const PRODUCTION_TEXTURES: Record<string, string> = {
+      'Modern': 'clean DSP mix, streaming-loudness master, digital clarity',
+      '2010s': 'polished digital sheen, punchy sub, sidechain pumping',
+      '2000s': 'loud radio compression, triggered drums, digital brightness',
+      '90s': 'sampled drum crunch, vinyl warmth, 44.1kHz digital bite',
+      '80s': 'gated reverb, analog tape saturation, digital delay shimmer',
+      '70s': 'warm analog tape, room mic bleed, tube compression weight',
+      '60s': 'plate reverb, mono/narrow-stereo, close-mic vintage room',
+      'Vintage': 'mono mix, spring reverb, tape hiss, intimate lo-fi warmth',
+    };
+    const texture = PRODUCTION_TEXTURES[input.era];
+    if (texture) parts.push(`Production texture: ${texture}`);
+  }
+
   if (!input.isInstrumental && input.vocalStyle) {
     const vHint = lookupVocalStyleHint(input.vocalStyle);
     parts.push(`Vocals: ${vHint || input.vocalStyle}`);
@@ -653,6 +672,16 @@ export function mergePlanIntoPrompt(
   }
   if (plan.productionNotes?.trim()) {
     additions.push(`Production notes: ${plan.productionNotes.trim()}`);
+  }
+  // Per-section dynamic guide — tells the music model how energy/density/mood
+  // should shift across sections. This is the single biggest gap vs. Suno's
+  // parameterized per-section metatag system: our model gets explicit
+  // section-level cues rather than relying on a single song-level energy arc.
+  if (plan.sectionGuide?.length) {
+    const sectionCues = plan.sectionGuide
+      .map((s) => `${s.section}: ${s.energy} energy, ${s.mood}, ${s.density}`)
+      .join(' | ');
+    if (sectionCues) additions.push(`Section dynamics: ${sectionCues}`);
   }
   // Append the planner's dense paragraph at the end so the music model gets a
   // free-form summary it can lean on alongside the structured cues. Skip if

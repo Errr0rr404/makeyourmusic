@@ -7,10 +7,28 @@ import { validatePaymentRedirect } from '@/lib/utils';
 import { useAuthStore } from '@/lib/store/authStore';
 import { TrackRow } from '@/components/track/TrackRow';
 import { ListMusic, Globe, Lock, Play, Pencil, Trash2, Check, X, Loader2, AlertCircle, DollarSign } from 'lucide-react';
-import { usePlayerStore } from '@/lib/store/playerStore';
+import { usePlayerStore, type TrackItem } from '@/lib/store/playerStore';
 import { toast } from 'sonner';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { TipButton } from '@/components/creator/TipButton';
+
+type PlaylistTrackRow = ({ track?: TrackItem | null } & Partial<TrackItem>);
+
+interface PlaylistDetail {
+  id: string;
+  slug: string;
+  title: string;
+  userId: string;
+  accessTier: 'PUBLIC' | 'PRIVATE' | 'PAID';
+  isPublic?: boolean;
+  locked?: boolean;
+  monthlyPriceCents: number;
+  coverArt?: string | null;
+  user?: { id?: string; username?: string; displayName?: string | null } | null;
+  tracks?: PlaylistTrackRow[];
+}
+
+const toTrackItem = (row: PlaylistTrackRow): TrackItem => (row.track || row) as TrackItem;
 
 export default function PlaylistPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -18,8 +36,7 @@ export default function PlaylistPage() {
   const confirm = useConfirm();
   const { isAuthenticated, user } = useAuthStore();
   const { playTrack } = usePlayerStore();
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [playlist, setPlaylist] = useState<any>(null);
+  const [playlist, setPlaylist] = useState<PlaylistDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
@@ -51,8 +68,9 @@ export default function PlaylistPage() {
   }, [slug]);
 
   const handlePlayAll = () => {
-    if (playlist?.tracks?.length > 0) {
-      const tracks = playlist.tracks.map((pt: Record<string, unknown>) => pt.track || pt);
+    const playlistTracks = playlist?.tracks ?? [];
+    if (playlistTracks.length > 0) {
+      const tracks = playlistTracks.map(toTrackItem);
       playTrack(tracks[0], tracks);
     }
   };
@@ -62,7 +80,7 @@ export default function PlaylistPage() {
     setSaving(true);
     try {
       await api.put(`/social/playlists/${playlist.id}`, { title: editTitle.trim() });
-      setPlaylist((p: Record<string, unknown>) => ({ ...p, title: editTitle.trim() }));
+      setPlaylist((p) => (p ? { ...p, title: editTitle.trim() } : p));
       setEditing(false);
       toast.success('Playlist updated');
     } catch (err) {
@@ -98,11 +116,10 @@ export default function PlaylistPage() {
       // to pt.id matched the playlistTrack join row id, which sometimes
       // dropped the wrong row when the join id happened to equal the track
       // id being removed in another playlist.
-      type PlaylistTrackRow = { id?: string; track?: { id?: string } };
-      setPlaylist((p: { tracks?: PlaylistTrackRow[] } & Record<string, unknown>) => ({
+      setPlaylist((p) => p ? ({
         ...p,
         tracks: (p.tracks || []).filter((pt) => pt.track?.id !== trackId),
-      }));
+      }) : p);
       toast.success('Track removed');
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to remove track');
@@ -138,8 +155,7 @@ export default function PlaylistPage() {
 
   if (!playlist) return null;
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const tracks = playlist.tracks?.map((pt: any) => pt.track || pt) || [];
+  const tracks = playlist.tracks?.map(toTrackItem) || [];
   const isPaid = playlist.accessTier === 'PAID';
   const isOwner = user?.id === playlist.userId;
   const isLocked = Boolean(playlist.locked) && !isOwner;
@@ -252,7 +268,7 @@ export default function PlaylistPage() {
         </div>
       ) : tracks.length > 0 ? (
         <div className="space-y-1">
-          {tracks.map((track: any, i: number) => (
+          {tracks.map((track, i) => (
             <TrackRow
               key={track.id}
               track={track}

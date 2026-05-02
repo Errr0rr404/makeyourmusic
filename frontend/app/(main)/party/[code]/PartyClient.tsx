@@ -101,9 +101,12 @@ export function PartyClient({ code }: { code: string }) {
     };
   }, [code, user]);
 
+  const partyId = snapshot?.id;
+  const partyStatus = snapshot?.status;
+
   // Socket lifecycle. Reconnects automatically; leave-on-unmount is best-effort.
   useEffect(() => {
-    if (!snapshot || snapshot.status === 'ENDED') return;
+    if (!partyId || partyStatus === 'ENDED') return;
     let mounted = true;
 
     (async () => {
@@ -154,7 +157,7 @@ export function PartyClient({ code }: { code: string }) {
       socketRef.current = null;
       sock?.disconnect();
     };
-  }, [snapshot?.status, code, accessToken, isHost]);
+  }, [partyId, partyStatus, code, accessToken, isHost]);
 
   // Host-side periodic tick. Without this, joiners arriving mid-session don't
   // get a fresh state event for ~30s; the cron sweep also relies on this to
@@ -282,7 +285,7 @@ export function PartyClient({ code }: { code: string }) {
             </div>
           </div>
         ) : (
-          <p className="text-sm text-[hsl(var(--muted-foreground))]">Host hasn't picked a track yet.</p>
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">Host hasn&apos;t picked a track yet.</p>
         )}
 
         {snapshot.track && (
@@ -324,7 +327,7 @@ export function PartyClient({ code }: { code: string }) {
             </div>
             {!isHost && !ended && (
               <p className="text-xs text-[hsl(var(--muted-foreground))]">
-                The host controls playback. You'll stay in sync automatically.
+                The host controls playback. You&apos;ll stay in sync automatically.
               </p>
             )}
             {ended && (

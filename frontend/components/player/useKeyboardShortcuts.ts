@@ -39,7 +39,7 @@ export function useKeyboardShortcuts(
   onShowHelp?: () => void
 ) {
   const {
-    currentTrack, isPlaying, volume, togglePlay, nextTrack, prevTrack,
+    currentTrack, volume, togglePlay, nextTrack, prevTrack,
     setVolume, setProgress, toggleShuffle, toggleRepeat, shuffle, repeat,
   } = usePlayerStore();
 
@@ -145,10 +145,6 @@ export function useKeyboardShortcuts(
 
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-    // `isPlaying` is intentionally NOT in deps — it's never read inside the
-    // handler, and re-registering the listener on every play/pause briefly
-    // dropped keypresses during the swap.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     currentTrack, volume, shuffle, repeat,
     togglePlay, nextTrack, prevTrack, setVolume, setProgress,

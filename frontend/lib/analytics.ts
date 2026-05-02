@@ -77,7 +77,7 @@ function dispatch(event: string, props?: EventProps) {
   if (!window[QUEUE_KEY]) window[QUEUE_KEY] = [];
   window[QUEUE_KEY].push({ event, props });
   if (process.env.NODE_ENV !== 'production') {
-    // eslint-disable-next-line no-console
+     
     console.debug('[analytics]', event, props ?? {});
   }
 }

@@ -217,7 +217,7 @@ export function StemsEditorClient({ slug }: { slug: string }) {
     return (
       <div className="max-w-3xl mx-auto py-12 text-center">
         <Music className="w-12 h-12 text-purple-300 mx-auto mb-4" />
-        <h1 className="text-lg font-semibold text-white mb-2">Stems aren't ready</h1>
+        <h1 className="text-lg font-semibold text-white mb-2">Stems aren&apos;t ready</h1>
         <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6">
           Generate stems on the track page first. They take 1–3 minutes after payment.
         </p>

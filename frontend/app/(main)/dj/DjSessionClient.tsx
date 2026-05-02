@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import api from '@/lib/api';
@@ -69,8 +69,11 @@ export function DjSessionClient() {
   const socketRef = useRef<Socket | null>(null);
   const advanceLockRef = useRef(false);
   const pollTimerRef = useRef<number | null>(null);
+  const sessionId = session?.id;
+  const sessionCode = session?.code;
+  const sessionStatus = session?.status;
 
-  const refreshSession = async (codeToFetch: string) => {
+  const refreshSession = useCallback(async (codeToFetch: string) => {
     if (!codeToFetch) return null;
     try {
       const r = await api.get(`/dj/${encodeURIComponent(codeToFetch)}`);
@@ -83,18 +86,18 @@ export function DjSessionClient() {
       setError(msg);
       return null;
     }
-  };
+  }, [user?.id]);
 
   // Poll session state every 6s while active so we pick up when a queued slot's
   // generation completes (its audioUrl fills in). The Socket.IO `dj:slot-ready`
   // event is the realtime path; this poll is a backstop for joiners + race
   // conditions.
   useEffect(() => {
-    if (!session || session.status === 'ENDED') return;
+    if (!sessionCode || sessionStatus === 'ENDED') return;
     let cancelled = false;
     const poll = async () => {
       if (cancelled) return;
-      await refreshSession(session.code);
+      await refreshSession(sessionCode);
       pollTimerRef.current = window.setTimeout(poll, 6000);
     };
     pollTimerRef.current = window.setTimeout(poll, 6000);
@@ -102,15 +105,14 @@ export function DjSessionClient() {
       cancelled = true;
       if (pollTimerRef.current) window.clearTimeout(pollTimerRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id, session?.status]);
+  }, [sessionId, sessionStatus, sessionCode, refreshSession]);
 
   // Connect socket once we have a session.
   useEffect(() => {
-    if (!session || session.status === 'ENDED') return;
+    if (!sessionCode || sessionStatus === 'ENDED') return;
     let mounted = true;
     (async () => {
-      const sock = await connectDjNamespace(session.code, { token: accessToken || null });
+      const sock = await connectDjNamespace(sessionCode, { token: accessToken || null });
       if (!mounted) {
         sock.disconnect();
         return;
@@ -118,7 +120,7 @@ export function DjSessionClient() {
       socketRef.current = sock;
       sock.on('dj:slot-ready', () => {
         // Re-fetch — the new slot's generation is COMPLETED.
-        void refreshSession(session.code);
+        void refreshSession(sessionCode);
       });
       sock.on('dj:vibe-changed', (msg: { vibe: string }) => {
         setSession((s) => (s ? { ...s, currentVibe: msg.vibe } : s));
@@ -134,33 +136,16 @@ export function DjSessionClient() {
       socketRef.current = null;
       sock?.disconnect();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.id, session?.status, accessToken]);
+  }, [sessionId, sessionStatus, sessionCode, accessToken, refreshSession]);
 
   // The slot the host is currently playing.
   const currentSlot = session?.tracks.find((t) => t.position === activeSlotIdx) || null;
   const nextSlot = session?.tracks.find((t) => t.position === activeSlotIdx + 1) || null;
 
-  // Drive crossfade + advance.
-  useEffect(() => {
-    if (!isHost || !session || session.status === 'ENDED' || !isPlaying) return;
-    const tick = () => {
-      const activeAudio = useARef.current ? audioARef.current : audioBRef.current;
-      if (!activeAudio || activeAudio.duration === 0) return;
-      const remaining = activeAudio.duration - activeAudio.currentTime;
-      if (remaining < FADE_THRESHOLD_SEC && !advanceLockRef.current && nextSlot?.generation?.audioUrl) {
-        advanceLockRef.current = true;
-        beginCrossfade(nextSlot.generation.audioUrl);
-      }
-    };
-    const id = window.setInterval(tick, 250);
-    return () => window.clearInterval(id);
-  }, [isHost, isPlaying, session, nextSlot?.generation?.audioUrl, activeSlotIdx]);
-
-  const beginCrossfade = async (nextUrl: string) => {
+  const beginCrossfade = useCallback(async (nextUrl: string) => {
     const fromAudio = useARef.current ? audioARef.current : audioBRef.current;
     const toAudio = useARef.current ? audioBRef.current : audioARef.current;
-    if (!fromAudio || !toAudio) return;
+    if (!fromAudio || !toAudio || !sessionCode) return;
     toAudio.src = nextUrl;
     toAudio.currentTime = 0;
     toAudio.volume = 0;
@@ -187,9 +172,9 @@ export function DjSessionClient() {
         useARef.current = !useARef.current;
         advanceLockRef.current = false;
         // Tell server we advanced; it kicks off the next generation.
-        api.post(`/dj/${encodeURIComponent(session!.code)}/advance`).then(() => {
+        api.post(`/dj/${encodeURIComponent(sessionCode)}/advance`).then(() => {
           setActiveSlotIdx((i) => i + 1);
-          void refreshSession(session!.code);
+          void refreshSession(sessionCode);
         }).catch((err) => {
           const status = (err as { response?: { status?: number } })?.response?.status;
           if (status === 429) {
@@ -199,7 +184,23 @@ export function DjSessionClient() {
       }
     };
     requestAnimationFrame(fade);
-  };
+  }, [refreshSession, sessionCode]);
+
+  // Drive crossfade + advance.
+  useEffect(() => {
+    if (!isHost || !sessionId || sessionStatus === 'ENDED' || !isPlaying) return;
+    const tick = () => {
+      const activeAudio = useARef.current ? audioARef.current : audioBRef.current;
+      if (!activeAudio || activeAudio.duration === 0) return;
+      const remaining = activeAudio.duration - activeAudio.currentTime;
+      if (remaining < FADE_THRESHOLD_SEC && !advanceLockRef.current && nextSlot?.generation?.audioUrl) {
+        advanceLockRef.current = true;
+        beginCrossfade(nextSlot.generation.audioUrl);
+      }
+    };
+    const id = window.setInterval(tick, 250);
+    return () => window.clearInterval(id);
+  }, [isHost, isPlaying, sessionId, sessionStatus, nextSlot?.generation?.audioUrl, activeSlotIdx, beginCrossfade]);
 
   const startSession = async () => {
     if (!isAuthenticated) {

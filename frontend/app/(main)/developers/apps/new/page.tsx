@@ -85,7 +85,7 @@ export default function NewDeveloperAppPage() {
           Status is <span className="font-mono text-amber-200">PENDING</span>. An admin will review before users can authorize it.
         </p>
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/10 p-4 mb-4">
-          <p className="text-xs font-semibold text-amber-200 mb-2">⚠ Save the client secret now — we won't show it again.</p>
+          <p className="text-xs font-semibold text-amber-200 mb-2">⚠ Save the client secret now — we won&apos;t show it again.</p>
           <div className="flex items-center gap-2 mb-2">
             <input
               readOnly
@@ -139,7 +139,7 @@ export default function NewDeveloperAppPage() {
       </Link>
       <h1 className="text-2xl md:text-3xl font-bold text-white mb-1">Register an OAuth app</h1>
       <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6">
-        Apps act on behalf of MakeYourMusic users via OAuth 2.0 + PKCE. After registering you'll wait for admin review.
+        Apps act on behalf of MakeYourMusic users via OAuth 2.0 + PKCE. After registering you&apos;ll wait for admin review.
       </p>
 
       <div className="rounded-2xl border border-[hsl(var(--border))] bg-[hsl(var(--card))] p-5 space-y-4">

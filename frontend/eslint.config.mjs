@@ -31,6 +31,10 @@ const eslintConfig = [
       "@typescript-eslint/no-empty-object-type": "warn",
       "@typescript-eslint/no-unsafe-function-type": "warn",
       "react-hooks/exhaustive-deps": "warn",
+      // User/media URLs can come from provider or creator-uploaded origins.
+      // Keep Next's server-side image optimizer allowlist tight instead of
+      // forcing every dynamic <img> through next/image.
+      "@next/next/no-img-element": "off",
     },
   },
 ];

@@ -117,7 +117,7 @@ function AuthenticatedHome({ user }: { user: ReturnType<typeof useAuthStore.getS
 
   useEffect(() => {
     loadContent();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   // Compute greeting after mount so the server-rendered HTML doesn't

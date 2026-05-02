@@ -8,7 +8,7 @@
 // once on first use).
 
 import { useEffect, useRef, useState } from 'react';
-import { TouchableOpacity, Text, View, Alert, ActivityIndicator } from 'react-native';
+import { TouchableOpacity, Text, View, Alert, ActivityIndicator, Platform } from 'react-native';
 import { Audio } from 'expo-av';
 import { Mic, MicOff } from 'lucide-react-native';
 import { useRouter } from 'expo-router';
@@ -98,14 +98,16 @@ export function VoiceQuickCreate({ onGenerationStarted }: { onGenerationStarted?
       // Resolve mime: Expo records m4a on iOS, 3gp on Android. The backend
       // accepts both via its mimetype allowlist.
       const formData = new FormData();
+      const extension = Platform.OS === 'android' ? '3gp' : 'm4a';
+      const mimeType = Platform.OS === 'android' ? 'audio/3gpp' : 'audio/m4a';
+      const audioFile = {
+        uri,
+        name: `voice-create.${extension}`,
+        type: mimeType,
+      };
       // React Native's FormData accepts a { uri, name, type } object for
       // file fields; this is non-standard but expected by axios on RN.
-      formData.append('audio', {
-        // @ts-expect-error — RN FormData file shape
-        uri,
-        name: 'voice-create.m4a',
-        type: 'audio/m4a',
-      });
+      formData.append('audio', audioFile as unknown as Blob);
 
       const api = getApi();
       const r2 = await api.post('/ai/voice-create', formData, {
