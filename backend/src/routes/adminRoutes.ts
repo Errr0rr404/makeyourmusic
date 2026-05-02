@@ -11,6 +11,7 @@ import {
   resolveReport,
   listGenerations,
   getRevenue,
+  getCostReport,
   verifyAdminPanelPassword,
 } from '../controllers/adminController';
 import { listTakedowns, resolveTakedown } from '../controllers/takedownController';
@@ -50,6 +51,10 @@ router.put('/users/:id/role', updateRoleRules, validateRequest, updateUserRole a
 
 router.get('/generations', listGenerations as any);
 router.get('/revenue', getRevenue as any);
+// Provider-cost report (gross-margin per user, per tier). Top spenders
+// list helps spot abuse before it costs the company more than the user
+// pays. Default window 7d; ?days= overrides up to 90.
+router.get('/cost-report', getCostReport as any);
 
 router.put('/agents/:id/status', manageAgent as any);
 router.put('/tracks/:id/status', manageTrack as any);

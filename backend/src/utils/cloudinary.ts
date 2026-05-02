@@ -326,6 +326,47 @@ export function buildClipUrl(opts: ClipMuxOptions): string {
 }
 
 /**
+ * Build a download URL for the track audio with an optional outro tag.
+ * Free-tier listeners get a 2-second audio outro (the "Made with
+ * MakeYourMusic" tag) appended; Premium users get the clean version.
+ *
+ * The outro must be uploaded to Cloudinary as a video resource (the audio
+ * upload convention used elsewhere in this codebase) and its public id set
+ * via the `MYM_OUTRO_AUDIO_PUBLIC_ID` env var. When the env var isn't set,
+ * the helper returns the clean URL — so missing config is non-breaking.
+ */
+export function buildAudioDownloadUrl(audioPublicId: string, opts: { withOutro: boolean }): string {
+  checkCredentials();
+  const outroPublicId = process.env.MYM_OUTRO_AUDIO_PUBLIC_ID;
+  if (!opts.withOutro || !outroPublicId) {
+    return cloudinary.url(audioPublicId, {
+      resource_type: 'video',
+      format: 'mp3',
+      secure: true,
+    });
+  }
+  // Concat the outro after the source audio. Cloudinary's `splice` flag on
+  // an overlay layer appends rather than mixes — so the outro plays after
+  // the track ends instead of bleeding into it.
+  return cloudinary.url(audioPublicId, {
+    resource_type: 'video',
+    format: 'mp3',
+    secure: true,
+    transformation: [
+      { audio_codec: 'aac' },
+      {
+        overlay: {
+          resource_type: 'video',
+          public_id: outroPublicId,
+        },
+        flags: 'splice',
+      },
+      { flags: 'layer_apply' },
+    ],
+  });
+}
+
+/**
  * Build a thumbnail URL for a clip — single frame from the trimmed window,
  * centered horizontally, JPEG.
  */

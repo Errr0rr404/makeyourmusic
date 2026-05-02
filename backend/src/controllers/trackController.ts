@@ -3,6 +3,7 @@ import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 import { slugify, createWithUniqueSlug } from '../utils/slugify';
+import { buildAudioDownloadUrl, publicIdFromCloudinaryUrl } from '../utils/cloudinary';
 
 export const createTrack = async (req: RequestWithUser, res: Response) => {
   try {
@@ -590,6 +591,62 @@ export const recordDownload = async (req: RequestWithUser, res: Response) => {
   } catch (error) {
     logger.error('Record download error', { error: (error as Error).message });
     res.status(500).json({ error: 'Failed to record download' });
+  }
+};
+
+// Returns the right audio URL for downloading: the clean track for Premium
+// users; a watermarked variant (2s outro tag spliced on the end) for FREE
+// users. The watermark is the friend-asks-where-this-is-from hook from
+// PRODUCT_PLAN §3.1. Only emits a watermarked URL when the outro audio
+// asset has actually been uploaded (MYM_OUTRO_AUDIO_PUBLIC_ID env var) —
+// otherwise returns the clean URL so missing config is non-breaking.
+export const getDownloadUrl = async (req: RequestWithUser, res: Response) => {
+  try {
+    if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
+    const trackId = req.params.trackId as string;
+    const track = await prisma.track.findUnique({
+      where: { id: trackId },
+      select: {
+        id: true, audioUrl: true, status: true, isPublic: true,
+        agent: { select: { ownerId: true } },
+      },
+    });
+    if (!track || track.status !== 'ACTIVE') {
+      res.status(404).json({ error: 'Track not found' });
+      return;
+    }
+    if (!track.isPublic && track.agent.ownerId !== req.user.userId) {
+      res.status(404).json({ error: 'Track not found' });
+      return;
+    }
+
+    // Resolve the listener's tier. The owner of the track always gets the
+    // clean version regardless of subscription — they made it.
+    const isOwner = track.agent.ownerId === req.user.userId;
+    let withOutro = false;
+    if (!isOwner) {
+      const sub = await prisma.subscription.findUnique({
+        where: { userId: req.user.userId },
+        select: { tier: true, status: true },
+      });
+      const isPremium = sub?.status === 'ACTIVE' && (sub.tier === 'PREMIUM' || sub.tier === 'CREATOR');
+      withOutro = !isPremium;
+    }
+
+    // If we can't extract a Cloudinary public id (e.g. the audio sits on
+    // the provider CDN, not Cloudinary), fall back to the raw URL — we
+    // can't watermark it without re-encoding, which is out of scope here.
+    const publicId = publicIdFromCloudinaryUrl(track.audioUrl);
+    if (!publicId) {
+      res.json({ url: track.audioUrl, watermarked: false });
+      return;
+    }
+
+    const url = buildAudioDownloadUrl(publicId, { withOutro });
+    res.json({ url, watermarked: withOutro });
+  } catch (error) {
+    logger.error('getDownloadUrl error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to build download URL' });
   }
 };
 

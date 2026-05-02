@@ -199,6 +199,27 @@ export function buildVerificationEmail(email: string, token: string): EmailMessa
   };
 }
 
+export function buildMagicLinkEmail(email: string, token: string): EmailMessage {
+  // Path matches the Next.js route at frontend/app/(auth)/magic/page.tsx
+  // (the (auth) group is stripped from the URL).
+  const link = `${getFrontendUrl()}/magic?token=${encodeURIComponent(token)}`;
+  const safeLink = escapeHtml(link);
+  return {
+    to: email,
+    subject: 'Your MakeYourMusic sign-in link',
+    text: `Sign in to MakeYourMusic by visiting:\n${link}\n\nThis link expires in 15 minutes and can be used once.\n\nIf you didn't request this, ignore this email.`,
+    html: `
+      <div style="font-family:system-ui,-apple-system,sans-serif;max-width:560px;margin:0 auto;padding:32px;color:#111">
+        <h1 style="font-size:24px;margin:0 0 16px">Sign in to MakeYourMusic</h1>
+        <p style="font-size:16px;line-height:1.5;color:#333">Tap the button below to sign in. The link is good for 15 minutes and works once.</p>
+        <p style="margin:24px 0"><a href="${safeLink}" style="display:inline-block;padding:12px 24px;background:#8b5cf6;color:#fff;text-decoration:none;border-radius:8px;font-weight:600">Sign in</a></p>
+        <p style="font-size:13px;color:#666">Or paste this link: <br/><code style="word-break:break-all">${safeLink}</code></p>
+        <p style="font-size:13px;color:#666;margin-top:24px">If you didn't request this, ignore this email — your account is unchanged.</p>
+      </div>
+    `.trim(),
+  };
+}
+
 export function buildPasswordResetEmail(email: string, token: string): EmailMessage {
   const link = `${getFrontendUrl()}/reset-password?token=${encodeURIComponent(token)}`;
   const safeLink = escapeHtml(link);

@@ -65,7 +65,7 @@ export default function TabLayout() {
             <TouchableOpacity
               onPress={() => {
                 hapticMedium();
-                router.push(isAuthenticated ? '/create' : '/(auth)/login');
+                router.push('/create');
               }}
               style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}
               activeOpacity={0.7}

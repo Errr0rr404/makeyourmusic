@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Eye, EyeOff, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, Sparkles, Mail, CheckCircle2 } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -11,8 +11,9 @@ import {
 } from '@/components/ui/dialog';
 import { useAuthStore } from '@/lib/store/authStore';
 import { SocialAuthButtons } from '@/components/auth/SocialAuthButtons';
+import api from '@/lib/api';
 
-type Mode = 'login' | 'register';
+type Mode = 'login' | 'register' | 'magic';
 
 /**
  * In-page auth wall used to gate a specific action (e.g. "Generate music")
@@ -94,44 +95,68 @@ export function AuthGateModal({
           <div className="h-px flex-1 bg-[color:var(--stroke)]" />
         </div>
 
-        {mode === 'login' ? (
+        {mode === 'login' && (
           <LoginForm
             onError={setError}
             onSuccess={handleSuccess}
             pending={pending}
             setPending={setPending}
           />
-        ) : (
-          <RegisterPromo signupNext={signupNext} />
+        )}
+        {mode === 'register' && <RegisterPromo signupNext={signupNext} />}
+        {mode === 'magic' && (
+          <MagicLinkForm
+            onError={setError}
+            pending={pending}
+            setPending={setPending}
+            signupNext={signupNext}
+          />
+        )}
+
+        {mode === 'login' && (
+          <button
+            type="button"
+            onClick={() => { setError(''); setMode('magic'); }}
+            className="mx-auto flex items-center gap-2 text-xs font-semibold text-[color:var(--text-mute)] hover:text-white transition-colors"
+          >
+            <Mail className="h-3.5 w-3.5" /> Send a sign-in link instead
+          </button>
         )}
 
         <p className="text-center text-sm text-[hsl(var(--muted-foreground))]">
-          {mode === 'login' ? (
+          {mode === 'login' && (
             <>
               Don&apos;t have an account?{' '}
               <button
                 type="button"
-                onClick={() => {
-                  setError('');
-                  setMode('register');
-                }}
+                onClick={() => { setError(''); setMode('register'); }}
                 className="font-semibold text-[color:var(--brand)] hover:underline"
               >
                 Sign up
               </button>
             </>
-          ) : (
+          )}
+          {mode === 'register' && (
             <>
               Already have an account?{' '}
               <button
                 type="button"
-                onClick={() => {
-                  setError('');
-                  setMode('login');
-                }}
+                onClick={() => { setError(''); setMode('login'); }}
                 className="font-semibold text-[color:var(--brand)] hover:underline"
               >
                 Log in
+              </button>
+            </>
+          )}
+          {mode === 'magic' && (
+            <>
+              Prefer a password?{' '}
+              <button
+                type="button"
+                onClick={() => { setError(''); setMode('login'); }}
+                className="font-semibold text-[color:var(--brand)] hover:underline"
+              >
+                Use email + password
               </button>
             </>
           )}
@@ -227,6 +252,87 @@ function LoginForm({
       >
         {pending ? 'Logging in…' : 'Log in & generate'}
       </button>
+    </form>
+  );
+}
+
+function MagicLinkForm({
+  onError,
+  pending,
+  setPending,
+  signupNext,
+}: {
+  onError: (msg: string) => void;
+  pending: boolean;
+  setPending: (p: boolean) => void;
+  signupNext?: string;
+}) {
+  const [email, setEmail] = useState('');
+  const [sent, setSent] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    onError('');
+    setPending(true);
+    try {
+      await api.post('/auth/magic-link/request', {
+        email,
+        // signupNext is preserved through the email click via the verify
+        // page's `next` query param. Surfaced here so a return-to-create
+        // round-trip lands the user back at the same step.
+        next: signupNext,
+      });
+      setSent(true);
+    } catch (err) {
+      onError((err as { response?: { data?: { error?: string } }; message?: string })?.response?.data?.error || 'Could not send link');
+    } finally {
+      setPending(false);
+    }
+  };
+
+  if (sent) {
+    return (
+      <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 p-4 text-sm text-emerald-200 flex items-start gap-3">
+        <CheckCircle2 className="w-5 h-5 flex-shrink-0 mt-0.5" />
+        <div>
+          <p className="font-semibold mb-0.5">Check your inbox</p>
+          <p className="text-emerald-200/80">
+            If <span className="font-semibold">{email}</span> is a valid address, a sign-in link is on its way. It expires in 15 minutes.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const inputCls =
+    'w-full h-11 px-4 rounded-lg bg-[color:var(--bg-elev-2)] text-[color:var(--text)] border border-[color:var(--stroke)] focus:border-[color:var(--brand)] focus:outline-none transition-colors';
+  const labelCls =
+    'block text-xs font-bold uppercase tracking-wider text-[color:var(--text-mute)] mb-1.5';
+
+  return (
+    <form onSubmit={submit} className="space-y-4">
+      <div>
+        <label className={labelCls}>Email</label>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+          className={inputCls}
+          placeholder="you@example.com"
+          autoComplete="email"
+        />
+      </div>
+      <button
+        type="submit"
+        disabled={pending}
+        className="mym-cta w-full justify-center disabled:opacity-50"
+      >
+        {pending ? 'Sending…' : 'Email me a sign-in link'}
+      </button>
+      <p className="text-center text-xs text-[color:var(--text-mute)]">
+        No password needed. The link is valid for 15 minutes.
+      </p>
     </form>
   );
 }

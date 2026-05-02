@@ -15,6 +15,7 @@ import { generateWeeklyMixtapes } from './mixtape';
 import { pollPreviewVideos } from './previewVideoPoller';
 import { payReferrals } from '../controllers/referralController';
 import { processPendingCollabPayouts } from './collabSplits';
+import { estimateMusicCost } from './cost';
 
 let started = false;
 
@@ -34,6 +35,7 @@ const LOCK_MIXTAPE = 1004;
 const LOCK_STUCK_GEN_SWEEP = 1005;
 const LOCK_REFERRAL_PAYOUT = 1006;
 const LOCK_COLLAB_PAYOUT = 1007;
+const LOCK_AUTOCLIP_BACKFILL = 1008;
 
 async function withLock(lockId: number, fn: () => Promise<void>): Promise<boolean> {
   const rows = await prisma.$queryRawUnsafe<Array<{ pg_try_advisory_lock: boolean }>>(
@@ -49,6 +51,74 @@ async function withLock(lockId: number, fn: () => Promise<void>): Promise<boolea
   }
 }
 
+// Backfill auto-clip (vertical preview video) for tracks that don't have
+// one yet. Catches:
+//   - Tracks published before AUTO_PREVIEW_VIDEO=1 was flipped on.
+//   - Tracks where the in-line kick-off in publishGeneration failed
+//     transiently (network blip, provider 5xx, etc.).
+// Bounded by AUTOCLIP_BACKFILL_PER_TICK so a backlog of thousands of
+// historical tracks doesn't burst the provider quota in one cron tick.
+async function backfillAutoClips(): Promise<{ scheduled: number }> {
+  if (process.env.AUTO_PREVIEW_VIDEO !== '1') return { scheduled: 0 };
+  const perTick = Math.max(1, Math.min(50, parseInt(process.env.AUTOCLIP_BACKFILL_PER_TICK || '5', 10)));
+  // Only consider recent public tracks — older ones are unlikely to drive
+  // virality and their cover art might be lower quality. The 30-day window
+  // is the same horizon trending/recommendations care about.
+  const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const candidates = await prisma.track.findMany({
+    where: {
+      isPublic: true,
+      coverArt: { not: null },
+      previewVideoUrl: null,
+      status: 'ACTIVE',
+      createdAt: { gt: since },
+      // Skip tracks that already have a PROCESSING/PENDING video job — those
+      // are still in flight from the in-line kick-off in publishGeneration.
+      videoGenerations: { none: { purpose: 'preview', status: { in: ['PENDING', 'PROCESSING'] } } },
+    },
+    take: perTick,
+    orderBy: { createdAt: 'desc' },
+    select: { id: true, title: true, coverArt: true, agentId: true, agent: { select: { ownerId: true } } },
+  });
+  if (candidates.length === 0) return { scheduled: 0 };
+
+  const { minimaxStartVideo } = await import('./minimax');
+  let scheduled = 0;
+  for (const t of candidates) {
+    if (!t.coverArt) continue;
+    try {
+      const start = await minimaxStartVideo({
+        prompt: `Vertical music-video promo for "${t.title}" — animated cover art, subtle camera move, high contrast, 9:16.`,
+        firstFrameImage: t.coverArt,
+        resolution: '768P',
+        duration: 6,
+      });
+      await prisma.videoGeneration.create({
+        data: {
+          // Owner of the agent owns the auto-generated preview video. The
+          // agent always exists (FK is not nullable on Track) so this is safe.
+          userId: t.agent.ownerId,
+          title: `Preview: ${t.title}`,
+          prompt: 'auto-preview-backfill',
+          purpose: 'preview',
+          trackId: t.id,
+          durationSec: 6,
+          resolution: '768P',
+          providerJobId: start.taskId,
+          status: 'PROCESSING',
+        },
+      });
+      scheduled += 1;
+    } catch (err) {
+      logger.warn('autoclip backfill: kick-off failed', {
+        trackId: t.id,
+        error: (err as Error).message,
+      });
+    }
+  }
+  return { scheduled };
+}
+
 // Sweep MusicGeneration / VideoGeneration rows that are stuck in
 // PROCESSING for too long (process crash mid-flight). Marks them FAILED
 // so the user isn't left with a forever-spinning generation slot.
@@ -57,7 +127,13 @@ async function sweepStuckGenerations(): Promise<{ music: number; video: number }
   const [music, video] = await Promise.all([
     prisma.musicGeneration.updateMany({
       where: { status: 'PROCESSING', updatedAt: { lt: tenMinAgo } },
-      data: { status: 'FAILED', errorMessage: 'Generation timed out' },
+      // Stuck-then-FAILED rows still incurred the provider call; record the
+      // estimated cost so cost dashboards reflect reality.
+      data: {
+        status: 'FAILED',
+        errorMessage: 'Generation timed out',
+        providerCostCents: Math.round(estimateMusicCost({ status: 'FAILED' }) * 100),
+      },
     }),
     prisma.videoGeneration.updateMany({
       where: { status: 'PROCESSING', updatedAt: { lt: new Date(Date.now() - 30 * 60 * 1000) } },
@@ -130,6 +206,21 @@ export function startCron(): void {
         if (r.processed > 0) logger.info('cron: preview videos polled', r);
       } catch (err) {
         logger.warn('cron: preview poll failed', { error: (err as Error).message });
+      }
+    });
+  });
+
+  // Auto-clip backfill — every 15 min. Picks up tracks without a preview
+  // video and kicks off Minimax jobs for them. The poller above eventually
+  // writes the result URL back to Track.previewVideoUrl. Runs only when
+  // AUTO_PREVIEW_VIDEO=1; otherwise the backfill is a no-op.
+  schedule(15 * 60 * 1000, 'autoclip-backfill', async () => {
+    await withLock(LOCK_AUTOCLIP_BACKFILL, async () => {
+      try {
+        const r = await backfillAutoClips();
+        if (r.scheduled > 0) logger.info('cron: autoclip backfill scheduled jobs', r);
+      } catch (err) {
+        logger.warn('cron: autoclip backfill failed', { error: (err as Error).message });
       }
     });
   });

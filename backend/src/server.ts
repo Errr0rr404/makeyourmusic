@@ -1,6 +1,12 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
+// Sentry must be imported before everything else so its instrumentation
+// hooks attach to express, http, and fetch. Init is gated on SENTRY_DSN —
+// when unset, this is effectively a no-op import.
+import { initSentry, captureException } from './utils/sentry';
+initSentry();
+
 import express from 'express';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
@@ -24,12 +30,14 @@ initFirebaseAdmin();
 // Global error handlers
 process.on('uncaughtException', (error) => {
   logger.error('Uncaught Exception', { error: error.message, stack: error.stack });
+  captureException(error, { source: 'uncaughtException' });
   // Give time for logs to flush before exiting
   setTimeout(() => process.exit(1), 1000);
 });
 
 process.on('unhandledRejection', (reason, promise) => {
   logger.error('Unhandled Rejection at:', { promise, reason });
+  captureException(reason, { source: 'unhandledRejection' });
   // Treat as fatal — Node's default since v15. A rejected Prisma transaction
   // or half-applied state mutation can leave the process running with stale
   // pool connections, mid-transaction locks, or torn caches; better to crash

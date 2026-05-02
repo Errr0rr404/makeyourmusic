@@ -2,9 +2,12 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Play, Pause, SkipBack, SkipForward, Check, Wand2 } from 'lucide-react';
 import type { TrackItem } from '@makeyourmusic/shared';
 import { usePlayerStore } from '@/lib/store/playerStore';
+import { useAuthStore } from '@/lib/store/authStore';
+import { track } from '@/lib/analytics';
 import api from '@/lib/api';
 
 const PROMPT_CYCLE = [
@@ -352,9 +355,14 @@ function HeroDeck({ tracks }: { tracks: TrackItem[] }) {
 // ────────────────────────────────────────────────────────────────────
 function HeroSpectrum({ tracks }: { tracks: TrackItem[] }) {
   const { isPlaying, playTrack } = usePlayerStore();
+  const router = useRouter();
   const startListening = () => {
     const first = tracks[0];
     if (first) playTrack(first, tracks);
+  };
+  const makeSong = () => {
+    track('landing_cta_click', { surface: 'hero_spectrum' });
+    router.push('/create');
   };
   return (
     <div className="relative isolate overflow-hidden" style={{ padding: '140px 0 90px' }}>
@@ -390,10 +398,13 @@ function HeroSpectrum({ tracks }: { tracks: TrackItem[] }) {
             every genre, every weird little niche.
           </p>
           <div className="flex flex-wrap justify-center gap-3">
-            <button onClick={startListening} className="mym-cta">
-              <PlayGlyph /> Start listening — free
+            <button onClick={makeSong} className="mym-cta">
+              <Wand2 className="w-4 h-4" /> Make a song
             </button>
-            <Link href="#how" className="mym-ghost">
+            <button onClick={startListening} className="mym-ghost">
+              <PlayGlyph /> Start listening
+            </button>
+            <Link href="#how" className="mym-ghost" style={{ opacity: 0.7 }}>
               See how it works
             </Link>
           </div>
@@ -576,10 +587,13 @@ function DiscoverGrid({ tracks }: { tracks: TrackItem[] }) {
 // How it works — three steps
 // ────────────────────────────────────────────────────────────────────
 function HowItWorks() {
+  const router = useRouter();
   const [text, setText] = useState('');
+  const [userTyped, setUserTyped] = useState(false);
   const idxRef = useRef(0);
   const charRef = useRef(0);
   useEffect(() => {
+    if (userTyped) return;
     const tick = setInterval(() => {
       const target = PROMPT_CYCLE[idxRef.current % PROMPT_CYCLE.length] ?? '';
       charRef.current += 1;
@@ -591,7 +605,14 @@ function HowItWorks() {
       }
     }, 55);
     return () => clearInterval(tick);
-  }, []);
+  }, [userTyped]);
+
+  const submit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = text.trim();
+    track('prompt_typed', { surface: 'howitworks', length: value.length });
+    router.push(value ? `/create?prompt=${encodeURIComponent(value)}` : '/create');
+  };
 
   return (
     <section id="how" className="max-w-[1240px] mx-auto px-6 py-24">
@@ -628,19 +649,33 @@ function HowItWorks() {
             title: 'Tell us what you want',
             body: '"rainy tokyo lo-fi for late-night coding" works. So does "songs about my cat being chaotic." Type a vibe, mood, weather, scene — anything.',
             art: (
-              <div
-                className="w-full p-4 rounded-xl border font-display text-base"
-                style={{
-                  background: 'rgba(255,255,255,0.04)',
-                  borderColor: 'var(--stroke-strong)',
-                  color: 'var(--text)',
-                }}
-              >
-                <span className="inline-flex items-center">
-                  {text || PROMPT_CYCLE[0]}
-                  <span className="mym-caret" />
-                </span>
-              </div>
+              <form onSubmit={submit} className="w-full">
+                <div
+                  className="flex items-center gap-2 w-full p-2 pr-2.5 rounded-xl border"
+                  style={{
+                    background: 'rgba(255,255,255,0.04)',
+                    borderColor: 'var(--stroke-strong)',
+                  }}
+                >
+                  <input
+                    type="text"
+                    value={userTyped ? text : ''}
+                    placeholder={text || PROMPT_CYCLE[0]}
+                    onFocus={() => setUserTyped(true)}
+                    onChange={(e) => { setUserTyped(true); setText(e.target.value); }}
+                    className="flex-1 min-w-0 px-2 py-2 bg-transparent outline-none text-[15px] font-medium"
+                    style={{ color: 'var(--text)' }}
+                    aria-label="Describe a vibe"
+                  />
+                  <button
+                    type="submit"
+                    className="px-3 py-1.5 rounded-lg text-xs font-bold inline-flex items-center gap-1.5 text-white shrink-0"
+                    style={{ background: 'var(--brand)', boxShadow: '0 8px 18px -8px var(--brand-glow)' }}
+                  >
+                    <Wand2 className="w-3.5 h-3.5" /> Make
+                  </button>
+                </div>
+              </form>
             ),
           },
           {
@@ -1165,20 +1200,19 @@ function CTABand({ tracks }: { tracks: TrackItem[] }) {
           className="font-display font-extrabold m-0 mb-4"
           style={{ fontSize: 'clamp(2.4rem, 5.6vw, 4rem)', letterSpacing: '-0.03em', lineHeight: 1.05 }}
         >
-          Hit play.<br />
-          The catalog is waiting.
+          Your turn.<br />
+          Make something new.
         </h2>
         <p className="m-0 mb-7" style={{ color: 'var(--text-soft)', fontSize: '1.1rem' }}>
-          Free to listen. No credit card. New tracks every minute.
+          Describe a vibe. AI writes and produces the track. No credit card, no login to start.
         </p>
         <div className="flex flex-wrap justify-center gap-3">
-          <button onClick={start} className="mym-cta">
-            <PlayGlyph /> Start listening — free
-          </button>
-          <Link href="#mobile" className="mym-ghost">
-            <Wand2 className="w-4 h-4" />
-            Get the app
+          <Link href="/create" className="mym-cta">
+            <Wand2 className="w-4 h-4" /> Make a song — free
           </Link>
+          <button onClick={start} className="mym-ghost">
+            <PlayGlyph /> Start listening
+          </button>
         </div>
         <SpectrumLarge live={isPlaying} />
       </div>
@@ -1192,6 +1226,10 @@ function CTABand({ tracks }: { tracks: TrackItem[] }) {
 export function LandingPage() {
   const [tracks, setTracks] = useState<TrackItem[]>([]);
   const [genres, setGenres] = useState<Array<{ name: string; count: string; hue: number; slug: string }>>(FALLBACK_GENRES);
+
+  useEffect(() => {
+    track('landing_view');
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -1242,16 +1280,57 @@ export function LandingPage() {
       <Pricing />
       <FAQ />
       <CTABand tracks={tracks} />
+      <StickyMobileCTA />
+    </div>
+  );
+}
+
+// ────────────────────────────────────────────────────────────────────
+// Sticky mobile-web "Make a song" bar — guests only, mobile breakpoint
+// ────────────────────────────────────────────────────────────────────
+function StickyMobileCTA() {
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const [hasMounted, setHasMounted] = useState(false);
+  useEffect(() => setHasMounted(true), []);
+  if (!hasMounted || isAuthenticated) return null;
+  return (
+    <div
+      className="md:hidden fixed left-0 right-0 z-40 px-4"
+      style={{ bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+    >
+      <Link
+        href="/create"
+        onClick={() => track('landing_cta_click', { surface: 'sticky_mobile' })}
+        className="mym-cta w-full justify-center text-base"
+        style={{
+          height: 52,
+          boxShadow: '0 18px 40px -10px var(--brand-glow), 0 0 0 1px rgba(255,255,255,0.04)',
+        }}
+      >
+        <Wand2 className="w-4 h-4" /> Make a song — free
+      </Link>
     </div>
   );
 }
 
 function HeroDeckLayout({ tracks }: { tracks: TrackItem[] }) {
   const { playTrack } = usePlayerStore();
+  const router = useRouter();
+  const [vibePrompt, setVibePrompt] = useState('');
+
   const start = () => {
     const first = tracks[0];
     if (first) playTrack(first, tracks);
   };
+
+  const handleMakeSong = (e: React.FormEvent) => {
+    e.preventDefault();
+    const value = vibePrompt.trim();
+    track('prompt_typed', { surface: 'hero', length: value.length });
+    track('landing_cta_click', { surface: 'hero_inline' });
+    router.push(value ? `/create?prompt=${encodeURIComponent(value)}` : '/create');
+  };
+
   return (
     <div className="relative isolate overflow-hidden" style={{ padding: '140px 0 90px' }}>
       <HeroBackdrop />
@@ -1278,11 +1357,31 @@ function HeroDeckLayout({ tracks }: { tracks: TrackItem[] }) {
             Hit play. AI agents keep the queue full of new music shaped by what you love — across moods, niches, and 4am
             detours.
           </p>
+
+          {/* Inline vibe prompt → /create */}
+          <form onSubmit={handleMakeSong} className="flex gap-2 mb-4 max-w-[520px]">
+            <input
+              type="text"
+              value={vibePrompt}
+              onChange={(e) => setVibePrompt(e.target.value)}
+              placeholder="rainy tokyo lo-fi, 3am energy…"
+              className="flex-1 min-w-0 px-4 py-3 rounded-xl text-sm font-medium outline-none"
+              style={{
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid var(--stroke-strong)',
+                color: 'var(--text)',
+              }}
+            />
+            <button type="submit" className="mym-cta shrink-0">
+              <Wand2 className="w-4 h-4" /> Make a song
+            </button>
+          </form>
+
           <div className="flex flex-wrap gap-3">
-            <button onClick={start} className="mym-cta">
+            <button onClick={start} className="mym-ghost">
               <PlayGlyph /> Start listening
             </button>
-            <Link href="#discover" className="mym-ghost">
+            <Link href="#discover" className="mym-ghost" style={{ opacity: 0.7 }}>
               Browse the catalog
             </Link>
           </div>

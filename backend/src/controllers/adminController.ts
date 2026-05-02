@@ -811,3 +811,72 @@ export const getRevenue = async (_req: RequestWithUser, res: Response) => {
     res.status(500).json({ error: 'Failed to load revenue' });
   }
 };
+
+// Provider-cost report. Aggregates `MusicGeneration.providerCostCents`
+// across the last N days, grouped by tier (joined via Subscription) and
+// surfacing the heaviest spenders. Used by the admin dashboard to spot
+// abuse: any user whose burn-rate × month-end exceeds their MRR is a
+// candidate for the "downgrade to slower provider" auto-throttle.
+export const getCostReport = async (req: RequestWithUser, res: Response) => {
+  try {
+    const days = Math.max(1, Math.min(90, parseInt(String(req.query.days || '7'), 10) || 7));
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const [byUser, totals] = await Promise.all([
+      prisma.musicGeneration.groupBy({
+        by: ['userId'],
+        where: { createdAt: { gt: since }, providerCostCents: { not: null } },
+        _sum: { providerCostCents: true },
+        _count: { _all: true },
+        orderBy: { _sum: { providerCostCents: 'desc' } },
+        take: 50,
+      }),
+      prisma.musicGeneration.aggregate({
+        where: { createdAt: { gt: since } },
+        _sum: { providerCostCents: true },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const userIds = byUser.map((b) => b.userId);
+    const users = await prisma.user.findMany({
+      where: { id: { in: userIds } },
+      select: {
+        id: true, username: true, email: true,
+        subscription: { select: { tier: true } },
+      },
+    });
+    const usersById = new Map(users.map((u) => [u.id, u]));
+
+    const topSpenders = byUser.map((row) => {
+      const u = usersById.get(row.userId);
+      const cents = row._sum.providerCostCents ?? 0;
+      const mrrUsd = SUB_PRICE_USD[u?.subscription?.tier ?? 'FREE'] ?? 0;
+      const burnUsd = cents / 100;
+      // Margin: positive = user pays more than they cost; negative = bleeding.
+      const marginUsd = mrrUsd - burnUsd * (30 / days);
+      return {
+        userId: row.userId,
+        username: u?.username ?? null,
+        email: u?.email ?? null,
+        tier: u?.subscription?.tier ?? 'FREE',
+        generations: row._count._all,
+        burnUsd: Number(burnUsd.toFixed(2)),
+        projectedMonthlyBurnUsd: Number((burnUsd * (30 / days)).toFixed(2)),
+        mrrUsd,
+        projectedMonthlyMarginUsd: Number(marginUsd.toFixed(2)),
+      };
+    });
+
+    res.json({
+      days,
+      since,
+      totalGenerations: totals._count._all,
+      totalBurnUsd: Number(((totals._sum.providerCostCents ?? 0) / 100).toFixed(2)),
+      topSpenders,
+    });
+  } catch (error) {
+    logger.error('Admin cost report error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to load cost report' });
+  }
+};

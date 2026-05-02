@@ -5,12 +5,13 @@ import { prisma } from '../utils/db';
 import { generateTokenPair, verifyRefreshToken } from '../utils/jwt';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
-import { sendEmail, buildVerificationEmail, buildPasswordResetEmail } from '../utils/email';
+import { sendEmail, buildVerificationEmail, buildPasswordResetEmail, buildMagicLinkEmail } from '../utils/email';
 import { verifyFirebaseIdToken } from '../utils/firebaseAdmin';
 import { invalidateTokenVersionCache } from '../middleware/auth';
 
 const VERIFICATION_TOKEN_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 const PASSWORD_RESET_TTL_MS = 60 * 60 * 1000; // 1 hour
+const MAGIC_LINK_TTL_MS = 15 * 60 * 1000; // 15 minutes — short on purpose, magic links are bearer tokens
 const REFRESH_TOKEN_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 const refreshCookieOptions = (): CookieOptions => ({
@@ -640,6 +641,182 @@ export const verifyEmail = async (req: RequestWithUser, res: Response) => {
   } catch (error) {
     logger.error('Verify email error', { error: (error as Error).message });
     res.status(500).json({ error: 'Verification failed' });
+  }
+};
+
+// ─── Magic Link (passwordless) ────────────────────────────
+//
+// Two-step flow:
+//   1. /auth/magic-link/request { email } — creates the user if necessary
+//      (auto-username, no password), stores a hashed token, and emails the
+//      raw token. Always responds 200 to prevent email enumeration. The
+//      stored row is updated to the new token regardless, so a second
+//      request for the same email invalidates the prior link.
+//   2. /auth/magic-link/verify { token } — exchanges the raw token for a
+//      regular access/refresh-token pair. Single-use: claim is atomic via
+//      updateMany, so concurrent verify requests can't both succeed.
+
+export const requestMagicLink = async (req: RequestWithUser, res: Response) => {
+  try {
+    const { email, referralCode } = req.body || {};
+    if (typeof email !== 'string' || !email.includes('@') || email.length > 254) {
+      res.status(400).json({ error: 'Valid email is required' });
+      return;
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const rawToken = generateToken();
+    const hashedToken = hashToken(rawToken);
+    const expires = new Date(Date.now() + MAGIC_LINK_TTL_MS);
+
+    let userId: string | null = null;
+    let userEmail = normalizedEmail;
+
+    const existing = await prisma.user.findUnique({
+      where: { email: normalizedEmail },
+      select: { id: true, email: true },
+    });
+
+    if (existing) {
+      userId = existing.id;
+      userEmail = existing.email;
+      await prisma.user.update({
+        where: { id: existing.id },
+        data: { magicLinkToken: hashedToken, magicLinkExpires: expires },
+      });
+    } else {
+      // Create-on-first-link: provision the account so the magic-link click
+      // arrives at a usable session. We don't mark `emailVerified` until the
+      // verify endpoint claims the token — proving the user controls the
+      // mailbox. Username is auto-generated from the local-part.
+      let referredById: string | null = null;
+      if (typeof referralCode === 'string' && referralCode.trim()) {
+        const referrer = await prisma.user.findUnique({
+          where: { referralCode: referralCode.trim().toLowerCase() },
+          select: { id: true },
+        });
+        if (referrer) referredById = referrer.id;
+      }
+      const baseUsername = deriveUsernameFromEmail(normalizedEmail);
+      const username = await uniqueUsername(baseUsername);
+      try {
+        const created = await prisma.user.create({
+          data: {
+            email: normalizedEmail,
+            username,
+            displayName: username,
+            role: 'LISTENER',
+            magicLinkToken: hashedToken,
+            magicLinkExpires: expires,
+            referredById,
+            subscription: { create: { tier: 'FREE', status: 'ACTIVE' } },
+          },
+          select: { id: true, email: true },
+        });
+        userId = created.id;
+        userEmail = created.email;
+      } catch (createErr: any) {
+        // Race: a concurrent request created the row between our findUnique
+        // and create. Re-fetch and update the token instead.
+        if (createErr?.code === 'P2002') {
+          const found = await prisma.user.findUnique({
+            where: { email: normalizedEmail },
+            select: { id: true, email: true },
+          });
+          if (found) {
+            userId = found.id;
+            userEmail = found.email;
+            await prisma.user.update({
+              where: { id: found.id },
+              data: { magicLinkToken: hashedToken, magicLinkExpires: expires },
+            });
+          }
+        } else {
+          throw createErr;
+        }
+      }
+    }
+
+    if (userId) {
+      try {
+        await sendEmail(buildMagicLinkEmail(userEmail, rawToken));
+      } catch (err) {
+        logger.error('Failed to send magic-link email', { error: (err as Error).message });
+      }
+    } else {
+      // Don't include the email in the log on the negative path — same
+      // reasoning as forgotPassword's anti-enumeration.
+      logger.info('Magic-link requested but user could not be provisioned');
+    }
+
+    res.json({ message: 'If that email is valid, a sign-in link is on its way.' });
+  } catch (error) {
+    logger.error('Magic link request error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to send magic link' });
+  }
+};
+
+export const verifyMagicLink = async (req: RequestWithUser, res: Response) => {
+  try {
+    const { token } = req.body || {};
+    if (typeof token !== 'string' || token.length < 16) {
+      res.status(400).json({ error: 'Invalid token' });
+      return;
+    }
+
+    const hashedToken = hashToken(token);
+
+    // Locate the candidate row before the atomic claim — needed for the
+    // userId in the JWT payload. The atomic updateMany below is what
+    // actually prevents a token reuse race.
+    const candidate = await prisma.user.findFirst({
+      where: {
+        magicLinkToken: hashedToken,
+        magicLinkExpires: { gt: new Date() },
+      },
+      select: {
+        id: true, email: true, username: true, displayName: true,
+        role: true, avatar: true, emailVerified: true, tokenVersion: true,
+      },
+    });
+    if (!candidate) {
+      res.status(400).json({ error: 'Invalid or expired link' });
+      return;
+    }
+
+    const claimed = await prisma.user.updateMany({
+      where: {
+        id: candidate.id,
+        magicLinkToken: hashedToken,
+        magicLinkExpires: { gt: new Date() },
+      },
+      data: {
+        magicLinkToken: null,
+        magicLinkExpires: null,
+        // The user just proved control of the mailbox by clicking the link
+        // they received — flip emailVerified for first-time users.
+        emailVerified: true,
+        emailVerifiedAt: new Date(),
+      },
+    });
+    if (claimed.count === 0) {
+      res.status(400).json({ error: 'Invalid or expired link' });
+      return;
+    }
+
+    const { accessToken, refreshToken } = await generateTokenPair({
+      userId: candidate.id,
+      email: candidate.email,
+      role: candidate.role,
+      tv: candidate.tokenVersion,
+    });
+    setRefreshTokenCookie(res, refreshToken);
+
+    const { tokenVersion: _tv, ...safeUser } = candidate;
+    res.json({ user: { ...safeUser, emailVerified: true }, accessToken });
+  } catch (error) {
+    logger.error('Magic link verify error', { error: (error as Error).message });
+    res.status(500).json({ error: 'Failed to verify magic link' });
   }
 };
 

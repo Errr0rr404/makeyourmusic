@@ -15,6 +15,7 @@ import { TrackCard } from '@/components/track/TrackCard';
 import { TrackStems } from '@/components/track/TrackStems';
 import { AddToPlaylistDialog } from '@/components/track/AddToPlaylistDialog';
 import { ReportDialog } from '@/components/track/ReportDialog';
+import { JustPublishedBanner } from '@/components/track/JustPublishedBanner';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 
 export function TrackDetailClient({ slug }: { slug: string }) {
@@ -171,6 +172,7 @@ export function TrackDetailClient({ slug }: { slug: string }) {
 
   return (
     <div className="max-w-4xl mx-auto animate-fade-in">
+      <JustPublishedBanner trackUrl={`/track/${track.slug}`} />
       {/* Track Header */}
       <div className="flex flex-col md:flex-row gap-6 mb-8">
         <div className="w-full md:w-64 aspect-square md:aspect-auto md:h-64 rounded-xl overflow-hidden bg-[hsl(var(--secondary))] flex-shrink-0 max-w-[300px] mx-auto md:mx-0">

@@ -31,6 +31,7 @@ import { uploadAudio, uploadImageBase64, uploadCoverArt } from '../utils/cloudin
 import { moderateLyrics, moderationToError } from '../utils/moderation';
 import { computeAndPersistTrackFeatures } from '../utils/recommendations';
 import { sanitizeLyrics } from '../utils/lyricsSanitizer';
+import { estimateMusicCost } from '../utils/cost';
 
 const MAX_LYRICS_LEN = 3500;
 const MAX_PROMPT_LEN = 2000;
@@ -724,6 +725,12 @@ async function processMusicGeneration(generationId: string): Promise<void> {
         providerModel: usedModel,
         durationSec: result.durationSec || gen.durationSec,
         providerTraceId: result.traceId || null,
+        // Persist the estimated cost at terminal-state time so admin
+        // dashboards can aggregate without re-deriving from the moving
+        // env-var pricing table.
+        providerCostCents: Math.round(
+          estimateMusicCost({ status: 'COMPLETED', providerModel: usedModel, durationSec: result.durationSec ?? gen.durationSec ?? null }) * 100,
+        ),
       },
     });
   } catch (err) {
@@ -732,7 +739,12 @@ async function processMusicGeneration(generationId: string): Promise<void> {
     await prisma.musicGeneration
       .update({
         where: { id: generationId },
-        data: { status: 'FAILED', errorMessage: message.slice(0, 500) },
+        data: {
+          status: 'FAILED',
+          errorMessage: message.slice(0, 500),
+          // Failed calls still incurred the provider call.
+          providerCostCents: Math.round(estimateMusicCost({ status: 'FAILED' }) * 100),
+        },
       })
       .catch(() => undefined);
   }

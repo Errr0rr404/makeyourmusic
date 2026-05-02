@@ -2,11 +2,19 @@ import { Response } from 'express';
 import { prisma } from '../utils/db';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
-import { NICHE_DEFINITIONS, getNiche } from '../utils/niches';
+import { NICHE_DEFINITIONS, getNiche, listAllNicheSlugs } from '../utils/niches';
 import { computeFeatureVector, findSimilarTracks } from '../utils/recommendations';
 
 export const listNiches = async (_req: RequestWithUser, res: Response) => {
   res.json({ niches: NICHE_DEFINITIONS });
+};
+
+// Sitemap-friendly endpoint: returns every slug we want indexed (curated +
+// programmatic combos). Frontend's sitemap.ts hits this so the route list
+// stays in sync with the backend resolver.
+export const listAllNiches = async (_req: RequestWithUser, res: Response) => {
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.json({ slugs: listAllNicheSlugs() });
 };
 
 // Niche landing page payload — surface a curated track list seeded from the

@@ -7,6 +7,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/lib/store/authStore';
 import { ImageUpload } from '@/components/upload/ImageUpload';
 import { AuthGateModal } from '@/components/auth/AuthGateModal';
+import { track, trackGeneration } from '@/lib/analytics';
 import { toast } from 'sonner';
 import {
   GENRE_TREE,
@@ -27,6 +28,18 @@ import {
 // /register bounce-out so anonymous users don't lose their idea + style +
 // lyrics if they need to leave the page to authenticate.
 const DRAFT_KEY = 'mym_create_draft_v1';
+
+// Hand-picked seed prompts for the empty Idea step. Curated for high
+// generation success: each is concrete, scenic, and short enough that the
+// model has room to surprise you. Mirror of the landing-page rotator.
+const SEED_PROMPTS = [
+  'rainy tokyo lo-fi for late-night coding',
+  "warm jazz piano, softly mic'd, 3am",
+  'dreampop on a beach in 1986',
+  'instrumental synthwave for a long drive',
+  'ambient folk with cassette tape hiss',
+  'garage rock about losing your apartment keys',
+];
 type PendingAction = 'generate' | 'lyrics' | null;
 
 type Step = 'idea' | 'style' | 'lyrics' | 'generate' | 'publish';
@@ -91,7 +104,14 @@ export default function CreatePage() {
   const [vibeReference, setVibeReference] = useState('');
   const [style, setStyle] = useState('');
   const [language, setLanguage] = useState('English');
-  const [isInstrumental, setIsInstrumental] = useState(false);
+  // Default first-time guests to instrumental: it's the fastest path to
+  // hearing audio (skips the lyrics step). Authenticated users (who likely
+  // already shipped tracks before) keep the vocal default.
+  const [isInstrumental, setIsInstrumental] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    if (useAuthStore.getState().isAuthenticated) return false;
+    try { return !localStorage.getItem('mym_first_generation_done_v1'); } catch { return false; }
+  });
   const [durationSec, setDurationSec] = useState(120);
   const [bpm, setBpm] = useState<number | null>(null);
   const [musicalKey, setMusicalKey] = useState('');
@@ -139,6 +159,13 @@ export default function CreatePage() {
     api.get('/agents/mine').then((r) => setAgents(r.data.agents || [])).catch(() => {});
     api.get('/genres').then((r) => setGenres(r.data.genres || [])).catch(() => {});
   }, [isAuthenticated]);
+
+  // Fire a funnel event whenever the step changes. The 4 events
+  // (`create_step_idea/style/lyrics/generate/publish`) match what the §1
+  // activation funnel measures.
+  useEffect(() => {
+    track(`create_step_${step}` as const, { isAuthenticated: !!isAuthenticated });
+  }, [step, isAuthenticated]);
 
   // Pre-fill the idea field from `?prompt=`. Niche-page CTAs (and other deep
   // links from /n/[slug]) push /create?prompt=… to seed the form; without
@@ -329,6 +356,7 @@ export default function CreatePage() {
     pendingActionRef.current = action;
     persistDraft();
     setAuthModalOpen(true);
+    track('auth_gate_shown', { action: action || 'unknown' });
     return false;
   };
 
@@ -387,8 +415,10 @@ export default function CreatePage() {
           stopPolling();
           if (g.status === 'FAILED') {
             setGenError(g.errorMessage || 'Generation failed');
+            trackGeneration('failed', { reason: g.errorMessage || 'unknown' });
           } else {
             setStep('publish');
+            trackGeneration('succeeded', { durationSec: g.durationSec || undefined });
           }
           return;
         }
@@ -411,6 +441,7 @@ export default function CreatePage() {
     stopPolling();
     setGeneration(null);
     setStep('generate');
+    trackGeneration('started', { genre: genre || undefined, isInstrumental, durationSec });
     try {
       // The backend composes the rich prompt from these structured fields
       // (subgenre hints, era, vocal style, vibe-reference translation, etc.).
@@ -459,6 +490,7 @@ export default function CreatePage() {
   const handleAuthSuccess = () => {
     const pending = pendingActionRef.current;
     pendingActionRef.current = null;
+    track('auth_gate_completed', { action: pending || 'unknown' });
     try { sessionStorage.removeItem(DRAFT_KEY); } catch {}
     // Fetch usage now that we're authenticated, so the header shows credits
     // before kicking off the generation.
@@ -485,7 +517,10 @@ export default function CreatePage() {
         mood,
       });
       toast.success('Track published!');
-      router.push(`/track/${res.data.track.slug}`);
+      track('track_published', { isPublic: publishPublic });
+      // The `?published=1` flag triggers the post-publish referral nudge on
+      // the track page (one-shot — the page strips it after rendering).
+      router.push(`/track/${res.data.track.slug}?published=1`);
     } catch (err) {
       toast.error((err as { response?: { data?: { error?: string } } })?.response?.data?.error || 'Failed to publish');
     } finally {
@@ -767,6 +802,20 @@ function IdeaStep({
         <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">
           {idea.length}/1000 — the more vivid, the better
         </p>
+        {!idea && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {SEED_PROMPTS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                onClick={() => { setIdea(p); track('seed_prompt_picked', { prompt: p }); }}
+                className="rounded-full px-3 py-1 text-xs border bg-[hsl(var(--secondary))]/60 hover:bg-[hsl(var(--secondary))] border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:text-white transition-colors"
+              >
+                {p}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       <div>
@@ -938,13 +987,41 @@ function StyleStep({
     }
   };
 
+  const surpriseMe = () => {
+    const g = GENRE_TREE[Math.floor(Math.random() * GENRE_TREE.length)];
+    const m = MOOD_OPTIONS[Math.floor(Math.random() * MOOD_OPTIONS.length)];
+    const e = ENERGY_OPTIONS[Math.floor(Math.random() * ENERGY_OPTIONS.length)];
+    if (g) {
+      setGenre(g.name);
+      setSubGenre('');
+    }
+    if (m) setMood(m.name);
+    if (e) setEnergy(e.name);
+    track('style_surprise_me', { genre: g?.name, mood: m?.name, energy: e?.name });
+  };
+
   return (
     <div className="space-y-5 p-5 rounded-xl bg-[hsl(var(--card))] border border-[hsl(var(--border))]">
-      <div>
-        <h2 className="text-lg font-bold text-white mb-1">Pick the sound first</h2>
-        <p className="text-sm text-[hsl(var(--muted-foreground))]">
-          These hints shape the arrangement, vocal cadence, and lyrics generated next. Only genre is suggested — everything else is optional.
-        </p>
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-lg font-bold text-white mb-1">Pick the sound first</h2>
+          <p className="text-sm text-[hsl(var(--muted-foreground))]">
+            These hints shape the arrangement, vocal cadence, and lyrics generated next. Only genre is suggested — everything else is optional.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={surpriseMe}
+          className="shrink-0 inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold border transition-colors"
+          style={{
+            background: 'var(--brand-soft)',
+            borderColor: 'var(--brand)',
+            color: 'var(--brand)',
+          }}
+          title="Pick a random genre, mood and energy for me"
+        >
+          <Sparkles className="h-3.5 w-3.5" /> Surprise me
+        </button>
       </div>
 
       <button

@@ -180,6 +180,11 @@ model User {
   passwordResetToken   String?   @unique @map("password_reset_token")
   passwordResetExpires DateTime? @map("password_reset_expires")
 
+  // Magic-link sign-in (one-shot, ~15min). Token stored hashed; the raw
+  // token is mailed and exchanged for an access token via /auth/magic-link/verify.
+  magicLinkToken   String?   @unique @map("magic_link_token")
+  magicLinkExpires DateTime? @map("magic_link_expires")
+
   // Email notification preferences
   emailFollowerAlert Boolean @default(true) @map("email_follower_alert")
   emailLikeAlert     Boolean @default(false) @map("email_like_alert")
@@ -238,6 +243,7 @@ model User {
   @@index([createdAt(sort: Desc)])
   @@index([emailVerificationToken])
   @@index([passwordResetToken])
+  @@index([magicLinkToken])
   @@index([referralCode])
   @@index([referredById])
   @@map("users")
@@ -957,6 +963,11 @@ model MusicGeneration {
 
   // Book-keeping
   creditsUsed Int? @map("credits_used")
+  // Provider cost in USD cents. Stored at the row level so per-user / per-tier
+  // gross-margin reporting doesn't require re-deriving cost from a moving
+  // env-var pricing table. Populated when the generation transitions to
+  // COMPLETED or FAILED (failed calls still cost the provider).
+  providerCostCents Int? @map("provider_cost_cents")
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")

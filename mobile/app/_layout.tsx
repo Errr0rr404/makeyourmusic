@@ -23,6 +23,12 @@ import { vars } from 'nativewind';
 // Initialize shared services before anything else
 bootstrap();
 
+// Sentry — gated on EXPO_PUBLIC_SENTRY_DSN; no-op when the SDK isn't
+// installed or the DSN is missing. Lives in module scope so the first
+// uncaught exception is captured even if it fires before the React tree mounts.
+import { initSentry } from '../lib/sentry';
+initSentry();
+
 // Register the playback service (must be at module scope)
 TrackPlayer.registerPlaybackService(() => require('../services/trackPlayerService').PlaybackService);
 

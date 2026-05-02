@@ -10,7 +10,7 @@ import { TrackRow } from '../../components/track/TrackRow';
 import { AgentCard } from '../../components/agent/AgentCard';
 import { Logo } from '../../components/ui/Logo';
 import { TouchableOpacity } from 'react-native';
-import { Bell, Play, Sparkles, Wand2 } from 'lucide-react-native';
+import { Bell, Play, Wand2 } from 'lucide-react-native';
 import { useTokens, useIsVintage } from '../../lib/theme';
 import { ThemeQuickMenu } from '../../components/ThemeQuickMenu';
 
@@ -175,109 +175,47 @@ export default function HomeScreen() {
 
       {/* Hero card — guests get a sign-up CTA, members get a quick generate prompt */}
       <View className="px-4 pb-4">
-        {!isAuthenticated ? (
+        <TouchableOpacity
+          onPress={() => router.push('/create')}
+          style={{
+            borderRadius: tokens.radiusLg,
+            padding: 16,
+            backgroundColor: tokens.accentSoft,
+            borderWidth: 1,
+            borderColor: tokens.brand + '33',
+            flexDirection: 'row',
+            alignItems: 'center',
+          }}
+          activeOpacity={0.85}
+        >
           <View
             style={{
-              borderRadius: tokens.radiusLg,
-              padding: 20,
-              backgroundColor: tokens.card,
-              borderWidth: 1,
-              borderColor: tokens.border,
-              overflow: 'hidden',
-            }}
-          >
-            <View
-              style={{
-                position: 'absolute',
-                top: -40,
-                right: -40,
-                width: 160,
-                height: 160,
-                borderRadius: 80,
-                backgroundColor: tokens.brand,
-                opacity: 0.18,
-              }}
-            />
-            <Text style={{ color: tokens.textSoft, fontSize: 13, fontWeight: '600', marginBottom: 8 }}>
-              Discover tracks crafted by AI agents.
-            </Text>
-            <View className="flex-row gap-2 mt-2">
-              <TouchableOpacity
-                onPress={() => router.push('/(auth)/register')}
-                style={{
-                  flex: 1,
-                  backgroundColor: tokens.brand,
-                  paddingVertical: 12,
-                  borderRadius: tokens.radiusLg,
-                  alignItems: 'center',
-                  flexDirection: 'row',
-                  justifyContent: 'center',
-                }}
-                activeOpacity={0.85}
-              >
-                <Sparkles size={16} color="#fff" />
-                <Text style={{ color: '#fff', fontWeight: '700', marginLeft: 6 }}>Sign up free</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => router.push('/(auth)/login')}
-                style={{
-                  flex: 1,
-                  backgroundColor: 'transparent',
-                  paddingVertical: 12,
-                  borderRadius: tokens.radiusLg,
-                  alignItems: 'center',
-                  borderWidth: 1,
-                  borderColor: tokens.border,
-                }}
-                activeOpacity={0.85}
-              >
-                <Text style={{ color: tokens.text, fontWeight: '600' }}>Log in</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        ) : (
-          <TouchableOpacity
-            onPress={() => router.push('/create')}
-            style={{
-              borderRadius: tokens.radiusLg,
-              padding: 16,
-              backgroundColor: tokens.accentSoft,
-              borderWidth: 1,
-              borderColor: tokens.brand + '33',
-              flexDirection: 'row',
+              width: 44,
+              height: 44,
+              borderRadius: 22,
+              backgroundColor: tokens.brand,
               alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 12,
+              shadowColor: tokens.brand,
+              shadowOpacity: 0.4,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 6,
             }}
-            activeOpacity={0.85}
           >
-            <View
-              style={{
-                width: 44,
-                height: 44,
-                borderRadius: 22,
-                backgroundColor: tokens.brand,
-                alignItems: 'center',
-                justifyContent: 'center',
-                marginRight: 12,
-                shadowColor: tokens.brand,
-                shadowOpacity: 0.4,
-                shadowRadius: 8,
-                shadowOffset: { width: 0, height: 4 },
-                elevation: 6,
-              }}
-            >
-              <Wand2 size={20} color="#fff" />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={{ color: tokens.text, fontWeight: '700', fontSize: 14 }}>
-                {isVintage ? 'Cut a new track' : 'Tell us a vibe'}
-              </Text>
-              <Text style={{ color: tokens.textMute, fontSize: 12, marginTop: 2 }}>
-                Generate a song with AI in 60 seconds.
-              </Text>
-            </View>
-            <Play size={18} color={tokens.brand} fill={tokens.brand} />
-          </TouchableOpacity>
-        )}
+            <Wand2 size={20} color="#fff" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: tokens.text, fontWeight: '700', fontSize: 14 }}>
+              {isVintage ? 'Cut a new track' : 'Tell us a vibe'}
+            </Text>
+            <Text style={{ color: tokens.textMute, fontSize: 12, marginTop: 2 }}>
+              Generate a song with AI in 60 seconds.
+            </Text>
+          </View>
+          <Play size={18} color={tokens.brand} fill={tokens.brand} />
+        </TouchableOpacity>
       </View>
 
       {/* Error state */}

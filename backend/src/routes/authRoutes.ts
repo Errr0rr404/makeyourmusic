@@ -15,6 +15,8 @@ import {
   getEmailPreferences,
   updateEmailPreferences,
   firebaseExchange,
+  requestMagicLink,
+  verifyMagicLink,
 } from '../controllers/authController';
 import { authenticate, optionalAuth } from '../middleware/auth';
 import {
@@ -55,6 +57,12 @@ router.post('/reset-password', writeAuthLimiter, resetPasswordRules, validateReq
 // Email verification
 router.get('/verify-email/:token', verifyEmail as any);
 router.post('/resend-verification', emailDispatchLimiter, resendVerificationRules, validateRequest, resendVerification as any);
+
+// Magic-link (passwordless). Request is rate-limited as an email dispatch
+// (every call counts — response is intentionally enumeration-safe). Verify
+// uses the write-auth limiter so a stolen token can't be brute-forced.
+router.post('/magic-link/request', emailDispatchLimiter, requestMagicLink as any);
+router.post('/magic-link/verify', writeAuthLimiter, verifyMagicLink as any);
 
 // Account management (authenticated)
 router.post('/change-password', authenticate as any, writeAuthLimiter, changePasswordRules, validateRequest, changePassword as any);

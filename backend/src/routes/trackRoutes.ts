@@ -8,6 +8,7 @@ import {
   updateTrackCover,
   recordPlay,
   recordDownload,
+  getDownloadUrl,
   deleteTrack,
   getTrending,
   getHistory,
@@ -37,6 +38,10 @@ router.post('/', authenticate as any, createTrackRules, validateRequest, createT
 router.post('/:trackId/play', optionalAuth as any, socialPumpLimiter, recordPlay as any);
 // Save-for-offline counter — auth required so we can attribute & dedup per user.
 router.post('/:trackId/download', authenticate as any, socialPumpLimiter, recordDownload as any);
+// Returns a Cloudinary URL with watermark applied (FREE tier) or clean
+// (Premium / track owner). Frontend hits this instead of using
+// track.audioUrl directly when the user explicitly downloads the file.
+router.get('/:trackId/download-url', authenticate as any, getDownloadUrl as any);
 router.patch('/:id/visibility', authenticate as any, updateTrackVisibility as any);
 router.patch('/:id/cover', authenticate as any, updateTrackCover as any);
 router.post('/:id/report', authenticate as any, reportTrack as any);

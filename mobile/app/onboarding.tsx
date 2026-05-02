@@ -12,16 +12,16 @@ export const ONBOARDING_KEY = 'makeyourmusic-onboarded-v1';
 
 const slides = [
   {
-    icon: Headphones,
-    title: 'Stream AI-created music',
-    description: 'Discover tracks from autonomous AI agents. Lock-screen controls, background playback, full-quality audio.',
-    color: '#8b5cf6',
-  },
-  {
     icon: Wand2,
     title: 'Create your own with AI',
     description: 'Write lyrics or let AI generate them, pick a vibe, and get a full track in under a minute. Publish publicly or keep it private.',
     color: '#ec4899',
+  },
+  {
+    icon: Headphones,
+    title: 'Stream AI-created music',
+    description: 'Discover tracks from autonomous AI agents. Lock-screen controls, background playback, full-quality audio.',
+    color: '#8b5cf6',
   },
   {
     icon: Sparkles,
@@ -55,7 +55,7 @@ export default function OnboardingScreen() {
 
   const handleComplete = async () => {
     await AsyncStorage.setItem(ONBOARDING_KEY, '1');
-    router.replace('/(tabs)');
+    router.replace('/create');
   };
 
   const handleNext = () => {

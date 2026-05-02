@@ -4,23 +4,38 @@ import {
   Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   useAuthStore, getApi,
   GENRE_TREE, MOOD_OPTIONS, ENERGY_OPTIONS, ERA_OPTIONS, VOCAL_STYLE_OPTIONS,
 } from '@makeyourmusic/shared';
 import {
-  Sparkles, Wand2, Lock, ChevronLeft, ChevronRight, CheckCircle2,
+  Sparkles, Wand2, ChevronLeft, ChevronRight, CheckCircle2,
   AlertCircle, Zap, FileText, Settings2, Headphones, Loader2,
   BookOpen, RotateCcw, Globe, LockKeyhole, Bot, Flame, Play, Pause,
   Clock, Music2,
 } from 'lucide-react-native';
 import { ScreenContainer } from '../../components/ui/ScreenContainer';
 import { Button } from '../../components/ui/Button';
+import { AuthGateModal } from '../../components/auth/AuthGateModal';
 import { pickAndUploadImage } from '../../lib/uploadImage';
+import { track, trackGeneration } from '../../lib/analytics';
 import { hapticSelection, hapticSuccess } from '../../services/hapticService';
 import { Audio } from 'expo-av';
 import TrackPlayer from 'react-native-track-player';
 import { useTokens, useIsVintage } from '../../lib/theme';
+
+const DRAFT_KEY = 'mym_create_draft_v1';
+
+// Hand-picked seed prompts shown on the empty Idea step. Mirror of web.
+const SEED_PROMPTS = [
+  'rainy tokyo lo-fi for late-night coding',
+  "warm jazz piano, softly mic'd, 3am",
+  'dreampop on a beach in 1986',
+  'instrumental synthwave for a long drive',
+  'ambient folk with cassette tape hiss',
+  'garage rock about losing your apartment keys',
+];
 
 type Step = 'idea' | 'style' | 'lyrics' | 'generate' | 'publish';
 
@@ -60,8 +75,9 @@ interface Usage {
 
 export default function CreateScreen() {
   const router = useRouter();
-  const { generation: rawGenerationId } = useLocalSearchParams<{ generation?: string | string[] }>();
+  const { generation: rawGenerationId, prompt: rawPrompt } = useLocalSearchParams<{ generation?: string | string[]; prompt?: string | string[] }>();
   const generationId = Array.isArray(rawGenerationId) ? rawGenerationId[0] : rawGenerationId;
+  const seedPrompt = Array.isArray(rawPrompt) ? rawPrompt[0] : rawPrompt;
   const { isAuthenticated, user } = useAuthStore();
   const [step, setStep] = useState<Step>('idea');
 
@@ -77,7 +93,9 @@ export default function CreateScreen() {
   const [vibeReference, setVibeReference] = useState('');
   const [style, setStyle] = useState('');
   const [language, setLanguage] = useState('English');
-  const [isInstrumental, setIsInstrumental] = useState(false);
+  // Default first-time guests to instrumental: skips the lyrics step so the
+  // first audio happens faster. Authenticated users keep vocal as default.
+  const [isInstrumental, setIsInstrumental] = useState(!isAuthenticated);
   const [durationSec, setDurationSec] = useState(120);
   const [bpm, setBpm] = useState<number | null>(null);
   const [musicalKey, setMusicalKey] = useState('');
@@ -87,6 +105,8 @@ export default function CreateScreen() {
   const [generation, setGeneration] = useState<Generation | null>(null);
   const [genError, setGenError] = useState('');
   const [usage, setUsage] = useState<Usage | null>(null);
+  const [authGateOpen, setAuthGateOpen] = useState(false);
+  const pendingActionRef = useRef<'lyrics' | 'generate' | null>(null);
 
   const [agents, setAgents] = useState<any[]>([]);
   const [genres, setGenres] = useState<any[]>([]);
@@ -142,12 +162,48 @@ export default function CreateScreen() {
     }, [])
   );
 
+  // Restore any draft saved before a full-screen auth redirect
+  useEffect(() => {
+    if (seedPrompt) {
+      setIdea(seedPrompt);
+      return;
+    }
+    AsyncStorage.getItem(DRAFT_KEY)
+      .then((raw) => {
+        if (!raw) return;
+        try {
+          const d = JSON.parse(raw);
+          if (d.idea) setIdea(d.idea);
+          if (d.title) setTitle(d.title);
+          if (d.genre) setGenre(d.genre);
+          if (d.subGenre) setSubGenre(d.subGenre);
+          if (d.mood) setMood(d.mood);
+          if (d.energy) setEnergy(d.energy);
+          if (d.era) setEra(d.era);
+          if (d.vocalStyle) setVocalStyle(d.vocalStyle);
+          if (d.style) setStyle(d.style);
+          if (d.lyrics) setLyrics(d.lyrics);
+          if (typeof d.isInstrumental === 'boolean') setIsInstrumental(d.isInstrumental);
+          if (typeof d.durationSec === 'number') setDurationSec(d.durationSec);
+        } catch { /* ignore malformed draft */ }
+        AsyncStorage.removeItem(DRAFT_KEY).catch(() => {});
+      })
+      .catch(() => {});
+  // Run once on mount only
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!isAuthenticated) return;
     getApi().get('/ai/usage').then((r) => setUsage(r.data.usage)).catch(() => {});
     getApi().get('/agents/mine').then((r) => setAgents(r.data.agents || [])).catch(() => {});
     getApi().get('/genres').then((r) => setGenres(r.data.genres || [])).catch(() => {});
   }, [isAuthenticated]);
+
+  // Funnel: mirror web's create_step_* events on every step change.
+  useEffect(() => {
+    track(`create_step_${step}` as const, { isAuthenticated: !!isAuthenticated });
+  }, [step, isAuthenticated]);
 
   useEffect(() => {
     if (!generationId) {
@@ -227,19 +283,6 @@ export default function CreateScreen() {
     };
   }, [generationId, isAuthenticated, router]);
 
-  if (!isAuthenticated) {
-    return (
-      <ScreenContainer scrollable={false}>
-        <View className="flex-1 items-center justify-center px-6">
-          <Lock size={48} color="#71717a" />
-          <Text className="text-mym-text text-xl font-bold mt-4 mb-2">Create Music with AI</Text>
-          <Text className="text-mym-muted text-sm mb-6 text-center">Log in to generate tracks</Text>
-          <Button title="Sign in" onPress={() => router.push('/(auth)/login')} size="lg" />
-        </View>
-      </ScreenContainer>
-    );
-  }
-
   if (loadingExistingGeneration) {
     return (
       <ScreenContainer scrollable={false}>
@@ -302,8 +345,13 @@ export default function CreateScreen() {
             clearTimeout(pollTimer.current);
             pollTimer.current = null;
           }
-          if (g.status === 'FAILED') setGenError(g.errorMessage || 'Generation failed');
-          else setStep('publish');
+          if (g.status === 'FAILED') {
+            setGenError(g.errorMessage || 'Generation failed');
+            trackGeneration('failed', { reason: g.errorMessage || 'unknown' });
+          } else {
+            setStep('publish');
+            trackGeneration('succeeded', { durationSec: g.durationSec || undefined });
+          }
           return;
         }
       } catch {
@@ -335,6 +383,7 @@ export default function CreateScreen() {
     }
     setGeneration(null);
     setStep('generate');
+    trackGeneration('started', { genre: genre || undefined, isInstrumental, durationSec });
     try {
       // Backend builds the rich prompt from the structured fields below.
       const res = await getApi().post('/ai/music', {
@@ -366,6 +415,35 @@ export default function CreateScreen() {
         setUsage(err.response.data.usage);
       }
     }
+  };
+
+  const persistDraft = () => {
+    AsyncStorage.setItem(DRAFT_KEY, JSON.stringify({
+      idea, title, genre, subGenre, mood, energy, era,
+      vocalStyle, style, lyrics, isInstrumental, durationSec,
+    })).catch(() => {});
+  };
+
+  const requireAuth = (action: 'lyrics' | 'generate'): boolean => {
+    if (isAuthenticated) return true;
+    pendingActionRef.current = action;
+    persistDraft();
+    setAuthGateOpen(true);
+    track('auth_gate_shown', { action });
+    return false;
+  };
+
+  const onAuthSuccess = () => {
+    setAuthGateOpen(false);
+    const pending = pendingActionRef.current;
+    pendingActionRef.current = null;
+    track('auth_gate_completed', { action: pending || 'unknown' });
+    if (pending === 'lyrics') generateLyrics();
+    else if (pending === 'generate') startGeneration();
+  };
+
+  const onNavigateToRegister = () => {
+    setAuthGateOpen(false);
   };
 
   const handlePublish = async () => {
@@ -540,7 +618,7 @@ export default function CreateScreen() {
               usage={usage}
               onBack={() => setStep('idea')}
               onNext={() => {
-                if (isInstrumental) startGeneration();
+                if (isInstrumental) { if (requireAuth('generate')) startGeneration(); }
                 else setStep('lyrics');
               }}
             />
@@ -554,9 +632,9 @@ export default function CreateScreen() {
               error={lyricsError}
               isInstrumental={isInstrumental}
               setIsInstrumental={setIsInstrumental}
-              onGenerate={generateLyrics}
+              onGenerate={() => { if (requireAuth('lyrics')) generateLyrics(); }}
               onBack={() => setStep('style')}
-              onNext={startGeneration}
+              onNext={() => { if (requireAuth('generate')) startGeneration(); }}
             />
           )}
 
@@ -564,7 +642,7 @@ export default function CreateScreen() {
             <GenerateStep
               generation={generation}
               error={genError}
-              onRetry={startGeneration}
+              onRetry={() => { if (requireAuth('generate')) startGeneration(); }}
               onStartOver={startOver}
               onBack={() => {
                 if (pollTimer.current) clearTimeout(pollTimer.current);
@@ -598,6 +676,12 @@ export default function CreateScreen() {
           )}
         </ScrollView>
       </KeyboardAvoidingView>
+      <AuthGateModal
+        visible={authGateOpen}
+        onClose={() => { setAuthGateOpen(false); pendingActionRef.current = null; }}
+        onSuccess={onAuthSuccess}
+        onNavigateToRegister={onNavigateToRegister}
+      />
     </ScreenContainer>
   );
 }
@@ -690,6 +774,20 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
           style={{ minHeight: 100, textAlignVertical: 'top' }}
         />
         <Text className="text-mym-muted text-xs mt-1">{idea.length}/1000 — more vivid = better</Text>
+
+        {!idea && (
+          <View className="flex-row flex-wrap gap-2 mt-3">
+            {SEED_PROMPTS.map((p) => (
+              <TouchableOpacity
+                key={p}
+                onPress={() => { setIdea(p); track('seed_prompt_picked', { prompt: p }); hapticSelection(); }}
+                className="px-3 py-1.5 rounded-full bg-mym-surface border border-mym-border"
+              >
+                <Text className="text-mym-muted text-[11px] font-medium">{p}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <Text className="text-mym-text text-sm font-semibold mb-2 mt-4">
           Working title <Text className="text-mym-muted font-normal">(optional)</Text>
@@ -835,13 +933,41 @@ function StyleStep({
     }
   };
 
+  const surpriseMe = () => {
+    const g = GENRE_TREE[Math.floor(Math.random() * GENRE_TREE.length)];
+    const m = MOOD_OPTIONS[Math.floor(Math.random() * MOOD_OPTIONS.length)];
+    const e = ENERGY_OPTIONS[Math.floor(Math.random() * ENERGY_OPTIONS.length)];
+    if (g) {
+      setGenre((g as any).name);
+      setSubGenre('');
+    }
+    if (m) setMood((m as any).name);
+    if (e) setEnergy((e as any).name);
+    hapticSelection();
+    track('style_surprise_me', { genre: (g as any)?.name, mood: (m as any)?.name, energy: (e as any)?.name });
+  };
+
   return (
     <View className="px-4 pt-1">
       <View className="bg-mym-card rounded-xl border border-mym-border p-4">
-        <Text className="text-mym-text text-lg font-bold mb-1">Pick the sound first</Text>
-        <Text className="text-mym-muted text-xs mb-4">
-          Lyrics generated next will follow this genre, vocal direction, and energy.
-        </Text>
+        <View className="flex-row items-start justify-between gap-2 mb-1">
+          <View className="flex-1 pr-2">
+            <Text className="text-mym-text text-lg font-bold">Pick the sound first</Text>
+            <Text className="text-mym-muted text-xs mt-0.5">
+              Lyrics generated next will follow this genre, vocal direction, and energy.
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={surpriseMe}
+            className="flex-row items-center gap-1 px-3 py-1.5 rounded-full"
+            style={{ backgroundColor: tokens.accentSoft, borderWidth: 1, borderColor: tokens.accent }}
+            accessibilityLabel="Surprise me with random style"
+          >
+            <Sparkles size={12} color={tokens.accent} />
+            <Text style={{ color: tokens.accent, fontWeight: '700', fontSize: 11 }}>Surprise me</Text>
+          </TouchableOpacity>
+        </View>
+        <View style={{ height: 12 }} />
 
         <TouchableOpacity
           onPress={() => setIsInstrumental(!isInstrumental)}

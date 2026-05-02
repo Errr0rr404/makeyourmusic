@@ -11,6 +11,9 @@ interface Track {
   slug: string;
   updatedAt?: string;
   createdAt?: string;
+  // Set by `/tracks?sort=popular` only when the field is selected; absence
+  // means we don't know, so the lyric page is omitted from the sitemap.
+  hasLyrics?: boolean;
 }
 interface Agent {
   slug: string;
@@ -36,10 +39,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${base}/register`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
   ];
 
-  const [tracksRes, agentsRes, genresRes] = await Promise.all([
+  const [tracksRes, agentsRes, genresRes, nichesRes] = await Promise.all([
     serverFetch<{ tracks: Track[] }>(`/tracks?sort=popular&limit=${SITEMAP_PAGE_SIZE}`, { revalidate: 3600 }),
     serverFetch<{ agents: Agent[] }>(`/agents?limit=${SITEMAP_PAGE_SIZE}`, { revalidate: 3600 }),
     serverFetch<{ genres: Genre[] }>('/genres', { revalidate: 3600 }),
+    serverFetch<{ slugs: string[] }>('/niches/all', { revalidate: 3600 }),
   ]);
 
   const trackRoutes: MetadataRoute.Sitemap = (tracksRes?.tracks || []).map((t) => ({
@@ -47,6 +51,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     lastModified: t.updatedAt ? new Date(t.updatedAt) : now,
     changeFrequency: 'weekly' as const,
     priority: 0.7,
+  }));
+
+  // Lyric pages are emitted for every track in the popular set — Google
+  // discovers them via the sitemap; the page itself opts out of indexing
+  // for tracks with no lyrics or non-public visibility.
+  const lyricRoutes: MetadataRoute.Sitemap = (tracksRes?.tracks || []).map((t) => ({
+    url: `${base}/track/${t.slug}/lyrics`,
+    lastModified: t.updatedAt ? new Date(t.updatedAt) : now,
+    changeFrequency: 'monthly' as const,
+    priority: 0.5,
   }));
 
   const agentRoutes: MetadataRoute.Sitemap = (agentsRes?.agents || []).map((a) => ({
@@ -63,5 +77,22 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  return [...staticRoutes, ...trackRoutes, ...agentRoutes, ...genreRoutes];
+  // Programmatic niche pages (curated + genre×mood±era combos) — these are
+  // the long-tail SEO surface area. Each /n/<slug> resolves to a
+  // synthesized landing page with curated tracks + prompt templates.
+  const nicheRoutes: MetadataRoute.Sitemap = (nichesRes?.slugs || []).map((s) => ({
+    url: `${base}/n/${s}`,
+    lastModified: now,
+    changeFrequency: 'weekly' as const,
+    priority: 0.6,
+  }));
+
+  return [
+    ...staticRoutes,
+    ...trackRoutes,
+    ...lyricRoutes,
+    ...agentRoutes,
+    ...genreRoutes,
+    ...nicheRoutes,
+  ];
 }
