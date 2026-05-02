@@ -4,6 +4,7 @@ export { VUMeter, VUMeterStereo } from './VUMeter';
 export { TransportButton } from './TransportButton';
 export { Cassette } from './Cassette';
 export { TapeProgress } from './TapeProgress';
+export { DeckCassetteWindow } from './DeckCassetteWindow';
 export { Readout } from './Readout';
 export { LedDot } from './LedDot';
 export { TapeCard } from './TapeCard';

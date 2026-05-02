@@ -418,7 +418,7 @@ export default function CreatePage() {
         durationSec,
         bpm: bpm ?? undefined,
         key: musicalKey || undefined,
-      });
+      }, { timeout: 90000 });
       const generated = (res.data.lyrics || '').trim();
       if (!generated) {
         setLyricsError('The AI returned empty lyrics. Try a more specific idea.');

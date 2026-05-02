@@ -114,8 +114,9 @@ html.light {
 
 /* ── VINTAGE NIGHT (default vintage palette) ───────────────── */
 html.skin-vintage {
-  /* Vintage gives the cassette deck more breathing room */
-  --player-height: 100px;
+  /* Vintage gives the cassette deck more breathing room — extra height for
+     wood end-caps + labeled transport buttons. */
+  --player-height: 116px;
 
   /* Hero swap — warm dial-glow gradient on a paper grid */
   --hero-gradient: linear-gradient(135deg, rgba(255, 179, 71, 0.30) 0%, rgba(232, 90, 60, 0.22) 50%, rgba(192, 57, 43, 0.18) 100%);
