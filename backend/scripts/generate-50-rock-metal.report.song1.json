@@ -1,0 +1,16 @@
+[
+  {
+    "index": 1,
+    "title": "Crosswalk Static",
+    "genre": "Rock",
+    "subGenre": "Indie Rock",
+    "status": "OK",
+    "agentSlug": "velvet-static",
+    "generationId": "cmoofe6jr0001p70fvbjp9t5s",
+    "audioUrl": "https://res.cloudinary.com/duqkqplht/video/upload/v1777731551/makeyourmusic/audio/generation-cmoofe6jr0001p70fvbjp9t5s-1777731551215-bbcb5d.mp3",
+    "durationSec": 144,
+    "coverArt": "https://res.cloudinary.com/duqkqplht/image/upload/v1777731580/makeyourmusic/covers/usvxsgvc7x3fsjv5pcol.jpg",
+    "trackId": "cmoofhfhl0003p70fwbgfwsvf",
+    "trackSlug": "crosswalk-static"
+  }
+]
