@@ -19,19 +19,7 @@ import logger from '../utils/logger';
 import { prisma } from '../utils/db';
 import { processMusicGeneration } from './aiGenerationController';
 import { assertCanGenerate } from '../utils/aiUsage';
-
-const ALLOWED_AUDIO_MIME = new Set([
-  'audio/mpeg',
-  'audio/mp4',
-  'audio/m4a',
-  'audio/x-m4a',
-  'audio/wav',
-  'audio/x-wav',
-  'audio/webm',
-  'audio/ogg',
-  'audio/aac',
-  'audio/flac',
-]);
+import { AUDIO_MIME_TYPES, validateBufferedUpload } from '../utils/fileValidation';
 
 const DAILY_VOICE_CAP = 100;
 const voiceCounts = new Map<string, { day: string; count: number }>();
@@ -78,22 +66,23 @@ export const voiceCreate = async (req: RequestWithUser & { file?: any }, res: Re
       res.status(401).json({ error: 'Authentication required' });
       return;
     }
-    if (!bumpVoiceCount(req.user.userId)) {
-      res.status(429).json({ error: 'Daily voice-create limit reached.' });
-      return;
-    }
     if (!req.file?.buffer) {
       res.status(400).json({ error: 'audio file is required' });
       return;
     }
     const mimetype: string = req.file.mimetype || '';
-    if (!ALLOWED_AUDIO_MIME.has(mimetype)) {
+    if (!AUDIO_MIME_TYPES.has(mimetype)) {
       res.status(400).json({ error: 'Unsupported audio format. Use mp3/m4a/wav/webm/ogg/aac/flac.' });
       return;
     }
     const buf: Buffer = req.file.buffer;
     if (buf.length > 5 * 1024 * 1024) {
       res.status(413).json({ error: 'audio too large (max 5MB)' });
+      return;
+    }
+    const validationError = validateBufferedUpload(req.file, AUDIO_MIME_TYPES);
+    if (validationError) {
+      res.status(400).json({ error: validationError });
       return;
     }
 
@@ -111,6 +100,10 @@ export const voiceCreate = async (req: RequestWithUser & { file?: any }, res: Re
         return;
       }
       throw err;
+    }
+    if (!bumpVoiceCount(req.user.userId)) {
+      res.status(429).json({ error: 'Daily voice-create limit reached.' });
+      return;
     }
 
     const transcript = await transcribeBuffer(buf, mimetype);

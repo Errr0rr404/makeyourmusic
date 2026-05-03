@@ -86,7 +86,15 @@ router.get('/track/:slug', async (req, res) => {
     const allowedDomains =
       process.env.EMBED_ALLOWED_DOMAINS ||
       (env === 'production' ? "'self'" : '*');
-    res.setHeader('Content-Security-Policy', `frame-ancestors ${allowedDomains}`);
+    res.setHeader('Content-Security-Policy', [
+      "default-src 'none'",
+      "base-uri 'none'",
+      "form-action 'none'",
+      "img-src https: data:",
+      "media-src https:",
+      "style-src 'unsafe-inline'",
+      `frame-ancestors ${allowedDomains}`,
+    ].join('; '));
     res.type('text/html').send(html);
   } catch (error) {
     logger.error('embed track error', { error: (error as Error).message });

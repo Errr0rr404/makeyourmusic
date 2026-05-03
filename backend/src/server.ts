@@ -87,6 +87,8 @@ import userRoutes from './routes/userRoutes';
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001', 10);
 
+app.disable('x-powered-by');
+
 // Railway and most production hosts terminate TLS/proxy before Express.
 // Trust exactly one proxy hop so req.ip and express-rate-limit use the real
 // client IP from X-Forwarded-For without accepting an arbitrary proxy chain.
@@ -163,16 +165,18 @@ app.post(
   handleWebhook as any,
 );
 
+// Coarse API throttle before body parsing. This rejects abusive bursts before
+// Express spends CPU/memory parsing JSON or multipart metadata. Route-level
+// authenticated limiters still apply later for user-specific quotas.
+app.use('/api', apiLimiter);
+
 // Body parsing — keep modest since file uploads go through multer (50MB) and
 // don't need this codepath. 1MB is plenty for JSON metadata and form fields.
 app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb', parameterLimit: 100 }));
 app.use(sanitizeBody);
 app.use(cookieParser());
 app.use(performanceMonitor);
-
-// Rate limiting
-app.use('/api', apiLimiter);
 
 // Health check
 app.get('/api/health', (_req, res) => {
@@ -241,6 +245,10 @@ if (process.env.NODE_ENV !== 'test') {
   // Socket.IO sets its own listeners on the upgrade event; without this it
   // would need a separate port (which Railway one-port deploys can't expose).
   const server = http.createServer(app);
+  server.requestTimeout = parseInt(process.env.HTTP_REQUEST_TIMEOUT_MS || '300000', 10);
+  server.headersTimeout = parseInt(process.env.HTTP_HEADERS_TIMEOUT_MS || '15000', 10);
+  server.keepAliveTimeout = parseInt(process.env.HTTP_KEEP_ALIVE_TIMEOUT_MS || '5000', 10);
+  server.maxRequestsPerSocket = parseInt(process.env.HTTP_MAX_REQUESTS_PER_SOCKET || '1000', 10);
   // Lazy-import the realtime layer so tests / scripts that import server.ts
   // for the express app don't pay the socket.io startup cost.
   void import('./realtime').then(({ attachSocketIo }) => attachSocketIo(server)).catch((err) => {

@@ -40,8 +40,7 @@ export function computeTrendingScore(
 const RECOMPUTE_AGE_MIN = parseInt(process.env.TRENDING_RECOMPUTE_AGE_MIN || '10', 10);
 
 export async function refreshTrendingScores(_maxRows = 5000): Promise<number> {
-  const result = await prisma.$executeRawUnsafe(
-    `
+  const result = await prisma.$executeRaw`
     UPDATE tracks
     SET
       trending_score = (
@@ -55,9 +54,8 @@ export async function refreshTrendingScores(_maxRows = 5000): Promise<number> {
       is_public = true
       AND status = 'ACTIVE'
       AND takedown_status IS NULL
-      AND (trending_updated_at IS NULL OR trending_updated_at < NOW() - INTERVAL '${RECOMPUTE_AGE_MIN} minutes')
-    `
-  );
+      AND (trending_updated_at IS NULL OR trending_updated_at < NOW() - (${RECOMPUTE_AGE_MIN} * INTERVAL '1 minute'))
+  `;
   logger.info('Trending scores refreshed', { updated: result });
   return Number(result) || 0;
 }

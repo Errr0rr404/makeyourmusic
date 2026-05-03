@@ -2,6 +2,7 @@ import { Response } from 'express';
 import { RequestWithUser } from '../types';
 import logger from '../utils/logger';
 import { prisma } from '../utils/db';
+import { AUDIO_MIME_TYPES, validateBufferedUpload } from '../utils/fileValidation';
 
 // Per-user daily transcription cap. The transcribe endpoint forwards to a
 // paid OpenAI audio API; without a cap a single user could burn $5+/min.
@@ -23,22 +24,6 @@ function bumpTranscribeCount(userId: string): boolean {
 // Suppress unused-var TS warnings when prisma isn't referenced yet.
 void prisma;
 
-// MIME types Whisper / gpt-4o-mini-transcribe actually accept. Filtering
-// here saves an OpenAI quota call and avoids relaying user-controlled
-// binary garbage to a paid endpoint.
-const ALLOWED_AUDIO_MIME = new Set([
-  'audio/mpeg',
-  'audio/mp4',
-  'audio/m4a',
-  'audio/x-m4a',
-  'audio/wav',
-  'audio/x-wav',
-  'audio/webm',
-  'audio/ogg',
-  'audio/aac',
-  'audio/flac',
-]);
-
 // Voice → text. Used by the mobile "hold to speak a song idea" flow.
 //
 // Two transcription backends are supported, picked by env:
@@ -54,18 +39,12 @@ export const transcribeAudio = async (req: RequestWithUser & { file?: any }, res
       res.status(401).json({ error: 'Authentication required' });
       return;
     }
-    if (!bumpTranscribeCount(req.user.userId)) {
-      res.status(429).json({
-        error: 'Daily transcription limit reached. Please try again tomorrow.',
-      });
-      return;
-    }
     if (!req.file?.buffer) {
       res.status(400).json({ error: 'audio file is required' });
       return;
     }
     const mimetype: string = req.file.mimetype || '';
-    if (!ALLOWED_AUDIO_MIME.has(mimetype)) {
+    if (!AUDIO_MIME_TYPES.has(mimetype)) {
       res.status(400).json({
         error: 'Unsupported audio format. Use mp3/m4a/wav/webm/ogg/aac/flac.',
       });
@@ -76,9 +55,20 @@ export const transcribeAudio = async (req: RequestWithUser & { file?: any }, res
       res.status(413).json({ error: 'audio too large (max 5MB)' });
       return;
     }
+    const validationError = validateBufferedUpload(req.file, AUDIO_MIME_TYPES);
+    if (validationError) {
+      res.status(400).json({ error: validationError });
+      return;
+    }
 
     if (!process.env.OPENAI_API_KEY) {
       res.status(503).json({ error: 'Transcription is not configured on this server' });
+      return;
+    }
+    if (!bumpTranscribeCount(req.user.userId)) {
+      res.status(429).json({
+        error: 'Daily transcription limit reached. Please try again tomorrow.',
+      });
       return;
     }
 
@@ -94,6 +84,7 @@ export const transcribeAudio = async (req: RequestWithUser & { file?: any }, res
       method: 'POST',
       headers: { Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
       body: formData,
+      signal: AbortSignal.timeout(30_000),
     });
     if (!resp.ok) {
       const txt = await resp.text();

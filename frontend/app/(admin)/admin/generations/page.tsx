@@ -181,7 +181,7 @@ export default function GenerationsPage() {
                     <td className="px-3 py-2.5 text-right text-xs text-[hsl(var(--muted-foreground))]">{relTime(g.createdAt)}</td>
                     <td className="px-3 py-2.5 text-right">
                       {g.track && (
-                        <Link href={`/track/${g.track.slug}`} target="_blank" className="text-xs text-[hsl(var(--accent))] inline-flex items-center gap-1 hover:underline">
+                        <Link href={`/track/${g.track.slug}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[hsl(var(--accent))] inline-flex items-center gap-1 hover:underline">
                           Track <ExternalLink className="w-3 h-3" />
                         </Link>
                       )}

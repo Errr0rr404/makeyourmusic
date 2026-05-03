@@ -271,7 +271,7 @@ export default function AdminRevenuePage() {
                   <tr key={s.id} className="border-b border-white/5 last:border-0">
                     <td className="px-3 py-2 text-xs">{s.buyer?.username || 'Guest'}</td>
                     <td className="px-3 py-2 text-xs">
-                      <Link href={`/track/${s.track.slug}`} target="_blank" className="text-[hsl(var(--accent))] hover:underline">{s.track.title}</Link>
+                      <Link href={`/track/${s.track.slug}`} target="_blank" rel="noopener noreferrer" className="text-[hsl(var(--accent))] hover:underline">{s.track.title}</Link>
                     </td>
                     <td className="px-3 py-2 text-center"><span className="text-[10px] uppercase tracking-wider text-cyan-300">{s.licenseTier}</span></td>
                     <td className="px-3 py-2 text-right text-xs font-mono text-emerald-300">{cents(s.amountCents)}</td>
@@ -306,7 +306,7 @@ export default function AdminRevenuePage() {
                   <tr key={s.id} className="border-b border-white/5 last:border-0">
                     <td className="px-3 py-2 text-xs">{s.subscriber.username}</td>
                     <td className="px-3 py-2 text-xs font-medium">{s.creator.username}</td>
-                    <td className="px-3 py-2 text-xs"><Link href={`/playlist/${s.playlist.slug}`} target="_blank" className="text-[hsl(var(--accent))] hover:underline">{s.playlist.title}</Link></td>
+                    <td className="px-3 py-2 text-xs"><Link href={`/playlist/${s.playlist.slug}`} target="_blank" rel="noopener noreferrer" className="text-[hsl(var(--accent))] hover:underline">{s.playlist.title}</Link></td>
                     <td className="px-3 py-2 text-right text-xs font-mono text-emerald-300">{cents(s.amountCents)}</td>
                     <td className="px-3 py-2 text-right text-xs text-[hsl(var(--muted-foreground))]">{new Date(s.createdAt).toLocaleDateString()}</td>
                   </tr>

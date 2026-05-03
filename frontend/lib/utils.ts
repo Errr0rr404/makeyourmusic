@@ -33,10 +33,10 @@ export function validatePaymentRedirect(rawUrl: unknown): string | null {
   } catch {
     return null;
   }
-  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
   if (typeof window !== 'undefined' && url.origin === window.location.origin) {
     return url.toString();
   }
+  if (url.protocol !== 'https:') return null;
   const host = url.hostname.toLowerCase();
   if (PAYMENT_REDIRECT_HOSTS.includes(host)) return url.toString();
   // Stripe rotates *.stripe.com subdomains for hosted invoice pages.

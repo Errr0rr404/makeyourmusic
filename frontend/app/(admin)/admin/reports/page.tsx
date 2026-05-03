@@ -147,7 +147,7 @@ export default function AdminReportsPage() {
                     <strong className="text-white">{r.user?.username || 'Someone'}</strong>{' '}
                     <span className="text-[hsl(var(--muted-foreground))]">reported</span>{' '}
                     {r.track ? (
-                      <Link href={`/track/${r.track.slug}`} target="_blank" className="text-[hsl(var(--accent))] hover:underline inline-flex items-center gap-1">
+                      <Link href={`/track/${r.track.slug}`} target="_blank" rel="noopener noreferrer" className="text-[hsl(var(--accent))] hover:underline inline-flex items-center gap-1">
                         <strong>{r.track.title}</strong>
                         <ExternalLink className="w-3 h-3" />
                       </Link>

@@ -41,16 +41,16 @@ const LOCK_DJ_SWEEP = 1010;
 const LOCK_ACCOUNT_PURGE = 1011;
 
 async function withLock(lockId: number, fn: () => Promise<void>): Promise<boolean> {
-  const rows = await prisma.$queryRawUnsafe<Array<{ pg_try_advisory_lock: boolean }>>(
-    `SELECT pg_try_advisory_lock(${lockId}) as pg_try_advisory_lock`
-  );
+  const rows = await prisma.$queryRaw<Array<{ pg_try_advisory_lock: boolean }>>`
+    SELECT pg_try_advisory_lock(${lockId}) as pg_try_advisory_lock
+  `;
   const acquired = rows[0]?.pg_try_advisory_lock === true;
   if (!acquired) return false;
   try {
     await fn();
     return true;
   } finally {
-    await prisma.$queryRawUnsafe(`SELECT pg_advisory_unlock(${lockId})`);
+    await prisma.$queryRaw`SELECT pg_advisory_unlock(${lockId})`;
   }
 }
 

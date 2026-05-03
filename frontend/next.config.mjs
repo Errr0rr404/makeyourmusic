@@ -3,6 +3,15 @@ import { fileURLToPath } from 'node:url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const workspaceRoot = path.resolve(__dirname, '..');
+const posthogHost = (() => {
+  try {
+    const raw = process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com';
+    const url = new URL(raw);
+    return url.protocol === 'https:' ? url.origin : 'https://us.i.posthog.com';
+  } catch {
+    return 'https://us.i.posthog.com';
+  }
+})();
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -53,8 +62,8 @@ const nextConfig = {
       // unsafe-eval is unfortunate but Next.js + some libs (motion, recharts)
       // rely on Function() in production builds. unsafe-inline covers small
       // bootstrap snippets injected by Next.
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://js.stripe.com https://*.firebaseio.com https://*.googleapis.com https://apis.google.com",
-      "connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.up.railway.app https://res.cloudinary.com https://*.cloudinary.com",
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.stripe.com https://js.stripe.com https://*.firebaseio.com https://*.googleapis.com https://apis.google.com ${posthogHost}`,
+      `connect-src 'self' https://*.stripe.com https://api.stripe.com https://*.firebaseio.com https://*.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://*.up.railway.app https://res.cloudinary.com https://*.cloudinary.com ${posthogHost}`,
       "frame-src https://js.stripe.com https://hooks.stripe.com https://*.firebaseapp.com",
       'upgrade-insecure-requests',
     ].join('; ');

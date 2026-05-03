@@ -5,6 +5,7 @@ import type { TrackItem } from '@makeyourmusic/shared';
 
 const DOWNLOADS_DIR_NAME = 'makeyourmusic-downloads';
 const DOWNLOADS_META_KEY = 'makeyourmusic_downloads';
+const MAX_DOWNLOAD_BYTES = 150 * 1024 * 1024;
 
 export interface DownloadedTrack extends TrackItem {
   localAudioUri: string;
@@ -83,6 +84,25 @@ export class DownloadAuthRequiredError extends Error {
   }
 }
 
+function isHttpUrl(rawUrl: string): boolean {
+  try {
+    const url = new URL(rawUrl);
+    return url.protocol === 'https:' || url.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
+function hasSameOriginAsApi(rawUrl: string, apiBase: string): boolean {
+  try {
+    const apiOrigin = new URL(apiBase).origin;
+    const audioOrigin = new URL(rawUrl).origin;
+    return apiOrigin === audioOrigin;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Download a track for offline playback. Requires the user to be logged in
  * — the server records a Download row so we can show download counts and
@@ -101,16 +121,22 @@ export async function downloadTrack(
   const filename = `${track.id}.mp3`;
   const file = new File(dir, filename);
 
+  if (!isHttpUrl(track.audioUrl)) {
+    throw new Error('Download URL must be http or https');
+  }
+
   // Delete any stale file before writing.
   if (file.exists) {
     try { file.delete(); } catch { /* non-fatal */ }
   }
 
-  // Stream the download via fetch → ReadableStream → chunked file writes.
+  // Read the download via fetch → ReadableStream → chunked buffers.
   // The previous implementation pulled the entire MP3 into a JS ArrayBuffer
   // and then wrote it synchronously, which froze the JS thread for several
   // seconds on large files (ANR on Android, white screen on iOS, OOM at
-  // 30+ MB). Streaming keeps memory bounded and the UI responsive.
+  // 30+ MB). Expo's File.write currently replaces rather than appends, so we
+  // still merge before the final write; the hard byte cap below prevents
+  // unbounded memory growth.
   //
   // Use the authenticated api client so that token-gated audio URLs (premium /
   // private tracks) include the Authorization header. Plain `fetch(url)` used
@@ -119,7 +145,7 @@ export async function downloadTrack(
   const apiBase = api.defaults.baseURL || '';
   // If the audio URL is on the API origin, route via api client to inherit
   // auth interceptors. Otherwise (Cloudinary, etc.) use a plain fetch.
-  const sameOriginAsApi = apiBase && track.audioUrl.startsWith(apiBase.replace(/\/api$/, ''));
+  const sameOriginAsApi = Boolean(apiBase && hasSameOriginAsApi(track.audioUrl, apiBase));
   const headers: Record<string, string> = {};
   if (sameOriginAsApi) {
     const token = useAuthStore.getState().accessToken;
@@ -131,41 +157,58 @@ export async function downloadTrack(
   let written = 0;
   const totalHeader = response.headers.get('content-length');
   const total = totalHeader ? parseInt(totalHeader, 10) : 0;
+  if (total > MAX_DOWNLOAD_BYTES) {
+    throw new Error('Download is too large for offline storage');
+  }
   const chunks: Uint8Array[] = [];
 
-  if (response.body && typeof (response.body as ReadableStream).getReader === 'function') {
-    file.create();
-    const reader = (response.body as ReadableStream<Uint8Array>).getReader();
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      if (value && value.byteLength > 0) {
-        // Append chunk. The new expo-file-system File.write replaces the
-        // file content; for append-style streaming we rebuild the file
-        // bytes incrementally. Using `file.write(new Uint8Array(...))` per
-        // chunk would truncate, so accumulate then write at end.
-        chunks.push(value);
-        written += value.byteLength;
-        if (total > 0) onProgress?.(Math.min(0.99, written / total));
+  try {
+    if (response.body && typeof (response.body as ReadableStream).getReader === 'function') {
+      file.create();
+      const reader = (response.body as ReadableStream<Uint8Array>).getReader();
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (value && value.byteLength > 0) {
+          // Append chunk. The new expo-file-system File.write replaces the
+          // file content; for append-style streaming we rebuild the file
+          // bytes incrementally. Using `file.write(new Uint8Array(...))` per
+          // chunk would truncate, so accumulate then write at end.
+          chunks.push(value);
+          written += value.byteLength;
+          if (written > MAX_DOWNLOAD_BYTES) {
+            await reader.cancel();
+            throw new Error('Download is too large for offline storage');
+          }
+          if (total > 0) onProgress?.(Math.min(0.99, written / total));
+        }
       }
+      // Single final write — but the bytes are already on the JS heap. Splitting
+      // into smaller writes if the runtime supports an append API would be ideal;
+      // for now this preserves ordering and keeps the worst-case to a brief
+      // single write rather than the previous "block, decode, write" pattern.
+      const merged = new Uint8Array(written);
+      let offset = 0;
+      for (const chunk of chunks) {
+        merged.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      file.write(merged);
+    } else {
+      // Fallback for environments without ReadableStream support.
+      const buffer = await response.arrayBuffer();
+      if (buffer.byteLength > MAX_DOWNLOAD_BYTES) {
+        throw new Error('Download is too large for offline storage');
+      }
+      file.create();
+      file.write(new Uint8Array(buffer));
+      written = buffer.byteLength;
     }
-    // Single final write — but the bytes are already on the JS heap. Splitting
-    // into smaller writes if the runtime supports an append API would be ideal;
-    // for now this preserves ordering and keeps the worst-case to a brief
-    // single write rather than the previous "block, decode, write" pattern.
-    const merged = new Uint8Array(written);
-    let offset = 0;
-    for (const chunk of chunks) {
-      merged.set(chunk, offset);
-      offset += chunk.byteLength;
+  } catch (err) {
+    if (file.exists) {
+      try { file.delete(); } catch { /* non-fatal cleanup */ }
     }
-    file.write(merged);
-  } else {
-    // Fallback for environments without ReadableStream support.
-    const buffer = await response.arrayBuffer();
-    file.create();
-    file.write(new Uint8Array(buffer));
-    written = buffer.byteLength;
+    throw err;
   }
 
   const downloadedTrack: DownloadedTrack = {

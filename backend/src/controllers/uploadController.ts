@@ -3,40 +3,40 @@ import { RequestWithUser } from '../types';
 import { uploadBuffer } from '../utils/cloudinary';
 import logger from '../utils/logger';
 import multer from 'multer';
+import {
+  createMimeFileFilter,
+  GENERAL_UPLOAD_MIME_TYPES,
+  validateBufferedUpload,
+  VIDEO_MIME_TYPES,
+} from '../utils/fileValidation';
 
 // Multer config for memory storage
 const storage = multer.memoryStorage();
 
 export const upload = multer({
   storage,
-  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
-  fileFilter: (_req, file, cb) => {
-    const allowedTypes = [
-      'audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/ogg', 'audio/flac', 'audio/aac',
-      'video/mp4', 'video/webm', 'video/ogg',
-      'image/jpeg', 'image/png', 'image/webp', 'image/gif',
-    ];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}`));
-    }
+  limits: {
+    fileSize: 50 * 1024 * 1024,
+    files: 1,
+    fields: 20,
+    fieldSize: 64 * 1024,
+    parts: 25,
   },
+  fileFilter: createMimeFileFilter(GENERAL_UPLOAD_MIME_TYPES),
 });
 
 // Video uploads — Clips and any future user-uploaded video flow. 200MB
 // covers ~60s mobile recordings even at high bitrate.
 export const videoUpload = multer({
   storage,
-  limits: { fileSize: 200 * 1024 * 1024 },
-  fileFilter: (_req, file, cb) => {
-    const allowedTypes = ['video/mp4', 'video/webm', 'video/ogg', 'video/quicktime'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error(`Unsupported file type: ${file.mimetype}`));
-    }
+  limits: {
+    fileSize: 200 * 1024 * 1024,
+    files: 1,
+    fields: 10,
+    fieldSize: 64 * 1024,
+    parts: 15,
   },
+  fileFilter: createMimeFileFilter(VIDEO_MIME_TYPES),
 });
 
 export const handleVideoUpload = async (req: RequestWithUser, res: Response) => {
@@ -44,6 +44,11 @@ export const handleVideoUpload = async (req: RequestWithUser, res: Response) => 
     if (!req.user) { res.status(401).json({ error: 'Authentication required' }); return; }
     const file = req.file;
     if (!file) { res.status(400).json({ error: 'No file provided' }); return; }
+    const validationError = validateBufferedUpload(file, VIDEO_MIME_TYPES);
+    if (validationError) {
+      res.status(400).json({ error: validationError });
+      return;
+    }
     if (!file.mimetype.startsWith('video/')) {
       res.status(400).json({ error: 'File must be a video' });
       return;
@@ -86,6 +91,11 @@ export const handleUpload = async (req: RequestWithUser, res: Response) => {
 
     const file = req.file;
     if (!file) { res.status(400).json({ error: 'No file provided' }); return; }
+    const validationError = validateBufferedUpload(file, GENERAL_UPLOAD_MIME_TYPES);
+    if (validationError) {
+      res.status(400).json({ error: validationError });
+      return;
+    }
 
     if (!tryReserveUploadBudget(req.user.userId, file.size || file.buffer?.length || 0)) {
       res.status(429).json({ error: 'Daily upload quota exceeded.' });

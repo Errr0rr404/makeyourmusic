@@ -20,13 +20,22 @@ import { playlistFromPrompt } from '../controllers/aiPlaylistController';
 import { transcribeAudio } from '../controllers/transcribeController';
 import multer from 'multer';
 import { authenticate } from '../middleware/auth';
+import { singleUpload } from '../middleware/uploadMiddleware';
+import { AUDIO_MIME_TYPES, createMimeFileFilter } from '../utils/fileValidation';
 
 // Transcribe endpoint accepts at most 5MB. The shared `upload` instance is
 // 50MB (sized for music uploads); reusing it here wastes bandwidth +
 // memory on inputs the controller will then reject.
 const transcribeUpload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024 },
+  limits: {
+    fileSize: 5 * 1024 * 1024,
+    files: 1,
+    fields: 4,
+    fieldSize: 16 * 1024,
+    parts: 6,
+  },
+  fileFilter: createMimeFileFilter(AUDIO_MIME_TYPES),
 });
 
 const router = Router();
@@ -73,6 +82,6 @@ router.get('/video/:id', getVideoGeneration as any);
 router.post('/playlist/from-prompt', playlistFromPrompt as any);
 
 // Voice → text (mobile "hold to speak a song idea" entrypoint)
-router.post('/transcribe', transcribeUpload.single('audio'), transcribeAudio as any);
+router.post('/transcribe', singleUpload(transcribeUpload, 'audio'), transcribeAudio as any);
 
 export default router;
