@@ -111,7 +111,7 @@ export function AuthGateModal({ visible, onClose, onSuccess, onNavigateToRegiste
                     marginBottom: 4,
                     marginTop: 8,
                     fontFamily: isVintage ? tokens.fontDisplay : undefined,
-                    letterSpacing: isVintage ? 0.5 : -0.3,
+                    letterSpacing: isVintage ? 0.5 : 0,
                     textTransform: isVintage ? 'uppercase' : undefined,
                   }}
                 >

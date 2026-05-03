@@ -270,10 +270,17 @@ html.skin-vintage .mym-aurora {
 }
 
 /* ── Typography ─────────────────────────────────────────── */
-h1, h2, h3, h4, .font-display { font-family: var(--font-display); letter-spacing: -0.01em; }
+h1, h2, h3, h4, .font-display { font-family: var(--font-display); letter-spacing: 0; }
 .font-mono { font-family: var(--font-mono); }
 .font-outfit { font-family: var(--font-display); }
 .font-label { font-family: var(--font-label); }
+
+@layer utilities {
+  .tracking-tight,
+  .tracking-tighter {
+    letter-spacing: 0;
+  }
+}
 
 /* Vintage: section headlines uppercase, tighter tracking */
 html.skin-vintage h1,
@@ -1165,13 +1172,9 @@ html.skin-vintage :where(
 :root { --brand-3: #2dd4bf; }
 html.skin-vintage { --brand-3: var(--led-green); }
 
-/* The landing page is full-bleed inside the main panel — escape padding. */
 .mym-landing-root {
-  margin: -16px -16px 0;
+  margin: 0;
   position: relative;
-}
-@media (min-width: 768px) {
-  .mym-landing-root { margin: -16px -32px 0; }
 }
 
 @keyframes mym-marquee { to { transform: translateX(-50%); } }

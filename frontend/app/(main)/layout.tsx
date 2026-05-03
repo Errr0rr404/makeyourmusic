@@ -6,10 +6,28 @@ import { AudioPlayer } from '@/components/player/AudioPlayer';
 import { MobileNav } from '@/components/layout/MobileNav';
 import { Footer } from '@/components/layout/Footer';
 import { usePlayerStore } from '@/lib/store/playerStore';
+import { useAuthStore } from '@/lib/store/authStore';
+import { usePathname } from 'next/navigation';
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const currentTrack = usePlayerStore((s) => s.currentTrack);
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const pathname = usePathname();
   const hasPlayer = !!currentTrack;
+  const isPublicLanding = pathname === '/' && !isAuthenticated;
+
+  if (isPublicLanding) {
+    return (
+      <div className="relative min-h-screen overflow-x-hidden bg-[color:var(--bg)]">
+        <div className="mym-aurora" />
+        <div className="relative z-10">
+          {children}
+          <Footer />
+        </div>
+        <AudioPlayer />
+      </div>
+    );
+  }
 
   return (
     <div className="relative min-h-screen">

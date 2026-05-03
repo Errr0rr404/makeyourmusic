@@ -10,6 +10,8 @@ import { useAuthStore } from '@/lib/store/authStore';
 import { track } from '@/lib/analytics';
 import api from '@/lib/api';
 import { t } from '@/lib/i18n';
+import { BrandLogo } from '@/components/brand/BrandLogo';
+import { ThemeMenu } from '@/components/ThemeMenu';
 
 const PROMPT_CYCLE = [
   'rainy tokyo lo-fi for late-night coding',
@@ -410,7 +412,7 @@ function DiscoverGrid({ tracks }: { tracks: TrackItem[] }) {
           </span>
           <h2
             className="font-display font-extrabold m-0 mb-4"
-            style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: '-0.03em' }}
+            style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: 0 }}
           >
             Pulled fresh from the<br />
             <span className="aurora-text">infinite catalog.</span>
@@ -527,7 +529,7 @@ function HowItWorks() {
         </span>
         <h2
           className="font-display font-extrabold m-0 mb-4"
-          style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: '-0.03em' }}
+          style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: 0 }}
         >
           Three steps from <span className="aurora-text">vibe to play.</span>
         </h2>
@@ -601,7 +603,7 @@ function HowItWorks() {
             </div>
             <h3
               className="font-display font-extrabold text-[22px] m-0"
-              style={{ letterSpacing: '-0.01em' }}
+              style={{ letterSpacing: 0 }}
             >
               {s.title}
             </h3>
@@ -666,7 +668,7 @@ function Genres({ genres }: { genres: Array<{ name: string; count: string; hue: 
         </span>
         <h2
           className="font-display font-extrabold m-0 mb-4"
-          style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: '-0.03em' }}
+          style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: 0 }}
         >
           Every mood. Every<br />
           <span className="aurora-text">microscopic niche.</span>
@@ -692,7 +694,7 @@ function Genres({ genres }: { genres: Array<{ name: string; count: string; hue: 
               className="absolute -right-5 -bottom-5 w-[90px] h-[90px] rounded-2xl opacity-50"
               style={{ background: `hsl(${g.hue} 80% 55%)`, transform: 'rotate(18deg)' }}
             />
-            <h3 className="font-display font-extrabold text-[22px] m-0 relative" style={{ letterSpacing: '-0.01em' }}>
+            <h3 className="font-display font-extrabold text-[22px] m-0 relative" style={{ letterSpacing: 0 }}>
               {g.name}
             </h3>
             <span
@@ -725,7 +727,7 @@ function MobileSection({ tracks }: { tracks: TrackItem[] }) {
           </span>
           <h2
             className="font-display font-extrabold m-0 mb-4"
-            style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: '-0.03em' }}
+            style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: 0 }}
           >
             Plays where <br />
             <span className="aurora-text">you do.</span>
@@ -952,7 +954,7 @@ function Pricing() {
         </span>
         <h2
           className="font-display font-extrabold m-0 mb-4"
-          style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: '-0.03em' }}
+          style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: 0 }}
         >
           Free to listen.<br />
           <span className="aurora-text">Pro for power users.</span>
@@ -987,7 +989,7 @@ function Pricing() {
             >
               {p.tier}
             </div>
-            <div className="font-display font-extrabold text-[44px] leading-none" style={{ letterSpacing: '-0.03em' }}>
+            <div className="font-display font-extrabold text-[44px] leading-none" style={{ letterSpacing: 0 }}>
               {p.price}
               <span className="text-sm ml-1.5 font-semibold" style={{ color: 'var(--text-mute)' }}>
                 /mo
@@ -1031,7 +1033,7 @@ function FAQ() {
         </span>
         <h2
           className="font-display font-extrabold m-0 mb-4"
-          style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: '-0.03em' }}
+          style={{ fontSize: 'clamp(2.2rem, 4.4vw, 3.4rem)', lineHeight: 1.05, letterSpacing: 0 }}
         >
           Frequently<br />
           <span className="aurora-text">asked</span>.
@@ -1090,7 +1092,7 @@ function CTABand({ tracks }: { tracks: TrackItem[] }) {
       <div className="max-w-[880px] mx-auto">
         <h2
           className="font-display font-extrabold m-0 mb-4"
-          style={{ fontSize: 'clamp(2.4rem, 5.6vw, 4rem)', letterSpacing: '-0.03em', lineHeight: 1.05 }}
+          style={{ fontSize: 'clamp(2.4rem, 5.6vw, 4rem)', letterSpacing: 0, lineHeight: 1.05 }}
         >
           Your turn.<br />
           Make something new.
@@ -1162,6 +1164,7 @@ export function LandingPage() {
 
   return (
     <div className="mym-landing-root">
+      <LandingNav />
       <HeroDeckLayout tracks={tracks} />
 
       <MarqueeStrip />
@@ -1174,6 +1177,39 @@ export function LandingPage() {
       <CTABand tracks={tracks} />
       <StickyMobileCTA />
     </div>
+  );
+}
+
+function LandingNav() {
+  return (
+    <nav
+      className="sticky top-0 z-50 border-b border-[color:var(--stroke)] px-4 py-3 backdrop-blur-xl sm:px-6"
+      style={{ background: 'color-mix(in srgb, var(--bg) 82%, transparent)' }}
+    >
+      <div className="mx-auto flex max-w-[1240px] items-center justify-between gap-3">
+        <Link href="/" className="min-w-0">
+          <BrandLogo textClassName="text-sm sm:text-base" subtitle="AI Music" />
+        </Link>
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/search"
+            className="hidden text-sm font-semibold text-[color:var(--text-soft)] transition-colors hover:text-[color:var(--text)] sm:inline-flex"
+          >
+            Explore
+          </Link>
+          <ThemeMenu />
+          <Link
+            href="/login"
+            className="hidden px-2 py-2 text-sm font-semibold text-[color:var(--text-soft)] transition-colors hover:text-[color:var(--text)] min-[430px]:inline-flex"
+          >
+            Log in
+          </Link>
+          <Link href="/register" className="mym-cta mym-cta-sm">
+            Sign up
+          </Link>
+        </div>
+      </div>
+    </nav>
   );
 }
 
@@ -1224,7 +1260,7 @@ function HeroDeckLayout({ tracks }: { tracks: TrackItem[] }) {
   };
 
   return (
-    <div className="relative isolate overflow-hidden pt-16 pb-12 sm:pt-24 sm:pb-16 md:pt-[140px] md:pb-[90px]">
+    <div className="relative isolate overflow-hidden pt-8 pb-10 sm:pt-12 sm:pb-14 md:pt-16 md:pb-16">
       <HeroBackdrop />
       <div className="relative max-w-[1240px] mx-auto px-5 sm:px-6 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,480px)] gap-10 sm:gap-12 lg:gap-16 items-center">
         <div className="min-w-0">
@@ -1237,7 +1273,7 @@ function HeroDeckLayout({ tracks }: { tracks: TrackItem[] }) {
           </span>
           <h1
             className="font-display font-extrabold m-0 mb-4 sm:mb-5"
-            style={{ fontSize: 'clamp(2.1rem, 8vw, 4.8rem)', lineHeight: 1.04, letterSpacing: '-0.035em', textWrap: 'balance' }}
+            style={{ fontSize: 'clamp(2.1rem, 8vw, 4.8rem)', lineHeight: 1.04, letterSpacing: 0, textWrap: 'balance' }}
           >
             Your station,<br />
             <span className="aurora-text">re-recorded daily.</span>

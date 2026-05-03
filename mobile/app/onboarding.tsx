@@ -133,7 +133,7 @@ export default function OnboardingScreen() {
                   marginBottom: 12,
                   fontFamily: isVintage ? tokens.fontDisplay : undefined,
                   textTransform: isVintage ? 'uppercase' : undefined,
-                  letterSpacing: isVintage ? 1 : -0.4,
+                  letterSpacing: isVintage ? 1 : 0,
                 }}
               >
                 {item.title}

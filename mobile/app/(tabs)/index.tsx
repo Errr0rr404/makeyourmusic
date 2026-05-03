@@ -10,15 +10,9 @@ import { TrackRow } from '../../components/track/TrackRow';
 import { AgentCard } from '../../components/agent/AgentCard';
 import { Logo } from '../../components/ui/Logo';
 import { TouchableOpacity } from 'react-native';
-import { Bell, Play, Wand2 } from 'lucide-react-native';
+import { Bell, ChevronRight, Wand2 } from 'lucide-react-native';
 import { useTokens, useIsVintage } from '../../lib/theme';
 import { ThemeQuickMenu } from '../../components/ThemeQuickMenu';
-
-const QUICK_CREATE_PROMPTS = [
-  'lo-fi focus track with warm vinyl texture',
-  'cinematic synthwave for a night drive',
-  'short pop hook about starting over',
-];
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -40,11 +34,6 @@ export default function HomeScreen() {
   }, []);
   const displayName = user?.displayName || user?.username || 'there';
   const hasDiscoveryContent = trending.length > 0 || latest.length > 0 || genres.length > 0 || agents.length > 0;
-  const discoveryStats = [
-    { label: 'Trending', value: trending.length, params: { sort: 'popular' } },
-    { label: 'New', value: latest.length, params: { sort: 'newest' } },
-    { label: 'Agents', value: agents.length, params: { tab: 'agents' } },
-  ];
 
   const fetchData = useCallback(async () => {
     try {
@@ -127,7 +116,7 @@ export default function HomeScreen() {
               fontWeight: '800',
               fontFamily: isVintage ? tokens.fontDisplay : undefined,
               textTransform: isVintage ? 'uppercase' : 'none',
-              letterSpacing: isVintage ? 1 : -0.5,
+              letterSpacing: isVintage ? 1 : 0,
             }}
             numberOfLines={1}
             adjustsFontSizeToFit
@@ -228,66 +217,8 @@ export default function HomeScreen() {
               Write, speak, or remix a prompt into a finished song.
             </Text>
           </View>
-          <Play size={18} color={tokens.brand} fill={tokens.brand} />
+          <ChevronRight size={18} color={tokens.brand} />
         </TouchableOpacity>
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
-          {QUICK_CREATE_PROMPTS.map((prompt) => (
-            <TouchableOpacity
-              key={prompt}
-              onPress={() => router.push(`/create?prompt=${encodeURIComponent(prompt)}`)}
-              style={{
-                maxWidth: '100%',
-                paddingHorizontal: 12,
-                paddingVertical: 7,
-                borderRadius: 999,
-                backgroundColor: tokens.card,
-                borderWidth: 1,
-                borderColor: tokens.border,
-              }}
-              activeOpacity={0.75}
-            >
-              <Text style={{ color: tokens.textSoft, fontSize: 11, fontWeight: '600' }} numberOfLines={1}>
-                {prompt}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-        <View style={{ flexDirection: 'row', gap: 8, marginTop: 12 }}>
-          {discoveryStats.map((stat) => (
-            <TouchableOpacity
-              key={stat.label}
-              onPress={() => router.push({ pathname: '/(tabs)/search', params: stat.params })}
-              style={{
-                flex: 1,
-                minHeight: 54,
-                paddingHorizontal: 10,
-                paddingVertical: 9,
-                borderRadius: tokens.radiusLg,
-                backgroundColor: tokens.card,
-                borderWidth: 1,
-                borderColor: tokens.border,
-              }}
-              activeOpacity={0.75}
-              accessibilityRole="button"
-              accessibilityLabel={`${stat.value} ${stat.label}`}
-            >
-              <Text
-                style={{
-                  color: tokens.text,
-                  fontSize: 17,
-                  fontWeight: '800',
-                  fontFamily: isVintage ? tokens.fontDisplay : undefined,
-                  letterSpacing: isVintage ? 0.6 : 0,
-                }}
-              >
-                {stat.value}
-              </Text>
-              <Text style={{ color: tokens.textMute, fontSize: 11, fontWeight: '600' }} numberOfLines={1}>
-                {stat.label}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </View>
       </View>
 
       {/* Error state */}

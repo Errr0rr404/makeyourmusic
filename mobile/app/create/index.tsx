@@ -731,7 +731,7 @@ function Header({ usage, step }: { usage: Usage | null; step: Step }) {
       </View>
       {usage && (
         <View className="rounded-full bg-mym-card border border-mym-border px-3 py-1.5 items-end">
-          <Text className="text-mym-muted text-[9px] uppercase tracking-wider">{usageTierLabel(usage.tier)}</Text>
+          <Text className="text-mym-muted text-[9px] uppercase">{usageTierLabel(usage.tier)}</Text>
           <Text className="text-mym-text text-sm font-bold">
             {usage.remaining}<Text className="text-mym-muted text-xs"> left</Text>
           </Text>
@@ -817,34 +817,12 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
                 }}
               />
             </View>
-            <View className="flex-row flex-wrap gap-1.5 mt-2">
-              {IDEA_CHECKS.map((check) => {
-                const passed = check.test(idea);
-                return (
-                  <View
-                    key={check.label}
-                    className={`flex-row items-center gap-1 rounded-full px-2 py-1 ${
-                      passed ? 'bg-mym-accent/15' : 'bg-mym-surface'
-                    }`}
-                  >
-                    {passed ? (
-                      <CheckCircle2 size={10} color={tokens.accent} />
-                    ) : (
-                      <View style={{ width: 5, height: 5, borderRadius: 999, backgroundColor: tokens.textMute }} />
-                    )}
-                    <Text style={{ color: passed ? tokens.text : tokens.textMute, fontSize: 10, fontWeight: '600' }}>
-                      {check.label}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
           </View>
         )}
 
         {!idea && (
           <View className="flex-row flex-wrap gap-2 mt-3">
-            {SEED_PROMPTS.map((p) => (
+            {SEED_PROMPTS.slice(0, 3).map((p) => (
               <TouchableOpacity
                 key={p}
                 onPress={() => { setIdea(p); track('seed_prompt_picked', { prompt: p }); hapticSelection(); }}
@@ -855,11 +833,6 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
             ))}
           </View>
         )}
-
-        <View className="mt-4 pt-4 border-t border-mym-border">
-          <VoiceQuickCreate />
-        </View>
-
 
         <Text className="text-mym-text text-sm font-semibold mb-2 mt-4">
           Working title <Text className="text-mym-muted font-normal">(optional)</Text>
@@ -872,6 +845,9 @@ function IdeaStep({ idea, setIdea, title, setTitle, onNext }: any) {
           placeholderTextColor={mutedHex}
           className="bg-mym-surface border border-mym-border rounded-xl px-3 py-2.5 text-mym-text text-sm"
         />
+      </View>
+      <View className="mt-3 bg-mym-card rounded-xl border border-mym-border p-3">
+        <VoiceQuickCreate />
       </View>
       <View className="mt-4">
         <TouchableOpacity

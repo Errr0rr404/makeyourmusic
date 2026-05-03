@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Stack } from 'expo-router';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, LogBox } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import TrackPlayer from 'react-native-track-player';
@@ -22,6 +22,15 @@ import { vars } from 'nativewind';
 
 // Initialize shared services before anything else
 bootstrap();
+
+LogBox.ignoreLogs([
+  'SafeAreaView has been deprecated',
+  '[expo-av]: Expo AV has been deprecated',
+  'The objective-c `getSleepTimerProgress',
+  'The objective-c `setSleepTimer',
+  'The objective-c `sleepWhenActiveTrackReachesEnd',
+  'The objective-c `clearSleepTimer',
+]);
 
 // Sentry — gated on EXPO_PUBLIC_SENTRY_DSN; no-op when the SDK isn't
 // installed or the DSN is missing. Lives in module scope so the first

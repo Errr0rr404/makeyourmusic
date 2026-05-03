@@ -74,7 +74,7 @@ export default function RegisterScreen() {
                 fontWeight: '800',
                 marginTop: 14,
                 fontFamily: isVintage ? tokens.fontDisplay : undefined,
-                letterSpacing: isVintage ? 1 : -0.5,
+                letterSpacing: isVintage ? 1 : 0,
                 textTransform: isVintage ? 'uppercase' : undefined,
               }}
             >
