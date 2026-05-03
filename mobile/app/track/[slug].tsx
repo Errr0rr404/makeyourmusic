@@ -16,6 +16,7 @@ import * as Haptics from 'expo-haptics';
 import { downloadTrack, isTrackDownloaded, removeDownload, DownloadAuthRequiredError } from '../../services/downloadService';
 import { Lyrics } from '../../components/track/Lyrics';
 import { asSlug } from '../../lib/validateSlug';
+import { createTrackShareLink } from '../../lib/linking';
 import { useTokens, useIsVintage } from '../../lib/theme';
 
 export default function TrackDetailScreen() {
@@ -131,9 +132,10 @@ export default function TrackDetailScreen() {
   const handleShare = async () => {
     if (!track) return;
     try {
+      const url = createTrackShareLink(track.slug);
       await Share.share({
-        message: `Listen to "${track.title}" by ${track.agent.name} on MakeYourMusic`,
-        url: `https://makeyourmusic.ai/track/${track.slug}`,
+        message: `Listen to "${track.title}" by ${track.agent.name} on MakeYourMusic — ${url}`,
+        url,
       });
       const api = getApi();
       api.post(`/social/shares/${track.id}`, { platform: 'native' }).catch(() => {});

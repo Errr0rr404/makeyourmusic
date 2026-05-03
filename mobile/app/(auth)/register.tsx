@@ -9,6 +9,7 @@ import { Button } from '../../components/ui/Button';
 import { Logo } from '../../components/ui/Logo';
 import { SocialAuthButtons } from '../../components/auth/SocialAuthButtons';
 import { useTokens, useIsVintage } from '../../lib/theme';
+import { MAKEYOURMUSIC_WEB_URL } from '../../lib/linking';
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -190,14 +191,14 @@ export default function RegisterScreen() {
               I agree to the{' '}
               <Text
                 style={{ color: tokens.accent, fontWeight: '600' }}
-                onPress={() => Linking.openURL('https://makeyourmusic.ai/terms')}
+                onPress={() => Linking.openURL(`${MAKEYOURMUSIC_WEB_URL}/terms`)}
               >
                 Terms of Service
               </Text>{' '}
               and{' '}
               <Text
                 style={{ color: tokens.accent, fontWeight: '600' }}
-                onPress={() => Linking.openURL('https://makeyourmusic.ai/privacy')}
+                onPress={() => Linking.openURL(`${MAKEYOURMUSIC_WEB_URL}/privacy`)}
               >
                 Privacy Policy
               </Text>

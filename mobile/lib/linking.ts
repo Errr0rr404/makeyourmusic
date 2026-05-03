@@ -14,7 +14,12 @@
 import * as Linking from 'expo-linking';
 
 export const MAKEYOURMUSIC_SCHEME = 'makeyourmusic';
-export const MAKEYOURMUSIC_WEB_URL = 'https://makeyourmusic.ai';
+// The makeyourmusic.ai domain isn't live yet — point shareable links to the
+// actual deployed Railway frontend so URLs people open from share sheets,
+// Terms/Privacy links, etc. resolve. Override at build time via
+// EXPO_PUBLIC_WEB_URL once the production domain is wired up.
+export const MAKEYOURMUSIC_WEB_URL =
+  process.env.EXPO_PUBLIC_WEB_URL || 'https://makeyourmusic-web-production.up.railway.app';
 
 // Slugs are restricted to lowercase letters, digits, and hyphens. This is
 // what backend slugify() emits, so anything else in a deep-link path is

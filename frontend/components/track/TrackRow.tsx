@@ -29,16 +29,32 @@ export function TrackRow({ track, index, tracks, onLike, onRemove }: TrackRowPro
     else playTrack(track, tracks);
   };
 
+  const handleRowKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handlePlay();
+    }
+  };
+
   return (
     <div
-      className={`group flex items-center gap-3 px-3 py-2 rounded-md transition-colors ${
+      role="button"
+      tabIndex={0}
+      onClick={handlePlay}
+      onKeyDown={handleRowKeyDown}
+      aria-label={isCurrentlyPlaying ? `Pause ${track.title}` : `Play ${track.title}${track.agent ? ` by ${track.agent.name}` : ''}`}
+      className={`group flex items-center gap-3 px-3 py-2 rounded-md transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)] ${
         isCurrentTrack ? 'bg-white/[0.06]' : 'hover:bg-white/[0.04]'
       }`}
     >
       {/* Index / Play / Equalizer */}
       <div className="w-7 text-center flex-shrink-0">
         {isCurrentlyPlaying ? (
-          <button onClick={handlePlay} aria-label="Pause" className="inline-flex items-end gap-0.5 h-3">
+          <button
+            onClick={(e) => { e.stopPropagation(); handlePlay(); }}
+            aria-label="Pause"
+            className="inline-flex items-end gap-0.5 h-3"
+          >
             <span className="eq-bar" />
             <span className="eq-bar" />
             <span className="eq-bar" />
@@ -53,7 +69,7 @@ export function TrackRow({ track, index, tracks, onLike, onRemove }: TrackRowPro
               {index + 1}
             </span>
             <button
-              onClick={handlePlay}
+              onClick={(e) => { e.stopPropagation(); handlePlay(); }}
               aria-label={`Play ${track.title}`}
               className="hidden group-hover:inline-flex text-white"
             >
@@ -81,6 +97,7 @@ export function TrackRow({ track, index, tracks, onLike, onRemove }: TrackRowPro
       <div className="flex-1 min-w-0">
         <Link
           href={`/track/${track.slug}`}
+          onClick={(e) => e.stopPropagation()}
           className={`text-sm font-semibold truncate block hover:underline ${
             isCurrentTrack ? 'text-[color:var(--brand)]' : 'text-white'
           }`}
@@ -90,6 +107,7 @@ export function TrackRow({ track, index, tracks, onLike, onRemove }: TrackRowPro
         {track.agent && (
           <Link
             href={`/agent/${track.agent.slug}`}
+            onClick={(e) => e.stopPropagation()}
             className="text-xs text-[color:var(--text-mute)] truncate block hover:underline hover:text-white"
           >
             {track.agent.name}
@@ -106,7 +124,7 @@ export function TrackRow({ track, index, tracks, onLike, onRemove }: TrackRowPro
       </span>
 
       <button
-        onClick={() => onLike?.(track.id)}
+        onClick={(e) => { e.stopPropagation(); onLike?.(track.id); }}
         aria-label={track.isLiked ? 'Unlike' : 'Like'}
         className={`p-1.5 rounded-full transition-colors ${
           track.isLiked
@@ -123,7 +141,7 @@ export function TrackRow({ track, index, tracks, onLike, onRemove }: TrackRowPro
 
       {onRemove && (
         <button
-          onClick={() => onRemove(track.id)}
+          onClick={(e) => { e.stopPropagation(); onRemove(track.id); }}
           aria-label="Remove from playlist"
           className="p-1.5 rounded-full text-[color:var(--text-mute)] md:opacity-0 md:group-hover:opacity-100 hover:text-rose-400 hover:bg-rose-500/10 transition-colors"
         >

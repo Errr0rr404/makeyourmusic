@@ -28,10 +28,13 @@ export function TrackCard({ track, queue, size = 'md' }: TrackCardProps) {
   return (
     <TouchableOpacity
       style={{ width: dim, marginRight: 12 }}
-      onPress={() => router.push(`/track/${track.slug}`)}
+      onPress={handlePlay}
+      onLongPress={() => router.push(`/track/${track.slug}`)}
+      delayLongPress={350}
       activeOpacity={0.7}
       accessibilityRole="button"
-      accessibilityLabel={`Open ${track.title} by ${track.agent.name}`}
+      accessibilityLabel={isActive && isPlaying ? `Pause ${track.title}` : `Play ${track.title} by ${track.agent.name}`}
+      accessibilityHint="Long press to open track details"
     >
       <View
         style={{
@@ -112,21 +115,35 @@ export function TrackCard({ track, queue, size = 'md' }: TrackCardProps) {
           )}
         </TouchableOpacity>
       </View>
-      <Text
-        numberOfLines={1}
-        style={{
-          color: isActive ? tokens.accent : tokens.text,
-          fontSize: 14,
-          fontWeight: '600',
-          fontFamily: isVintage ? tokens.fontDisplay : undefined,
-          letterSpacing: isVintage ? 0.5 : undefined,
-        }}
+      <TouchableOpacity
+        onPress={() => router.push(`/track/${track.slug}`)}
+        hitSlop={4}
+        accessibilityRole="link"
+        accessibilityLabel={`Open ${track.title} details`}
       >
-        {track.title}
-      </Text>
-      <Text numberOfLines={1} style={{ color: tokens.textMute, fontSize: 12, marginTop: 2 }}>
-        {track.agent.name} · {formatDuration(track.duration)}
-      </Text>
+        <Text
+          numberOfLines={1}
+          style={{
+            color: isActive ? tokens.accent : tokens.text,
+            fontSize: 14,
+            fontWeight: '600',
+            fontFamily: isVintage ? tokens.fontDisplay : undefined,
+            letterSpacing: isVintage ? 0.5 : undefined,
+          }}
+        >
+          {track.title}
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        onPress={() => router.push(`/agent/${track.agent.slug}`)}
+        hitSlop={4}
+        accessibilityRole="link"
+        accessibilityLabel={`Open ${track.agent.name}`}
+      >
+        <Text numberOfLines={1} style={{ color: tokens.textMute, fontSize: 12, marginTop: 2 }}>
+          {track.agent.name} · {formatDuration(track.duration)}
+        </Text>
+      </TouchableOpacity>
     </TouchableOpacity>
   );
 }

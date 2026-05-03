@@ -35,10 +35,26 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
     void startRadio(track);
   };
 
+  const handleCardClick = () => {
+    if (isCurrentTrack) togglePlay();
+    else playTrack(track, tracks);
+  };
+
+  const handleCardKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      handleCardClick();
+    }
+  };
+
   return (
-    <Link
-      href={`/track/${track.slug}`}
-      className="group relative block p-3 rounded-xl bg-[color:var(--bg-elev-2)] hover:bg-[color:var(--bg-elev-3)] transition-colors"
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={handleCardKeyDown}
+      aria-label={isCurrentlyPlaying ? `Pause ${track.title}` : `Play ${track.title}${track.agent ? ` by ${track.agent.name}` : ''}`}
+      className="group relative block p-3 rounded-xl bg-[color:var(--bg-elev-2)] hover:bg-[color:var(--bg-elev-3)] transition-colors cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
     >
       <div className="relative aspect-square rounded-lg overflow-hidden mb-3 bg-[color:var(--bg-elev-3)] shadow-lg shadow-black/30">
         {track.coverArt && !imgError ? (
@@ -99,16 +115,24 @@ export function TrackCard({ track, tracks, showAgent = true }: TrackCardProps) {
         </button>
       </div>
 
-      <h3
-        className={`text-sm font-semibold truncate mb-1 transition-colors ${
+      <Link
+        href={`/track/${track.slug}`}
+        onClick={(e) => e.stopPropagation()}
+        className={`text-sm font-semibold truncate mb-1 block transition-colors hover:underline ${
           isCurrentTrack ? 'text-[color:var(--brand)]' : 'text-[color:var(--text)]'
         }`}
       >
         {track.title}
-      </h3>
+      </Link>
       {showAgent && track.agent && (
-        <p className="text-xs text-[color:var(--text-mute)] truncate">{track.agent.name}</p>
+        <Link
+          href={`/agent/${track.agent.slug}`}
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs text-[color:var(--text-mute)] truncate block hover:underline hover:text-[color:var(--text)]"
+        >
+          {track.agent.name}
+        </Link>
       )}
-    </Link>
+    </div>
   );
 }

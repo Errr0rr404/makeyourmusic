@@ -17,8 +17,9 @@ import { Input } from '../../components/ui/Input';
 import { Button } from '../../components/ui/Button';
 import { hapticSuccess, hapticWarning } from '../../services/hapticService';
 import { unregisterPushToken } from '../../services/notificationService';
+import { MAKEYOURMUSIC_WEB_URL } from '../../lib/linking';
 
-const SITE_URL = 'https://makeyourmusic.ai';
+const SITE_URL = MAKEYOURMUSIC_WEB_URL;
 
 export default function SettingsScreen() {
   const router = useRouter();

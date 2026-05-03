@@ -423,54 +423,65 @@ function DiscoverGrid({ tracks }: { tracks: TrackItem[] }) {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
         {tracks.slice(0, 8).map((t, i) => {
           const isThis = currentTrack?.id === t.id;
+          const cardLabel = isThis && isPlaying ? `Pause ${t.title}` : `Play ${t.title}${t.agent ? ` by ${t.agent.name}` : ''}`;
           return (
             <article
               key={t.id}
-              className="rounded-[14px] p-3 border transition-transform hover:-translate-y-0.5"
+              role="button"
+              tabIndex={0}
+              onClick={() => handlePlay(t)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handlePlay(t);
+                }
+              }}
+              aria-label={cardLabel}
+              className="rounded-[14px] p-3 border transition-transform hover:-translate-y-0.5 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--brand)]"
               style={{
                 background: 'var(--bg-elev-2)',
                 borderColor: 'var(--stroke)',
               }}
             >
-              <Link href={`/track/${t.slug}`} className="block">
-                <div className="relative aspect-square rounded-[10px] overflow-hidden mb-3 group">
-                  <CoverArt seed={t.title} src={t.coverArt} />
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      handlePlay(t);
-                    }}
-                    aria-label={isThis && isPlaying ? 'Pause' : 'Play'}
-                    className="absolute bottom-2.5 right-2.5 w-10 h-10 rounded-full inline-flex items-center justify-center text-white opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all"
-                    style={{ background: 'var(--brand)', boxShadow: '0 12px 26px -8px var(--brand-glow)' }}
-                  >
-                    {isThis && isPlaying ? <Pause className="w-4 h-4" fill="currentColor" /> : <PlayGlyph />}
-                  </button>
-                  {i === 0 && (
-                    <span
-                      className="absolute top-2 left-2 text-[10.5px] font-extrabold px-2 py-1 rounded-full text-white"
-                      style={{ background: 'var(--brand)', letterSpacing: '0.04em' }}
-                    >
-                      #1
-                    </span>
-                  )}
-                </div>
-                <div
-                  className="font-display font-bold text-[14.5px] truncate mb-0.5"
-                  style={{ color: isThis ? 'var(--brand)' : 'var(--text)' }}
+              <div className="relative aspect-square rounded-[10px] overflow-hidden mb-3 group">
+                <CoverArt seed={t.title} src={t.coverArt} />
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    handlePlay(t);
+                  }}
+                  aria-label={isThis && isPlaying ? 'Pause' : 'Play'}
+                  className="absolute bottom-2.5 right-2.5 w-10 h-10 rounded-full inline-flex items-center justify-center text-white opacity-0 translate-y-2 group-hover:opacity-100 group-hover:translate-y-0 transition-all"
+                  style={{ background: 'var(--brand)', boxShadow: '0 12px 26px -8px var(--brand-glow)' }}
                 >
-                  {t.title}
-                </div>
-                <div className="text-xs truncate" style={{ color: 'var(--text-soft)' }}>
-                  {t.agent?.name ?? 'AI Agent'}
-                </div>
-                <div className="flex justify-between gap-2 mt-1.5">
-                  <span className="text-[11px] truncate" style={{ color: 'var(--text-mute)' }}>
-                    {t.genre?.name ?? ''}
+                  {isThis && isPlaying ? <Pause className="w-4 h-4" fill="currentColor" /> : <PlayGlyph />}
+                </button>
+                {i === 0 && (
+                  <span
+                    className="absolute top-2 left-2 text-[10.5px] font-extrabold px-2 py-1 rounded-full text-white"
+                    style={{ background: 'var(--brand)', letterSpacing: '0.04em' }}
+                  >
+                    #1
                   </span>
-                </div>
+                )}
+              </div>
+              <Link
+                href={`/track/${t.slug}`}
+                onClick={(e) => e.stopPropagation()}
+                className="font-display font-bold text-[14.5px] truncate mb-0.5 block hover:underline"
+                style={{ color: isThis ? 'var(--brand)' : 'var(--text)' }}
+              >
+                {t.title}
               </Link>
+              <div className="text-xs truncate" style={{ color: 'var(--text-soft)' }}>
+                {t.agent?.name ?? 'AI Agent'}
+              </div>
+              <div className="flex justify-between gap-2 mt-1.5">
+                <span className="text-[11px] truncate" style={{ color: 'var(--text-mute)' }}>
+                  {t.genre?.name ?? ''}
+                </span>
+              </div>
             </article>
           );
         })}
